@@ -1,10 +1,9 @@
 # Architecture Description: Agentic SDLC Ecosystem
 
-**Version**: 1.2 | **Created**: 2026-03-16 | **Last Updated**: 2026-03-23  
+**Version**: 1.4 | **Created**: 2026-03-16 | **Last Updated**: 2026-04-06  
 **Architect**: User/AI | **Status**: Draft  
-**ADR Reference**: [.specify/memory/adr.md](.specify/memory/adr.md)  
-**PRD Reference**: [PRD.md](PRD.md)  
-**Milestone 2 Tracking**: [GitLab Repo](https://gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-agent-workspaces) | [GitHub Milestone](https://github.com/tikalk/agentic-sdlc-spec-kit/milestone/1)
+**ADR Reference**: [.specify/memory/adr.md](.specify/memory/adr.md) (19 system ADRs)  
+**PDR Reference**: [.specify/memory/pdr.md](.specify/memory/pdr.md) (90+ PDRs: PDR-001 to PDR-088 + new eval/harness)
 
 ---
 
@@ -17,14 +16,16 @@ The Agentic SDLC Ecosystem is a comprehensive suite of tools, methodologies, and
 ### 1.2 Scope
 
 **In Scope:**
-- Five products: Spec Kit, Spec Runner, Team Directives, Agents Workspaces, Agent Runner
+- **Six products**: Spec Kit, Runner, Team Directives, Agents Workspaces, Agent Runner, Evals Extension
 - Git-based data architecture (no databases)
 - CLI and Git-based integration between services
 - Kubernetes-based deployment with ArgoCD GitOps
 - Multi-cloud support (GCP primary, AWS, Azure)
 - Container-level isolation via OpenSandbox
 - Cloud-native agent workspaces with CLI attach (M2 Alpha)
-- Separate infrastructure repo for workspaces (adlc-agent-workspaces)
+- Eval-Driven Development (EDD) with PromptFoo integration
+- Harness Engineering patterns (9 new patterns: PDR-080 to PDR-088)
+- open-multi-agent foundation for multi-agent orchestration (PDR-079)
 
 **Out of Scope:**
 - Custom AI model training
@@ -69,6 +70,15 @@ The Agentic SDLC Ecosystem is a comprehensive suite of tools, methodologies, and
 
 The Agentic SDLC Ecosystem is a multi-service platform enabling AI-augmented software development. It consists of five sub-systems that work together to provide specification-driven development workflows with autonomous agent execution.
 
+**Core Architectural Decisions** (referenced ADRs):
+- **ADR-002**: Spec-Driven Development - Specifications are the primary artifact, living documents that evolve with code
+- **ADR-003**: Dual Execution Loop (SYNC/ASYNC) - Tasks classified for human-in-the-loop or autonomous execution
+- **ADR-004**: Extension-Based Architecture - Opt-in extensions keep core lean while enabling depth
+- **ADR-001**: Multi-Agent Ecosystem Strategy - Unified abstraction supporting multiple AI vendors
+- **ADR-013**: Multi-Repository Architecture - Products split across GitHub (OSS) and GitLab (commercial)
+- **ADR-005**: Context Engineering - Treat context as finite budget with graduated compaction
+- **ADR-006**: Dual-Memory Architecture - Separated episodic and working memory
+
 #### 3.1.2 External Entities
 
 | Entity | Type | Interaction Type | Data Exchanged | Protocols |
@@ -84,56 +94,6 @@ The Agentic SDLC Ecosystem is a multi-service platform enabling AI-augmented sof
 | GCP/GKE | Cloud Provider | Infrastructure (primary) | Compute, storage, K8s | HTTPS |
 | AWS/EKS | Cloud Provider | Infrastructure | Compute, storage | HTTPS |
 | Azure/AKS | Cloud Provider | Infrastructure | Compute, storage | HTTPS |
-
-#### 3.1.3 Context Diagram
-
-```mermaid
-graph TD
-    %% Stakeholders (human actors)
-    Developers["Developers"]
-    ProductOwners["Product Owners"]
-    SecurityOfficers["Security Officers"]
-    Operations["Operations Teams"]
-    
-    %% THE SYSTEM - Single blackbox
-    System["Agentic SDLC<br/>Ecosystem<br/>(This System)"]
-    
-    %% External Systems (third-party, outside your control)
-    GitHub["GitHub<br/>(External)"]
-    GitLab["GitLab<br/>(External)"]
-    Claude["Claude Code<br/>(External AI)"]
-    OpenAI["OpenAI API<br/>(External AI)"]
-    Gemini["Gemini API<br/>(External AI)"]
-    Anthropic["Anthropic API<br/>(External AI)"]
-    GCP["Google Cloud<br/>(External)"]
-    AWS["Amazon Web Services<br/>(External)"]
-    Azure["Microsoft Azure<br/>(External)"]
-    
-    %% Stakeholder interactions
-    Developers -->|"Writes specs, runs agents"| System
-    ProductOwners -->|"Defines requirements"| System
-    SecurityOfficers -->|"Configures policies"| System
-    Operations -->|"Deploys, monitors"| System
-    
-    %% External system integrations
-    System -->|"Stores specs, configs"| GitHub
-    System -->|"Stores commercial specs"| GitLab
-    System -->|"Invokes for code gen"| Claude
-    System -->|"Invokes for code gen"| OpenAI
-    System -->|"Invokes for code gen"| Gemini
-    System -->|"Invokes for inference"| Anthropic
-    System -->|"Deploys workloads"| GCP
-    System -->|"Deploys workloads"| AWS
-    System -->|"Deploys workloads"| Azure
-    
-    classDef systemNode fill:#f47721,stroke:#333,stroke-width:3px,color:#fff
-    classDef stakeholderNode fill:#4a9eff,stroke:#333,stroke-width:1px,color:#fff
-    classDef externalNode fill:#e0e0e0,stroke:#333,stroke-width:1px
-    
-    class System systemNode
-    class Developers,ProductOwners,SecurityOfficers,Operations stakeholderNode
-    class GitHub,GitLab,Claude,OpenAI,Gemini,Anthropic,GCP,AWS,Azure externalNode
-```
 
 #### 3.1.4 External Dependencies
 
@@ -156,57 +116,16 @@ graph TD
 
 #### 3.2.1 Functional Elements
 
-| Element | Responsibility | Interfaces Provided | Dependencies |
-|---------|----------------|---------------------|--------------|
-| **Spec Kit** | Specification authoring | CLI commands: /spec.* | Git, AI agents |
-| **Spec Runner** | Task orchestration | Pod spawn, worktree mgmt | Kubernetes, Git |
-| **Team Directives** | AI behavior config | Persona loading, skills | Git repositories |
-| **Agents Workspaces** | Cloud dev environments | K8s cluster provisioning | Cloud providers, Crossplane |
-| **Agent Runner** | Unified orchestration | Squad/Spec modes | Spec Runner, Squad |
-| **OpenSandbox** | Container isolation | Sandbox API | Kubernetes |
-| **adlc-agent-workspaces** | Infrastructure runtime | Docker images, Helm charts, Crossplane compositions | GCP/GKE, Docker registry |
-
-#### 3.2.2 Element Interactions
-
-```mermaid
-graph TD
-    subgraph "Agentic SDLC Ecosystem"
-        SpecKit["Spec Kit<br/>(CLI)"]
-        SpecRunner["Spec Runner<br/>(Orchestration)"]
-        TeamDirectives["Team AI Directives<br/>(Behavior)"]
-        AgentsWorkspaces["Agents Workspaces<br/>(Environment)"]
-        AgentRunner["Agent Runner<br/>(Unified)"]
-        OpenSandbox["OpenSandbox<br/>(Isolation)"]
-        AWInfra["adlc-agent-workspaces<br/>(Runtime Layer)"]
-    end
-    
-    GitHub[("GitHub<br/>(OSS)")]
-    GitLab[("GitLab<br/>(Commercial)")]
-    K8s[("Kubernetes")]
-    Cloud[("Cloud Providers")]
-    DockerReg[("Docker Registry<br/>gitlab.tikalk.dev")]
-    
-    AgentRunner -->|"Writes tasks to git"| SpecKit
-    SpecKit -->|"Triggers tasks"| SpecRunner
-    SpecRunner -->|"Creates worktrees"| GitHub
-    SpecRunner -->|"Spawns pods"| K8s
-    SpecRunner -->|"Isolates execution"| OpenSandbox
-    AgentRunner -->|"Orchestrates"| AgentsWorkspaces
-    AgentsWorkspaces -->|"Provisions clusters"| Cloud
-    AgentsWorkspaces -->|"Uses runtime layer"| AWInfra
-    AWInfra -->|"Base images"| DockerReg
-    AWInfra -->|"K8s resources"| K8s
-    TeamDirectives -->|"Provides context"| SpecKit
-    TeamDirectives -->|"Provides config"| SpecRunner
-    
-    classDef serviceNode fill:#4a9eff,stroke:#333,stroke-width:2px,color:#fff
-    classDef externalNode fill:#66c2a5,stroke:#333,stroke-width:2px,color:#fff
-    classDef infraNode fill:#f47721,stroke:#333,stroke-width:2px,color:#fff
-    
-    class SpecKit,SpecRunner,TeamDirectives,AgentsWorkspaces,AgentRunner,OpenSandbox serviceNode
-    class AWInfra infraNode
-    class GitHub,GitLab,K8s,Cloud,DockerReg externalNode
-```
+| Element | Responsibility | Interfaces Provided | Dependencies | ADR Reference |
+|---------|----------------|---------------------|--------------|----------------|
+| **Spec Kit** | Specification authoring | CLI commands: /spec.* | Git, AI agents | ADR-002, ADR-004 |
+| **Runner** | K8s async execution | Pod spawn, worktree mgmt | Kubernetes, Git | PDR-009, PDR-010 |
+| **Team Directives** | AI behavior config | Persona loading, skills | Git repositories | PDR-013 |
+| **Agents Workspaces** | Cloud dev environments | K8s cluster provisioning | Cloud providers, Crossplane | PDR-043, PDR-044 |
+| **Agent Runner** | Unified orchestration | Squad/Spec modes | Runner, Squad patterns | PDR-053, PDR-079 |
+| **Evals Extension** | Quality assurance | PromptFoo integration, goldset mgmt | Runner hooks | PDR-050, PDR-074-078 |
+| **OpenSandbox** | Container isolation | Sandbox API | Kubernetes | PDR-054, ADR-014 |
+| **Harness Patterns** | Runtime safety | Pre-task validation, planning checks | Agent Runner | PDR-080-088 |
 
 #### 3.2.3 Functional Boundaries
 
@@ -222,6 +141,17 @@ graph TD
 - Provide IDE functionality
 - Manage cloud billing
 - Serve as general-purpose CI/CD
+
+#### 3.2.4 Harness Architecture
+
+The system implements harness-based orchestration per ADR-007:
+
+| Harness Component | Purpose | Implementation |
+|------------------|---------|----------------|
+| Schema-Level Restrictions | Tool filtering at schema level | Invisible vs blocked tools |
+| ReAct Loop Extension | Extended reasoning with tool feedback | Per-step validation |
+| AutoHarness Integration | Illegal action prevention | 78% chess loss prevention |
+| Feedback Controls | Runtime validation | Error detection + recovery |
 
 ---
 
@@ -240,47 +170,12 @@ graph TD
 | Workspace Config | Git + K8s manifests | Agents Workspaces | Provision-Deprovision | Write-once |
 | Secrets | Cloud Secret Managers | All services | Create-Rotate-Delete | Rare |
 
-#### 3.3.2 Data Flow
-
-1. **Spec Creation Flow**: User → Spec Kit (CLI) → Git repository
-2. **Task Execution Flow**: Agent Runner → Git (tasks.md) → Spec Runner → K8s Pods → OpenSandbox
-3. **Context Loading Flow**: Spec Kit → Git → Team Directives → AI Agent
-4. **Secret Access Flow**: Services → ESO → Cloud Secret Managers → Workload Identity
-
 #### 3.3.3 Data Quality & Integrity
 
 - **Consistency Model**: Eventual (git-based), with strong consistency for secrets
 - **Validation Rules**: Schema validation for specs, Git integrity checks
 - **Retention Policy**: Specs: forever, Logs: 30 days, Execution: 90 days
 - **Backup Strategy**: Git provider native features; multi-cloud replication
-
----
-
-### 3.4 Concurrency View
-
-**Purpose**: Describe runtime processes, threads, and coordination
-
-#### 3.4.1 Process Structure
-
-| Process | Purpose | Scaling Model | State Management |
-|---------|---------|---------------|------------------|
-| Spec Runner Controller | Task orchestration | Horizontal - stateless | Git-based |
-| K8s Pod (ASYNC) | Task execution | Per-task pod | Ephemeral |
-| OpenSandbox Server | Sandbox lifecycle | Horizontal - pooled | Stateless |
-| Agent Runner | Unified orchestration | Horizontal - stateless | Git-based |
-| ArgoCD Controller | Deployment sync | Cluster-singleton | Event-driven |
-
-#### 3.4.2 Thread Model
-
-- **Threading Strategy**: Event-driven async (Python asyncio, Go goroutines)
-- **Async Patterns**: Git-based async coordination, webhook callbacks
-- **Resource Pools**: OpenSandbox BatchSandbox pool (min 5, max 20 warm sandboxes)
-
-#### 3.4.3 Coordination Mechanisms
-
-- **Synchronization**: Git branches for isolation, file locking for critical state
-- **Communication**: CLI commands, Git protocol, Kubernetes API
-- **Deadlock Prevention**: Queue-based git operations, branch-per-service pattern
 
 ---
 
@@ -301,76 +196,20 @@ agentic-sdlc/                           # Monorepo (this project)
 │   │   └── constitution.md           # Product Constitution
 │   └── extensions/                   # Spec Kit Extensions
 │       └── workspaces/                # Workspaces extension
-│           ├── extension.yml         # Extension manifest
-│           ├── commands/             # Workspace commands
-│           │   ├── init.md
-│           │   ├── attach.md
-│           │   ├── list.md
-│           │   ├── status.md
-│           │   └── destroy.md
-│           └── hooks/                 # Lifecycle hooks
-│               ├── after_init.md
-│               └── before_attach.md
 ├── agentic-sdlc-spec-kit/             # Spec Kit (GitHub - OSS)
-│   ├── src/specify_cli/              # CLI implementation
-│   ├── specs/                        # Feature specifications
-│   └── extensions/                   # Extension catalog
-├── agentic-sdlc-runner/               # Spec Runner (GitHub - OSS)
-│   ├── src/runner/                   # Runner implementation
-│   ├── docker/
-│   │   └── Dockerfile.opencode        # Base image with Ubuntu + opencode
-│   ├── charts/agentic-sdlc-runner/   # Helm chart (RBAC, ESO, etc.)
-│   ├── releases/                     # Multi-environment values.yaml
-│   └── scripts/
-│       ├── spawn-pod.sh
-│       ├── tail-logs.sh
-│       └── ...
-├── agentic-sdlc-team-ai-directives/  # Team Directives (GitHub - OSS)
-│   ├── personas/                      # Persona definitions
-│   ├── skills/                       # Skill packages
-│   └── rules/                        # Directive rules
-└── agentic-sdlc-agent-runner/        # Agent Runner (GitHub - OSS)
-    ├── src/                          # Runner implementation
-    └── workflows/                    # Squad/Spec workflows
+├── agentic-sdlc-agent-runner/         # Agent Runner (GitHub - OSS)
+└── agentic-sdlc-team-ai-directives/  # Team Directives (GitHub - OSS)
 
-# Separate repositories (not in monorepo):
-
+# Separate repositories:
 # GitLab: tikalk/engineering/agentic-sdlc/adlc-agent-workspaces
-# Registry: gitlab.tikalk.dev:5050/tikalk/engineering/agentic-sdlc/adlc-agent-workspaces
 adlc-agent-workspaces/                 # Workspaces Infrastructure (GitLab)
-├── runtime/
-│   ├── docker/
-│   │   ├── base/                     # Base image layers
-│   │   └── overlay/                  # Dockerfile overlay system
-│   └── helm/workspace/               # Workspace Helm chart
-├── infra/
-│   ├── gcp/terraform/               # GCP cluster provisioning
-│   └── crossplane/compositions/      # Crossplane workspace compositions
-├── scripts/                          # Provision/attach/list/status/destroy
-└── config/workspace.yaml             # Workspace configuration
 ```
-
-#### 3.5.2 Module Dependencies
-
-**Dependency Rules:**
-- Services layer depends on Git (not vice versa)
-- Runner depends on Kubernetes API
-- All services depend on Observability module
-- No circular dependencies between services
 
 #### 3.5.3 Build & CI/CD
 
 - **Build System**: Python (uv), TypeScript (npm), Go (mod)
 - **CI Pipeline**: GitHub Actions / GitLab CI - Build → Test → Lint → Build Artifacts
 - **Deployment Strategy**: ArgoCD GitOps - Git push triggers deployment
-- **Environments**: dev → stage → prod (3 namespaces per cluster)
-
-#### 3.5.4 Development Standards
-
-- **Coding Standards**: ESLint, Ruff, golangci-lint
-- **Review Requirements**: 1 approval for OSS, 2 for commercial
-- **Testing Requirements**: 80% coverage for core, 60% for others
-- **Security**: SAST scanning, dependency scanning, container scanning
 
 ---
 
@@ -386,73 +225,7 @@ adlc-agent-workspaces/                 # Workspaces Infrastructure (GitLab)
 | Production (Commercial) | Commercial customers | Dedicated clusters per workspace | Per-customer |
 | Staging | Pre-release testing | Shared K8s | 3 nodes |
 | Development | Dev testing | Docker Compose / Minikube | 1 node |
-| Workspace (Alpha) | Agent workspace per user | GKE Autopilot (M2 milestone) | Per-user cluster |
-
-#### 3.6.2 Network Topology
-
-```mermaid
-graph TB
-    subgraph "Internet"
-        Users["End Users"]
-    end
-    
-    subgraph "Cloud Provider (GCP/AWS/Azure)"
-        LB["Load Balancer"]
-        
-        subgraph "OSS Cluster (shared)"
-            ArgoCD["ArgoCD Controller"]
-            
-            subgraph "dev Namespace"
-                Pod1["Spec Runner Pod"]
-                Pod2["Team Directories Pod"]
-            end
-            
-            subgraph "stage Namespace"
-                Pod3["Spec Runner Pod"]
-                Pod4["Team Directories Pod"]
-            end
-            
-            subgraph "prod Namespace"
-                Pod5["Spec Runner Pod"]
-                Pod6["Team Directories Pod"]
-            end
-        end
-        
-        subgraph "Commercial Cluster (dedicated per workspace)"
-            WSPod1["Workspace Pod<br/>(OpenCode Server)"]
-            WSPod2["Agent Runner Pod"]
-            OpenSandbox["OpenSandbox Pool"]
-        end
-        
-        subgraph "Workspace Infrastructure (M2 Alpha)"
-            WCluster["Workspace Cluster<br/>(GKE Autopilot)"]
-            WNamespace["dev / stg / prd namespaces"]
-            WPod["OpenCode Server Pod<br/>(Attach via kubectl)"]
-            DockerReg["Docker Registry<br/>gitlab.tikalk.dev:5050"]
-            Crossplane["Crossplane<br/>(Workspace Compositions)"]
-        end
-        
-        SecretMgr["Cloud Secret Manager<br/>(GCP/AWS/Azure)"]
-    end
-    
-    Users -->|"HTTPS"| LB
-    LB --> ArgoCD
-    ArgoCD -->|"Deploys"| Pod1
-    ArgoCD -->|"Deploys"| Pod3
-    ArgoCD -->|"Deploys"| Pod5
-    
-    Pod1 -.->|"Secrets"| SecretMgr
-    Pod3 -.->|"Secrets"| SecretMgr
-    Pod5 -.->|"Secrets"| SecretMgr
-    
-    WSPod1 -->|"Sandbox"| OpenSandbox
-    WSPod2 -->|"Execute"| OpenSandbox
-    
-    Crossplane -->|"Provisions"| WCluster
-    WCluster -->|"Runs"| WNamespace
-    WNamespace -->|"Deploys"| WPod
-    DockerReg -->|"Pulls images"| WPod
-```
+| Workspace (Alpha) | Agent workspace per user | GKE Autopilot | Per-user cluster |
 
 #### 3.6.3 Hardware Requirements
 
@@ -462,44 +235,6 @@ graph TB
 | K8s Node (Commercial) | 8 cores | 32GB | 200GB SSD |
 | OpenSandbox Sandbox | 2 cores | 4GB | 20GB |
 | Prometheus | 2 cores | 8GB | 100GB |
-
----
-
-### 3.7 Operational View
-
-**Purpose**: Operations, support, and maintenance in production
-
-#### 3.7.1 Operational Responsibilities
-
-| Activity | Owner | Frequency | Automation |
-|----------|-------|-----------|------------|
-| Deployment | DevOps | On-demand | Automated via ArgoCD |
-| Backup | Operations | Daily | Automated via Git |
-| Monitoring | SRE | Continuous | Automated via Prometheus |
-| Secret Rotation | DevOps | 90 days | Automated via ESO |
-| Sandbox Cleanup | Operations | On-demand | Automated |
-
-#### 3.7.2 Monitoring & Alerting
-
-- **Key Metrics**: Pod health, task success rate, sandbox utilization, latency
-- **Alerting Rules**: 
-  - Error rate > 1% → Page on-call
-  - Sandbox pool exhaustion → Page on-call
-  - Deployment drift → Alert channel
-- **Logging Strategy**: OpenTelemetry → Prometheus → Grafana, 30-day retention
-
-#### 3.7.3 Disaster Recovery
-
-- **RTO**: 1 hour
-- **RPO**: 15 minutes (git commits)
-- **Backup Strategy**: Git native, multi-region cloud storage
-
-#### 3.7.4 Support Model
-
-- **Tier 1**: Help desk (business hours)
-- **Tier 2**: Application support (business hours)
-- **Tier 3**: Engineering (24/7 for critical)
-- **On-call**: Weekly rotation for P1 issues
 
 ---
 
@@ -520,7 +255,6 @@ graph TB
 - **Encryption at Rest**: Cloud-provider encryption (AES-256)
 - **Encryption in Transit**: TLS 1.3 everywhere
 - **Secrets Management**: External Secrets Operator + Cloud Secret Managers
-- **PII Handling**: Minimal collection, encrypted storage
 
 #### 4.1.3 Threat Model
 
@@ -531,8 +265,6 @@ graph TB
 | Git Data Loss | Information | Low | High | Multi-cloud backup |
 | Unauthorized Access | Context | Medium | Critical | RBAC, audit logs |
 | Supply Chain | Development | Medium | High | SBOM, dependency scanning |
-| Workspace Isolation Breach | Deployment | Low | High | Per-workspace cluster, namespace isolation |
-| Orphaned Clusters | Deployment | Medium | High | Explicit destroy policy, cost alerts |
 
 ---
 
@@ -547,20 +279,12 @@ graph TB
 | Pod spawn time | < 60s | K8s metrics |
 | Sandbox creation (pooled) | < 5s | OpenSandbox metrics |
 | Worktree creation | < 10s | Git metrics |
-| Context compaction | < 2s | Application metrics |
 | ASYNC task success rate | > 90% | Task tracking |
 
 #### 4.2.2 Scalability Model
 
 - **Horizontal Scaling**: K8s HPA for pods, per-workspace clusters for commercial
-- **Vertical Scaling**: Node pools by workload type
 - **Auto-scaling Triggers**: CPU > 70%, memory > 80%, queue depth > 10
-
-#### 4.2.3 Capacity Planning
-
-- **Current Capacity**: 100 concurrent ASYNC tasks
-- **Growth Projections**: 20% quarterly
-- **Bottlenecks**: Git operations, sandbox pool size, K8s node capacity
 
 ---
 
@@ -592,37 +316,41 @@ graph TB
 
 | Principle | Section | Alignment | Notes |
 |-----------|---------|-----------|-------|
-| II. Multi-Agent Ecosystem | Context | ✅ Compliant | Multiple AI agents supported |
-| III. Context Scaffolding | Functional | ✅ Compliant | Context engineering implemented |
-| IV. Safety Through Constraints | Security | ✅ Compliant | Five-layer defense, schema gating |
-| V. Dual Execution Loops | Functional | ✅ Compliant | SYNC/ASYNC implementation |
-| X. Repository as System of Record | Information | ✅ Compliant | Git-based data architecture |
-| XI. GitOps-First | Deployment | ✅ Compliant | ArgoCD deployment |
-
-### Overrides (if applicable)
-
-None - all ADRs align with constitutional principles.
+| I. Spec-Driven Development | Context | ✅ Compliant | Core methodology - ADR-002 |
+| II. Safety Through Constraints | Security | ✅ Compliant | Five-layer defense - ADR-008 |
+| III. Human Veto Gates | Functional | ✅ Compliant | SYNC mode gates - ADR-003 |
+| IV. Brainstorm-Before-Build | Functional | ✅ Compliant | Discuss phase - ADR-003 |
+| V. Test-First Development | Quality | ✅ Compliant | Verification ladder - ADR-011 |
+| VI. Session Knowledge Persistence | Context | ✅ Compliant | Dual-memory - ADR-006 |
+| VII. Extension Architecture | Extensibility | ✅ Compliant | Opt-in extensions - ADR-004 |
 
 ---
 
 ## 7. ADR Summary
 
-Detailed Architecture Decision Records are maintained in [.specify/memory/adr.md](.specify/memory/adr.md).
-
-**Key Decisions:**
+### System ADRs
 
 | ID | Decision | Status | Impact |
 |----|----------|--------|--------|
-| ADR-001 | Microservices Architecture | Accepted | High |
-| ADR-002 | Git-Based Data Architecture | Accepted | High |
-| ADR-003 | CLI and Git-Based Integration | Accepted | High |
-| ADR-004 | Cloud-Native Security with Workload Identity | Accepted | High |
-| ADR-005 | ArgoCD GitOps with Namespace Isolation | Accepted | High |
-| ADR-006 | Observability with OpenTelemetry and Prometheus/Grafana | Accepted | High |
-| ADR-007 | Agent Workspaces: Cluster-per-Workspace (PDR-043) | Accepted | High |
-| ADR-008 | Agent Workspaces: Separate Infrastructure Repo (adlc-agent-workspaces) | Accepted | High |
-| ADR-009 | Agent Workspaces: Crossplane Option A (Workspace-Specific Compositions) | Accepted | Medium |
-| ADR-010 | Agent Workspaces: Runner = Runtime Layer (PDR-042) | Accepted | Medium |
+| ADR-001 | Multi-Agent Ecosystem Strategy | Discovered | HIGH |
+| ADR-002 | Spec-Driven Development Core | Discovered | HIGH |
+| ADR-003 | Dual Execution Loop (SYNC/ASYNC) | Discovered | HIGH |
+| ADR-004 | Extension-Based Architecture | Discovered | MEDIUM |
+| ADR-005 | Context Engineering (Context as Budget) | Research-Backed | HIGH |
+| ADR-006 | Dual-Memory Architecture | Research-Backed | HIGH |
+| ADR-007 | Harness Runtime Orchestration | Research-Backed | HIGH |
+| ADR-008 | Safety Through Architectural Constraints | Research-Backed | HIGH |
+| ADR-009 | Git Worktree Baseline Verification | GSD-Backed | HIGH |
+| ADR-010 | Branch-Per-Slice Git Strategy | GSD-Backed | HIGH |
+| ADR-011 | Verification Ladder (Goal-Backward) | GSD-Backed | HIGH |
+| ADR-012 | Continue-Here (Interruption Survival) | GSD-Backed | HIGH |
+| ADR-013 | Multi-Repository Architecture | Discovered | HIGH |
+| ADR-014 | OpenSandbox Integration | Proposed | HIGH |
+| ADR-015 | Eval Metrics: Pass@k vs Pass^k Distinction | Proposed | HIGH |
+| ADR-016 | Eval Completeness: Transcript + Outcome Dual Evaluation | Proposed | HIGH |
+| ADR-017 | Grader Selection Framework (Code → Model → Human) | Proposed | HIGH |
+| ADR-018 | ACI Tool Design Evolution (3 Generations) | Proposed | HIGH |
+| ADR-019 | Explicit Task State Format (JSON Externalization) | Proposed | HIGH |
 
 ---
 
@@ -637,7 +365,6 @@ Detailed Architecture Decision Records are maintained in [.specify/memory/adr.md
 | ESO | External Secrets Operator |
 | gVisor | Google container sandbox runtime |
 | OpenSandbox | Alibaba sandbox platform for AI |
-| Workload Identity | Cloud-native service identity management |
 
 ### B. References
 
@@ -652,13 +379,8 @@ Detailed Architecture Decision Records are maintained in [.specify/memory/adr.md
 **Frameworks**: FastAPI, React, Kubernetes  
 **Infrastructure**: Kubernetes, ArgoCD, Terraform, Crossplane  
 **Cloud Platform**: GCP (primary), AWS, Azure (multi-cloud)  
-**CI/CD**: GitHub Actions, GitLab CI  
-**Monitoring**: OpenTelemetry, Prometheus, Grafana  
-**Sandboxing**: OpenSandbox, gVisor  
-**Container Registry**: GitLab Container Registry (gitlab.tikalk.dev:5050)  
-**Workspace Runtime**: agentic-sdlc-runner (Docker base images, Helm charts)  
-**Workspace Provisioning**: Crossplane workspace-specific compositions
+**Sandboxing**: OpenSandbox, gVisor
 
 ---
 
-*This Architecture Description is generated from Architecture Decision Records. For decision rationale, see `.specify/memory/adr.md`.*
+*This Architecture Description is generated from Architecture Decision Records.*

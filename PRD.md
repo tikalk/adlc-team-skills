@@ -1,119 +1,102 @@
-# Agentic Workspace Platform
+# Agentic SDLC Ecosystem - Product Requirements Document
 
-## Product Requirements Document (PRD)
-
-**Generated**: 2026-05-07  
-**Source PDRs**: PDR-078, PDR-079, PDR-080, PDR-081, PDR-082  
-**Status**: Draft  
-**Owner**: Agentic SDLC Team
-
----
-
-## Table of Contents
-
-1. [Overview](#1-overview)
-2. [Problem Statement](#2-problem-statement)
-3. [Goals & Objectives](#3-goals--objectives)
-4. [Success Metrics](#4-success-metrics)
-5. [Target Personas](#5-target-personas)
-6. [Requirements](#6-requirements)
-   - 6.1 [Workspace Engine](#61-workspace-engine)
-   - 6.2 [Git Integration](#62-git-integration)
-   - 6.3 [User Experience](#63-user-experience)
-   - 6.4 [Agent Runtime](#64-agent-runtime)
-7. [Non-Functional Requirements](#7-non-functional-requirements)
-8. [Out of Scope](#8-out-of-scope)
-9. [Risks & Mitigations](#9-risks--mitigations)
-10. [Roadmap](#10-roadmap)
-11. [PDR References](#11-pdr-references)
+**Version**: 1.9.0  
+**Generated**: 2026-03-23  
+**Updated**: 2026-04-05 (Added PDR-070 to PDR-078: Three-Layer Framework + "You Don't Know AI Agents" Integration)  
+**Source**: `.specify/memory/pdr.md` (78 PDRs)  
+**Status**: Draft
 
 ---
 
 ## 1. Overview
 
-The **Agentic Workspace Platform** is an AI-powered Software Development Lifecycle (SDLC) environment that enables autonomous agents to execute development workflows within isolated, configurable workspaces. The platform bridges the gap between local development environments familiar to engineers and remote, secure execution environments required for agent autonomy.
+### 1.1 Product Description
 
-### Key Capabilities
+The **Agentic SDLC Ecosystem** is a comprehensive suite of tools, methodologies, and infrastructure for integrating AI coding agents into the software development lifecycle. Built on the **Twelve-Factor Agentic SDLC** methodology, the ecosystem enables teams to systematically leverage AI agents for specification, planning, implementation, and quality assurance.
 
-| Capability | Description |
-|------------|-------------|
-| **Hybrid Workspaces** | Support both local dev containers (for developers) and remote cloud pods (for isolated agent execution) |
-| **Adaptive Git Strategy** | Worktrees for local fast iteration, clones for remote isolation |
-| **Bimodal Interface** | CLI for developers, visual UI for non-developers, shared spec format |
-| **Multi-Agent Support** | Unified abstraction layer enabling swap between Claude, GPT-4, Gemini, and other agents |
-| **Intelligent Orchestration** | Marker-based DAG execution (`[P]`, `[ASYNC]`, `[SYNC]`) for optimal parallelization |
+### 1.2 Product Suite
 
-### Architecture Overview
+| Product | Purpose | Key PDRs |
+|---------|---------|----------|
+| **Spec Kit** | Methodology toolkit for Spec-Driven Development | PDR-001 to PDR-008, PDR-016 to PDR-041, PDR-054 to PDR-061 |
+| **Runner** | K8s-based async agent execution infrastructure | PDR-003, PDR-009 to PDR-012, PDR-018 |
+| **Team Directives** | Version-controlled AI behavior configuration | PDR-013 to PDR-015, PDR-029 |
+| **Agents Workspaces** | Cloud-native persistent development environments | PDR-042 to PDR-048, PDR-051 |
+| **Agent Runner** | Unified Squad + Spec orchestration | PDR-053, PDR-061 |
+| **Evals Extension** | Eval-Driven Development (EDD) with PromptFoo | PDR-065 to PDR-069, PDR-050 (superseded by PDR-067) |
+
+### 1.3 Ecosystem Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     User Interfaces                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │   CLI       │  │  Visual UI  │  │  Spec Editor (Markdown) │ │
-│  │  (Developers)│  │ (Non-Devs)  │  │  (Shared Format)        │ │
-│  └──────┬──────┘  └──────┬──────┘  └────────────┬────────────┘ │
-└─────────┼────────────────┼──────────────────────┼──────────────┘
-          │                │                      │
-          └────────────────┴──────────────────────┘
-                             │
-          ┌──────────────────┴──────────────────┐
-          │      Workspace Abstraction Layer    │
-          │  ┌─────────────┐  ┌─────────────┐  │
-          │  │   Local     │  │   Remote    │  │
-          │  │ Dev Container│  │  Cloud Pod  │  │
-          │  │  (Docker)   │  │   (K8s)     │  │
-          │  └──────┬──────┘  └──────┬──────┘  │
-          └─────────┼────────────────┼─────────┘
-                    │                │
-          ┌─────────┴────────────────┴─────────┐
-          │        Git Strategy Layer          │
-          │  ┌─────────────┐  ┌─────────────┐ │
-          │  │  Worktrees  │  │   Clones    │ │
-          │  │  (Local)    │  │  (Remote)   │ │
-          │  └─────────────┘  └─────────────┘ │
-          └────────────────────────────────────┘
-                    │
-          ┌─────────┴──────────────────────────┐
-          │       Agent Runtime Layer          │
-          │  ┌─────────────┐  ┌─────────────┐ │
-          │  │   Unified   │  │    DAG      │ │
-          │  │ Abstraction │  │ Orchestrator│ │
-          │  │   (SDLC)    │  │  (Markers)  │ │
-          │  └─────────────┘  └─────────────┘ │
-          └────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       Agentic SDLC Ecosystem                                │
+├───────────────────┬───────────────────┬─────────────────┬─────────────────┤
+│     Spec Kit      │      Runner       │ Team Directives │    Agents       │
+│   (Methodology)   │    (Execution)    │   (Behavior)   │   Workspaces   │
+│                   │                   │                 │ (Environment)   │
+├───────────────────┼───────────────────┼─────────────────┼─────────────────┤
+│ • /spec.specify   │ • [ASYNC] pods    │ • Personas      │ • Clusters     │
+│ • /spec.plan      │ • [P] subagents   │ • Rules         │ • OpenCode     │
+│ • /spec.implement │ • K8s orchestrate │ • Skills        │ • Attach       │
+│ • /spec.tasks     │ • Worktree isol.  │ • MCP servers   │ • Collaborate   │
+└───────────────────┴───────────────────┴─────────────────┴─────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Agent Runner                                         │
+│              (Squad + Spec Orchestration)                                  │
+│   ┌─────────────────────────┐   ┌─────────────────────────┐                 │
+│   │    SQUAD MODE          │   │     SPEC MODE          │                 │
+│   │  (Outer Loop)          │   │   (Inner Loop)         │                 │
+│   │  PRD → Specify →      │   │  Task → Spec → Impl →  │                 │
+│   │  Eval → Plan →        │   │  Verify               │                 │
+│   │  Triage → tasks.md   │   │                       │                 │
+│   └─────────────────────────┘   └─────────────────────────┘                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+                ┌───────────────────────────────────┐
+                │   12-Factor Agentic SDLC          │
+                │   (Foundational Methodology)      │
+                └───────────────────────────────────┘
 ```
+
+### 1.4 Scope Summary
+
+**In Scope:**
+- Multi-agent ecosystem supporting 20+ AI agents (PDR-001)
+- Spec-Driven Development workflows (PDR-002)
+- Dual execution loops: SYNC and ASYNC (PDR-003)
+- K8s-based subagent orchestration (PDR-009)
+- Cloud-native workspace provisioning (PDR-042)
+- Open source B2D model (PDR-005)
+- **Agent Runner: Squad + Spec orchestration (PDR-053)**
+- **Eval-Driven Development (EDD) with PromptFoo integration (PDR-065 to PDR-069)**
+- **Three-Layer Framework: Decision Gates → Research-Driven Planning → Multi-Reviewer Ensemble (PDR-070 to PDR-072)**
+- **Eval Metrics: Pass@k vs Pass^k distinction (PDR-074)**
+- **Eval Completeness: Transcript + Outcome dual evaluation (PDR-075)**
+- **Grader Selection Framework: Code → Model → Human (PDR-076)**
+
+**Out of Scope:**
+- Custom AI model training
+- IDE/editor development
+- Cloud provider billing management
+- General-purpose CI/CD pipelines
+- Custom eval tooling (uses PromptFoo as default)
 
 ---
 
-## 2. Problem Statement
+## 2. The Problem
 
-### 2.1 Developer Pain Points
+### 2.1 Problem Statement
 
-Current AI coding tools force developers into uncomfortable trade-offs:
+Software development teams are struggling to systematically integrate AI coding agents into their workflows. Current approaches are:
 
-| Pain Point | Current State | Impact |
-|------------|---------------|--------|
-| **Local vs Remote** | Tools are either fully local (limited by user machine) or fully cloud (latency, forced workflows) | Developers choose between speed and isolation |
-| **Git Workflow Friction** | Async agent tasks require constant commit/push cycles or risk state conflicts | Interrupted flow, version control noise |
-| **Agent Lock-in** | Each AI vendor (Claude, GPT-4, etc.) has proprietary interfaces | Hard to switch agents, vendor dependency |
-| **Persona Exclusion** | CLI tools exclude non-developers; GUI tools limit developer efficiency | Team fragmentation, adoption barriers |
-| **Dependency Blindness** | No visibility into which tasks can run in parallel vs must be sequential | Wasted compute, idle waiting |
-
-### 2.2 Market Context
-
-- **Internal Development Teams** need agent workflows that integrate with existing local development environments
-- **Enterprise Security Teams** require isolated execution environments without direct machine access
-- **Product Managers** want visibility into agent workflows without learning CLI tools
-- **AI Teams** want flexibility to use best-fit models per task without workflow disruption
-
-### 2.3 Opportunity
-
-Build a workspace platform that:
-1. Adapts to the user's context (local for developers, remote for isolation)
-2. Optimizes git workflows per environment (worktrees for speed, clones for security)
-3. Provides unified agent abstraction (swap models seamlessly)
-4. Serves dual personas without compromise (CLI + visual UI)
-5. Intelligently orchestrates parallel execution (marker-based DAG)
+1. **Ad-hoc and inconsistent** - Each developer uses AI agents differently, leading to unpredictable quality
+2. **Context-challenged** - AI agents lose coherence over long sessions due to context window limits
+3. **Verification-weak** - No systematic way to verify AI-generated code meets requirements
+4. **Knowledge-siloed** - AI guidance isn't shared or versioned across teams
+5. **Infrastructure-limited** - Local execution limits scalability and collaboration
 
 ---
 
@@ -121,270 +104,136 @@ Build a workspace platform that:
 
 ### 3.1 Primary Goals
 
-| Goal | Description | Success Criteria |
-|------|-------------|------------------|
-| **G1** | Enable seamless hybrid workspace provisioning | <30s local, <60s remote startup |
-| **G2** | Optimize git workflows per environment | 5s local task start, 15s remote task start |
-| **G3** | Support dual-primary personas equally | >80% task completion for both devs and non-devs |
-| **G4** | Enable multi-agent flexibility | <1hr agent swap time, 100% core feature parity |
-| **G5** | Maximize parallel execution | >70% parallel utilization, <10% dependency wait time |
+| Goal | Description | Source PDRs |
+|------|-------------|-------------|
+| **Systematic AI Integration** | Provide a structured methodology for AI-assisted development | PDR-002, PDR-004 |
+| **Context Preservation** | Maintain agent coherence across long sessions and multi-task work | PDR-016, PDR-017, PDR-023 |
+| **Goal-Backward Verification** | Verify outcomes, not just task completion | PDR-025 |
+| **Team Knowledge Sharing** | Version-control AI behavior and share best practices | PDR-013, PDR-029 |
+| **Scalable Execution** | Enable parallel and autonomous AI agent execution | PDR-003, PDR-009 |
+| **Eval-Driven Development** | Define "good" through structured evals that become spec + acceptance criteria | PDR-065, PDR-067 |
 
-### 3.2 Objectives
+### 3.2 Technical Goals
 
-**Workspace Engine (PDR-078)**
-- Provide unified abstraction for local dev containers and remote cloud pods
-- Enable progressive adoption path (local → remote as needs evolve)
-- Maintain feature parity >90% across both environments
-
-**Git Integration (PDR-079)**
-- Implement worktree management for local workspaces (immediate state visibility)
-- Implement clone orchestration for remote workspaces (isolation guarantees)
-- Support both implicit (worktree) and explicit (clone) state sharing
-
-**User Experience (PDR-080)**
-- Build CLI optimized for developer efficiency (<30s common tasks)
-- Build Visual UI accessible to non-developers (>80% task completion)
-- Ensure 100% spec round-trip fidelity (CLI ↔ UI)
-
-**Agent Runtime (PDR-081, PDR-082)**
-- Implement unified SDLC command abstraction with adapter pattern
-- Build marker-based DAG orchestrator (`[P]`, `[ASYNC]`, `[SYNC]`)
-- Achieve <2s DAG build time from markdown markers
+| Goal | Description | Source PDRs |
+|------|-------------|-------------|
+| **Multi-Agent Support** | Support 20+ AI agents with unified abstraction | PDR-001 |
+| **LLM/Deterministic Split** | Separate judgment work from mechanical operations | PDR-022 |
+| **Cloud-Native Infrastructure** | K8s-based execution with GitOps deployment | PDR-009, PDR-011 |
+| **Safety by Architecture** | Schema-level tool restrictions for security | PDR-019 |
+| **Eval-Gated Execution** | Task completion determined by eval pass/fail, not file existence | PDR-068, PDR-069 |
 
 ---
 
 ## 4. Success Metrics
 
-### 4.1 Workspace Engine Metrics
+### 4.1 Adoption Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Local workspace provisioning | <30 seconds | Timer from initiation to ready |
-| Remote workspace provisioning | <60 seconds | Timer from initiation to ready |
-| Feature parity coverage | >90% | Automated test suite across both |
-| User persona coverage | 2 distinct personas | Task completion rate by persona |
+| Metric | Target | Measurement | Source PDR |
+|--------|--------|-------------|------------|
+| Supported AI agents | 20+ | Count in AGENT_CONFIG | PDR-001 |
+| GitHub stars | Growing | GitHub metrics | PDR-005 |
+| Active contributors | 10+ | GitHub contributors graph | PDR-005 |
+| Spec coverage | 100% of features | Features with specs/ directory | PDR-002 |
 
-### 4.2 Git Integration Metrics
+### 4.2 Quality Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Local task startup | <5 seconds | Git ready after task initiation |
-| Remote task startup | <15 seconds | Including clone operation |
-| Worktree state visibility | Immediate | Sub-second file change visibility |
-| Clone handoff latency | <30 seconds | Commit/push/pull cycle |
+| Metric | Target | Measurement | Source PDR |
+|--------|--------|-------------|------------|
+| Context coherence | Task 7 ≈ Task 1 | Quality consistency | PDR-023 |
+| Verification pass rate | >95% | Before declaring done | PDR-025 |
+| Stubs caught | 100% | No stubs pass verification | PDR-025 |
+| ASYNC task success rate | >90% | Completed without escalation | PDR-003 |
 
-### 4.3 User Experience Metrics
+### 4.3 Infrastructure Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Non-developer task completion | >80% | PM persona task success rate |
-| Developer CLI efficiency | <30s | Spec initiation, agent dispatch |
-| Spec round-trip fidelity | 100% | CLI→UI→CLI equivalence |
-| Cross-persona collaboration | Enabled | Shared spec review workflows |
-
-### 4.4 Agent Runtime Metrics
-
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Agent swap time | <1 hour | Switch workspace between agents |
-| Adapter coverage | 100% core | Feature parity across agents |
-| Adapter maintenance | <2 days | Time to add new agent support |
-| Security boundary violations | 0 | Unauthorized tool access attempts |
-| Parallel utilization | >70% | Concurrent task execution rate |
-| DAG build time | <2 seconds | Parse markers and build graph |
-| Marker prediction accuracy | >85% | System-suggested vs user choice |
-| Conflict resolution rate | <5% | Tasks requiring retry |
+| Metric | Target | Measurement | Source PDR |
+|--------|--------|-------------|------------|
+| Pod spawn success rate | >95% | Deployment telemetry | PDR-009 |
+| Worktree creation time | <10s | Script timing | PDR-010 |
+| Cluster provisioning time | <15 min | End-to-end timing | PDR-043 |
+| Workspace startup time | <60s | With pre-pulled image | PDR-046 |
 
 ---
 
-## 5. Target Personas
+## 5. Personas
 
-### 5.1 Primary Personas (Dual-Primary)
+### 5.1 Primary Persona: Platform Engineering Lead
 
-Both personas are equally prioritized. The product must serve both without compromise.
-
-#### Persona A: AI Team Lead (Developer)
-
-| Attribute | Description |
-|-----------|-------------|
-| **Role** | Senior engineer, tech lead, or staff engineer |
-| **Context** | Manages AI agent adoption within development team |
-| **Goals** | Fast iteration, local control, version control integration |
-| **Pain Points** | Existing AI tools too slow, too cloud-dependent, or too limited |
-| **Preferred Interface** | CLI, YAML configs, git-native workflows |
-| **Quote** | *"I want agents that work with my existing dev setup, not replace it."* |
+**Name**: Alex Chen  
+**Role**: Platform Engineering Lead at mid-size tech company  
+**Team Size**: 5-15 engineers
 
 **Needs**:
-- Local dev container workspaces with familiar Docker tooling
-- Worktree-based git for immediate state visibility
-- CLI for fast spec creation and agent dispatch
-- Ability to swap between Claude, GPT-4, and other agents
+- Standardize how team uses AI agents across projects
+- Ensure AI-generated code meets quality standards
+- Scale AI usage beyond individual developer sessions
+- Share AI best practices across team
 
-#### Persona B: Product Manager (Non-Developer)
-
-| Attribute | Description |
-|-----------|-------------|
-| **Role** | Product manager, designer, or technical program manager |
-| **Context** | Wants to initiate and monitor agent workflows without deep technical setup |
-| **Goals** | Self-service agent workflows, visibility into progress, collaboration with devs |
-| **Pain Points** | CLI tools have steep learning curve; excluded from agent workflows |
-| **Preferred Interface** | Visual UI, guided workflows, progress dashboards |
-| **Quote** | *"I want to kick off specs and see agent progress without touching the command line."* |
-
-**Needs**:
-- Zero-setup remote workspaces
-- Visual spec editor and workflow monitor
-- Ability to review and approve agent outputs
-- Seamless handoff to developers for implementation
-
-### 5.2 Persona Workflow Integration
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Collaboration Flow                     │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  PM (Visual UI)              Developer (CLI)            │
-│  ───────────────             ─────────────              │
-│       │                            │                    │
-│       ▼                            ▼                    │
-│  ┌─────────┐                  ┌─────────┐              │
-│  │ Create  │◄────────────────►│ Review  │              │
-│  │  Spec   │   Shared Spec    │  Spec   │              │
-│  └────┬────┘   Format (YAML)  └────┬────┘              │
-│       │                            │                    │
-│       ▼                            ▼                    │
-│  ┌─────────┐                  ┌─────────┐              │
-│  │ Monitor │                  │ Execute │              │
-│  │ Progress│◄────────────────►│  Tasks  │              │
-│  └─────────┘   Status Updates  └─────────┘              │
-│       │                            │                    │
-│       ▼                            ▼                    │
-│  ┌─────────┐                  ┌─────────┐              │
-│  │ Approve │◄────────────────►│  Merge  │              │
-│  │  Output │   Human Gates    │  Code   │              │
-│  └─────────┘                  └─────────┘              │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
+**Success Quote**: *"I want my team to leverage AI agents consistently and safely, with clear visibility into what's being generated and why."*
 
 ---
 
-## 6. Requirements
+## 6. Functional Requirements
 
-### 6.1 Workspace Engine
+### 6.1 Spec Kit Requirements
 
-**REQ-WE-001: Hybrid Workspace Provisioning**
-- The system SHALL support two workspace types: Local (dev container) and Remote (cloud pod)
-- The system SHALL provide unified abstraction layer hiding implementation differences
-- The system SHALL enable workspace type selection per workflow
+#### FR-SK-001: Multi-Agent Support
 
-**REQ-WE-002: Local Workspace**
-- The system SHALL provision local workspaces using Docker dev containers
-- The system SHALL complete local workspace provisioning within 30 seconds
-- The system SHALL mount host filesystem for shared file access
-- The system SHALL support worktree-based git operations
+**Description**: Support multiple AI agents through unified abstraction layer
 
-**REQ-WE-003: Remote Workspace**
-- The system SHALL provision remote workspaces as isolated cloud pods (Kubernetes)
-- The system SHALL complete remote workspace provisioning within 60 seconds
-- The system SHALL provide no direct host machine access (isolation guarantee)
-- The system SHALL support clone-based git operations
+| Requirement | Priority | Source PDR |
+|-------------|----------|------------|
+| Support 20+ AI agents | Must | PDR-001 |
+| Unified CLI interface (`--ai <agent>`) | Must | PDR-001 |
+| Agent-specific command generation | Must | PDR-001 |
+| New agent addition < 1 day | Should | PDR-001 |
 
-**REQ-WE-004: Feature Parity**
-- The system SHALL maintain >90% feature parity between local and remote workspaces
-- The system SHALL document any intentional feature differences
-- The system SHALL provide clear UX indicators of workspace type and capabilities
+#### FR-SK-002: Spec-Driven Development Workflow
 
-**REQ-WE-005: Resource Management**
-- The system SHALL auto-suspend idle remote workspaces after configurable timeout
-- The system SHALL enforce resource quotas per user/team
-- The system SHALL provide resource utilization metrics
+**Description**: Implement specification-first development workflow
 
-### 6.2 Git Integration
+| Requirement | Priority | Source PDR |
+|-------------|----------|------------|
+| `/spec.specify` command | Must | PDR-002 |
+| `/spec.plan` command | Must | PDR-002 |
+| `/spec.tasks` command | Must | PDR-002 |
+| `/spec.implement` command | Must | PDR-002 |
 
-**REQ-GI-001: Worktree Management (Local)**
-- The system SHALL create and manage git worktrees for local workspaces
-- The system SHALL enable sub-second state visibility across worktrees
-- The system SHALL support parallel async tasks on separate worktrees
-- The system SHALL detect and prevent merge conflicts between worktrees
+### 6.2 Runner Requirements
 
-**REQ-GI-002: Clone Orchestration (Remote)**
-- The system SHALL perform fresh clones for remote workspace tasks
-- The system SHALL optimize clone operations (shallow clones, caching where appropriate)
-- The system SHALL complete clone operations within 15 seconds
-- The system SHALL support incremental updates via fetch/pull
+#### FR-RN-001: Dual Execution Loop
 
-**REQ-GI-003: State Handoff**
-- The system SHALL support explicit commit/push for clone-based state sharing
-- The system SHALL complete commit/push/pull cycles within 30 seconds
-- The system SHALL provide clear UX indicators of sync status
-- The system SHALL notify users of state conflicts requiring resolution
+**Description**: Support SYNC (interactive) and ASYNC (autonomous) execution
 
-**REQ-GI-004: Workflow Adaptation**
-- The system SHALL automatically select worktree strategy for local workspaces
-- The system SHALL automatically select clone strategy for remote workspaces
-- The system SHALL allow manual override with explicit user acknowledgment
+| Requirement | Priority | Source PDR |
+|-------------|----------|------------|
+| `[SYNC]` marker for human interaction | Must | PDR-003 |
+| `[ASYNC]` marker for autonomous execution | Must | PDR-003 |
+| `[P]` marker for parallel execution | Must | PDR-003 |
 
-### 6.3 User Experience
+### 6.5 Agent Runner Requirements
 
-**REQ-UX-001: Bimodal Interface**
-- The system SHALL provide CLI interface optimized for developers
-- The system SHALL provide Visual UI for non-developers
-- The system SHALL use shared spec format (YAML/markdown) as single source of truth
+#### FR-AR-001: Squad Mode (Outer Loop)
 
-**REQ-UX-002: CLI Efficiency**
-- The system SHALL complete common developer tasks within 30 seconds
-- The system SHALL provide command completion and help documentation
-- The system SHALL support scriptable/automated workflows
+**Description**: PRD → Implementation workflow with human-in-the-loop
 
-**REQ-UX-003: Visual UI Accessibility**
-- The system SHALL achieve >80% task completion rate for non-developer personas
-- The system SHALL provide guided workflows for spec creation
-- The system SHALL display real-time agent progress and status
+| Requirement | Priority | Source PDR |
+|-------------|----------|------------|
+| PRD conversation interface | Must | PDR-053 |
+| `/spec.specify` command | Must | PDR-053 |
+| Eval clarification phase | Must | PDR-053 |
+| Plan generation | Must | PDR-053 |
 
-**REQ-UX-004: Spec Round-Trip Fidelity**
-- The system SHALL maintain 100% spec equivalence between CLI and UI
-- The system SHALL validate spec schema on import/export
-- The system SHALL preserve comments and formatting during round-trips
+#### FR-AR-002: Spec Mode (Inner Loop)
 
-**REQ-UX-005: Progressive Disclosure**
-- The system SHALL enable users to start with Visual UI and graduate to CLI
-- The system SHALL show CLI equivalents for UI actions (learning aid)
-- The system SHALL provide "open in CLI" links from Visual UI
+**Description**: Task → Implementation execution with Autoresearch pattern
 
-### 6.4 Agent Runtime
-
-**REQ-AR-001: Unified Abstraction**
-- The system SHALL provide single SDLC command interface for all agents
-- The system SHALL implement adapter pattern for agent-specific implementations
-- The system SHALL support swapping agents without workflow changes
-
-**REQ-AR-002: Multi-Agent Support**
-- The system SHALL support Claude, GPT-4, and Gemini as reference implementations
-- The system SHALL enable agent swap within 1 hour
-- The system SHALL maintain 100% core feature parity across agents
-
-**REQ-AR-003: Security Boundary**
-- The system SHALL enforce all agent actions through SDLC command layer
-- The system SHALL prevent unauthorized tool access
-- The system SHALL log all agent actions for audit
-
-**REQ-AR-004: Marker-Based Execution**
-- The system SHALL support execution markers: `[P]` (parallel), `[ASYNC]` (autonomous), `[SYNC]` (human-gated)
-- The system SHALL parse markers from markdown specs
-- The system SHALL build DAG within 2 seconds
-
-**REQ-AR-005: DAG Orchestration**
-- The system SHALL execute tasks in parallel where markers permit
-- The system SHALL enforce sequential execution for dependent tasks
-- The system SHALL pause at `[SYNC]` markers for human approval
-- The system SHALL achieve >70% parallel utilization
-
-**REQ-AR-006: Conflict Resolution**
-- The system SHALL detect conflicts between parallel tasks
-- The system SHALL automatically retry with sequential fallback
-- The system SHALL report conflict resolution rate <5%
+| Requirement | Priority | Source PDR |
+|-------------|----------|------------|
+| Task → Spec → Impl → Verify | Must | PDR-053 |
+| Time-bounded execution | Should | PDR-053 |
+| Eval-gated keep/reset | Should | PDR-053 |
 
 ---
 
@@ -392,47 +241,30 @@ Both personas are equally prioritized. The product must serve both without compr
 
 ### 7.1 Performance
 
-| Requirement | Target | Measurement |
-|-------------|--------|-------------|
-| Workspace cold start (local) | <30s | 95th percentile |
-| Workspace cold start (remote) | <60s | 95th percentile |
-| DAG build time | <2s | Average |
-| CLI response time | <100ms | Common commands |
-| UI page load | <2s | Initial load |
+| Requirement | Target | Source PDR |
+|-------------|--------|------------|
+| Pod spawn time | < 60s | PDR-009 |
+| Worktree creation | < 10s | PDR-010 |
+| Cluster provisioning | < 15 min | PDR-043 |
+| Sandbox creation (pooled) | < 5s | PDR-054 |
 
-### 7.2 Reliability
+### 7.2 Security
 
-| Requirement | Target | Measurement |
-|-------------|--------|-------------|
-| Workspace uptime | 99.9% | Remote workspaces |
-| Task completion rate | >95% | All task types |
-| Agent adapter stability | 99.5% | Error-free sessions |
+| Requirement | Target | Source PDR |
+|-------------|--------|------------|
+| Schema-level tool restrictions | 100% enforced | PDR-019 |
+| External Secrets Operator | Required for production | PDR-012 |
+| Five-layer defense-in-depth | Implemented | PDR-019 |
+| Container isolation (gVisor) | Enforced | PDR-054 |
 
-### 7.3 Security
+### 7.3 Reliability
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Isolation | Remote workspaces have no host access |
-| Secrets | External Secrets Operator integration |
-| Audit | All agent actions logged |
-| Authorization | RBAC at workspace and task level |
-
-### 7.4 Scalability
-
-| Requirement | Target |
-|-------------|--------|
-| Concurrent workspaces | 100+ per user |
-| Parallel tasks per workspace | 4 (context window limit) |
-| Agent adapter extensibility | New agent <2 days |
-
-### 7.5 Compatibility
-
-| Requirement | Target |
-|-------------|--------|
-| Git providers | GitHub, GitLab (private repos via token) |
-| Container runtimes | Docker, Podman |
-| Orchestration | Kubernetes, local Docker |
-| Agents | Claude, GPT-4, Gemini, extensible |
+| Requirement | Target | Source PDR |
+|-------------|--------|------------|
+| Pod spawn success rate | > 95% | PDR-009 |
+| ASYNC task success rate | > 90% | PDR-003 |
+| Cluster provisioning success | > 98% | PDR-043 |
+| Workspace uptime | > 99.5% | PDR-042 |
 
 ---
 
@@ -440,116 +272,106 @@ Both personas are equally prioritized. The product must serve both without compr
 
 ### 8.1 Explicitly Excluded
 
-| Feature | Rationale |
-|---------|-----------|
-| **Vector Database Memory** | Constitution favors git-versioned files over external databases (PDR-053 pattern) |
-| **Message Queue Infrastructure** | Squad pattern uses file-based shared memory; no Redis/RabbitMQ |
-| **Custom Agent Training** | Focus on using existing agents via adapters, not training new models |
-| **IDE Plugins** | VSCode/JetBrains plugins deferred; CLI and web UI primary |
-| **Mobile App** | Mobile not in target persona use cases |
-
-### 8.2 Future Considerations
-
-| Feature | Trigger for Inclusion |
-|---------|----------------------|
-| Additional agents | Market demand for specific models |
-| Enterprise SSO | Customer requirements beyond GitHub/GitLab OAuth |
-| On-premise deployment | Enterprise security requirements |
-| Advanced analytics | Usage patterns justify investment |
+| Exclusion | Rationale | Related PDR |
+|-----------|-----------|------------|
+| Custom AI model training | Focus on using existing agents | PDR-001 |
+| IDE/editor development | Integrate with existing tools | PDR-001 |
+| Cloud billing management | Use native cloud tools | PDR-043 |
+| General CI/CD pipelines | Focus on agentic workflows | PDR-009 |
 
 ---
 
-## 9. Risks & Mitigations
+## 9. Risks & Mitigation
 
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| **UX inconsistency** between local/remote | High | Medium | Explicit abstraction layer with feature parity validation |
-| **Infrastructure cost** for remote workspaces | Medium | High | Auto-suspend, resource quotas, usage monitoring |
-| **Merge conflicts** between parallel worktrees | Medium | Medium | File locking, conflict detection in orchestration |
-| **Spec format divergence** between CLI/UI | High | Medium | Schema validation, shared spec library, round-trip testing |
-| **Capability lag** behind latest agent features | Medium | Medium | Versioned API, gradual feature rollout |
-| **Context window limits** with parallel agents | Medium | Medium | Limit concurrent agents to 4, graduated context compaction |
-| **Dependency misdeclaration** with markers | Low | Medium | Runtime conflict detection, sequential fallback |
-| **Agent-specific bugs** hidden by abstraction | Low | Medium | Comprehensive adapter test suite per agent |
+### 9.1 Technical Risks
+
+| Risk | Likelihood | Impact | Mitigation | Source PDR |
+|------|------------|--------|------------|------------|
+| Context rot in long sessions | High | High | Graduated compaction; dual-memory | PDR-016, PDR-017 |
+| Agent API divergence over time | Medium | High | Abstraction layer; version pinning | PDR-001 |
+| Doom-loop (infinite tool repetition) | Medium | Medium | MD5 fingerprinting; escalation | PDR-018 |
+| Cluster provisioning failures | Low | High | Retry logic; health checks | PDR-043 |
 
 ---
 
-## 10. Roadmap
+## 10. Roadmap & Milestones
 
-### Phase 1: Foundation (Months 1-2)
-- [ ] Local workspace engine (Docker dev containers)
-- [ ] Worktree-based git integration
-- [ ] CLI interface for developers
-- [ ] Unified agent abstraction (Claude adapter)
-- [ ] Basic marker support (`[ASYNC]`)
+### 10.1 Product Maturity by Component
 
-### Phase 2: Hybrid (Months 3-4)
-- [ ] Remote workspace engine (K8s pods)
-- [ ] Clone-based git integration
-- [ ] Visual UI for non-developers
-- [ ] Additional agent adapters (GPT-4, Gemini)
-- [ ] Full marker support (`[P]`, `[ASYNC]`, `[SYNC]`)
-- [ ] DAG orchestrator
+| Product | Status | Maturity | Key Gaps |
+|---------|--------|----------|----------|
+| **Spec Kit** | Active Development | 80% | Worktrunk integration, parallel execution |
+| **Runner** | Active Development | 70% | Continue-Here recovery, observability |
+| **Team Directives** | Stable | 90% | Fork sync automation |
+| **Agents Workspaces** | Implementation Started | 15% | Infra issues open |
 
-### Phase 3: Scale (Months 5-6)
-- [ ] Feature parity validation suite
-- [ ] Resource management (quotas, auto-suspend)
-- [ ] Conflict detection and resolution
-- [ ] Advanced analytics dashboard
-- [ ] Enterprise features (SSO, audit logging)
+### 10.2 Milestone 1: Spec Kit Parallel Execution
 
-### Success Criteria per Phase
-- Phase 1: Developer-only beta, single agent, local workspaces
-- Phase 2: Dual-persona beta, multi-agent, hybrid workspaces
-- Phase 3: GA release, all success metrics achieved
+**Target**: Q2 2026  
+**Demo Sentence**: *"After this milestone, developers can run 5+ agents in parallel with worktree isolation."*
 
----
+### 10.3 Milestone 2: Agents Workspaces Alpha
 
-## 11. PDR References
+**Target**: Q3 2026  
+**Demo Sentence**: *"After this milestone, developers can provision a cloud workspace and attach via CLI."*
 
-| PDR | Title | Key Decision | Section |
-|-----|-------|--------------|---------|
-| PDR-078 | Hybrid Workspace Provisioning Strategy | Local dev containers + Remote cloud pods | 6.1, 4.1 |
-| PDR-079 | Layered Hybrid Git Strategy | Worktrees (local) + Clones (remote) | 6.2, 4.2 |
-| PDR-080 | Bimodal UX Strategy | CLI (developers) + Visual UI (non-devs), dual-primary | 6.3, 5, 4.3 |
-| PDR-081 | Unified Abstraction Agent Model | Single SDLC interface with adapters | 6.4, 4.4 |
-| PDR-082 | Dependency-Driven Async Orchestration | Marker-based DAG (`[P]`, `[ASYNC]`, `[SYNC]`) | 6.4, 4.4 |
+**GitLab Repo**: https://gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-agent-workspaces  
+**GitHub Repo**: https://github.com/tikalk/agentic-sdlc-agent-runner
 
-### Constitution Alignment
+### 10.4 Milestone 3: Multi-Cloud & Collaboration
 
-All requirements align with constitutional principles:
-- **Spec-Driven Development**: Shared spec format as source of truth
-- **Human-in-the-Loop**: `[SYNC]` markers, commit gates for remote workspaces
-- **Context as Budget**: Parallel limits, graduated context compaction
-- **Multi-Agent Agnosticism**: Unified abstraction with adapters
-- **Safety Through Constraints**: Workspace isolation, schema-level restrictions
+**Target**: Q4 2026  
+**Demo Sentence**: *"After this milestone, teams can collaborate on workspaces across any major cloud."*
+
+### 10.5 Milestone 4: Agent Runner
+
+**Target**: Q2 2026  
+**Demo Sentence**: *"After this milestone, the Agent Runner can take a PRD, generate a spec, plan implementation, and execute via Spec Runner."*
+
+### 10.6 Milestone 5: Harness Synthesis
+
+**Target**: Q3 2026  
+**Demo Sentence**: *"After this milestone, Agent Runner can auto-synthesize validation harnesses for generated code."*
 
 ---
 
-## Appendix A: Glossary
+## 11. PDR Traceability
 
-| Term | Definition |
-|------|------------|
-| **Agent Workspace** | Isolated execution environment for AI agents |
-| **DAG** | Directed Acyclic Graph; execution order of tasks |
-| **Dev Container** | Docker container with development tooling |
-| **Marker** | Execution hint in markdown (`[P]`, `[ASYNC]`, `[SYNC]`) |
-| **SDLC** | Software Development Lifecycle |
-| **Spec** | Specification document defining requirements |
-| **Worktree** | Git feature for multiple working directories |
+### 11.1 PDR Summary by Product
 
-## Appendix B: File Locations
-
-| Artifact | Location |
-|----------|----------|
-| PDRs | `.specify/drafts/pdr.md` |
-| Constitution | `.specify/memory/constitution.md` |
-| This PRD | `PRD.md` |
-| Section outputs | `.specify/product/sections/{feature-area}/` |
-| State tracking | `.specify/product/state.json` |
+| Product | PDR Count | Categories |
+|---------|-----------|------------|
+| Spec Kit | 41 | System, Technical, Workflow, Quality, Architecture |
+| Runner | 7 | System, Infrastructure, Technical, Security |
+| Team Directives | 4 | System |
+| Agents Workspaces | 7 | System, Infrastructure, Runtime, Workspace, Session |
+| Agent Runner | 2 | System, Orchestration |
+| Evals Extension | 5 | System, Workflow, Integration, Quality |
+| **Total** | **68** | (1 superseded: PDR-050) |
 
 ---
 
-**Document Status**: Draft  
-**Next Review**: Upon Phase 1 completion  
-**Approvals**: Pending
+## Appendix A: References
+
+- **12-Factor Agentic SDLC**: https://tikalk.github.io/agentic-sdlc-12-factors/
+- **Spec Kit Repository**: https://github.com/tikalk/agentic-sdlc-spec-kit
+- **Agentic Workspaces (GitLab)**: https://gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-agent-workspaces
+- **Research Paper**: arXiv:2603.05344v1 - "Building AI Coding Agents for the Terminal"
+- **Braintrust Blog**: "Evals Replace PRDs" - Eval-Driven Development paradigm (April 2026)
+- **GitHub Issue #78**: Evals Extension - Full EDD Implementation
+
+---
+
+## Appendix B: Document History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0.0 | 2026-03-09 | AI-Generated | Initial PRD from 48 PDRs |
+| 1.1.0 | 2026-03-14 | AI-Generated | Added PDR-049 to PDR-053 (Agent Runner, AutoHarness) |
+| 1.2.0 | 2026-03-16 | AI-Generated | Added PDR-054 (OpenSandbox Integration) |
+| 1.3.0 | 2026-03-23 | AI-Generated | Added PDR-055 to PDR-061 (Superpowers patterns) |
+| 1.5.0 | 2026-04-05 | AI-Generated | Added PDR-065 to PDR-069 (Eval-As-Spec paradigm), PDR-050 superseded by PDR-067 |
+
+---
+
+*This PRD is generated from Product Decision Records.*

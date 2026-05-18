@@ -1,0 +1,21 @@
+[submodule "adlc-agent-workspaces"]
+	path = adlc-agent-workspaces
+	url = git@gitlab.tikalk.dev:tikalk/engineering/agentic-sdlc/adlc-agent-workspaces.git
+[submodule "agentic-sdlc-12-factors"]
+	path = agentic-sdlc-12-factors
+	url = https://github.com/tikalk/agentic-sdlc-12-factors.git
+[submodule "agentic-sdlc-agent-runner"]
+	path = agentic-sdlc-agent-runner
+	url = git@github.com:tikalk/agentic-sdlc-agent-runner.git
+[submodule "agentic-sdlc-spec-kit"]
+	path = agentic-sdlc-spec-kit
+	url = git@github.com:tikalk/agentic-sdlc-spec-kit.git
+[submodule "agentic-sdlc-team-ai-directives"]
+	path = agentic-sdlc-team-ai-directives
+	url = git@github.com:tikalk/agentic-sdlc-team-ai-directives.git
+[submodule "octoink"]
+	path = octoink
+	url = git@gitlab.tikalk.dev:tikalk/engineering/octoink.git
+[submodule "tikal-team-ai-directives"]
+	path = tikal-team-ai-directives
+	url = git@gitlab.tikalk.dev:tikalk/engineering/agentic-sdlc/tikal-team-ai-directives.git

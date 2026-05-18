@@ -84,7 +84,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before specification)**:
-- Check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+- Check if `.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_specify` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -104,16 +104,11 @@ You **MUST** consider the user input before proceeding (if not empty).
     To execute: `/{command}`
     ```
   - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
-
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-
-    Wait for the result of the hook command before proceeding to the Outline.
-    ```
-- If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed to the Outline
+    - If the hook command file cannot be found, log a warning and proceed anyway
+- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
 
@@ -135,7 +130,7 @@ Given that feature description, do this:
 
 2. **Branch creation** (optional, via hook):
 
-   **Branch numbering mode**: Before running the script, check if `{REPO_ROOT}/.specify/init-options.json` exists and read the `branch_numbering` value.
+   **Branch numbering mode**: Before running the script, check if `.specify/init-options.json` exists and read the `branch_numbering` value.
    - If `"timestamp"`, add `--timestamp` (Bash) or `-Timestamp` (PowerShell) to the script invocation
    - If `"sequential"` or absent, do not add any extra flag (default behavior)
 
@@ -307,7 +302,7 @@ Given that feature description, do this:
    - Checklist results summary
    - Readiness for the next phase (`/spec.clarify` or `/spec.plan`)
 
-9. **Check for extension hooks**: After reporting completion, check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+9. **Check for extension hooks**: After reporting completion, check if `.specify/extensions.yml` exists in the project root.
     - If it exists, read it and look for entries under the `hooks.after_specify` key
     - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
     - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -327,14 +322,11 @@ Given that feature description, do this:
         To execute: `/{command}`
         ```
       - **Mandatory hook** (`optional: false`):
-        ```
-        ## Extension Hooks
-
-        **Automatic Hook**: {extension}
-        Executing: `/{command}`
-        EXECUTE_COMMAND: {command}
-        ```
-    - If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed
+    - If the hook command file cannot be found or execution fails, log a warning and continue
+    - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 **NOTE:** Branch creation is handled by the `before_specify` hook (git extension). Spec directory and file creation are always handled by this core command.
 

@@ -1,0 +1,138 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "git": {
+      "version": "1.2.6",
+      "source": "local",
+      "manifest_hash": "sha256:8c1f936745153d595c98746af0862ec83562d84c41660341ddcc6fe0630921b6",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "git.feature",
+          "git.validate",
+          "git.remote",
+          "git.initialize",
+          "git.commit",
+          "git.workspace",
+          "git.setup-ignore"
+        ],
+        "pi": [
+          "git.feature",
+          "git.validate",
+          "git.remote",
+          "git.initialize",
+          "git.commit",
+          "git.workspace",
+          "git.setup-ignore"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-16T18:25:32.795874+00:00"
+    },
+    "levelup": {
+      "version": "1.1.9",
+      "source": "local",
+      "manifest_hash": "sha256:a41a0ccb92b5a783fd0c048a24f51907507b5a0adf7d5d788801f41804806515",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "levelup.init",
+          "levelup.clarify",
+          "levelup.specify",
+          "levelup.skills",
+          "levelup.implement",
+          "levelup.trace",
+          "levelup.validate"
+        ],
+        "pi": [
+          "levelup.init",
+          "levelup.clarify",
+          "levelup.specify",
+          "levelup.skills",
+          "levelup.implement",
+          "levelup.trace",
+          "levelup.validate"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-16T18:25:33.177857+00:00"
+    },
+    "quick": {
+      "version": "1.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:4bda02975eb0f8167b0576ef03af0af0e51f54cbbf14c12d304160eacd513a6f",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "quick.implement"
+        ],
+        "pi": [
+          "quick.implement"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-16T18:25:33.234066+00:00"
+    },
+    "product": {
+      "version": "1.1.12",
+      "source": "local",
+      "manifest_hash": "sha256:92c5abd56a4f68e690f500df3d18f2f8aad410130fe71f09f6ee0072e92f15c9",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "product.init",
+          "product.specify",
+          "product.clarify",
+          "product.implement",
+          "product.analyze",
+          "product.validate",
+          "product.roadmap",
+          "product.link"
+        ],
+        "pi": [
+          "product.init",
+          "product.specify",
+          "product.clarify",
+          "product.implement",
+          "product.analyze",
+          "product.validate",
+          "product.roadmap",
+          "product.link"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-16T18:26:01.235009+00:00"
+    },
+    "architect": {
+      "version": "2.0.6",
+      "source": "local",
+      "manifest_hash": "sha256:112821ead8c8a5ec3f14056cff6817fa0041a8a6ab043a418439bfdb78772c50",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "architect.init",
+          "architect.specify",
+          "architect.clarify",
+          "architect.implement",
+          "architect.analyze",
+          "architect.validate"
+        ],
+        "pi": [
+          "architect.init",
+          "architect.specify",
+          "architect.clarify",
+          "architect.implement",
+          "architect.analyze",
+          "architect.validate"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-16T18:26:14.884116+00:00"
+    }
+  }
+}

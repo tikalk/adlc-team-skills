@@ -27,7 +27,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before planning)**:
-- Check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+- Check if `.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_plan` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -47,16 +47,11 @@ You **MUST** consider the user input before proceeding (if not empty).
     To execute: `/{command}`
     ```
   - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
-
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-
-    Wait for the result of the hook command before proceeding to the Outline.
-    ```
-- If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed to the Outline
+    - If the hook command file cannot be found, log a warning and proceed anyway
+- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
 
@@ -75,7 +70,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 4. **Stop and report**: Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generated artifacts.
 
-5. **Check for extension hooks**: After reporting, check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+5. **Check for extension hooks**: After reporting, check if `.specify/extensions.yml` exists in the project root.
    - If it exists, read it and look for entries under the `hooks.after_plan` key
    - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
    - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -94,15 +89,12 @@ You **MUST** consider the user input before proceeding (if not empty).
        Prompt: {prompt}
        To execute: `/{command}`
        ```
-     - **Mandatory hook** (`optional: false`):
-       ```
-       ## Extension Hooks
-
-       **Automatic Hook**: {extension}
-       Executing: `/{command}`
-       EXECUTE_COMMAND: {command}
-       ```
-   - If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
+- **Mandatory hook** (`optional: false`):
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed
+    - If the hook command file cannot be found or execution fails, log a warning and continue
+    - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Phases
 

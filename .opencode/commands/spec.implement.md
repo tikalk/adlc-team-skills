@@ -1,7 +1,13 @@
 ---
-description: Execute the implementation plan by processing and executing all tasks defined in tasks.md
+description: Execute the implementation plan by processing and executing all tasks
+  defined in tasks.md
+scripts:
+  sh: .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
+  ps: .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
 ---
 
+
+<!-- Source: agentic-sdlc -->
 ## User Input
 
 ```text
@@ -13,7 +19,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before implementation)**:
-- Check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+- Check if `.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_implement` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -42,6 +48,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Outline
 
 1. Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+
+### CRITICAL - Path Validation
+
+**DO NOT read from wrong directory or write to project root**
+- Parse `FEATURE_DIR` from script output - this is the correct path to your feature
+- All required files (tasks.md, plan.md, spec.md) should be in `./specs/<BRANCH>/` NOT root
+- Common mistakes:
+  - Reading from `./tasks.md` instead of `./specs/<BRANCH>/tasks.md`
+  - Writing implementation files to root instead of feature directory
 
 2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
    - Scan all checklist files in the checklists/ directory
@@ -84,7 +99,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read quickstart.md for integration scenarios
 
 4. **Project Setup Verification**:
-   - **REQUIRED**: Create/verify ignore files based on actual project setup:
+   - **REQUIRED**: Create/verify ignore files based on actual project setup
 
    **Detection & Creation Logic**:
    - Check if the following command succeeds to determine if the repository is a git repo (create/verify .gitignore if so):
@@ -132,17 +147,27 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Task dependencies**: Sequential vs parallel execution rules
    - **Task details**: ID, description, file paths, parallel markers [P]
    - **Execution flow**: Order and dependency requirements
+   - **Load tasks_meta.json**: Read execution modes, delegation status, and review requirements
+     - Record assigned agents and job IDs for ASYNC tasks
 
-6. Execute implementation following the task plan:
+6. Execute implementation following execution approach:
    - **Phase-by-phase execution**: Complete each phase before moving to the next
-   - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together  
-   - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
+   - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
    - **File-based coordination**: Tasks affecting the same files must run sequentially
+   - **Per-task extension hooks**: For each individual task:
+     - **Before task**: Check `.specify/extensions.yml` for `hooks.before_task_execute` entries. Filter out disabled hooks. Execute mandatory hooks immediately; for optional hooks, skip silently to maintain flow. If no hooks registered, continue silently.
+     - **Execute the task**
+     - **After task**: Check `.specify/extensions.yml` for `hooks.after_task_execute` entries. Same dispatch logic as before_task_execute. This enables per-task auto-commits, linting, test runs, etc. via extensions.
+     - **On task failure**: Dispatch `after_task_execute` hooks before reporting the error (allows WIP checkpoint commits if git extension is configured).
+   - **Dual execution mode handling**:
+     - **SYNC tasks**: Execute immediately with human oversight, require micro-review via `.specify/scripts/bash/tasks-meta-utils.sh review-micro "$FEATURE_DIR/tasks_meta.json" "$task_id"`
+     - **ASYNC tasks**: Generate delegation prompts via `.specify/scripts/bash/tasks-meta-utils.sh dispatch_async_task "$task_id" "$agent_type" "$description" ...`, send to LLM agents, monitor completion, apply macro-review after completion
+   - **Quality gates**: Apply differentiated validation based on execution mode via `.specify/scripts/bash/tasks-meta-utils.sh quality-gate "$FEATURE_DIR/tasks_meta.json" "$task_id"`
    - **Validation checkpoints**: Verify each phase completion before proceeding
 
 7. Implementation execution rules:
    - **Setup first**: Initialize project structure, dependencies, configuration
-   - **Tests before code**: If you need to write tests for contracts, entities, and integration scenarios
+   - **Tests before code**: Write tests for contracts, entities, and integration scenarios
    - **Core development**: Implement models, services, CLI commands, endpoints
    - **Integration work**: Database connections, middleware, logging, external services
    - **Polish and validation**: Unit tests, performance optimization, documentation
@@ -160,11 +185,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
-   - Report final status with summary of completed work
+   - Report final status with comprehensive summary of completed work
 
-Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `/spec.tasks` first to regenerate the task list.
-
-10. **Check for extension hooks**: After completion validation, check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+10. **Check for extension hooks**: After completion validation, check if `.specify/extensions.yml` exists in the project root.
     - If it exists, read it and look for entries under the `hooks.after_implement` key
     - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
     - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -188,4 +211,6 @@ Note: This command assumes a complete task breakdown exists in tasks.md. If task
     - Execute the instructions in that command file immediately (run any referenced scripts)
     - Once the hook completes (successfully or with a graceful skip), proceed
     - If the hook command file cannot be found or execution fails, log a warning and continue
-- If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
+    - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+
+Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `/spec.tasks` first to regenerate the task list.

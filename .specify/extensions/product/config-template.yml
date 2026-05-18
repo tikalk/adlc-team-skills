@@ -1,0 +1,63 @@
+# Product Extension Configuration
+
+# Configuration for product extension
+# This file controls how PRD and PDR generation works
+
+product:
+  # PDR (Product Decision Record) settings
+  pdr:
+    # Location for PDR file (relative to project root)
+    location: ".specify/drafts/pdr.md"
+    
+    # Heuristic for PDR generation: surprising | all | minimal
+    # - surprising: Skip obvious product defaults
+    # - all: Document all decisions
+    # - minimal: Only high-risk/unconventional decisions
+    heuristic: "surprising"
+    
+    # Auto-detect feature areas from codebase
+    auto_decompose: true
+
+  # PRD (Product Requirements Document) settings  
+  prd:
+    # Location for PRD file (relative to project root)
+    location: "PRD.md"
+    
+    # Required sections: all | core
+    # - all: Generate all 9 sections
+    # - core: Only sections 1-4 (Overview, Problem, Goals, Metrics)
+    sections: "all"
+    
+    # Include PDR summary in PRD
+    include_pdr_summary: true
+    
+    # Include appendix with references
+    include_appendix: true
+
+  # Feature decomposition settings
+  decomposition:
+    # Threshold for auto-detection
+    # 0 = always decompose, -1 = never auto-decompose
+    threshold: 3
+    
+    # Feature area naming convention
+    naming: "kebab-case"  # kebab-case | camelCase | snake_case
+
+  # Validation settings
+  validation:
+    # Require all PRD sections
+    require_all_sections: true
+    
+    # Require PDR traceability
+    require_traceability: true
+    
+    # Check for out-of-scope features
+    check_out_of_scope: true
+
+# Editor integration
+editor:
+  # Preview command for PRD
+  preview_command: "echo 'PRD preview not implemented'"
+  
+  # Format on save
+  format_on_save: true

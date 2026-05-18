@@ -1,0 +1,131 @@
+schema_version: "1.0"
+
+extension:
+  id: "levelup"
+  name: "LevelUp - Team AI Directives Contributor"
+  version: "1.1.9"
+  description: "Discover and contribute context modules (rules, personas, examples, skills) to team-ai-directives using Context Directive Records (CDRs)"
+  author: "Agentic SDLC Team"
+  repository: "https://github.com/tikalk/agentic-sdlc-spec-kit"
+  license: "MIT"
+  homepage: "https://github.com/tikalk/agentic-sdlc-spec-kit/tree/main/extensions/levelup"
+
+requires:
+  speckit_version: ">=0.0.80"
+  tools:
+    - name: "git"
+      required: true
+      version: ">=2.0.0"
+
+provides:
+  commands:
+    # Brownfield CDR discovery - like architect.init
+    - name: "adlc.levelup.init"
+      file: "commands/init.md"
+      description: "Scan codebase and discover Context Directive Records (CDRs) for team-ai-directives contributions"
+      aliases: ["levelup.init"]
+
+    # Resolve CDR ambiguities - like architect.clarify
+    - name: "adlc.levelup.clarify"
+      file: "commands/clarify.md"
+      description: "Resolve ambiguities in discovered/proposed CDRs through clarifying questions"
+      aliases: ["levelup.clarify"]
+
+    # Refine CDRs from feature context - handoff only
+    - name: "adlc.levelup.specify"
+      file: "commands/specify.md"
+      description: "Refine CDRs using current feature spec context (handoff from init/clarify)"
+      aliases: ["levelup.specify"]
+
+    # Build single skill from user input
+    - name: "adlc.levelup.skills"
+      file: "commands/skills.md"
+      description: "Build a single skill from accepted CDRs based on user input"
+      aliases: ["levelup.skills"]
+
+    # Compile CDRs to PR
+    - name: "adlc.levelup.implement"
+      file: "commands/implement.md"
+      description: "Compile accepted CDRs into a draft PR to team-ai-directives repository"
+      aliases: ["levelup.implement"]
+
+    # Trace - Session execution tracing
+    - name: "adlc.levelup.trace"
+      file: "commands/trace.md"
+      description: "Generate and validate AI session execution traces from implementation metadata"
+      aliases: ["levelup.trace"]
+
+    # Validate - Rule conflict detection
+    - name: "adlc.levelup.validate"
+      file: "commands/validate.md"
+      description: "Scan team-ai-directives for rule conflicts and create CDRs for resolution"
+      aliases: ["levelup.validate"]
+
+  config:
+    - name: "levelup-config.yml"
+      template: "config-template.yml"
+      description: "LevelUp extension configuration for team-ai-directives integration"
+      required: false
+
+# Manual handoffs - user decides next step
+handoffs:
+  levelup.init:
+    - label: "Resolve Ambiguities"
+      agent: "levelup.clarify"
+      prompt: "Review discovered CDRs and resolve ambiguities"
+      send: false
+    - label: "Refine from Feature Context"
+      agent: "levelup.specify"
+      prompt: "Refine CDRs using current feature spec context"
+      send: false
+
+  levelup.clarify:
+    - label: "Refine from Feature Context"
+      agent: "levelup.specify"
+      prompt: "Add context from current feature spec"
+      send: false
+    - label: "Build Skills"
+      agent: "levelup.skills"
+      prompt: "Build skills from accepted CDRs"
+      send: false
+
+  levelup.trace:
+    - label: "Extract CDRs from Trace"
+      agent: "levelup.specify"
+      prompt: "Extract CDRs using trace.md for enriched context"
+      send: false
+
+  levelup.validate:
+    - label: "Resolve Conflicts"
+      agent: "levelup.clarify"
+      prompt: "Resolve rule conflicts detected by validate command"
+      send: false
+    - label: "Create PR"
+      agent: "levelup.implement"
+      prompt: "Compile conflict resolution CDRs to team-ai-directives PR"
+      send: false
+
+tags:
+  - "team-ai-directives"
+  - "brownfield"
+  - "context-modules"
+  - "skills"
+  - "cdr"
+  - "contribution"
+  - "trace"
+  - "session-tracing"
+  - "validation"
+
+defaults:
+  cdr:
+    heuristic: "surprising"
+    location: ".specify/drafts/cdr.md"
+    type: ""
+  skills:
+    drafts_location: ".specify/drafts/skills"
+  team_directives:
+    # Resolved from SPECIFY_TEAM_DIRECTIVES env var
+    # Fallback paths (in order):
+    # 1. .specify/team-ai-directives (submodule)
+    # 2. .specify/memory/team-ai-directives (clone)
+    env_var: "SPECIFY_TEAM_DIRECTIVES"

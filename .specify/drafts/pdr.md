@@ -9,6 +9,7 @@
 | PDR-080 | Bimodal UX Strategy | CLI (developers) + Visual UI (non-devs), dual-primary | 6.3, 5, 4.3 | Accepted | 2026-05-07 |
 | PDR-081 | Unified Abstraction Agent Model | Single SDLC interface with adapters | 6.4, 4.4 | Accepted | 2026-05-07 |
 | PDR-082 | Dependency-Driven Async Orchestration | Marker-based DAG (`[P]`, `[ASYNC]`, `[SYNC]`) | 6.4, 4.4 | Accepted | 2026-05-07 |
+| PDR-083 | Milestone-Level Verification with /goal Pattern | Fast transcript-based evaluator, 3-retry limit | 6.5, 4.5 | Accepted | 2026-05-16 |
 
 ---
 
@@ -366,17 +367,120 @@ User Request → Parse Markers → Build DAG → Execute Tasks
 
 ---
 
+## PDR-083: Milestone-Level Verification with /goal Pattern
+
+**Status**: Accepted
+
+**Date**: 2026-05-16
+
+**Owner**: Product Team
+
+### Context
+
+Current agentic-sdlc executes milestones and tasks without explicit verification of completion quality. Users must manually review agent output to determine if work meets requirements. This creates friction, slows iteration, and leads to inconsistent quality gates.
+
+**Problem Statement**:
+- No automated way to verify milestone completion against intent
+- Manual review required for every milestone, even routine ones
+- No bounded retry mechanism when work doesn't meet criteria
+- Inconsistent quality standards across different users/specs
+
+**Market Context**:
+- Anthropic's /goal feature (May 2026) demonstrated fast, transcript-based verification using lightweight models
+- Outcomes API showed isolated grading pattern, but adds significant overhead
+- Community demand for autonomous agent execution with reliable completion detection
+
+### Decision
+
+Implement **milestone-level verification** using a **/goal-style fast evaluator pattern**:
+
+**Core Mechanism**:
+1. **Implicit Goal Derivation**: Mission brief (spec description) serves as the goal condition
+2. **Transcript-Based Evaluation**: Fast model (Haiku-3.5 equivalent) reads conversation transcript
+3. **Binary Judgment**: Pass/fail based on whether goal appears achieved
+4. **Bounded Retries**: Auto-retry up to 3 iterations, user can override mid-run
+5. **Integration Points**: Runs at milestone completion and before `[SYNC]` gates
+
+**Verification Trigger Points**:
+| Point | Behavior |
+|-------|----------|
+| Milestone Complete | Verify achievement, continue if passed |
+| Before `[SYNC]` Gate | Mandatory verification, block until passed |
+| User Override | Ctrl+C or explicit stop command aborts verification |
+
+**Structured Output Format**:
+```
+✓ Milestone "Implement Auth API" verified (1/3)
+  Goal: "User login endpoint returns 200 with valid JWT token"
+  Result: PASS - Tests pass, endpoint responds correctly
+  Duration: 1.2s
+```
+
+### Consequences
+
+**Positive**:
+- **Autonomous execution**: Agents can run multiple iterations without babysitting
+- **Fast verification**: Sub-second evaluation using lightweight model
+- **Zero config**: Mission brief = goal, no extra fields needed
+- **Bounded safety**: 3-retry limit prevents infinite loops
+- **Human override**: Users can interrupt when things go wrong
+- **Quality gates**: Automatic verification before human `[SYNC]` reviews
+
+**Negative**:
+- **Transcript dependency**: Evaluator only sees what agent explicitly outputs
+- **Cost overhead**: Additional LLM call per verification (~$0.001-0.005 per check)
+- **Vague goal risk**: Poorly written mission briefs lead to unreliable verification
+- **Model limitations**: Fast model may miss subtle issues vs. full-power model
+
+**Risks**:
+- **False positives**: Evaluator may pass incomplete work if agent describes it well
+  - *Mitigation*: Require explicit test output or file diffs in transcript
+- **False negatives**: Evaluator may fail valid work due to strict interpretation
+  - *Mitigation*: User override capability, retry with clearer agent prompts
+
+### Success Metrics
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Verification latency | <2s (p95) | Time from milestone complete to result |
+| False positive rate | <5% | Verification passes but human finds issues |
+| False negative rate | <10% | Verification fails but work is actually complete |
+| User override rate | <15% | Users manually stopping verification loops |
+| Cost per verification | <$0.01 | API costs for fast model evaluation |
+
+### Common Alternatives
+
+#### Option A: Outcomes-Style Isolated Grading
+**Description**: Separate isolated grader reads only output + rubric, not conversation
+**Trade-offs**: Higher accuracy (no reasoning bias), but 10x cost and 5-10s latency per verification. Better for final deliverables than iterative milestone checks.
+
+#### Option B: Human-in-the-Loop Only
+**Description**: No automated verification, pause at every milestone for human review
+**Trade-offs**: Zero automation overhead, but removes autonomous execution benefit. Suitable for highly sensitive work where human judgment is mandatory.
+
+#### Option C: Agent Self-Evaluation
+**Description**: Agent evaluates its own completion without separate model
+**Trade-offs**: Near-zero cost, but high false positive risk (agents tend to declare success prematurely). Not recommended for quality-critical workflows.
+
+### Related ADRs
+
+- ADR-082: Marker-Based DAG Orchestration (`[SYNC]` gate integration)
+- ADR-081: Unified Abstraction Agent Model (evaluator model selection)
+- ADR-080: Bimodal UX Strategy (structured output format for CLI/UI)
+
+---
+
 ## Constitution Alignment
 
 All PDRs align with constitutional principles:
 
 | Principle | PDRs |
 |-----------|------|
-| **Spec-Driven Development** | PDR-080 (shared spec format) |
-| **Human-in-the-Loop** | PDR-082 (`[SYNC]` markers), PDR-078 (commit gates) |
-| **Context as Budget** | PDR-082 (parallel limits), PDR-081 (context engineering) |
+| **Spec-Driven Development** | PDR-080 (shared spec format), PDR-083 (mission brief as goal) |
+| **Human-in-the-Loop** | PDR-082 (`[SYNC]` markers), PDR-078 (commit gates), PDR-083 (user override) |
+| **Context as Budget** | PDR-082 (parallel limits), PDR-081 (context engineering), PDR-083 (fast model) |
 | **Multi-Agent Agnosticism** | PDR-081 (unified abstraction) |
-| **Safety Through Constraints** | PDR-078 (workspace isolation), PDR-082 (schema validation) |
+| **Safety Through Constraints** | PDR-078 (workspace isolation), PDR-082 (schema validation), PDR-083 (3-retry limit) |
 
 ---
 
@@ -402,4 +506,4 @@ All PDRs align with constitutional principles:
 
 ---
 
-*This file is auto-generated from PRD.md. Last updated: 2026-05-09*
+*This file is auto-generated from PRD.md. Last updated: 2026-05-16*

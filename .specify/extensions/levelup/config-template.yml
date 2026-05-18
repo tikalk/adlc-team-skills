@@ -1,0 +1,53 @@
+# LevelUp Extension Configuration
+# This file configures the levelup extension for team-ai-directives contributions.
+
+# Team AI Directives Configuration
+team_directives:
+  # Path to team-ai-directives repository
+  # Resolution order:
+  # 1. SPECIFY_TEAM_DIRECTIVES environment variable
+  # 2. .specify/team-ai-directives (submodule - recommended)
+  # 3. .specify/memory/team-ai-directives (clone - legacy)
+  #
+  # Uncomment to override with explicit path:
+  # path: "/path/to/team-ai-directives"
+
+  # CDR (Context Directive Record) Settings
+cdr:
+  # CDR generation heuristic
+  # - surprising: Only document patterns not already in team-directives (default)
+  # - all: Document all discovered patterns
+  # - minimal: Only high-value/novel patterns
+  heuristic: "surprising"
+
+  # Location of CDR file (local project)
+  # CDRs stored in markdown format
+  location: ".specify/drafts/cdr.md"
+
+# Skills Settings
+skills:
+  # Location for draft skills before moving to team-directives
+  drafts_location: ".specify/drafts/skills"
+
+  # Skills manifest format follows team-ai-directives/.skills.json structure
+  # See: https://github.com/tikalk/agentic-sdlc-team-ai-directives
+
+# Context Types to Discover
+# Enable/disable specific context types during levelup.init
+discovery:
+  rules: true
+  personas: true
+  examples: true
+  constitution: true
+  skills: true
+
+# PR Settings for levelup.implement
+pull_request:
+  # Create as draft PR by default
+  draft: true
+
+  # Branch prefix for levelup PRs
+  branch_prefix: "levelup/"
+
+  # Target branch in team-ai-directives
+  target_branch: "main"

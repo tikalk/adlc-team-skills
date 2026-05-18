@@ -1,0 +1,185 @@
+schema_version: "1.0"
+
+extension:
+  id: "architect"
+  name: "Architect - ADR & Architecture Description"
+  version: "2.0.6"
+  description: "Create and manage Architecture Decision Records (ADRs) and Architecture Descriptions (AD.md) using Rozanski & Woods Viewpoints and Perspectives methodology"
+  author: "Agentic SDLC Team"
+  repository: "https://github.com/tikalk/agentic-sdlc-spec-kit"
+  license: "MIT"
+  homepage: "https://github.com/tikalk/agentic-sdlc-spec-kit/tree/main/extensions/architect"
+
+requires:
+  speckit_version: ">=0.0.80"
+  tools:
+    - name: "git"
+      required: true
+      version: ">=2.0.0"
+
+provides:
+  commands:
+    # Brownfield: reverse-engineer ADRs from codebase
+    - name: "adlc.architect.init"
+      file: "commands/init.md"
+      description: "Reverse-engineer architecture from existing codebase (brownfield) to create ADRs"
+      aliases: ["architect.init"]
+
+    # Greenfield: interactive PRD exploration -> ADRs
+    - name: "adlc.architect.specify"
+      file: "commands/specify.md"
+      description: "Interactive PRD exploration to create system-level ADRs (greenfield)"
+      aliases: ["architect.specify"]
+
+    # Refine/validate ADRs
+    - name: "adlc.architect.clarify"
+      file: "commands/clarify.md"
+      description: "Refine and validate system-level ADRs through targeted clarification questions"
+      aliases: ["architect.clarify"]
+
+    # Generate AD.md from ADRs
+    - name: "adlc.architect.implement"
+      file: "commands/implement.md"
+      description: "Generate full Architecture Description (AD.md) from ADRs using Rozanski & Woods methodology"
+      aliases: ["architect.implement"]
+
+    # NEW: Analyze ADR <-> AD consistency
+    - name: "adlc.architect.analyze"
+      file: "commands/analyze.md"
+      description: "Analyze architecture for consistency between ADRs and AD, completeness, and quality issues"
+      aliases: ["architect.analyze"]
+
+    # NEW: Validate plan alignment with architecture
+    - name: "adlc.architect.validate"
+      file: "commands/validate.md"
+      description: "Validate plan alignment with architecture (READ-ONLY)"
+      aliases: ["architect.validate"]
+
+  config:
+    - name: "architect-config.yml"
+      template: "config-template.yml"
+      description: "Architect extension configuration"
+      required: false
+
+# Handoffs between commands
+handoffs:
+  architect.init:
+    - label: "Validate Discovered ADRs"
+      agent: "architect.clarify"
+      prompt: "Review ADRs discovered from brownfield codebase analysis"
+      send: true
+    - label: "Generate Architecture"
+      agent: "architect.implement"
+      prompt: "Generate full architecture description from ADRs"
+      send: false
+    - label: "Analyze Architecture"
+      agent: "architect.analyze"
+      prompt: "Validate discovered ADRs for completeness and consistency"
+      send: false
+
+  architect.specify:
+    - label: "Refine ADRs"
+      agent: "architect.clarify"
+      prompt: "Refine and validate the ADRs created from PRD exploration"
+      send: true
+    - label: "Generate Architecture"
+      agent: "architect.implement"
+      prompt: "Generate full architecture description from ADRs"
+      send: false
+
+  architect.clarify:
+    - label: "Generate Architecture"
+      agent: "architect.implement"
+      prompt: "Generate full architecture description from ADRs"
+      send: true
+    - label: "Analyze Architecture"
+      agent: "architect.analyze"
+      prompt: "Validate ADR-AD consistency after refinement"
+      send: false
+
+  architect.implement:
+    - label: "Create Feature Spec"
+      agent: "spec.specify"
+      prompt: "Create a feature specification within this architecture"
+      send: false
+    - label: "Analyze Architecture"
+      agent: "architect.analyze"
+      prompt: "Validate ADR-AD consistency and completeness"
+      send: true
+
+  architect.analyze:
+    - label: "Refine ADRs"
+      agent: "architect.clarify"
+      prompt: "Address ADR quality issues found during analysis"
+      send: false
+    - label: "Update Architecture"
+      agent: "architect.implement"
+      prompt: "Regenerate AD.md to address consistency issues"
+      send: false
+
+tags:
+   - "architecture"
+   - "adr"
+   - "rozanski-woods"
+   - "brownfield"
+   - "greenfield"
+   - "documentation"
+
+# Hooks triggered at workflow stage boundaries
+hooks:
+  before_plan:
+    command: "adlc.architect.validate"
+    description: "Validate feature aligns with architecture; escalate if new architectural decisions detected"
+  after_plan:
+    command: "adlc.architect.validate"
+    description: "Validate plan alignment with architecture (READ-ONLY)"
+
+defaults:
+  adr:
+    heuristic: "surprising"  # surprising | all | minimal
+    drafts_location: ".specify/drafts/adr.md"      # Working copy (init/specify/clarify)
+    memory_location: ".specify/memory/adr.md"      # Accepted ADRs (project canonical)
+  ad:
+    location: "AD.md"
+  views: "core"  # core | all | comma-separated
+  decompose: true
+  execution:
+    mode: "sequential"  # sequential | parallel
+    functional_checkpoint: true  # Pause after Functional view for approval
+    perspectives_inline: true  # Apply perspectives during view generation
+  viewpoints:
+    core:
+      - "context"
+      - "functional"
+    optional:
+      - "information"
+      - "concurrency"
+      - "development"
+      - "deployment"
+      - "operational"
+  perspectives:
+    core:
+      - "security"
+      - "performance"
+    optional:
+      - "accessibility"
+      - "availability"
+      - "evolution"
+      - "internationalization"
+      - "location"
+      - "regulation"
+      - "usability"
+      - "development-resource"
+  dag:
+    enabled: true
+    base_location: ".specify/architect/"              # Project base for DAG outputs
+    state_location: ".specify/architect/state.json"   # DAG execution state
+    views_location: ".specify/architect/views/"       # Generated view files per sub-system
+    view_templates: "templates/views/"                # Extension templates (relative to extension dir)
+    perspective_templates: "templates/perspectives/"  # Extension templates (relative to extension dir)
+
+# ADR Lifecycle:
+# 1. init/specify -> drafts (Proposed/Discovered status)
+# 2. clarify -> drafts (refines in place)
+# 3. implement -> Accepted ADRs to memory (.specify/memory)
+# 4. analyze/validate -> read from all locations

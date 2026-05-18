@@ -1,7 +1,12 @@
 ---
 description: Generate a custom checklist for the current feature based on user requirements.
+scripts:
+  sh: .specify/scripts/bash/check-prerequisites.sh --json
+  ps: .specify/scripts/powershell/check-prerequisites.ps1 -Json
 ---
 
+
+<!-- Source: agentic-sdlc -->
 ## Checklist Purpose: "Unit Tests for English"
 
 **CRITICAL CONCEPT**: Checklists are **UNIT TESTS FOR REQUIREMENTS WRITING** - they validate the quality, clarity, and completeness of requirements in a given domain.
@@ -65,6 +70,13 @@ You **MUST** consider the user input before proceeding (if not empty).
 1. **Setup**: Run `.specify/scripts/bash/check-prerequisites.sh --json` from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS list.
    - All file paths must be absolute.
    - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+
+### CRITICAL - Path Validation
+
+**DO NOT write to project root or wrong feature directory**
+- Parse `FEATURE_DIR` from script output
+- Write checklist files ONLY to `./specs/<BRANCH>/checklists/` NOT root
+- Common mistake: Writing to `./checklists/` instead of `./specs/<BRANCH>/checklists/`
 
 2. **Clarify intent (dynamic)**: Derive up to THREE initial contextual clarifying questions (no pre-baked catalog). They MUST:
    - Be generated from the user's phrasing + extracted signals from spec/plan/tasks

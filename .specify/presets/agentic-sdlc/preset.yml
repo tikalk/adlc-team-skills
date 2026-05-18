@@ -1,0 +1,111 @@
+schema_version: "1.0"
+
+preset:
+  id: "agentic-sdlc"
+  name: "Agentic SDLC Governance"
+  version: "1.0.4"
+  description: "Enhanced templates with governance, team-ai-directives integration, extension hooks, and architectural rigor for the Agentic SDLC workflow"
+  author: "Tikal"
+  repository: "https://github.com/tikalk/agentic-sdlc-spec-kit"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.1.0"
+
+provides:
+  templates:
+# Core template overrides (enhanced versions)
+    - type: "template"
+      name: "spec-template"
+      file: "templates/spec-template.md"
+      description: "Enhanced specification with governance sections"
+      replaces: "spec-template"
+
+    - type: "template"
+      name: "plan-template"
+      file: "templates/plan-template.md"
+      description: "Enhanced implementation plan with traceability"
+      replaces: "plan-template"
+
+    - type: "template"
+      name: "tasks-template"
+      file: "templates/tasks-template.md"
+      description: "Enhanced task breakdown with dual execution loop"
+      replaces: "tasks-template"
+
+    - type: "template"
+      name: "checklist-template"
+      file: "templates/checklist-template.md"
+      description: "Enhanced checklist with governance validation"
+      replaces: "checklist-template"
+
+    - type: "template"
+      name: "constitution-template"
+      file: "templates/constitution-template.md"
+      description: "Enhanced constitution with team directives"
+      replaces: "constitution-template"
+
+    # Core command overrides with adlc.spec.* naming and aliases
+    - type: "command"
+      name: "adlc.spec.specify"
+      file: "commands/adlc.spec.specify.md"
+      description: "Create feature specification (fork enhanced)"
+      aliases: ["spec.specify"]
+      replaces: "speckit.specify"
+
+    - type: "command"
+      name: "adlc.spec.plan"
+      file: "commands/adlc.spec.plan.md"
+      description: "Create implementation plan with extension hooks (fork enhanced)"
+      aliases: ["spec.plan"]
+      replaces: "speckit.plan"
+
+    - type: "command"
+      name: "adlc.spec.clarify"
+      file: "commands/adlc.spec.clarify.md"
+      description: "Clarify requirements (fork enhanced)"
+      aliases: ["spec.clarify"]
+      replaces: "speckit.clarify"
+
+    - type: "command"
+      name: "adlc.spec.tasks"
+      file: "commands/adlc.spec.tasks.md"
+      description: "Generate tasks with dual execution loop (fork enhanced)"
+      aliases: ["spec.tasks"]
+      replaces: "speckit.tasks"
+
+    - type: "command"
+      name: "adlc.spec.checklist"
+      file: "commands/adlc.spec.checklist.md"
+      description: "Generate implementation checklist (fork enhanced)"
+      aliases: ["spec.checklist"]
+      replaces: "speckit.checklist"
+
+    - type: "command"
+      name: "adlc.spec.analyze"
+      file: "commands/adlc.spec.analyze.md"
+      description: "Analyze spec/plan quality with governance (fork enhanced)"
+      aliases: ["spec.analyze"]
+      replaces: "speckit.analyze"
+
+    - type: "command"
+      name: "adlc.spec.implement"
+      file: "commands/adlc.spec.implement.md"
+      description: "Execute implementation with extension hooks (fork enhanced)"
+      aliases: ["spec.implement"]
+      replaces: "speckit.implement"
+
+    - type: "command"
+      name: "adlc.spec.constitution"
+      file: "commands/adlc.spec.constitution.md"
+      description: "Create/update project constitution (fork enhanced)"
+      aliases: ["spec.constitution"]
+      replaces: "speckit.constitution"
+
+tags:
+  - "governance"
+  - "team-ai-directives"
+  - "architecture"
+  - "agentic-sdlc"
+  - "hooks"
+  - "dual-execution-loop"

@@ -19,7 +19,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before implementation)**:
-- Check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+- Check if `.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_implement` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -39,15 +39,10 @@ You **MUST** consider the user input before proceeding (if not empty).
     To execute: `/{command}`
     ```
   - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
-
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-
-    Wait for the result of the hook command before proceeding to the Outline.
-    ```
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed to the Outline
+    - If the hook command file cannot be found, log a warning and proceed anyway
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -100,6 +95,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read data-model.md for entities and relationships
    - **IF EXISTS**: Read contracts/ for API specifications and test requirements
    - **IF EXISTS**: Read research.md for technical decisions and constraints
+   - **IF EXISTS**: Read .specify/memory/constitution.md for governance constraints
    - **IF EXISTS**: Read quickstart.md for integration scenarios
 
 4. **Project Setup Verification**:
@@ -157,8 +153,12 @@ You **MUST** consider the user input before proceeding (if not empty).
 6. Execute implementation following execution approach:
    - **Phase-by-phase execution**: Complete each phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
-   - **Follow TDD approach** (if enabled): Check framework settings - if TDD enabled, execute test tasks before implementation tasks
    - **File-based coordination**: Tasks affecting the same files must run sequentially
+   - **Per-task extension hooks**: For each individual task:
+     - **Before task**: Check `.specify/extensions.yml` for `hooks.before_task_execute` entries. Filter out disabled hooks. Execute mandatory hooks immediately; for optional hooks, skip silently to maintain flow. If no hooks registered, continue silently.
+     - **Execute the task**
+     - **After task**: Check `.specify/extensions.yml` for `hooks.after_task_execute` entries. Same dispatch logic as before_task_execute. This enables per-task auto-commits, linting, test runs, etc. via extensions.
+     - **On task failure**: Dispatch `after_task_execute` hooks before reporting the error (allows WIP checkpoint commits if git extension is configured).
    - **Dual execution mode handling**:
      - **SYNC tasks**: Execute immediately with human oversight, require micro-review via `.specify/scripts/bash/tasks-meta-utils.sh review-micro "$FEATURE_DIR/tasks_meta.json" "$task_id"`
      - **ASYNC tasks**: Generate delegation prompts via `.specify/scripts/bash/tasks-meta-utils.sh dispatch_async_task "$task_id" "$agent_type" "$description" ...`, send to LLM agents, monitor completion, apply macro-review after completion
@@ -167,7 +167,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 7. Implementation execution rules:
    - **Setup first**: Initialize project structure, dependencies, configuration
-   - **Tests before code** (if TDD enabled): If TDD is enabled in current settings and you need to write tests for contracts, entities, and integration scenarios
+   - **Tests before code**: Write tests for contracts, entities, and integration scenarios
    - **Core development**: Implement models, services, CLI commands, endpoints
    - **Integration work**: Database connections, middleware, logging, external services
    - **Polish and validation**: Unit tests, performance optimization, documentation
@@ -187,7 +187,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Confirm the implementation follows the technical plan
    - Report final status with comprehensive summary of completed work
 
-10. **Check for extension hooks**: After completion validation, check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
+10. **Check for extension hooks**: After completion validation, check if `.specify/extensions.yml` exists in the project root.
     - If it exists, read it and look for entries under the `hooks.after_implement` key
     - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
     - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -207,18 +207,10 @@ You **MUST** consider the user input before proceeding (if not empty).
         To execute: `/{command}`
         ```
       - **Mandatory hook** (`optional: false`):
-        ```
-        ## Extension Hooks
-
-        **Automatic Hook**: {extension}
-        Executing: `/{command}`
-        EXECUTE_COMMAND: {command}
-        ```
-    - If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed
+    - If the hook command file cannot be found or execution fails, log a warning and continue
+    - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `/spec.tasks` first to regenerate the task list.
-
-**Mode-Specific Notes**:
-
-- Requires comprehensive task breakdown with proper triage classification
-- Supports dual execution loop with comprehensive quality gates

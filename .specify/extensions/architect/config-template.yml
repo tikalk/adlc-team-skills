@@ -1,0 +1,34 @@
+# Architect Extension Configuration
+# Copy to .specify/extensions/architect/architect-config.yml to customize
+
+adr:
+  # ADR generation heuristic
+  # surprising: Only document surprising/non-obvious decisions (default)
+  # all: Document all architectural decisions
+  # minimal: Only document critical decisions
+  heuristic: "surprising"
+  
+  # ADR file locations (ADR Lifecycle)
+  # Working copy - init/specify/clarify write here
+  drafts_location: ".specify/drafts/adr.md"
+  # Project canonical - Accepted ADRs
+  memory_location: ".specify/memory/adr.md"
+
+ad:
+  # Architecture Description file location
+  location: "AD.md"
+
+views:
+  # Default views to generate
+  # core: Context, Functional, Information, Development, Deployment (5 views)
+  # all: All 7 views including Concurrency and Operational
+  # Or comma-separated: "concurrency,operational"
+  default: "core"
+
+analysis:
+  # Maximum findings to report (overflow is summarized)
+  max_findings: 50
+  
+  # Severity thresholds for blocking
+  block_on_critical: true
+  block_on_high: false

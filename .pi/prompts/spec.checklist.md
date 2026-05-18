@@ -59,15 +59,10 @@ You **MUST** consider the user input before proceeding (if not empty).
     To execute: `/{command}`
     ```
   - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
-
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-
-    Wait for the result of the hook command before proceeding to the Execution Steps.
-    ```
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed to the Execution Steps
+    - If the hook command file cannot be found, log a warning and proceed anyway
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Execution Steps
@@ -125,7 +120,6 @@ You **MUST** consider the user input before proceeding (if not empty).
    - spec.md: Feature requirements and scope
    - plan.md (if exists): Technical details, dependencies
    - tasks.md (if exists): Implementation tasks
-   - {REPO_ROOT}/.specify/config/config.json: Current mode and enabled options (under `workflow` and `options` sections)
 
    **Context Loading Strategy**:
    - Load only necessary portions relevant to active focus areas (avoid full-file dumping)
@@ -364,11 +358,8 @@ Check if `.specify/extensions.yml` exists in the project root.
     To execute: `/{command}`
     ```
   - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
-
-    **Automatic Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-    ```
+    - Read the command file for `{command}` from the installed extension commands directory
+    - Execute the instructions in that command file immediately (run any referenced scripts)
+    - Once the hook completes (successfully or with a graceful skip), proceed
+    - If the hook command file cannot be found or execution fails, log a warning and continue
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently

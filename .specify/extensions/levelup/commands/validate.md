@@ -32,18 +32,41 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Goal
 
-Scan **team-ai-directives** for rule conflicts and create CDRs for resolution. This ensures team rules don't contradict each other, aligning with the "World-Class Agentic Engineer" principle of periodic rule cleanup.
+Scan **team-ai-directives** for rule conflicts and create CDRs for resolution. Additionally, update verification timestamps for rules that pass validation, tracking directive freshness per memory engineering principles.
 
 **Input**: team-ai-directives repository
 
 **Output**:
 1. Conflict report (JSON or Markdown)
 2. Conflict CDRs in `{REPO_ROOT}/.specify/drafts/cdr.md`
-3. Summary of conflicts by severity
+3. Updated verification timestamps in directive files (for rules passing validation)
+4. Summary of conflicts by severity and verification status
 
-**Key Concept**:
+**Key Concepts**:
 
-This command is the "Rule Conflict Detector" - it validates that team-ai-directives rules don't contradict each other.
+- **Rule Conflict Detector**: Validates that team-ai-directives rules don't contradict each other
+- **Memory Verification**: Updates `verified` timestamps and resets `age_days` for valid directives
+- **Freshness Tracking**: Reports on directive age and stale entries (>30 days)
+
+## Memory Engineering Integration
+
+This command implements the **Verification Discipline** from agent memory engineering:
+
+1. **Scan all directives** in team-ai-directives
+2. **Check freshness** (age since last verification)
+3. **Validate content** still applies (pattern exists, no conflicts)
+4. **Update timestamps** for valid directives:
+   - Set `verified` to today's date
+   - Reset `age_days` to 0
+   - Append entry to verification log
+5. **Report stale directives** (>30 days without verification)
+
+**Verification Process**:
+- Parse YAML frontmatter from each directive file
+- Check `age_days` against threshold (default: 30 days)
+- Validate rule content (no conflicts, still applicable)
+- Update frontmatter with new verification date
+- Report which files were verified vs stale
 
 ### Flags
 
@@ -74,12 +97,13 @@ You are acting as a **Rule Validator** scanning team-ai-directives for conflicts
 
 1. **Environment Setup** (Phase 1): Resolve paths
 2. **Load Constitution** (Phase 2): Load team principles
-3. **Load Rules** (Phase 3): Load all rule files
+3. **Load Rules** (Phase 3): Load all rule files with YAML frontmatter
 4. **Conflict Detection** (Phase 4): Run conflict detection
 5. **Constitution Check** (Phase 5): Check rules against constitution
-6. **CDR Generation** (Phase 6): Create conflict CDRs
-7. **Report Generation** (Phase 7): Create conflict report
-8. **Summary** (Phase 8): Present results
+6. **Verification Update** (Phase 6): Update timestamps for valid rules
+7. **CDR Generation** (Phase 7): Create conflict CDRs
+8. **Report Generation** (Phase 8): Create conflict report
+9. **Summary** (Phase 9): Present results
 
 ## Execution Steps
 
@@ -203,7 +227,66 @@ For each rule-principle match that contradicts:
 - Flag as CRITICAL severity
 - Include in conflict report
 
-### Phase 6: CDR Generation
+### Phase 6: Verification Update (Memory Engineering)
+
+**Objective**: Update `verified` timestamps for rules passing validation (no conflicts)
+
+#### Step 1: Identify Valid Directives
+
+For each loaded rule/persona/example/skill:
+- If NO conflicts detected → eligible for verification update
+- If conflicts detected → skip (will be resolved via CDR)
+
+#### Step 2: Parse YAML Frontmatter
+
+Extract from each valid directive file:
+```yaml
+---
+verified: 2026-04-15
+age_days: 33
+---
+```
+
+#### Step 3: Update Verification Metadata
+
+For each valid directive:
+
+1. Update `verified` to today's date (YYYY-MM-DD)
+2. Reset `age_days` to 0
+3. Append to verification log table:
+   ```markdown
+   | Date | Verified By | Notes |
+   |------|-------------|-------|
+   | {today} | /levelup.validate | Validation passed, no conflicts |
+   ```
+
+#### Step 4: Write Updated Files
+
+Write updated frontmatter back to directive files:
+```yaml
+---
+verified: 2026-05-18
+age_days: 0
+---
+```
+
+#### Step 5: Track Verification Results
+
+Build verification report:
+```json
+{
+  "verification_updates": {
+    "updated": 12,
+    "stale": 3,
+    "skipped": 2
+  },
+  "stale_directives": [
+    {"file": "rules/old-pattern.md", "age_days": 45}
+  ]
+}
+```
+
+### Phase 7: CDR Generation
 
 **Objective**: Create CDRs for detected conflicts
 
@@ -249,9 +332,9 @@ Rule
 | {Principle} | Conflict | {Explanation} |
 ```
 
-### Phase 7: Report Generation
+### Phase 8: Report Generation
 
-**Objective**: Create conflict report
+**Objective**: Create conflict and verification report
 
 #### JSON Format
 
@@ -297,9 +380,9 @@ Rule
 ...
 ```
 
-### Phase 8: Summary
+### Phase 9: Summary
 
-**Objective**: Present validation results
+**Objective**: Present validation and verification results
 
 ```markdown
 ## LevelUp Validate Summary
@@ -326,6 +409,21 @@ Rule
 | Scope Overlap | {n} |
 | Constitution Conflict | {n} |
 
+### Memory Verification Status
+
+| Metric | Count |
+|--------|-------|
+| Directives Updated | {n} |
+| Stale Directives (>30d) | {n} |
+| Skipped (has conflicts) | {n} |
+
+### Stale Directives (Action Required)
+
+| File | Age | Last Verified |
+|------|-----|---------------|
+| rules/old-pattern.md | 45d | 2026-04-01 |
+| personas/legacy-role.md | 38d | 2026-04-08 |
+
 ### CDRs Created
 
 | CDR | Conflict | Severity |
@@ -335,5 +433,22 @@ Rule
 ### Next Steps
 
 1. **Run `/levelup.clarify`** to resolve conflicts
-2. **Run `/levelup.implement`** to create PR with resolutions
+2. **Review stale directives** and update or deprecate
+3. **Run `/levelup.implement`** to create PR with:
+   - Conflict resolutions
+   - Verification timestamp updates
 ```
+
+## Notes
+
+- **Conflict Detection**: Scans for contradictions, overlaps, and constitution violations
+- **Memory Verification**: Updates `verified` timestamps for rules passing validation
+- **Stale Detection**: Reports directives >30 days without verification
+- **Strict Mode**: Skipped directives (with conflicts) must be resolved before verification
+- **Idempotent**: Re-running updates timestamps again for valid directives
+
+## Related Commands
+
+- `/levelup.clarify` - Resolve detected conflicts
+- `/levelup.implement` - Create PR with conflict resolutions and verification updates
+- `/levelup.init` - Discover new patterns from codebase

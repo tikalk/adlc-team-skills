@@ -42,6 +42,8 @@
 | [STAKEHOLDER_3] | [e.g., Security Officer] | [e.g., Data protection, compliance] | Critical |
 | [STAKEHOLDER_4] | [e.g., End Users] | [e.g., Performance, usability] | High |
 
+> **Note**: Stakeholders are HUMAN actors (users, admins, business owners). For automated/external SYSTEMS, see Context View (3.1.2 External Entities).
+
 ---
 
 ## 3. Architectural Views (Rozanski & Woods)
@@ -54,7 +56,9 @@
 
 [High-level description of what the system does and its boundaries]
 
-#### 3.1.2 External Entities
+#### 3.1.2 External Entities (Non-Human Systems)
+
+> **Definition**: External entities are AUTOMATED SYSTEMS, APIs, or services outside your control that interact with the system. For HUMAN stakeholders, see Section 2 (Stakeholders & Concerns) and Context Diagram stakeholder nodes.
 
 | Entity | Type | Interaction Type | Data Exchanged | Protocols |
 |--------|------|------------------|----------------|-----------|

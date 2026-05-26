@@ -37,6 +37,12 @@ You **MUST** consider the user input before proceeding (if not empty).
 - `--no-checkpoint`: Skip Functional view checkpoint (not recommended)
   - Warning: Functional view is the "cornerstone" that shapes all others
 
+- `--force`: Bypass workflow state validation (emergency use only)
+  - **WARNING**: Use only when you understand the risks
+  - Skips clarify Phase 5.5 completion check
+  - Skips pre-flight ADR status validation
+  - May result in incomplete or inconsistent architecture
+
 **Important**: When `--views` is `core` (default), **skip** Concurrency View (3.4) and Operational View (3.7) entirely. Only generate them when explicitly requested via `--views all` or `--views concurrency,operational`.
 
 ## Rozanski & Woods Methodology Alignment
@@ -240,19 +246,50 @@ Located in the extension's `templates/` directory:
 
 ---
 
-## Pre-Flight Validation (MANDATORY)
+## Pre-Flight Validation (MANDATORY - Hard Enforcement)
+
+> **CRITICAL**: These validations are ENFORCED. Execution will HALT if checks fail.
+> Use `--force` flag only in emergency situations with full understanding of risks.
 
 **Before starting Phase 1, you MUST validate prerequisites:**
 
-1. **Check ADRs exist**: Verify `{REPO_ROOT}/.specify/drafts/adr.md` or `{REPO_ROOT}/.specify/memory/adr.md` exists
-2. **Check for Accepted ADRs**: Count ADRs with status "Accepted"
+### Workflow State Check (unless --force)
+
+1. **Check clarify completion in state.json**:
+   - Load `{REPO_ROOT}/.specify/architect/state.json`
+   - Check `workflow.clarify_completed` field
+   - If `false` or missing:
+     ```
+     ❌ WORKFLOW VALIDATION FAILED
+
+     The implement command requires ADRs to be approved via /architect.clarify first.
+
+     Current workflow state: clarify_completed = false
+
+     Required: Run /architect.clarify and complete Phase 5.5 (ADR Approval)
+
+     Options:
+     1. Run /architect.clarify to approve ADRs
+     2. Use --force to bypass (NOT RECOMMENDED - may cause inconsistent architecture)
+
+     ⚠️  Using --force skips important validation steps and may result in:
+        - Processing unapproved ADRs
+        - Missing critical architectural decisions
+        - Incomplete architecture documentation
+     ```
+     - **HALT execution** (unless `--force` flag provided)
+
+### ADR Status Check
+
+2. **Check ADRs exist**: Verify `{REPO_ROOT}/.specify/drafts/adr.md` or `{REPO_ROOT}/.specify/memory/adr.md` exists
+3. **Check for Accepted ADRs**: Count ADRs with status "Accepted"
    - If **zero Accepted ADRs**: **STOP** and output:
      ```
      ❌ Cannot proceed: No Accepted ADRs found
-     
+
      The implement command requires ADRs with "Accepted" status.
      Current ADRs are: [list statuses found]
-     
+
      Run /architect.clarify to review and approve ADRs first.
      ```
    - If **≥1 Accepted ADR**: Proceed and report: "✓ Found N Accepted ADRs"
@@ -411,6 +448,13 @@ After user approval, write the execution plan to `{REPO_ROOT}/.specify/architect
   "updated_at": "2024-01-20T10:30:00Z",
   "phase": "plan_approved",
   "views_mode": "core",
+  "workflow": {
+    "clarify_completed": false,
+    "clarify_completed_at": null,
+    "adrs_approved_count": 0,
+    "implement_started": false,
+    "implement_started_at": null
+  },
   "subsystems": [
     {
       "id": "core",
@@ -645,6 +689,59 @@ If the agent session is interrupted:
   
   Regenerate missing views before proceeding to Phase 3.
   ```
+
+---
+
+## Placeholder Validation (MANDATORY)
+
+**Before finalizing any view file, you MUST validate that all placeholders are filled:**
+
+### Placeholder Patterns to Check
+
+| Pattern | Example | Severity | Action Required |
+|---------|---------|----------|-----------------|
+| `[TBD]` | `[TBD]` | CRITICAL | Must be filled before completion |
+| `[STAKEHOLDER_*]` | `[STAKEHOLDER_1]` | CRITICAL | Must be replaced with actual stakeholder names |
+| `[ENTITY_*]` | `[ENTITY_1]` | CRITICAL | Must be replaced with actual entity names |
+| `[COMPONENT_*]` | `[COMPONENT_1]` | CRITICAL | Must be replaced with actual component names |
+| `[SUB_SYSTEM_NAME]` | `[SUB_SYSTEM_NAME]` | CRITICAL | Must be replaced with actual sub-system name |
+| `[ADR_IDS]` | `[ADR_IDS]` | HIGH | Must be replaced with actual ADR references |
+| `[DATE]` | `[DATE]` | MEDIUM | Must be replaced with actual date |
+
+### Validation Process
+
+1. **Scan each view file** after generation for unfilled placeholders
+2. **Count occurrences** of each pattern
+3. **Severity Assessment**:
+   - **CRITICAL**: Blocks completion - view cannot be marked "completed"
+   - **HIGH**: Should be filled but non-blocking if context is clear
+   - **MEDIUM**: Nice to have but not required
+
+### Validation Report Template
+
+```markdown
+## Placeholder Validation Report
+
+| View | Placeholder | Count | Severity | Status |
+|------|-------------|-------|----------|--------|
+| context | [STAKEHOLDER_1] | 3 | CRITICAL | ❌ UNFILLED |
+| functional | [COMPONENT_1] | 5 | CRITICAL | ❌ UNFILLED |
+
+### Critical Placeholders Unfilled
+
+**❌ VALIDATION FAILED**: Cannot mark views as "completed" with unfilled critical placeholders.
+
+**Required Actions**:
+1. Review ADRs for stakeholder names → fill [STAKEHOLDER_*] placeholders
+2. Review ADRs for component names → fill [COMPONENT_*] placeholders
+3. Re-run view generation with complete information
+```
+
+### Enforcement
+
+- Views with unfilled CRITICAL placeholders **CANNOT** be marked "completed" in state.json
+- Phase 2→3 gate **WILL FAIL** if any view has unfilled critical placeholders
+- Use `--force` to bypass (emergency only - document all unfilled placeholders)
 
 ---
 

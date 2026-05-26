@@ -1,7 +1,7 @@
 {
   "integration": "opencode",
-  "version": "0.8.12+adlc2",
-  "installed_at": "2026-05-16T18:25:32.072672+00:00",
+  "version": "0.8.12+adlc18",
+  "installed_at": "2026-05-23T11:09:46.773583+00:00",
   "files": {
     ".opencode/commands/spec.analyze.md": "2cfa84e4fd50f1f12505055f061020d3c3d4b6522ccb9bd5caf536acfb2580b0",
     ".opencode/commands/spec.checklist.md": "6297515b01dd91dc3bb6ae9257f76a6a045976890d0f71c0491530f302f9cd6d",

@@ -119,6 +119,13 @@ Given the PRD input, execute this workflow:
 
 **When**: This phase runs automatically when the PRD is detected as having multiple distinct domains. Use `--no-decompose` to skip.
 
+**Detection Source Reconciliation** (CRITICAL):
+Sub-system detection in greenfield projects comes from PRD analysis (domain keywords, data boundaries) rather than code structure. When analyzing the PRD:
+- Identify domains from keywords, requirements, and user flows
+- **ALWAYS execute Step 3** when you identify 4+ sub-systems
+- **NEVER default to monolithic** if the PRD describes multiple distinct domains
+- The threshold logic applies regardless of whether domains come from explicit PRD sections or inferred from requirements
+
 #### Step 1: Domain Analysis
 
 Analyze the PRD for distinct business domains and functional areas:
@@ -145,7 +152,7 @@ Identify boundaries between sub-systems based on:
 3. **Deployment Independence**: Can sub-systems be deployed separately?
 4. **Integration Points**: How do sub-systems communicate?
 
-#### Step 3: Sub-System Proposal (Interactive)
+#### Step 3: Sub-System Proposal (Interactive) - MANDATORY if sub-systems identified
 
 Present detected sub-systems to user for confirmation:
 
@@ -174,6 +181,13 @@ I've identified the following sub-systems from your PRD:
 - Specific changes (e.g., "merge 1+2", "split 3", "add Notifications")
 ```
 
+**CRITICAL**: If you have identified ANY sub-systems through PRD analysis, you **MUST** execute this step.
+- Do **NOT** proceed to Phase 1 as "monolithic" if the PRD describes distinct domains
+- You **MUST** get user confirmation when 4+ sub-systems are identified from the PRD
+- Domains inferred from requirements are just as valid as explicitly stated ones
+
+Failure to follow this step results in incorrect ADR scope and architecture.
+
 #### Step 4: Decomposition Decision
 
 Based on user response:
@@ -185,11 +199,20 @@ Based on user response:
 | Modifications | Adjust sub-systems, then proceed |
 | Empty/Default | Auto-proceed if ≤3 sub-systems, ask if >3 |
 
-**Threshold Logic**:
+**Threshold Logic Enforcement** (MANDATORY - applies to ALL detected sub-systems from PRD analysis):
 
-- **≤3 sub-systems**: Auto-approve, show summary
-- **4-6 sub-systems**: Show summary, ask to confirm
-- **>6 sub-systems**: Show summary, suggest grouping, ask to confirm
+| Sub-System Count | Required Action | Can Skip User Confirmation? |
+|-----------------|-----------------|---------------------------|
+| **0** | Proceed as monolithic (no decomposition) | Yes |
+| **1-3** | Show summary, auto-approve allowed | Yes |
+| **4-6** | **MUST show summary and ask user confirmation** | **NO** |
+| **>6** | **MUST suggest grouping and MUST ask confirmation** | **NO** |
+
+**Enforcement Rules**:
+1. Domains inferred from PRD requirements count toward the threshold
+2. If threshold is 4+ → You **MUST NOT** proceed without user confirmation
+3. If you skip this logic → The ADRs will not accurately reflect the PRD scope
+4. **Self-check before Phase 1**: Did I present Step 3? Did I apply threshold logic? If 4+ sub-systems, did I get confirmation?
 
 #### Step 5: Output
 

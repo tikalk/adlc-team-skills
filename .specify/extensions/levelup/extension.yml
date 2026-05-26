@@ -3,8 +3,8 @@ schema_version: "1.0"
 extension:
   id: "levelup"
   name: "LevelUp - Team AI Directives Contributor"
-  version: "1.1.9"
-  description: "Discover and contribute context modules (rules, personas, examples, skills) to team-ai-directives using Context Directive Records (CDRs)"
+  version: "1.6.0"
+  description: "Discover and contribute context modules to team-ai-directives using CDRs. Features multi-agent sub-system analysis with cross-system pattern detection, inconsistency tracking, signal gate filtering, verification metadata, and freshness tracking."
   author: "Agentic SDLC Team"
   repository: "https://github.com/tikalk/agentic-sdlc-spec-kit"
   license: "MIT"
@@ -40,13 +40,13 @@ provides:
     # Build single skill from user input
     - name: "adlc.levelup.skills"
       file: "commands/skills.md"
-      description: "Build a single skill from accepted CDRs based on user input"
+      description: "Build a single skill from accepted CDRs. Use when user says 'build skill', 'create skill from CDR', or 'package as skill'."
       aliases: ["levelup.skills"]
 
-    # Compile CDRs to PR
+    # Compile CDRs to PR with memory engineering
     - name: "adlc.levelup.implement"
       file: "commands/implement.md"
-      description: "Compile accepted CDRs into a draft PR to team-ai-directives repository"
+      description: "Compile accepted CDRs into a draft PR with signal gate filtering, YAML frontmatter, and verification metadata"
       aliases: ["levelup.implement"]
 
     # Trace - Session execution tracing
@@ -55,11 +55,17 @@ provides:
       description: "Generate and validate AI session execution traces from implementation metadata"
       aliases: ["levelup.trace"]
 
-    # Validate - Rule conflict detection
+    # Validate - Rule conflict detection and verification
     - name: "adlc.levelup.validate"
       file: "commands/validate.md"
-      description: "Scan team-ai-directives for rule conflicts and create CDRs for resolution"
+      description: "Scan team-ai-directives for rule conflicts, update verification timestamps, and create CDRs for resolution"
       aliases: ["levelup.validate"]
+
+    # Repair - Re-index CDR.md, .skills.json, and AGENTS.md
+    - name: "adlc.levelup.repair"
+      file: "commands/repair.md"
+      description: "Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives with auto-fix"
+      aliases: ["levelup.repair"]
 
   config:
     - name: "levelup-config.yml"
@@ -115,6 +121,12 @@ tags:
   - "trace"
   - "session-tracing"
   - "validation"
+  - "memory-engineering"
+  - "signal-gate"
+  - "verification"
+  - "subagents"
+  - "cross-system-analysis"
+  - "inconsistency-detection"
 
 defaults:
   cdr:
@@ -125,7 +137,31 @@ defaults:
     drafts_location: ".specify/drafts/skills"
   team_directives:
     # Resolved from SPECIFY_TEAM_DIRECTIVES env var
-    # Fallback paths (in order):
-    # 1. .specify/team-ai-directives (submodule)
-    # 2. .specify/memory/team-ai-directives (clone)
+    # Fallback path: .specify/team-ai-directives (submodule)
     env_var: "SPECIFY_TEAM_DIRECTIVES"
+  memory_engineering:
+    signal_gate:
+      strict: true
+    verification:
+      age_warning_days: 30
+      auto_update_on_validate: true
+  state:
+    enabled: true
+    location: ".specify/levelup/state.json"
+    version: "1.1.0"
+  subagents:
+    enabled: true
+    sequential: true
+    phases:
+      - discovery
+      - pattern_analysis
+      - synthesis
+  cross_system:
+    enabled: true
+    threshold: 0.5
+    detect_inconsistencies: true
+    create_inconsistency_cdrs: true
+  team_directives_comparison:
+    enabled: true
+    check_similarity: true
+    flag_gaps: true

@@ -7,11 +7,11 @@
 
 ---
 
-## 4. Success Metrics
+## 5. Success Metrics
 
 **Purpose**: Define measurable outcomes
 
-### 4.1 Key Metrics
+### 5.1 Key Metrics
 
 | Category | Metric | Target | Measurement Method |
 |----------|--------|--------|-------------------|
@@ -20,23 +20,35 @@
 | Revenue/Value | [Metric] | [Target] | [How to measure] |
 | Quality | [Metric] | [Target] | [How to measure] |
 
-### 4.2 Leading Indicators
+### 5.2 Leading Indicators
 
 | Indicator | Target | Timeframe |
 |-----------|--------|-----------|
 | [Early signal metric] | [Target] | [When to measure] |
 
-### 4.3 Lagging Indicators
+### 5.3 Lagging Indicators
 
 | Indicator | Target | Timeframe |
 |-----------|--------|-----------|
 | [Long-term outcome metric] | [Target] | [When to measure] |
 
-### 4.4 Metrics Traced to PDRs
+### 5.4 Metrics Traced to PDRs
 
 | Metric | Target | PDR | Rationale |
 |--------|--------|-----|-----------|
 | [Metric] | [Target] | PDR-XXX | [Why this metric] |
+
+### 5.5 Metric Baselines
+
+| Metric | Current Baseline | Target | Delta |
+|--------|-----------------|--------|-------|
+| [Metric] | [Current value] | [Target value] | [Expected change] |
+
+### 5.6 Measurement Cadence
+
+| Metric | Frequency | Owner | Review Forum |
+|--------|-----------|-------|-------------|
+| [Metric] | [Daily/Weekly/Monthly] | [Team/Person] | [Meeting/Dashboard] |
 
 ---
 

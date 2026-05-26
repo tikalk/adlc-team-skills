@@ -14,7 +14,17 @@
 
 [High-level description of what the system does and its boundaries]
 
-### 3.1.2 External Entities
+### 3.1.2 Stakeholders
+
+| Stakeholder | Role | Key Concerns | Priority |
+|-------------|------|--------------|----------|
+| [STAKEHOLDER_1] | [e.g., End User] | [e.g., Usability, performance] | High |
+| [STAKEHOLDER_2] | [e.g., System Administrator] | [e.g., Monitoring, maintenance] | Medium |
+| [STAKEHOLDER_3] | [e.g., Security Officer] | [e.g., Data protection, compliance] | Critical |
+
+**Definition**: Stakeholders are HUMAN actors who interact with or have interest in the system. This includes end users, administrators, operators, and business owners. For automated/external systems, see 3.1.3 External Entities.
+
+### 3.1.3 External Entities
 
 | Entity | Type | Interaction Type | Data Exchanged | Protocols |
 |--------|------|------------------|----------------|-----------|

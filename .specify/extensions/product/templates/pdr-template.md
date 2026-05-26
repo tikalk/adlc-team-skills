@@ -2,9 +2,10 @@
 
 ## PDR Index
 
-| ID | Category | Decision | Status | Date | Owner |
-|----|----------|----------|--------|------|-------|
-| PDR-001 | [Category] | [First decision title] | Proposed | YYYY-MM-DD | [Owner] |
+| ID | Category | Cross-Area | Status | Date | Owner |
+|----|----------|------------|--------|------|-------|
+| PDR-001 | [Category] | ✓ | Proposed | YYYY-MM-DD | [Owner] |
+| PDR-002 | [Category] | | Proposed | YYYY-MM-DD | [Owner] |
 
 ---
 
@@ -27,6 +28,59 @@ YYYY-MM-DD
 [Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature | NFR | **Milestone**]
 
 This field indicates what type of product decision this PDR represents.
+
+### Feature-Area
+
+[core | business | growth | operations | platform | auth | ...]
+
+The primary feature-area this PDR belongs to.
+
+### Cross-Feature-Area Metadata
+> Populated automatically when pattern is detected across multiple feature-areas during multi-agent analysis
+
+- **Appears in**: [List of feature-area IDs where pattern was found - e.g., core, business, growth]
+- **Cross-area count**: [Number of feature-areas with this pattern]
+- **Is cross-area pattern**: [✓ | ] (if appears in ≥2 feature-areas)
+- **Strategic score**: [0.0-1.0 calculated by Pattern Agent]
+- **Team-product-directives match**: [None | Partial | Exact]
+  - **Similar patterns**: [List of similar existing TPD patterns with similarity scores]
+
+### Cross-Feature-Area Analysis
+
+Analysis of pattern across feature-areas:
+
+| Feature-Area | Implementation | Confidence | Evidence | Notes |
+|--------------|----------------|------------|----------|-------|
+| core | [Pattern details or "Not implemented"] | High/Medium/Low | [File/line refs] | [Any notes] |
+| business | [Pattern details or "Not implemented"] | High/Medium/Low | [File/line refs] | [Any notes] |
+| growth | [Pattern details or "Not implemented"] | High/Medium/Low | [File/line refs] | [Any notes] |
+
+**Cross-area findings**:
+- **Feature-areas with pattern**: [N] of [Total]
+- **Implementations consistent**: [Yes/No]
+- **Variance noted**: [Description of differences if inconsistent]
+
+### ⚠️ Inconsistency Flags
+> Populated by Synthesis Agent when conflicts detected across feature-areas
+
+**Flag [FLG-XXX]**: [Inconsistency Type]
+- **Severity**: [High | Medium | Low]
+- **Issue**: [Description of conflict]
+- **Affected feature-areas**: [List of areas]
+- **Conflicting PDRs**: [List of related PDRs]
+- **Recommended Action**: Run `/product.clarify` to resolve
+- **Resolution**: [Pending | Resolved - see resolution details]
+
+### Team-Product-Directives Comparison
+
+Comparison against existing team-product-directives content:
+
+- **Exact match**: [Yes/No - is this already in TPD?]
+- **Similar existing patterns**: 
+  - `[pricing/saas-subscription.md]` - Similarity: 0.65 - [Description]
+- **Gap identified**: [Yes/No - should this be added to TPD?]
+- **Potential conflict**: [Any existing patterns that might conflict]
+- **Enhancement opportunity**: [Could enhance existing TPD pattern]
 
 ### Context
 
@@ -52,6 +106,25 @@ This field indicates what type of product decision this PDR represents.
 
 **Rationale:**
 [Why this option was chosen over alternatives]
+
+### Decision Flow
+
+```mermaid
+flowchart LR
+    Problem[Problem:<br/>[Problem Statement]] --> Options{Options}
+    Options --> A[Option A:<br/>[Alternative A]]
+    Options --> B[Option B:<br/>[Chosen Option]]
+    Options --> C[Option C:<br/>[Alternative C]]
+    
+    A -->|Rejected| WhyA[Reason:<br/>[Why not]]
+    C -->|Rejected| WhyC[Reason:<br/>[Why not]]
+    B -->|Selected| Decision[Decision:<br/>[Decision Statement]]
+    
+    style B fill:#4a9eff,color:#fff,stroke:#333,stroke-width:2px
+    style Decision fill:#f47721,color:#fff,stroke:#333,stroke-width:2px
+```
+
+> 💡 **Visual Impact Analysis**: [View detailed impact map](visuals/impact-map.md) for this decision.
 
 ### Consequences
 

@@ -1,0 +1,251 @@
+{
+  "synthesis_metadata": {
+    "analysis_date": "2026-05-18",
+    "synthesis_agent": "Agentic SDLC Ecosystem Analysis",
+    "feature_areas_analyzed": 6,
+    "total_patterns_identified": 20,
+    "cross_area_patterns": 19,
+    "inconsistencies_flagged": 7
+  },
+  "inconsistency_flags": [
+    {
+      "flag_id": "FLG-001",
+      "type": "priority_conflict",
+      "severity": "high",
+      "feature_areas_affected": ["Spec Kit", "Runner", "Agent Runner", "12-Factors"],
+      "conflicting_patterns": ["PDR-082", "Runner SYNC/ASYNC", "Agent Runner Eval-Gated", "12-Factor Dual Loop"],
+      "description": "Conflicting prioritization frameworks for SYNC vs ASYNC classification: Spec Kit optimizes for ease of use with automatic marker prediction, Runner requires explicit classification for K8s orchestration, Agent Runner adds verification layer that may override execution choice, and 12-Factors treats both as philosophically equal.",
+      "evidence": [
+        "PDR-082: 'Marker prediction accuracy: >85%' - Spec Kit auto-predicts markers",
+        "SPEC.md: '[ASYNC] tasks automatically spawn K8s pods' - Runner requires explicit classification",
+        "PRD.md: 'Eval-gated execution: Task completion determined by eval pass/fail' - Agent Runner verification override",
+        "PRD.md 1.4: 'Dual execution loops: SYNC and ASYNC' - 12-Factors philosophical equality"
+      ],
+      "recommendation": "Create unified execution classification framework with clear criteria at ecosystem level, document when Agent Runner verification overrides Spec Kit markers, and establish escalation path from auto-predicted to explicit markers."
+    },
+    {
+      "flag_id": "FLG-002",
+      "type": "implementation_divergence",
+      "severity": "high",
+      "feature_areas_affected": ["Spec Kit", "Runner", "12-Factors"],
+      "conflicting_patterns": ["PDR-079", "Spec Kit Git-Native", "Runner Clone-Based"],
+      "description": "Same pattern 'Git Strategy' has different implementations: PDR-079 defines unified dual-strategy (worktrees local + clones remote), Spec Kit focuses on worktrees for parallel execution but lacks remote strategy, Runner only implements clone-based for K8s pods, and no clear handoff mechanism exists.",
+      "evidence": [
+        "PDR-079: 'Local (Worktree Strategy): Multiple working directories from single clone'",
+        "PDR-079: 'Remote (Clone Strategy): Fresh clone per remote workspace'",
+        "PDR-079: 'State Handoff: Local → Remote: Commit and push'",
+        "SPEC.md: 'Each pod: git clone → implement → git push → done'",
+        "SPEC.md: 'Pod starts: git clone -b <branch>' - only clone strategy"
+      ],
+      "recommendation": "Implement PDR-079's unified strategy across all areas, add worktree support to Runner for local mode, create clear handoff protocol between local/remote workspaces, and document workspace selection criteria."
+    },
+    {
+      "flag_id": "FLG-003",
+      "type": "metric_inconsistency",
+      "severity": "medium",
+      "feature_areas_affected": ["Agent Runner", "Team Directives", "Tikal Directives"],
+      "conflicting_patterns": ["Agent Runner Pass/Fail", "Tikal 100-Point Scoring", "PDR-083 Fast Verification"],
+      "description": "Different definitions of success and quality metrics: Agent Runner uses binary pass/fail eval-gated execution, Tikal uses 100-point skill scoring with PromptFoo, PDR-083 uses fast transcript-based verification with 3-retry limit, and Spec Kit uses context coherence (Task 7 ≈ Task 1). No mapping exists between these quality domains.",
+      "evidence": [
+        "PRD.md: 'Eval-gated execution: Task completion determined by eval pass/fail, not file existence'",
+        "Tikal README.md: '163/163 tests passing' - comprehensive test suite",
+        "Tikal README.md: 'LLM-as-a-Judge evaluations for content quality, security, and coherence'",
+        "PDR-083: 'Binary Judgment: Pass/fail based on whether goal appears achieved'",
+        "PDR-083: 'Verification latency: <2s (p95)' - fast lightweight model",
+        "PRD.md 4.2: 'Context coherence: Task 7 ≈ Task 1'"
+      ],
+      "recommendation": "Create unified quality metrics taxonomy, map Tikal's 100-point scale to binary pass/fail thresholds, define when to use fast vs comprehensive evaluation, and document quality gate hierarchy across ecosystem."
+    },
+    {
+      "flag_id": "FLG-004",
+      "type": "architecture_conflict",
+      "severity": "medium",
+      "feature_areas_affected": ["Spec Kit", "Runner", "12-Factors"],
+      "conflicting_patterns": ["PDR-078 Hybrid", "Spec Kit Local-First", "Runner Remote-First"],
+      "description": "Conflicting architectural preferences for local vs remote execution: PDR-078 proposes context-dependent hybrid (auto-select based on task), Spec Kit defaults to local development with dev containers, Runner requires K8s infrastructure (remote-first), and 12-Factors Factor X implies environment parity which conflicts with divergent implementations.",
+      "evidence": [
+        "PDR-078: 'Auto-select based on task context' - hybrid approach",
+        "PDR-078: 'Local Workspaces: <30 second provisioning'",
+        "PDR-078: 'Remote Workspaces: <60 second provisioning'",
+        "Spec Kit README.md: 'The coding agent will execute local CLI commands' - local first",
+        "Runner README.md: 'K8s-based async agent execution' - remote first",
+        "Runner README.md: '[ASYNC] tasks automatically spawn K8s pods'"
+      ],
+      "recommendation": "Implement PDR-078's auto-selection logic in Spec Kit, make Runner optional for teams without K8s, create clear migration path from local to remote, and document environment requirements for each pattern."
+    },
+    {
+      "flag_id": "FLG-005",
+      "type": "persona_mismatch",
+      "severity": "low",
+      "feature_areas_affected": ["Team Directives", "Tikal Directives", "Agent Runner"],
+      "conflicting_patterns": ["PDR-080 AI Team Lead", "Team Directives Personas", "12-Factor Developer as Orchestrator"],
+      "description": "Same persona name 'AI Team Lead' has different characteristics: PDR-080 defines as developer-focused (fast iteration, local control), 12-Factors positions Developer as Orchestrator (strategic mindset), Agent Runner's Squad Mode requires orchestration capabilities, and Team Directives lacks explicit AI Team Lead persona entirely.",
+      "evidence": [
+        "PDR-080: 'Persona A: AI Team Lead (Developer)'",
+        "PDR-080: 'Goals: Fast iteration, local control, git integration'",
+        "PDR-080 Quote: 'I want agents that work with my existing dev setup'",
+        "12-Factors: 'Factor I: Developer as Orchestrator' - strategic mindset",
+        "PRD.md: 'Squad Mode: PRD → Implementation workflow with human-in-the-loop' - orchestration",
+        "Team Directives personas: Only DevOps, Java, Python, Data, Platform - no AI Team Lead"
+      ],
+      "recommendation": "Create canonical AI Team Lead persona in Team Directives, align PDR-080 and 12-Factors definitions, add orchestration capabilities to persona definition, and document persona usage context (when to apply which variant)."
+    },
+    {
+      "flag_id": "FLG-006",
+      "type": "duplicate_problems",
+      "severity": "medium",
+      "feature_areas_affected": ["Spec Kit", "Team Directives", "12-Factors"],
+      "conflicting_patterns": ["Team Directives 3-Tier", "Spec Kit Constitution+Skills", "12-Factor 3-Tier Context"],
+      "description": "Same problem (context management) has different solutions with different terminology: Team Directives uses Constitution → Persona → Skill (explicit 3-tier), Spec Kit uses Constitution + Skills (2-tier with implicit persona), 12-Factors uses Three-tier context (Local, Team, External), and PDR-016 uses Graduated Compaction for memory management.",
+      "evidence": [
+        "Team Directives README.md: 'Loading Order: 1. Constitution → 2. Persona → 3. Skill'",
+        "Spec Kit README.md: '/spec.constitution: Create or update project governing principles'",
+        "Spec Kit README.md: 'Skills: Self-contained capabilities with trigger-based activation'",
+        "12-Factors: 'Factor VIII: Context Scaffolding'",
+        "12-Factors: 'Three-tier context: Local, Team, External'",
+        "PDR-016: 'Graduated Compaction' - memory management approach"
+      ],
+      "recommendation": "Align terminology across all areas, map Team Directives' 3-tier to 12-Factors' tiers, document when each loading order applies, and create unified context management specification."
+    },
+    {
+      "flag_id": "FLG-007",
+      "type": "implementation_divergence",
+      "severity": "medium",
+      "feature_areas_affected": ["Agent Runner", "PDR-083", "Tikal Directives"],
+      "conflicting_patterns": ["PDR-083 Fast Transcript", "Agent Runner Eval-Gated", "Tikal PromptFoo"],
+      "description": "Milestone/task verification implemented differently: PDR-083 uses fast transcript-based with Haiku-3.5 equivalent at milestone completion, Agent Runner uses eval-gated pass/fail at task complete (model unspecified), Tikal uses PromptFoo comprehensive pre-merge, and Spec Kit uses context coherence at session-level.",
+      "evidence": [
+        "PDR-083: 'Transcript-Based Evaluation: Fast model (Haiku-3.5 equivalent)'",
+        "PDR-083: 'Binary Judgment: Pass/fail based on whether goal appears achieved'",
+        "PDR-083: '3-retry limit prevents infinite loops'",
+        "PRD.md: 'Eval-gated execution: Task completion determined by eval pass/fail'",
+        "Tikal README.md: 'Comprehensive evaluation framework with working PromptFoo integration'",
+        "Tikal README.md: 'LLM-as-a-Judge evaluations'"
+      ],
+      "recommendation": "Create verification pattern selection guide, define criteria for fast vs comprehensive evaluation, map Agent Runner evals to PDR-083 framework, and document cost/latency/accuracy trade-offs."
+    }
+  ],
+  "cross_area_patterns": [
+    {
+      "pattern_name": "Execution Model (SYNC/ASYNC)",
+      "feature_areas": ["Spec Kit", "Runner", "Agent Runner", "12-Factors"],
+      "consistency": "partial",
+      "notes": "All use [SYNC]/[ASYNC] markers but with different prioritization frameworks - Spec Kit auto-predicts, Runner requires explicit, Agent Runner adds verification layer"
+    },
+    {
+      "pattern_name": "Git Strategy (Worktree/Clone)",
+      "feature_areas": ["Spec Kit", "Runner", "PDR-079"],
+      "consistency": "partial",
+      "notes": "PDR-079 defines unified hybrid strategy but Spec Kit focuses on worktrees and Runner only implements clones - no unified implementation"
+    },
+    {
+      "pattern_name": "Context Loading Order",
+      "feature_areas": ["Spec Kit", "Agent Runner", "Team Directives", "Tikal Directives", "12-Factors"],
+      "consistency": "partial",
+      "notes": "Team/Tikal use Constitution→Persona→Skill, 12-Factors uses Local/Team/External, Spec Kit has Constitution+Skills with implicit persona"
+    },
+    {
+      "pattern_name": "Personas",
+      "feature_areas": ["Spec Kit", "Agent Runner", "Team Directives", "Tikal Directives"],
+      "consistency": "partial",
+      "notes": "DevOps Engineer, Python Developer, etc. consistent across Team/Tikal but AI Team Lead defined differently in PDR-080 vs 12-Factors"
+    },
+    {
+      "pattern_name": "Verification/Quality Gates",
+      "feature_areas": ["Spec Kit", "Agent Runner", "Tikal Directives"],
+      "consistency": "partial",
+      "notes": "Tikal uses 100-point scoring, Agent Runner uses binary pass/fail, PDR-083 adds fast transcript-based - no unified approach"
+    },
+    {
+      "pattern_name": "Dual Execution Loop",
+      "feature_areas": ["Agent Runner", "12-Factors"],
+      "consistency": "consistent",
+      "notes": "Agent Runner's Squad Mode + Spec Mode aligns with 12-Factors dual loop philosophy - both explicitly documented"
+    },
+    {
+      "pattern_name": "Constitution-Based Governance",
+      "feature_areas": ["Spec Kit", "Team Directives", "Tikal Directives"],
+      "consistency": "consistent",
+      "notes": "All use `.specify/memory/constitution.md` as foundational principles - fully aligned"
+    },
+    {
+      "pattern_name": "MCP Integration",
+      "feature_areas": ["Spec Kit", "Team Directives", "Tikal Directives"],
+      "consistency": "consistent",
+      "notes": "All use `.mcp.json` configuration pattern for MCP servers - fully aligned"
+    },
+    {
+      "pattern_name": "Git-Based State Management",
+      "feature_areas": ["Spec Kit", "Runner", "Agent Runner"],
+      "consistency": "consistent",
+      "notes": "All use git for state persistence with branch-based isolation - core pattern consistent"
+    },
+    {
+      "pattern_name": "Bimodal UX",
+      "feature_areas": ["PDR-080"],
+      "consistency": "gap",
+      "notes": "Only defined in PDR-080 - not implemented in other areas (CLI + Visual UI duality)"
+    },
+    {
+      "pattern_name": "Hybrid Workspace",
+      "feature_areas": ["PDR-078"],
+      "consistency": "gap",
+      "notes": "Only defined in PDR-078 - Spec Kit is local-first, Runner is remote-first, no hybrid implementation"
+    },
+    {
+      "pattern_name": "Dependency-Driven Orchestration",
+      "feature_areas": ["PDR-082"],
+      "consistency": "gap",
+      "notes": "Marker-based DAG orchestration only in PDR-082 - not implemented as cross-area pattern"
+    },
+    {
+      "pattern_name": "/goal Pattern",
+      "feature_areas": ["PDR-083"],
+      "consistency": "gap",
+      "notes": "Fast milestone verification only in PDR-083 - isolated pattern not integrated with Agent Runner evals"
+    }
+  ],
+  "summary_statistics": {
+    "by_severity": {
+      "high": 2,
+      "medium": 4,
+      "low": 1
+    },
+    "by_type": {
+      "priority_conflict": 1,
+      "implementation_divergence": 3,
+      "metric_inconsistency": 1,
+      "architecture_conflict": 1,
+      "persona_mismatch": 1,
+      "duplicate_problems": 1
+    },
+    "by_consistency": {
+      "consistent": 5,
+      "partial": 5,
+      "inconsistent": 0,
+      "gap": 4
+    }
+  },
+  "recommendations": {
+    "high_priority": [
+      "Create unified execution classification framework (FLG-001)",
+      "Implement PDR-079's hybrid git strategy across all areas (FLG-002)"
+    ],
+    "medium_priority": [
+      "Align Tikal's scoring with Agent Runner's binary gates (FLG-003)",
+      "Implement PDR-078's hybrid workspace in Spec Kit (FLG-004)",
+      "Align terminology and loading orders (FLG-006)",
+      "Create verification pattern selection guide (FLG-007)"
+    ],
+    "low_priority": [
+      "Create canonical AI Team Lead persona definition (FLG-005)"
+    ]
+  },
+  "next_steps": [
+    "Run /product.clarify for FLG-001 and FLG-002 (high severity)",
+    "Schedule Architecture Review for local/remote execution alignment",
+    "Create PDRs for unified patterns where gaps exist",
+    "Update Documentation to reflect cross-area consistency",
+    "Implement PDR-078 and PDR-079 in Spec Kit to close gaps"
+  ]
+}

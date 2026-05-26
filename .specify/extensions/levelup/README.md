@@ -6,6 +6,55 @@ Discover and contribute context modules (rules, personas, examples, skills) to t
 
 The LevelUp extension helps brownfield projects analyze their codebase and contribute reusable context modules back to the team's shared AI directives repository. It introduces **Context Directive Records (CDRs)** - similar to Architecture Decision Records (ADRs) - for tracking what, why, and how context is being contributed.
 
+## Memory Engineering (v1.3.0)
+
+LevelUp applies **agent memory engineering principles** inspired by production agent memory systems (Claude Code, Codex CLI, Hermes). This ensures directives remain high-quality, fresh, and trustworthy over time.
+
+### Signal Gate
+
+Before publishing to team-ai-directives, CDRs must pass a **signal gate** (strict mode):
+
+| Check | Description | Fail Action |
+|-------|-------------|-------------|
+| **Team-wide** | Pattern applicable across projects | **Skip** |
+| **High Value** | Saves >30min per future use | **Skip** |
+| **Unique** | Not duplicate of existing directive | **Skip** |
+| **Evidence** | Has concrete commits and/or files | **Skip** |
+
+**No-op is valid** - CDRs without evidence remain in local drafts for refinement.
+
+### Verification Metadata
+
+Published directives include YAML frontmatter tracking freshness:
+
+```yaml
+---
+id: rule-python-error-handling
+cdr_ref: CDR-2026-001
+created: 2026-04-15
+modified: 2026-05-18
+verified: 2026-05-18
+age_days: 33
+evidence:
+  - commit: abc123
+    file: src/error_handler.py
+---
+
+> ⚠️ **Memory Verification**
+> This directive is 33 days old. Before applying:
+> - [ ] Pattern still exists in current codebase
+> - [ ] Rule is actively followed by team
+> - [ ] No conflicting rules introduced
+```
+
+### Verification Workflow
+
+Run `/levelup.validate` to:
+1. Scan all directives for conflicts
+2. Update `verified` timestamps for valid directives
+3. Report stale directives (>30 days without verification)
+4. Create CDRs for detected conflicts
+
 ## Commands
 
 | Command | Purpose |
@@ -17,6 +66,7 @@ The LevelUp extension helps brownfield projects analyze their codebase and contr
 | `/levelup.implement` | Compile accepted CDRs into a PR to team-ai-directives |
 | `/levelup.trace` | Generate and validate AI session execution traces |
 | `/levelup.validate` | Scan team-ai-directives for rule conflicts |
+| `/levelup.repair` | Re-index CDR.md, .skills.json, and AGENTS.md |
 
 ## Quick Start
 
@@ -92,6 +142,21 @@ CDRs define:
 | **Accepted** | Approved for implementation |
 | **Rejected** | Not approved (reason documented in CDR) |
 
+### Target Module Structure
+
+Rules are organized by **functional category** (not technology):
+
+| Category | Purpose | Example Target |
+|----------|---------|----------------|
+| `style-guides/` | Language idioms, conventions | `rules/style-guides/python_pydantic_patterns.md` |
+| `framework/` | Architecture, DI, DDD | `rules/framework/python_di_container.md` |
+| `security/` | Authentication, secrets | `rules/security/typescript_auth_middleware.md` |
+| `testing/` | Test frameworks, fixtures | `rules/testing/python_test_architecture.md` |
+| `devops/` | CI/CD, infrastructure | `rules/devops/github_actions.md` |
+| `data/` | Data patterns, provenance | `rules/data/python_provenance_tracking.md` |
+
+**Filename format**: `{technology}_{pattern_name}.md` (use underscores)
+
 ## Skill Types Taxonomy
 
 When discovering skills, classify them using Anthropic's 9-category taxonomy from "Lessons from Building Claude Code: How We Use Skills". This helps teams build better skills by guiding CDR classification during discovery.
@@ -128,7 +193,6 @@ The extension resolves the team-ai-directives path in this order:
 
 1. `SPECIFY_TEAM_DIRECTIVES` environment variable
 2. `.specify/team-ai-directives` (submodule - recommended)
-3. `.specify/memory/team-ai-directives` (clone - legacy)
 
 ### Extension Config
 
@@ -189,7 +253,48 @@ levelup.validate ◀────────────────────
       ▼
 levelup.clarify
 (Resolve conflicts)
+
+
+levelup.repair
+(Re-index TD files)
+      │
+      │ [after manual edits]
+      ▼
+levelup.validate
+(Verify consistency)
 ```
+
+### Repair Command
+
+Re-index team-ai-directives files when they become inconsistent:
+
+```bash
+/levelup.repair
+```
+
+**Flags**:
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Report only, don't write changes |
+| `--cdr-only` | Only repair CDR.md |
+| `--skills-only` | Only repair .skills.json |
+| `--agents-only` | Only repair AGENTS.md |
+| (default) | Repair all three indexes with auto-fix |
+
+**What it repairs**:
+
+| Target | Repairs |
+|--------|---------|
+| **AGENTS.md** | Creates if missing, restores if corrupted |
+| **CDR.md** | Rebuilds index from context_modules/ |
+| **.skills.json** | Rebuilds manifest from skills/ |
+
+**Auto-fix actions**:
+
+- Adds YAML frontmatter to orphan context modules
+- Generates .skills.json entries for orphan skills
+- Removes entries for missing files
 
 ## Related Issues
 

@@ -138,7 +138,7 @@ mkdir -p "$REPO_ROOT/.specify/drafts"
 AD_FILE="$REPO_ROOT/AD.md"
 ADR_DRAFTS_FILE="$REPO_ROOT/.specify/drafts/adr.md"
 ADR_MEMORY_FILE="$REPO_ROOT/.specify/memory/adr.md"
-ADR_FILE="$REPO_ROOT/.specify/drafts/adr.md"  # Default to drafts
+# Note: ADR_FILE variable removed - use ADR_DRAFTS_FILE or ADR_MEMORY_FILE explicitly
 TEMPLATE_FILE="$REPO_ROOT/.specify/templates/architecture-template.md"
 AD_TEMPLATE_FILE="$REPO_ROOT/.specify/templates/AD-template.md"
 
@@ -694,12 +694,20 @@ EOF
 
 # Action: Clarify (refine existing ADRs)
 action_clarify() {
-    local adr_file="$REPO_ROOT/.specify/memory/adr.md"
-    
+    # Check drafts first (primary working location), fall back to memory if drafts is empty
+    local adr_file="$REPO_ROOT/.specify/drafts/adr.md"
+    local fallback_adr_file="$REPO_ROOT/.specify/memory/adr.md"
+
     if [[ ! -f "$adr_file" ]]; then
-        echo "❌ ADR file does not exist: $adr_file" >&2
-        echo "Run '/architect.specify' or '/architect.init' first" >&2
-        exit 1
+        # Drafts doesn't exist - check memory as fallback
+        if [[ -f "$fallback_adr_file" ]]; then
+            echo "ℹ️  Drafts ADR file not found, using memory ADRs" >&2
+            adr_file="$fallback_adr_file"
+        else
+            echo "❌ ADR file does not exist: $adr_file" >&2
+            echo "Run '/architect.specify' or '/architect.init' first" >&2
+            exit 1
+        fi
     fi
     
     echo "🔍 Loading existing ADRs for clarification..." >&2

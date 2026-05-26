@@ -128,6 +128,34 @@ Validate feature spec alignment with PRD (READ-ONLY).
 - Metric alignment
 - Traceability verification
 
+### Validation Scripts (v1.5.2+)
+
+Validate PRD/PDR compliance before or after generation:
+
+```bash
+# Validate PRD compliance (strict mode)
+.specify/extensions/product/scripts/bash/validate-prd.sh PRD.md --strict
+
+# Validate with warnings only
+.specify/extensions/product/scripts/bash/validate-prd.sh PRD.md --warn
+
+# Validate PDR completeness
+.specify/extensions/product/scripts/bash/validate-pdr.sh .specify/drafts/pdr.md
+```
+
+**Validation Checks:**
+
+- Visual Summary is Section 1 (numbered)
+- No ASCII diagrams in main content (Mermaid required)
+- All placeholders filled
+- PDR traceability for requirements
+- Constitution alignment (if claimed)
+
+**Exit Codes:**
+- `0`: All checks passed ✓
+- `1`: Errors found (strict mode)
+- `2`: Warnings only (warn mode)
+
 ## Workflow
 
 ### Greenfield Product
@@ -233,8 +261,29 @@ Located in `templates/sections/`:
 ## Templates
 
 - [pdr-template.md](./templates/pdr-template.md) - Product Decision Record format
-- [prd-template.md](./templates/prd-template.md) - Product Requirements Document format
+- [prd-template.md](./templates/prd-template.md) - Product Requirements Document format (v1.5.2: Visual Summary is Section 1)
 - `templates/sections/` - Individual section templates for DAG workflow
+
+### Template Compliance (v1.5.2+)
+
+All templates include compliance banners reminding you to:
+- ✓ Use Mermaid diagrams (NOT ASCII art)
+- ✓ Fill ALL [PLACEHOLDERS]
+- ✓ Trace content to PDRs
+- ✓ Validate with `./scripts/validate-prd.sh --strict`
+
+**Note:** v1.5.2 restructured `prd-template.md`:
+- Section 1: Visual Summary (numbered)
+- Section 2: Document Information
+- Sections 3-13: Content sections
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for:
+- Common issues and fixes
+- ASCII to Mermaid conversion
+- Validation error resolution
+- Regeneration procedures
 
 ## Examples
 

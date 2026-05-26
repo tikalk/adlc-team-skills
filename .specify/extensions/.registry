@@ -30,35 +30,6 @@
       "registered_skills": [],
       "installed_at": "2026-05-16T18:25:32.795874+00:00"
     },
-    "levelup": {
-      "version": "1.1.9",
-      "source": "local",
-      "manifest_hash": "sha256:a41a0ccb92b5a783fd0c048a24f51907507b5a0adf7d5d788801f41804806515",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "opencode": [
-          "levelup.init",
-          "levelup.clarify",
-          "levelup.specify",
-          "levelup.skills",
-          "levelup.implement",
-          "levelup.trace",
-          "levelup.validate"
-        ],
-        "pi": [
-          "levelup.init",
-          "levelup.clarify",
-          "levelup.specify",
-          "levelup.skills",
-          "levelup.implement",
-          "levelup.trace",
-          "levelup.validate"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-05-16T18:25:33.177857+00:00"
-    },
     "quick": {
       "version": "1.1.0",
       "source": "local",
@@ -74,26 +45,16 @@
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-05-16T18:25:33.234066+00:00"
+      "installed_at": "2026-05-18T08:13:52.239065+00:00"
     },
     "product": {
-      "version": "1.1.12",
-      "source": "local",
-      "manifest_hash": "sha256:92c5abd56a4f68e690f500df3d18f2f8aad410130fe71f09f6ee0072e92f15c9",
+      "version": "1.5.6",
+      "source": "bundled",
+      "manifest_hash": "sha256:12a06ca8e9446b16be07902a687feb55af2383dfbc1a64fe750bfba285fa1e97",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
         "opencode": [
-          "product.init",
-          "product.specify",
-          "product.clarify",
-          "product.implement",
-          "product.analyze",
-          "product.validate",
-          "product.roadmap",
-          "product.link"
-        ],
-        "pi": [
           "product.init",
           "product.specify",
           "product.clarify",
@@ -108,9 +69,9 @@
       "installed_at": "2026-05-16T18:26:01.235009+00:00"
     },
     "architect": {
-      "version": "2.0.6",
-      "source": "local",
-      "manifest_hash": "sha256:112821ead8c8a5ec3f14056cff6817fa0041a8a6ab043a418439bfdb78772c50",
+      "version": "2.1.0",
+      "source": "bundled",
+      "manifest_hash": "sha256:3aa277b4af37d14b5b5cf09a8d82246559e204d09f9cd3b62fc26ca7f7719641",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -121,18 +82,49 @@
           "architect.implement",
           "architect.analyze",
           "architect.validate"
-        ],
-        "pi": [
-          "architect.init",
-          "architect.specify",
-          "architect.clarify",
-          "architect.implement",
-          "architect.analyze",
-          "architect.validate"
         ]
       },
       "registered_skills": [],
       "installed_at": "2026-05-16T18:26:14.884116+00:00"
+    },
+    "levelup": {
+      "version": "1.6.0",
+      "source": "bundled",
+      "manifest_hash": "sha256:96fc8a58df4fb7c7b1f0b2a6c869ad7df6b0e9d3ef2c2cf685a34c3ab54a9053",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "levelup.init",
+          "levelup.clarify",
+          "levelup.specify",
+          "levelup.skills",
+          "levelup.implement",
+          "levelup.trace",
+          "levelup.validate",
+          "levelup.repair"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-18T08:13:51.906157+00:00"
+    },
+    "team-ai-directives": {
+      "version": "1.7.1",
+      "source": "reference",
+      "path": "/home/lior/dev/agentic-sdlc/agentic-sdlc-team-ai-directives",
+      "manifest_hash": "sha256:9cb0a6363a42dd8c1e418764a418600731a74ab067587f5a79ff6f8cadd06e00",
+      "enabled": true,
+      "priority": 1,
+      "registered_commands": {
+        "opencode": [
+          "team.verify",
+          "team.discover",
+          "team.constitution",
+          "team.release"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-23T11:09:47.253948+00:00"
     }
   }
 }

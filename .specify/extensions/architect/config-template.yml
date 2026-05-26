@@ -32,3 +32,7 @@ analysis:
   # Severity thresholds for blocking
   block_on_critical: true
   block_on_high: false
+  
+  # View consistency checks (Pass E)
+  technology_neutrality: true    # E.6: Check functional view uses architectural roles, not product names
+  view_parity: true              # E.7: Check functional elements map to development technologies

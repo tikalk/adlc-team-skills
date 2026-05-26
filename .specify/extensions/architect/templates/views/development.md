@@ -11,6 +11,8 @@
 
 **Purpose**: Constraints for developers - code organization, dependencies, CI/CD
 
+> This view maps Functional View §3.2 architectural roles to specific technologies. See §3.5.2 for the technology stack mapping.
+
 ### 3.5.1 Code Organization
 
 ```text
@@ -27,7 +29,50 @@ project-root/
 └── infra/                # Infrastructure as code
 ```
 
-### 3.5.2 Module Dependencies
+### 3.5.2 Technology Stack Mapping
+
+Maps Functional View (§3.2) architectural roles to concrete technology choices.
+
+| Functional Role | Technology Choice | Version/Variant | ADR Reference |
+|-----------------|-------------------|-----------------|---------------|
+| App Shell | [e.g., Next.js 14] | [e.g., App Router] | [ADR-XXX] |
+| Database | [e.g., Neon PostgreSQL] | [e.g., Serverless] | [ADR-XXX] |
+| Object Storage | [e.g., Vercel Blob] | | [ADR-XXX] |
+| AI Gateway | [e.g., Vercel AI Gateway] | | [ADR-XXX] |
+| Workflow Runtime | [e.g., Vercel Workflow] | | [ADR-XXX] |
+
+**Mapping Rules:**
+- N:1 mappings allowed (multiple functional elements → one technology)
+- Every technology choice MUST reference a supporting ADR
+- Generic roles (Database) map to specific products (Neon PostgreSQL)
+
+### 3.5.3 Technology Architecture
+
+Concrete instantiation of Functional View §3.2.2 element interactions using specific technologies.
+
+```mermaid
+graph TD
+    %% Technology-specific labels mapped from Functional View
+    AppImpl["[Technology]<br/>[Variant]"]:::implNode
+    DBImpl["[Technology]<br/>[Variant]"]:::implNode
+    StorageImpl["[Technology]<br/>[Variant]"]:::implNode
+    AIGWImpl["[Technology]<br/>[Variant]"]:::implNode
+    WorkflowImpl["[Technology]<br/>[Variant]"]:::implNode
+    
+    AppImpl -->|ORM/Client| DBImpl
+    AppImpl -->|SDK| StorageImpl
+    AppImpl -->|API Routes| AIGWImpl
+    AppImpl -->|Triggers| WorkflowImpl
+    
+    classDef implNode fill:#e67e22,stroke:#333,stroke-width:2px,color:#fff
+```
+
+**Diagram Guidelines:**
+- Mirror the structure of Functional View §3.2.2
+- Replace generic labels with concrete technology names
+- Include connection mechanisms (SDK, ORM, API, etc.)
+
+### 3.5.4 Module Dependencies
 
 **Dependency Rules:**
 
@@ -48,13 +93,13 @@ graph LR
     class API,SVC,REPO layer
 ```
 
-### 3.5.3 Build & CI/CD
+### 3.5.5 Build & CI/CD
 
 - **Build System**: [e.g., npm, gradle, cargo]
 - **CI Pipeline**: [Key stages]
 - **Deployment Strategy**: [e.g., Blue-green, rolling]
 
-### 3.5.4 Development Standards
+### 3.5.6 Development Standards
 
 - **Coding Standards**: [e.g., ESLint config, PEP 8]
 - **Review Requirements**: [e.g., 2 approvals]
@@ -93,6 +138,18 @@ _Source ADRs: [ADR-XXX]_
 [See: templates/perspectives/development-resource.md]
 
 _Source ADRs: [ADR-XXX]_
+
+---
+
+## Validation Checklist
+
+Before finalizing this view, verify:
+
+- [ ] **Technology Mapping**: Every Functional View §3.2 element has a corresponding entry in §3.5.2 (N:1 mappings acceptable)
+- [ ] **ADR References**: Every technology choice in §3.5.2 references a supporting ADR
+- [ ] **Diagram Parity**: Technology Architecture diagram (§3.5.3) mirrors Functional View diagram structure
+- [ ] **Code Alignment**: Code organization reflects the technology stack choices
+- [ ] **Dependency Rules**: Module dependencies are consistent with technology constraints
 
 ---
 

@@ -124,6 +124,13 @@ Even in brownfield discovery, the **Functional structure is foundational**:
 
 **When**: This phase runs automatically when the codebase is detected as having multiple distinct modules/packages. Use `--no-decompose` to skip.
 
+**Detection Source Reconciliation** (CRITICAL):
+The setup script may report "No distinct sub-systems detected from directory structure" while your AI analysis identifies sub-systems through code patterns (import relationships, technology boundaries, domain logic). When this occurs:
+- **TRUST your AI analysis** over the script output
+- **ALWAYS execute Step 4** with your identified sub-systems
+- **NEVER default to monolithic analysis** when you've identified sub-systems through ANY method
+- The threshold logic applies to ALL detected sub-systems, regardless of detection source
+
 #### Step 1: Directory Structure Analysis
 
 Analyze the codebase for distinct sub-systems based on directory structure:
@@ -159,7 +166,7 @@ If database is accessible, detect sub-systems from schema:
 | PostgreSQL schemas | `auth.`, `payments.` schema separation |
 | Separate databases | Multiple databases in docker-compose |
 
-#### Step 4: Sub-System Proposal (Interactive)
+#### Step 4: Sub-System Proposal (Interactive) - MANDATORY if sub-systems identified
 
 Present detected sub-systems to user for confirmation:
 
@@ -188,6 +195,13 @@ I've identified the following sub-systems from your codebase:
 - Specific changes (e.g., "merge 1+2", "split 3", "add Notifications")
 ```
 
+**CRITICAL**: If you have identified ANY sub-systems through ANY method (script detection, AI analysis of code patterns, or user input), you **MUST** execute this step. 
+- Do **NOT** proceed to Phase 1 as "monolithic" if sub-systems exist
+- Do **NOT** ignore sub-systems detected through AI analysis just because the script reported "none detected"
+- You **MUST** get user confirmation when 4+ sub-systems are identified
+
+Failure to follow this step invalidates the entire ADR discovery process.
+
 #### Step 5: Decomposition Decision
 
 Based on user response:
@@ -199,11 +213,20 @@ Based on user response:
 | Modifications | Adjust sub-systems, then proceed |
 | Empty/Default | Auto-proceed if ≤3 sub-systems, ask if >3 |
 
-**Threshold Logic**:
+**Threshold Logic Enforcement** (MANDATORY - applies to ALL detected sub-systems, regardless of source):
 
-- **≤3 sub-systems**: Auto-approve, show summary
-- **4-6 sub-systems**: Show summary, ask to confirm
-- **>6 sub-systems**: Show summary, suggest grouping, ask to confirm
+| Sub-System Count | Required Action | Can Skip User Confirmation? |
+|-----------------|-----------------|---------------------------|
+| **0** | Proceed as monolithic (no decomposition) | Yes |
+| **1-3** | Show summary, auto-approve allowed | Yes |
+| **4-6** | **MUST show summary and ask user confirmation** | **NO** |
+| **>6** | **MUST suggest grouping and MUST ask confirmation** | **NO** |
+
+**Enforcement Rules**:
+1. If you identified sub-systems through AI analysis but the script reported "none detected" → Apply threshold logic to YOUR identified sub-systems
+2. If threshold is 4+ → You **MUST NOT** proceed without user confirmation
+3. If you skip this logic → The ADR generation is invalid and may produce incorrect architecture
+4. **Self-check before Phase 1**: Did I present Step 4? Did I apply threshold logic? If 4+ sub-systems, did I get confirmation?
 
 #### Step 6: Output
 

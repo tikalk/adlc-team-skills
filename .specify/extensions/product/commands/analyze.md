@@ -278,6 +278,34 @@ For each PDR:
    - Feature requirements traced to product requirements
    - Dependencies documented
 
+#### Pass H: Visual Diagram Quality (⚠️ Warning Only)
+
+**Objective**: Validate Mermaid diagrams are syntactically correct and consistent (non-blocking)
+
+**Checks**:
+
+1. **Diagram File Existence**:
+   - `visuals/feature-hierarchy.md` exists
+   - `visuals/feature-deps.md` exists (if dependencies documented)
+   - `visuals/cross-area-map.md` exists (if multiple areas)
+   - `visuals/roadmap-timeline.md` exists
+
+2. **Mermaid Syntax Validation**:
+   - All Mermaid code blocks have valid syntax
+   - No orphaned nodes in graphs
+   - Consistent styling (colors match legend)
+
+3. **Content Consistency**:
+   - Diagrams match PRD content
+   - Feature names consistent between diagrams and PRD
+   - Status indicators (✅🟡🔴⬜) match actual progress
+
+4. **Cross-Reference Validation**:
+   - All links in PRD to visual diagrams are valid
+   - All internal diagram references resolve
+
+**Severity**: ⚠️ **WARNING ONLY** - Issues don't block analysis pass, but should be noted
+
 ### Phase 4: Severity Assignment
 
 **Severity Criteria**:
@@ -343,6 +371,17 @@ For each PDR:
 | HIGH | [N] |
 | MEDIUM | [N] |
 | LOW | [N] |
+
+### Visual Diagram Quality (⚠️ Warning Only)
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Diagram files exist | ✅/⚠️ | [Which files missing] |
+| Mermaid syntax valid | ✅/⚠️ | [Any syntax errors] |
+| Content consistent | ✅/⚠️ | [Any mismatches] |
+| Cross-references valid | ✅/⚠️ | [Any broken links] |
+
+**⚠️ Warning**: Diagram issues don't affect analysis pass, but may need attention. Run `/product.implement --refresh-diagrams` to regenerate.
 
 ### Next Actions
 

@@ -3,8 +3,8 @@ schema_version: "1.0"
 extension:
   id: "product"
   name: "Product - PRD & PDR Management"
-  version: "1.1.12"
-  description: "Create and manage Product Requirements Documents (PRD) and Product Decision Records (PDR) for systematic product development"
+  version: "1.5.6"
+  description: "Create and manage Product Requirements Documents (PRD) and Product Decision Records (PDR) using multi-agent feature-area analysis with cross-area pattern detection, business stakeholder sections (Executive Summary, Market Opportunity, Investment, GTM), and self-contained PRD generation"
   author: "Agentic SDLC Team"
   repository: "https://github.com/tikalk/agentic-sdlc-spec-kit"
   license: "MIT"
@@ -145,6 +145,9 @@ tags:
    - "product-management"
    - "brownfield"
    - "greenfield"
+   - "subagents"
+   - "cross-feature-area-analysis"
+   - "inconsistency-detection"
 
 defaults:
   pdr:
@@ -153,14 +156,37 @@ defaults:
     memory_location: ".specify/memory/pdr.md"      # Accepted PDRs (project canonical)
   prd:
     location: "PRD.md"
-  sections: "all"
+  sections: "all"  # Includes 11 core + 4 business sections (executive-summary, market-opportunity, investment, gtm)
+  self_contained: true  # PRD.md must be self-contained - no reader-facing links to .specify/ files
   decompose: true
+  state:
+    enabled: true
+    location: ".specify/product/state.json"
+    version: "1.2.0"
+  subagents:
+    enabled: true
+    sequential: true
+    phases:
+      - discovery
+      - pattern_analysis
+      - synthesis
+  cross_feature_area:
+    enabled: true
+    threshold: 2  # ≥2 feature-areas
+    detect_inconsistencies: true
+    flag_for_clarify: true
+  feature_area_detection:
+    sources:
+      - directory
+      - documentation
+      - pricing_tiers
   dag:
     enabled: true
     base_location: ".specify/product/"                # Project base for DAG outputs
     state_location: ".specify/product/state.json"     # DAG execution state
     sections_location: ".specify/product/sections/"   # Generated section files per feature-area
     section_templates: "templates/sections/"          # Extension templates (relative to extension dir)
+    checkpoint_after: "requirements"                   # Mandatory checkpoint after Requirements section
 
 # PDR Lifecycle:
 # 1. init/specify -> drafts (Proposed/Discovered status)

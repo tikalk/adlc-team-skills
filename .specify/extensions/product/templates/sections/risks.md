@@ -7,11 +7,11 @@
 
 ---
 
-## 9. Risks & Mitigation
+## 10. Risks & Mitigation
 
 **Purpose**: Document product risks and mitigation strategies
 
-### 9.1 Risk Summary
+### 10.1 Risk Summary
 
 | Risk | Category | Likelihood | Impact | Risk Score | PDR |
 |------|----------|------------|--------|------------|-----|
@@ -19,7 +19,7 @@
 | [Risk description] | Market | H/M/L | H/M/L | [H/M/L] | PDR-XXX |
 | [Risk description] | Operational | H/M/L | H/M/L | [H/M/L] | PDR-XXX |
 
-### 9.2 Technical Risks
+### 10.2 Technical Risks
 
 #### Risk: [Technical Risk Name]
 
@@ -32,7 +32,7 @@
 | **Contingency Plan** | [What to do if risk materializes] |
 | **Owner** | [Who monitors this risk] |
 
-### 9.3 Market Risks
+### 10.3 Market Risks
 
 #### Risk: [Market Risk Name]
 
@@ -45,7 +45,7 @@
 | **Contingency Plan** | [What to do if risk materializes] |
 | **Owner** | [Who monitors this risk] |
 
-### 9.4 Operational Risks
+### 10.4 Operational Risks
 
 #### Risk: [Operational Risk Name]
 
@@ -58,7 +58,7 @@
 | **Contingency Plan** | [What to do if risk materializes] |
 | **Owner** | [Who monitors this risk] |
 
-### 9.5 Risk Matrix
+### 10.5 Risk Matrix
 
 ```text
 Impact

@@ -39,9 +39,9 @@ Compile accepted CDRs into a **draft PR** to the team-ai-directives repository. 
 - ✅ `context_modules/examples/**/*.md` - Example files (one per accepted Example CDR)
 - ✅ `context_modules/constitution.md` - Append amendments (if Constitution CDR accepted)
 - ✅ `skills/*/` - Skill directories (if draft skills exist and not --skip-skills)
-- ✅ `context_modules/CDR.md` - Index of accepted CDRs (create LAST)
+- ✅ `CDR.md` - Index of accepted CDRs at ROOT (create LAST)
 
-**⚠️ CRITICAL**: You must create ALL of the above. Do NOT create context_modules/CDR.md first and skip the actual module files.
+**⚠️ CRITICAL**: You must create ALL of the above. Do NOT create CDR.md first and skip the actual module files.
 
 **MCP Integration**:
 
@@ -126,6 +126,176 @@ No accepted CDRs found.
 Run /levelup.clarify to review and accept CDRs first.
 ```
 
+### Phase 1.5: Signal Gate Validation
+
+**Objective**: Apply signal gate to filter high-signal CDRs (strict mode - skip if no concrete evidence)
+
+For each Accepted CDR, validate against signal gate criteria:
+
+| Check | Description | Strict Mode Action |
+|-------|-------------|-------------------|
+| **Team-wide** | Pattern applicable across projects, not project-specific | SKIP if fails |
+| **High Value** | Will save >30min per future use | SKIP if fails |
+| **Unique** | Not duplicate of existing team-ai-directives content | SKIP if fails |
+| **Evidence** | Has concrete commits and/or file references | **SKIP** (strict) |
+
+**Evidence Parsing**:
+Parse CDR Evidence section for:
+- Commit references (SHA patterns: `abc123`, `[a-f0-9]{7,40}`)
+- File paths (patterns: `src/`, `lib/`, `*.py`, `*.js`, etc.)
+- Code snippets or URLs
+
+**Signal Gate Results**:
+
+```markdown
+## Signal Gate Validation
+
+**CDRs Passing Signal Gate**: {N} | **Skipped**: {M}
+
+### Skipped CDRs (No-Op is Valid)
+
+| CDR | Reason | Details |
+|-----|--------|---------|
+| CDR-003 | No evidence | No commits or files referenced |
+| CDR-005 | Project-specific | Only applies to single project |
+| CDR-007 | Duplicate | Overlaps with existing rule X |
+
+> ℹ️ Skipped CDRs remain in local drafts. Run `/levelup.clarify` to improve and retry.
+```
+
+**Extract Metadata for Passing CDRs**:
+
+For each passing CDR, extract:
+- `created`: Oldest commit date from evidence (or CDR acceptance date if no commits)
+- `modified`: Current date (publication date)
+- `verified`: Current date (initial verification)
+- `age_days`: Days between created and modified
+- `evidence`: Structured list of commits and files
+
+Store metadata for use in file generation.
+
+### Phase 1.8: Cross-Sub-System Validation
+
+**Objective**: Detect conflicts across sub-system CDRs before implementation
+
+#### Load CDRs with Cross-System Metadata
+
+Read `{REPO_ROOT}/.specify/drafts/cdr.md` and parse cross-system data for all accepted CDRs:
+
+```json
+{
+  "cdr_id": "CDR-001",
+  "target_module": "context_modules/rules/python/error-handling.md",
+  "cross_system_metadata": {
+    "appears_in": ["auth", "payments"],
+    "cross_system_score": 0.67,
+    "is_cross_cutting": true
+  }
+}
+```
+
+#### Check for Conflicts
+
+**1. Duplicate Targets**:
+Multiple CDRs targeting the same file path.
+
+| Target Module | CDRs | Conflict Type |
+|---------------|------|---------------|
+| `rules/python/logging.md` | CDR-002, CDR-007 | Duplicate target |
+
+**2. Rule Conflicts**:
+Same concern, different implementations in different sub-systems.
+
+| Concern | Conflicting CDRs | Sub-Systems | Issue |
+|---------|------------------|-------------|-------|
+| Authentication | CDR-001 (JWT), CDR-005 (OAuth2) | auth, api | Inconsistent approach |
+| Error Handling | CDR-003 (exceptions), CDR-008 (result types) | payments, users | Different patterns |
+
+**3. Inconsistency CDRs**:
+CDRs with type "Inconsistency" need resolution before implementation.
+
+| CDR | Type | Issue | Status |
+|-----|------|-------|--------|
+| CDR-INC-001 | Inconsistency | Auth pattern divergence | **Unresolved** |
+
+#### Conflict Detection Algorithm
+
+For each pair of CDRs:
+
+```python
+# Duplicate Target Check
+if cdr1.target_module == cdr2.target_module:
+    flag_duplicate_target(cdr1, cdr2)
+
+# Rule Conflict Check
+if similar_concern(cdr1, cdr2) and different_implementation(cdr1, cdr2):
+    flag_rule_conflict(cdr1, cdr2)
+
+# Inconsistency Check
+if cdr.type == "Inconsistency" and cdr.status != "Resolved":
+    flag_unresolved_inconsistency(cdr)
+```
+
+#### Cross-System Conflict Report
+
+If any conflicts detected, output:
+
+```markdown
+## Cross-Sub-System Conflict Report ⚠️
+
+**Status**: BLOCKED - Conflicts must be resolved before proceeding
+
+### Duplicate Targets
+| Target Module | CDRs | Resolution Required |
+|---------------|------|---------------------|
+| rules/python/logging.md | CDR-002, CDR-007 | Merge or choose one |
+
+### Rule Conflicts
+| Concern | Conflicting CDRs | Sub-Systems Involved | Recommended Action |
+|---------|------------------|---------------------|-------------------|
+| Authentication | CDR-001 (JWT), CDR-005 (OAuth2) | auth, api | Run /levelup.clarify |
+| Error Handling | CDR-003, CDR-008 | payments, users | Run /levelup.clarify |
+
+### Unresolved Inconsistencies
+| CDR | Issue | Blocking |
+|-----|-------|----------|
+| CDR-INC-001 | Authentication pattern inconsistency | YES |
+
+### Resolution Steps
+
+1. **For Duplicate Targets**:
+   - Edit CDRs to target different modules, OR
+   - Merge content into single CDR
+
+2. **For Rule Conflicts**:
+   - Run `/levelup.clarify` to resolve which approach to standardize on
+   - Update CDRs to reflect team decision
+   - Mark rejected CDRs as "Rejected"
+
+3. **For Inconsistencies**:
+   - Run `/levelup.clarify` to make decision
+   - Update inconsistency CDR with resolution
+   - Mark as "Resolved" in CDR content
+
+### Next Steps
+```
+STOP and prompt user to resolve conflicts before proceeding.
+
+**If no conflicts detected**:
+```markdown
+## Cross-Sub-System Validation ✓
+
+- **Duplicate targets**: None
+- **Rule conflicts**: None  
+- **Unresolved inconsistencies**: None
+- **Status**: PASSED - Proceeding to implementation
+```
+
+#### Gate Decision
+
+- **If conflicts found**: STOP, output conflict report, suggest running clarify
+- **If no conflicts**: Proceed to Phase 2
+
 ### Phase 2: Prepare Changes
 
 **Objective**: Create context module files from CDRs
@@ -148,12 +318,60 @@ git checkout -b "$BRANCH_NAME" main
 
 If branch exists, check if it was created in this session or reuse.
 
-#### Step 3: Process Each CDR
+#### Step 3: Ensure AGENTS.md Exists
 
-For each accepted CDR, create/update the target file:
+**Objective**: Create AGENTS.md if missing in team-ai-directives
+
+```bash
+cd "$TEAM_DIRECTIVES"
+
+if [ ! -f "AGENTS.md" ]; then
+  echo "Creating AGENTS.md from template..."
+  cp ".specify/extensions/levelup/templates/agents-template.md" "AGENTS.md"
+  echo "✅ AGENTS.md created"
+else
+  echo "✅ AGENTS.md already exists"
+fi
+```
+
+**Note**: AGENTS.md is only created if missing. Existing content is never overwritten.
+
+#### Step 4: Process Each CDR (with Memory Engineering)
+
+For each CDR that passed signal gate, create/update the target file with YAML frontmatter and verification metadata.
+
+**Metadata Variables**:
+- `{id}`: Unique identifier (e.g., `rule-python-error-handling`)
+- `{cdr_ref}`: Original CDR ID (e.g., `CDR-2026-001`)
+- `{created}`: Evidence date (YYYY-MM-DD)
+- `{modified}`: Today (YYYY-MM-DD)
+- `{verified}`: Today (YYYY-MM-DD)
+- `{age_days}`: Computed age
+- `{evidence}`: YAML list of commits/files
+- `{warning_threshold}`: From config (default: 30 days)
 
 **Rules** (`context_modules/rules/{domain}/{file}.md`):
 ```markdown
+---
+id: {id}
+cdr_ref: {cdr_ref}
+created: {created}
+modified: {modified}
+verified: {verified}
+age_days: {age_days}
+evidence:
+{evidence}
+---
+
+> ⚠️ **Memory Verification**
+> This directive is {age_days} days old. Before applying:
+> - [ ] Pattern still exists in current codebase
+> - [ ] Rule is actively followed by team
+> - [ ] No conflicting rules introduced
+> 
+> **Verification Date**: {verified}
+> **Verify Again After**: {verify_after_date} (30 days)
+
 # {Rule Title}
 
 {Content from CDR proposed content}
@@ -161,12 +379,39 @@ For each accepted CDR, create/update the target file:
 ## Source
 
 Contributed from: {project-name}
-CDR: {CDR-ID}
-Date: {date}
+CDR: {cdr_ref}
+Date: {modified}
+
+## Evidence
+
+{Evidence section from CDR}
+
+## Verification Log
+
+| Date | Verified By | Notes |
+|------|-------------|-------|
+| {verified} | {project-name} | Initial publication via /levelup.implement |
 ```
 
 **Personas** (`context_modules/personas/{file}.md`):
 ```markdown
+---
+id: {id}
+cdr_ref: {cdr_ref}
+created: {created}
+modified: {modified}
+verified: {verified}
+age_days: {age_days}
+evidence:
+{evidence}
+---
+
+> ⚠️ **Memory Verification**
+> This persona is {age_days} days old. Verify before use:
+> - [ ] Role definition still accurate
+> - [ ] Expertise areas current
+> - [ ] Communication style still applies
+
 # {Persona Name}
 
 {Content from CDR proposed content}
@@ -174,18 +419,37 @@ Date: {date}
 ## Source
 
 Contributed from: {project-name}
-CDR: {CDR-ID}
+CDR: {cdr_ref}
+Date: {modified}
 ```
 
 **Examples** (`context_modules/examples/{category}/{file}.md`):
 ```markdown
+---
+id: {id}
+cdr_ref: {cdr_ref}
+created: {created}
+modified: {modified}
+verified: {verified}
+age_days: {age_days}
+evidence:
+{evidence}
+---
+
+> ⚠️ **Memory Verification**
+> This example is {age_days} days old. Verify before use:
+> - [ ] Code still compiles/runs
+> - [ ] API signatures unchanged
+> - [ ] Best practices still current
+
 # {Example Title}
 
 {Content from CDR proposed content}
 
 ## Source
 
-CDR: {CDR-ID}
+CDR: {cdr_ref}
+Date: {modified}
 ```
 
 **Constitution Amendments** (append to `context_modules/constitution.md`):
@@ -193,9 +457,14 @@ CDR: {CDR-ID}
 
 ## {Amendment Title}
 
+> **CDR Reference**: {cdr_ref}
+> **Published**: {modified}
+> **Age**: {age_days} days
+> **Verification**: Check if principle still aligns with team values
+
 {Content from CDR proposed content}
 
-<!-- CDR: {CDR-ID}, Date: {date} -->
+<!-- CDR: {cdr_ref}, Date: {modified}, ID: {id} -->
 ```
 
 #### ⚠️ Step 4: VERIFY Context Modules Created
@@ -246,24 +515,28 @@ echo "Skills: $(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
 
 **If skills should exist but count is 0, you MUST go back and copy them.**
 
-#### Step 7: Extract Accepted CDRs to context_modules/CDR.md
+#### Step 7: Extract Accepted CDRs to CDR.md (with Memory Tracking)
 
-Extract only CDRs with status "Accepted" from `{REPO_ROOT}/.specify/drafts/cdr.md` and create `{TEAM_DIRECTIVES}/context_modules/CDR.md`:
+Extract only CDRs that **passed signal gate** from `{REPO_ROOT}/.specify/drafts/cdr.md` and create `{TEAM_DIRECTIVES}/CDR.md`:
 
 1. Parse the source cdr.md file
-2. Filter to only include CDRs with status "Accepted"
-3. Generate new context_modules/CDR.md with the accepted CDRs only
+2. Filter to only include CDRs that passed signal gate validation
+3. Generate new CDR.md with the published CDRs and memory metadata
 
 ```markdown
 # Context Directive Records
 
 Context Directive Records tracking approved contributions to team-ai-directives.
 
+> **Memory Engineering**: This index tracks directive freshness. Run `/levelup.validate` to update verification timestamps.
+
 ## CDR Index
 
-| ID | Target Module | Context Type | Status | Date | Source |
-|----|---------------|--------------|--------|------|--------|
-| CDR-001 | context_modules/rules/python/error-handling.md | Rule | Accepted | 2026-03-12 | {project-name} |
+| ID | Target Module | Type | Status | Created | Verified | Age |
+|----|---------------|------|--------|---------|----------|-----|
+| CDR-001 | context_modules/rules/python/error-handling.md | Rule | Accepted | 2026-04-15 | 2026-05-18 | 33d |
+
+**Stats**: {N} CDRs | Last Updated: {date}
 
 ---
 
@@ -273,9 +546,12 @@ Context Directive Records tracking approved contributions to team-ai-directives.
 
 **Accepted** | Proposed | Rejected
 
-### Date
+### Dates
 
-YYYY-MM-DD
+- **Created**: {created} (from evidence)
+- **Modified**: {modified} (publication date)
+- **Verified**: {verified} (initial verification)
+- **Age**: {age_days} days
 
 ### Source
 
@@ -289,6 +565,10 @@ YYYY-MM-DD
 
 Rule | Persona | Example | Constitution Amendment
 
+### Signal Gate
+
+✓ Team-wide applicable | ✓ High value | ✓ Unique | ✓ Concrete evidence
+
 ### Context
 
 {Content from CDR}
@@ -297,7 +577,11 @@ Rule | Persona | Example | Constitution Amendment
 
 {Decision from CDR}
 
-...
+### Evidence
+
+{Evidence from CDR}
+
+---
 
 ```
 
@@ -315,7 +599,7 @@ echo "Constitution: $(wc -l < context_modules/constitution.md 2>/dev/null || ech
 echo "=== Skills ==="
 echo "Skill directories: $(find skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)"
 echo "=== CDR Index ==="
-echo "context_modules/CDR.md exists: $(test -f context_modules/CDR.md && echo YES || echo NO)"
+echo "CDR.md exists: $(test -f CDR.md && echo YES || echo NO)"
 echo "==="
 echo "Files to be committed:"
 git status --porcelain
@@ -324,7 +608,7 @@ git status --porcelain
 **STOP if**:
 - Any context module category shows 0 files but you have accepted CDRs for that type
 - Skills directory is empty but you have draft skills
-- context_modules/CDR.md does not exist
+- CDR.md does not exist
 
 **If any check fails, you MUST go back and create the missing files before proceeding.**
 
@@ -336,7 +620,7 @@ git status --porcelain
 
 ```bash
 cd "$TEAM_DIRECTIVES"
-git add context_modules/ skills/ .skills.json context_modules/CDR.md
+git add context_modules/ skills/ .skills.json CDR.md AGENTS.md
 ```
 
 #### Step 2: Generate Commit Message
@@ -386,7 +670,7 @@ Context module contributions from **{project-name}**.
 
 ### CDR Records
 
-Accepted CDRs are recorded in `context_modules/CDR.md` for tracking.
+Accepted CDRs are recorded in `CDR.md` (at repository root) for tracking.
 
 ### Skills Added
 
@@ -471,6 +755,14 @@ MCP tools not available. Create PR manually:
 | CDR-001 | rules/python/error-handling.md | Implemented |
 | CDR-002 | examples/testing/fixtures.md | Implemented |
 
+### Signal Gate Results
+
+**Passing**: 2 | **Skipped**: 1
+
+| Skipped CDR | Reason |
+|-------------|--------|
+| CDR-003 | No concrete evidence |
+
 ### Skills Published
 
 | Skill | Location |
@@ -512,7 +804,7 @@ MCP tools not available. Create PR manually:
 
 | File | Description |
 |------|-------------|
-| `{TEAM_DIRECTIVES}/context_modules/CDR.md` | Accepted CDRs from this contribution |
+| `{TEAM_DIRECTIVES}/CDR.md` | Accepted CDRs from this contribution (at ROOT) |
 | `{TEAM_DIRECTIVES}/context_modules/**` | New/updated context modules |
 | `{TEAM_DIRECTIVES}/skills/**` | New skills |
 | `{TEAM_DIRECTIVES}/.skills.json` | Updated manifest |
@@ -528,11 +820,25 @@ MCP tools not available. Create PR manually:
 
 - Creates draft PR by default for review before merge
 - Only implements CDRs with status "Accepted" from `{REPO_ROOT}/.specify/drafts/cdr.md`
-- When TD configured: Copies only accepted CDRs to `{TEAM_DIRECTIVES}/context_modules/CDR.md`
+- **Signal Gate (Strict Mode)**: Skips CDRs without concrete evidence (commits/files)
+- **Memory Engineering**: Published files include YAML frontmatter with `created`, `verified`, `age_days`
+- **Verification**: Run `/levelup.validate` to refresh `verified` timestamps
+- When TD configured: Copies only signal-gate-passing CDRs to `{TEAM_DIRECTIVES}/CDR.md`
 - When NOT configured: Copies accepted CDRs to `{REPO_ROOT}/.specify/memory/cdr.md` and cleans up drafts
 - Skills from `{REPO_ROOT}/.specify/drafts/skills/` are included unless `--skip-skills`
 - If MCP unavailable, provides manual instructions
 - Working tree must be clean before running
+
+## Memory Engineering
+
+This command applies agent memory engineering principles:
+
+1. **Signal Gate**: Filters noisy CDRs (strict mode - no evidence = skip)
+2. **Verification Metadata**: YAML frontmatter tracks freshness (`created`, `verified`, `age_days`)
+3. **Freshness Warnings**: Published files include verification checklists
+4. **Age Tracking**: CDR index shows age in days; warnings at 30+ days
+
+Run `/levelup.validate` to update verification timestamps and check directive freshness.
 
 ## Related Commands
 

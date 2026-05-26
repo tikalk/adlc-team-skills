@@ -7,25 +7,40 @@
 
 ---
 
-## 10. Roadmap & Milestones
+## 11. Roadmap & Milestones
 
 **Purpose**: Define product release milestones with feature groupings
 
-### 10.1 Roadmap Overview
+### 11.1 Roadmap Overview
 
-```text
-Timeline
-────────────────────────────────────────────────────────────────────►
-    │           │           │           │
-    ▼           ▼           ▼           ▼
-┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
-│  M1    │  │  M2    │  │  M3    │  │ Future │
-│ Alpha  │  │ Beta   │  │  GA    │  │        │
-└────────┘  └────────┘  └────────┘  └────────┘
-  [Date]      [Date]      [Date]
+```mermaid
+gantt
+    title Product Development Roadmap
+    dateFormat YYYY-MM-DD
+    axisFormat %b %Y
+    
+    section Foundation
+    Authentication       :done, auth, 2024-01-01, 30d
+    User Profile         :done, profile, after auth, 20d
+    Core Infrastructure  :active, infra, after profile, 25d
+    
+    section Business
+    Billing Setup        :billing, after infra, 20d
+    Payment Processing   :payment, after billing, 25d
+    Subscription Mgmt    :sub, after payment, 15d
+    
+    section Growth
+    Analytics Dashboard  :analytics, after payment, 30d
+    API Access           :api, after infra, 20d
+    Developer Portal     :portal, after api, 25d
+    
+    section Milestones
+    Alpha Release        :milestone, m1, 2024-02-15, 0d
+    Beta Release         :milestone, m2, 2024-04-01, 0d
+    GA Release           :milestone, m3, 2024-05-15, 0d
 ```
 
-### 10.2 Milestone 1: [Name] - [Target Date]
+### 11.2 Milestone 1: [Name] - [Target Date]
 
 **Demo Sentence:** "After this milestone, the user can: [observable capability]"
 
@@ -49,7 +64,7 @@ Timeline
 
 ---
 
-### 10.3 Milestone 2: [Name] - [Target Date]
+### 11.3 Milestone 2: [Name] - [Target Date]
 
 **Demo Sentence:** "After this milestone, the user can: [observable capability]"
 
@@ -76,7 +91,7 @@ Timeline
 
 ---
 
-### 10.4 Milestone 3: [Name] - [Target Date]
+### 11.4 Milestone 3: [Name] - [Target Date]
 
 **Demo Sentence:** "After this milestone, the user can: [observable capability]"
 
@@ -92,7 +107,7 @@ Timeline
 
 ---
 
-### 10.5 Milestones Traced to PDRs
+### 11.5 Milestones Traced to PDRs
 
 | Milestone | PDR | Target Date | Status |
 |-----------|-----|-------------|--------|

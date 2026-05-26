@@ -1,5 +1,5 @@
 {
-  "version": "0.8.12+adlc2",
+  "version": "0.8.12+adlc18",
   "integration_state_schema": 1,
   "installed_integrations": [
     "opencode"

@@ -71,14 +71,15 @@ This command operates at the **Product level**, creating PDRs in `{REPO_ROOT}/.s
 
 Given the product input, execute this workflow:
 
-1. **Feature Detection** (Phase 0): Decompose product into feature areas (auto-detect if multiple domains)
+1. **Feature Detection** (Phase 0): Comprehensive decomposition using directory + documentation + pricing analysis
 2. **Parse Product Context**: Extract key problems, market position, and constraints (per feature area if decomposed)
 3. **Load Constitution**: Check `{REPO_ROOT}/.specify/memory/constitution.md` for product vision/strategy constraints
 4. **Exploration Phase**: Interactive discussion to surface trade-offs and options (per feature area)
-5. **Decision Phase**: Document decisions as PDRs with full rationale (organized by feature area)
-6. **Output**: Write PDRs to `{REPO_ROOT}/.specify/drafts/pdr.md` with feature area organization
+5. **Cross-Feature-Area Analysis**: Detect potential inconsistencies early during exploration
+6. **Decision Phase**: Document decisions as PDRs with full rationale and cross-area metadata
+7. **Output**: Write PDRs to `{REPO_ROOT}/.specify/drafts/pdr.md` with feature area organization and inconsistency flags
 
-**NOTE:** This is an interactive command. You will engage the user in conversation before finalizing PDRs.
+**NOTE:** This is an interactive command. You will engage the user in conversation before finalizing PDRs. Cross-feature-area conflicts are flagged early for resolution.
 
 ## Execution Steps
 
@@ -160,7 +161,41 @@ Based on user response:
 - **4-6 areas**: Show summary, ask to confirm
 - **>6 areas**: Show summary, suggest grouping, ask to confirm
 
-#### Step 5: Output
+#### Step 5: Comprehensive Detection (Enhanced)
+
+**Objective**: Detect feature-areas from three sources (comprehensive analysis)
+
+**Sources**:
+1. **Directory Structure** - Code organization patterns
+2. **Documentation** - README, existing PRD, roadmap sections
+3. **Pricing Tiers** - Feature-to-tier mapping
+
+**Detection Algorithm**:
+```python
+def detect_feature_areas_comprehensive():
+    areas = {}
+    
+    # 1. Directory analysis
+    for dir in src_dirs:
+        if matches_feature_pattern(dir):
+            areas[dir.name] = {"source": "directory", "evidence": dir.path}
+    
+    # 2. Documentation analysis
+    for doc in [README, PRD, ROADMAP]:
+        sections = extract_feature_sections(doc)
+        for section in sections:
+            merge_or_create_area(areas, section)
+    
+    # 3. Pricing analysis
+    tiers = parse_pricing_page()
+    for tier in tiers:
+        for feature in tier.features:
+            assign_to_area(areas, feature, tier.name)
+    
+    return areas
+```
+
+#### Step 6: Output
 
 After confirmation, output structured feature area data:
 
@@ -168,9 +203,30 @@ After confirmation, output structured feature area data:
 {
   "decomposition": "enabled",
   "feature_areas": [
-    {"id": "auth", "name": "Auth", "domains": ["Authentication", "Authorization"], "rationale": "Core security boundary"},
-    {"id": "core", "name": "Core", "domains": ["User Management", "Profiles"], "rationale": "Core data ownership"},
-    {"id": "business", "name": "Business", "domains": ["Payments", "Subscriptions"], "rationale": "Revenue domain"}
+    {
+      "id": "auth", 
+      "name": "Auth", 
+      "domains": ["Authentication", "Authorization"], 
+      "sources": ["directory", "documentation"],
+      "evidence": "src/auth/, README security section",
+      "rationale": "Core security boundary"
+    },
+    {
+      "id": "core", 
+      "name": "Core", 
+      "domains": ["User Management", "Profiles"], 
+      "sources": ["directory"],
+      "evidence": "src/users/",
+      "rationale": "Core data ownership"
+    },
+    {
+      "id": "business", 
+      "name": "Business", 
+      "domains": ["Payments", "Subscriptions"], 
+      "sources": ["directory", "pricing"],
+      "evidence": "src/billing/, pricing tiers",
+      "rationale": "Revenue domain"
+    }
   ],
   "next_phase": "Product Analysis (per feature area)"
 }
@@ -184,6 +240,39 @@ After confirmation, output structured feature area data:
   "reason": "user_requested",
   "next_phase": "Product Analysis (monolithic)"
 }
+```
+
+---
+
+### Phase 0.5: Cross-Feature-Area Pre-Analysis
+
+**Objective**: Identify potential cross-area patterns and inconsistencies early
+
+**During Exploration Phase**, watch for:
+
+| Pattern | Detection | Action |
+|---------|-----------|--------|
+| **Shared Personas** | Same user type mentioned in multiple areas | Note for PDR cross-area metadata |
+| **Priority Tensions** | Areas prioritize different things | ⚠️ Flag potential conflict |
+| **Feature Overlap** | Similar features planned in different areas | ⚠️ Flag for consolidation discussion |
+| **Metric Conflicts** | Same metric with different targets | ⚠️ Flag for alignment |
+
+**Early Warning Flags**:
+
+```markdown
+### ⚠️ Potential Cross-Feature-Area Issues Detected
+
+During exploration, I've identified potential issues:
+
+1. **Priority Tension**: Core area emphasizes "ease of use" while Business emphasizes "revenue optimization"
+   - **Impact**: May create UX conflicts
+   - **Action**: Discuss and document priority framework in PDR
+
+2. **Persona Overlap**: "Admin" persona appears in both Auth and Operations discussions
+   - **Impact**: Risk of inconsistent admin experience
+   - **Action**: Define unified admin persona in PDR
+
+These will be flagged in generated PDRs for `/product.clarify` resolution.
 ```
 
 ---
@@ -303,6 +392,35 @@ Reply with your choice (A/B/C), or provide additional context.
 - After user responds, **summarize the decision** before moving to next area
 - Skip decisions that are **already determined** by product context or constitution
 - Limit to **5-7 key decisions** (defer less critical decisions)
+
+#### Cross-Feature-Area Pre-Analysis
+
+**During exploration**, watch for potential cross-area conflicts:
+
+| Pattern | Detection | Action |
+|---------|-----------|--------|
+| **Shared Personas** | Same user type in multiple areas | Note for cross-area metadata |
+| **Priority Tensions** | Areas prioritize different things | ⚠️ Flag potential conflict |
+| **Feature Overlap** | Similar features in different areas | ⚠️ Flag for consolidation |
+| **Metric Conflicts** | Same metric, different targets | ⚠️ Flag for alignment |
+
+**Early Warning Example**:
+
+```markdown
+⚠️ **Cross-Feature-Area Alert**: 
+
+During exploration, I've identified potential issues:
+
+1. **Priority Tension**: Core area emphasizes "ease of use" while Business emphasizes "revenue"
+   - **Impact**: May create UX conflicts
+   - **Action**: Will be flagged in cross-area-map.md for clarify resolution
+
+2. **Persona Overlap**: "Admin" appears in both Auth and Operations areas
+   - **Impact**: Risk of inconsistent admin experience
+   - **Action**: Will document unified admin persona in PDR
+
+These will be visualized in the cross-feature-area map for resolution.
+```
 
 ### Phase 3: Decision Documentation
 

@@ -4,26 +4,27 @@
 **PDRs Referenced**: [PDR_IDS]
 **Generated**: [DATE]
 **Dependencies**: Overview, Problem
+**Section Number**: 4 (in final PRD)
 
 ---
 
-## 3. Goals/Objectives
+## 4. Goals/Objectives
 
 **Purpose**: Define what success looks like
 
-### 3.1 Primary Goal
+### 4.1 Primary Goal
 
 [Main product objective - what success looks like]
 
-### 3.2 Technical Goal
+### 4.2 Technical Goal
 
 [Technical outcomes required]
 
-### 3.3 Business Goal
+### 4.3 Business Goal
 
 [Business value delivered]
 
-### 3.4 Goals Traced to PDRs
+### 4.4 Goals Traced to PDRs
 
 | Goal | Type | PDR | Category |
 |------|------|-----|----------|
@@ -31,7 +32,7 @@
 | [Goal description] | Technical | PDR-XXX | [Category] |
 | [Goal description] | Business | PDR-XXX | [Category] |
 
-### 3.5 Success Definition
+### 4.5 Success Definition
 
 **We will know we've succeeded when:**
 

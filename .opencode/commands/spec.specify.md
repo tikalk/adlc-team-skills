@@ -1,76 +1,13 @@
 ---
-description: Create or update the feature specification from a natural language feature
-  description.
-handoffs:
-- label: Build Technical Plan
-  agent: spec.plan
-  prompt: Create a plan for the spec. I am building with...
-- label: Clarify Spec Requirements
-  agent: spec.clarify
-  prompt: Clarify specification requirements
-  send: true
-scripts:
-  sh: .specify/scripts/bash/create-new-feature.sh "{ARGS}"
-  ps: .specify/scripts/powershell/create-new-feature.ps1 "{ARGS}"
----
-
-
-<!-- Source: agentic-sdlc -->
-## ⚠️ MANDATORY STOP: Mission Brief
-
-### Collect Mission Brief
-
-If user input ($ARGUMENTS) is substantial (10+ words), extract the Mission Brief elements from it.
-If minimal (< 10 words) or empty, ask the user these questions:
-
-```markdown
-## Mission Brief
-
-**Question 1: What needs to be done?**
-What is the primary feature or change you need?
-
-**Question 2: What defines success?**
-How will we know this is complete? 2-3 measurable outcomes.
-
-**Question 3: Any constraints?**
-Technical, business, or regulatory limitations?
-```
-
-### Display Mission Brief
-
-After collecting/extracting answers, display:
-
-```markdown
-## Mission Brief
-
-**Goal**: {goal}
-
-**Success Criteria**:
-- {criterion 1}
-- {criterion 2}
-
-**Constraints**:
-- {constraint 1}
-```
-
-### ⚠️ STOP: Get User Confirmation
-
-```markdown
-**Proceed with this Mission Brief?** (yes / no / adjust)
-```
-
-**STOP HERE** - Wait for explicit response.
-
-- **yes**: Proceed to Pre-Execution Checks and spec creation.
-  Write the approved Goal, Success Criteria, and Constraints into the
-  spec header fields (Goal, Success Criteria, Constraints).
-- **adjust**: Ask what needs changing, update the Mission Brief, re-display, ask again.
-- **no**: Stop. Do not create branch or spec.
-
-**DO NOT create branch, directory, or spec file until Mission Brief is approved with "yes".**
-
-**Failure to follow these rules violates the /spec.specify contract.**
-
+description: Create or update the feature specification from a natural language feature description.
+handoffs: 
+  - label: Build Technical Plan
+    agent: spec.plan
+    prompt: Create a plan for the spec. I am building with...
+  - label: Clarify Spec Requirements
+    agent: spec.clarify
+    prompt: Clarify specification requirements
+    send: true
 ---
 
 ## User Input
@@ -84,7 +21,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before specification)**:
-- Check if `.specify/extensions.yml` exists in the project root.
+- Check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_specify` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -108,7 +45,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     - Execute the instructions in that command file immediately (run any referenced scripts)
     - Once the hook completes (successfully or with a graceful skip), proceed to the Outline
     - If the hook command file cannot be found, log a warning and proceed anyway
-- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+- If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
 
@@ -130,17 +67,11 @@ Given that feature description, do this:
 
 2. **Branch creation** (optional, via hook):
 
-   **Branch numbering mode**: Before running the script, check if `.specify/init-options.json` exists and read the `branch_numbering` value.
+   **Branch numbering mode**: Before running the script, check if `{REPO_ROOT}/.specify/init-options.json` exists and read the `branch_numbering` value.
    - If `"timestamp"`, add `--timestamp` (Bash) or `-Timestamp` (PowerShell) to the script invocation
    - If `"sequential"` or absent, do not add any extra flag (default behavior)
 
    If a `before_specify` hook ran successfully in the Pre-Execution Checks above, it will have created/switched to a git branch and output JSON containing `BRANCH_NAME` and `FEATURE_NUM`. Note these values for reference, but the branch name does **not** dictate the spec directory name.
-
-   **Display hook output to user**:
-   If `BRANCH_NAME` and `FEATURE_NUM` were returned, display:
-   ```
-   Branch created: {BRANCH_NAME} (Feature #{FEATURE_NUM})
-   ```
 
    If the user explicitly provided `GIT_BRANCH_NAME`, pass it through to the hook so the branch script uses the exact value as the branch name (bypassing all prefix/suffix generation).
 
@@ -210,20 +141,20 @@ Given that feature description, do this:
 
       ```markdown
       # Specification Quality Checklist: [FEATURE NAME]
-
+      
       **Purpose**: Validate specification completeness and quality before proceeding to planning
       **Created**: [DATE]
       **Feature**: [Link to spec.md]
-
+      
       ## Content Quality
-
+      
       - [ ] No implementation details (languages, frameworks, APIs)
       - [ ] Focused on user value and business needs
       - [ ] Written for non-technical stakeholders
       - [ ] All mandatory sections completed
-
+      
       ## Requirement Completeness
-
+      
       - [ ] No [NEEDS CLARIFICATION] markers remain
       - [ ] Requirements are testable and unambiguous
       - [ ] Success criteria are measurable
@@ -232,16 +163,16 @@ Given that feature description, do this:
       - [ ] Edge cases are identified
       - [ ] Scope is clearly bounded
       - [ ] Dependencies and assumptions identified
-
+      
       ## Feature Readiness
-
+      
       - [ ] All functional requirements have clear acceptance criteria
       - [ ] User scenarios cover primary flows
       - [ ] Feature meets measurable outcomes defined in Success Criteria
       - [ ] No implementation details leak into specification
-
+      
       ## Notes
-
+      
       - Items marked incomplete require spec updates before `/spec.clarify` or `/spec.plan`
       ```
 
@@ -251,7 +182,7 @@ Given that feature description, do this:
 
    c. **Handle Validation Results**:
 
-      - **If all items pass**: Mark checklist complete and proceed to step 7
+      - **If all items pass**: Mark checklist complete and proceed to step 8
 
       - **If items fail (excluding [NEEDS CLARIFICATION])**:
         1. List the failing items and specific issues
@@ -266,20 +197,20 @@ Given that feature description, do this:
 
            ```markdown
            ## Question [N]: [Topic]
-
+           
            **Context**: [Quote relevant spec section]
-
+           
            **What we need to know**: [Specific question from NEEDS CLARIFICATION marker]
-
+           
            **Suggested Answers**:
-
+           
            | Option | Answer | Implications |
-           |--------|--------|---------------|
+           |--------|--------|--------------|
            | A      | [First suggested answer] | [What this means for the feature] |
            | B      | [Second suggested answer] | [What this means for the feature] |
            | C      | [Third suggested answer] | [What this means for the feature] |
            | Custom | Provide your own answer | [Explain how to provide custom input] |
-
+           
            **Your choice**: _[Wait for user response]_
            ```
 
@@ -302,7 +233,7 @@ Given that feature description, do this:
    - Checklist results summary
    - Readiness for the next phase (`/spec.clarify` or `/spec.plan`)
 
-9. **Check for extension hooks**: After reporting completion, check if `.specify/extensions.yml` exists in the project root.
+9. **Check for extension hooks**: After reporting completion, check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
     - If it exists, read it and look for entries under the `hooks.after_specify` key
     - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
     - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -326,7 +257,7 @@ Given that feature description, do this:
     - Execute the instructions in that command file immediately (run any referenced scripts)
     - Once the hook completes (successfully or with a graceful skip), proceed
     - If the hook command file cannot be found or execution fails, log a warning and continue
-    - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+    - If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
 
 **NOTE:** Branch creation is handled by the `before_specify` hook (git extension). Spec directory and file creation are always handled by this core command.
 

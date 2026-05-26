@@ -1,0 +1,133 @@
+{
+  "version": "1.1.0",
+  "created_at": "2026-05-20T00:00:00Z",
+  "updated_at": "2026-05-20T12:00:00Z",
+  "phase": "completed",
+  "views_mode": "core",
+  "workflow": {
+    "clarify_completed": true,
+    "clarify_completed_at": "2026-05-20T00:00:00Z",
+    "adrs_approved_count": 25,
+    "implement_started": true,
+    "implement_started_at": "2026-05-20T00:00:00Z"
+  },
+  "subsystems": [
+    {
+      "id": "system",
+      "name": "System",
+      "adrs": ["ADR-004", "ADR-005", "ADR-008", "ADR-009", "ADR-010", "ADR-011"],
+      "characteristics": ["multi-agent", "extension-based", "core-architecture"],
+      "dag": ["context", "functional", "information", "development", "deployment"],
+      "progress": {
+        "context": "completed",
+        "functional": "completed",
+        "information": "completed",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    },
+    {
+      "id": "runner",
+      "name": "Runner",
+      "adrs": ["ADR-006"],
+      "characteristics": ["k8s-orchestration", "subagent-pattern"],
+      "dag": ["context", "functional", "information", "concurrency", "development", "deployment"],
+      "progress": {
+        "context": "completed",
+        "functional": "completed",
+        "information": "completed",
+        "concurrency": "pending",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    },
+    {
+      "id": "workspaces",
+      "name": "Workspaces",
+      "adrs": ["ADR-012", "ADR-013", "ADR-014", "ADR-016"],
+      "characteristics": ["hybrid", "git-based", "dev-containers"],
+      "dag": ["context", "functional", "information", "development", "deployment"],
+      "progress": {
+        "context": "completed",
+        "functional": "completed",
+        "information": "completed",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    },
+    {
+      "id": "git-integration",
+      "name": "Git Integration",
+      "adrs": ["ADR-017"],
+      "characteristics": ["layered-strategy", "worktrees", "clones"],
+      "dag": ["context", "functional", "information", "development", "deployment"],
+      "progress": {
+        "context": "completed",
+        "functional": "completed",
+        "information": "completed",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    },
+    {
+      "id": "user-interface",
+      "name": "User Interface",
+      "adrs": ["ADR-018", "ADR-020"],
+      "characteristics": ["bimodal", "desktop-app", "electron"],
+      "dag": ["context", "functional", "information", "development", "deployment"],
+      "progress": {
+        "context": "completed",
+        "functional": "completed",
+        "information": "completed",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    },
+    {
+      "id": "storage",
+      "name": "Storage",
+      "adrs": ["ADR-106"],
+      "characteristics": ["sqlite", "local-data"],
+      "dag": ["context", "functional", "information", "development", "deployment"],
+      "progress": {
+        "context": "completed",
+        "functional": "completed",
+        "information": "completed",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    },
+    {
+      "id": "integration",
+      "name": "Integration",
+      "adrs": ["ADR-108"],
+      "characteristics": ["mcp", "external-tools"],
+      "dag": ["context", "functional", "information", "development", "deployment"],
+      "progress": {
+        "context": "pending",
+        "functional": "completed",
+        "information": "completed",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    },
+    {
+      "id": "desktop",
+      "name": "Desktop Application",
+      "adrs": ["ADR-104", "ADR-105", "ADR-107"],
+      "characteristics": ["electron", "daemon", "react"],
+      "dag": ["context", "functional", "information", "development", "deployment"],
+      "progress": {
+        "context": "completed",
+        "functional": "completed",
+        "information": "completed",
+        "development": "completed",
+        "deployment": "completed"
+      }
+    }
+  ],
+  "perspectives": ["security", "performance", "evolution"],
+  "conflicts_detected": [],
+  "conflicts_resolved": [],
+  "output_file": "AD.md"
+}

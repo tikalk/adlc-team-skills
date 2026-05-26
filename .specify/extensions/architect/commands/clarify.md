@@ -410,6 +410,25 @@ After approval (or if user chooses C to defer):
 Run `/architect.implement` to generate AD.md from accepted ADRs.
 ```
 
+#### Post-Approval State Update
+
+After approval, update workflow state in `{REPO_ROOT}/.specify/architect/state.json`:
+
+```json
+{
+  "workflow": {
+    "clarify_completed": true,
+    "clarify_completed_at": "2024-01-20T10:30:00Z",
+    "adrs_approved_count": [N],
+    "implement_started": false,
+    "implement_started_at": null
+  }
+}
+```
+
+**IMPORTANT**: This workflow state is REQUIRED before `/architect.implement` will execute.
+The implement command checks this state during pre-flight validation.
+
 ## Key Rules
 
 ### Non-Destructive Refinement

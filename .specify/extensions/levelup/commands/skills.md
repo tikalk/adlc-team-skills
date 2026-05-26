@@ -1,5 +1,11 @@
 ---
-description: Build a single skill from accepted CDRs based on user input
+description: |
+  Build a reusable skill from accepted CDRs for team AI directives.
+  Use when user requests "build skill", "create skill from CDR", 
+  "package as skill", "skill for {topic}", or mentions creating
+  reusable AI capabilities from accepted design records. Input:
+  skill name, CDR ID, or topic string. Only works with CDRs
+  having status "Accepted".
 scripts:
   sh: .specify/extensions/levelup/scripts/bash/setup-levelup.sh --json
   ps: .specify/extensions/levelup/scripts/powershell/setup-levelup.ps1 -Json
@@ -11,42 +17,70 @@ scripts:
 $ARGUMENTS
 ```
 
-**REQUIRED**: You **MUST** have user input specifying which skill to build.
+**REQUIRED**: Require user input before proceeding. STOP if missing.
 
-**Examples of User Input**:
+**Examples**:
 
-- `"python-error-handling"` - Build skill with this name from related CDRs
-- `"CDR-005"` - Build skill specifically from CDR-005
-- `"testing patterns"` - Build skill by topic, matching CDRs
-- `"kubernetes deployment"` - Build skill from k8s-related CDRs
+| Input | Type | Action |
+|-------|------|--------|
+| `"python-error-handling"` | Skill name | Build skill with this name |
+| `"CDR-005"` | CDR ID | Build from specific CDR |
+| `"testing patterns"` | Topic | Match CDRs by topic |
 
-If no input provided, ask the user to specify a skill name or CDR ID.
+STOP and request skill name, CDR ID, or topic if input is empty.
 
 ## Goal
 
-Build a **single skill** from accepted modules based on user input. Skills are self-contained capabilities that can be loaded by AI agents.
+Build exactly ONE skill per invocation from accepted CDRs. Skills are self-contained capabilities for AI agents.
 
 **Input**:
-- User-specified skill name, module ID, or topic
+- User-specified skill name, CDR ID, or topic
 - Accepted CDRs from `{REPO_ROOT}/.specify/drafts/cdr.md` (status "Accepted")
 
 **Output**:
 - Skill directory in `{REPO_ROOT}/.specify/drafts/skills/{skill-name}/`
-- Entry added to `{REPO_ROOT}/.specify/drafts/skills/{skill-name}/.skills-entry.json` for `/levelup.implement`
-- Ready for `/levelup.implement` to activate
+- Entry in `{REPO_ROOT}/.specify/drafts/skills/{skill-name}/.skills-entry.json`
+
+## Output Format
+
+Present results in this exact structure:
+
+```markdown
+## LevelUp Skills Summary
+
+**Skill**: {kebab-case-name}
+**Source**: CDR-XXX, CDR-YYY
+**Location**: `{REPO_ROOT}/.specify/drafts/skills/{name}/`
+
+### Files Created
+| File | Purpose | Status |
+|------|---------|--------|
+| SKILL.md | Main skill definition | Created |
+| .skills-entry.json | Manifest entry | Created |
+| references/ | Supporting content | Created |
+
+### SKILL.md Preview (Lines 1-30)
+```markdown
+{First 30 lines}
+```
+
+### Next Steps
+1. Review generated skill
+2. Edit SKILL.md if needed  
+3. Run `/levelup.implement` to activate
+```
 
 ## Role & Context
 
-You are acting as a **Skill Builder** - packaging accepted CDRs into reusable skills. Your role involves:
+Act as **Skill Builder** - package accepted CDRs into reusable skills.
 
-- **Identifying** relevant CDRs for the skill
-- **Structuring** skill content per team-ai-directives format
-- **Writing** SKILL.md with trigger keywords
-- **Organizing** references and supporting content
+**Responsibilities**:
+- Identify relevant CDRs for the skill
+- Structure skill content per team-ai-directives format
+- Write SKILL.md with trigger keywords
+- Organize references and supporting content
 
 ### Skill Structure
-
-Skills follow the team-ai-directives format:
 
 ```
 .specify/drafts/skills/{skill-name}/
@@ -56,109 +90,37 @@ Skills follow the team-ai-directives format:
     └── patterns/
 ```
 
-### SKILL.md Format
+## Out of Scope
 
-```markdown
-# {Skill Name}
+This command does NOT:
 
-{Brief description with trigger keywords for activation}
+- Build multiple skills at once (run `/levelup.skills` repeatedly for each)
+- Push skills to team-ai-directives (use `/levelup.implement` for that)
+- Create pull requests (handled by implement phase)
+- Modify existing skills (manual edit required, then re-implement)
+- Accept or propose CDRs (use `/levelup.clarify` first)
+- Work with CDRs not having status "Accepted"
 
-## When to Use
-
-{Criteria for when this skill should be activated}
-
-## Capabilities
-
-{What this skill enables the AI agent to do}
-
-## Instructions
-
-{Step-by-step guidance for using this skill}
-
-## Examples
-
-{Usage examples}
-
-## References
-
-{Links to supporting content in references/}
-```
-
-### Instruction Types
-
-Based on the article "Encoding Team Standards" (<https://martinfowler.com/articles/reduce-friction-ai/encoding-team-standards.html>), skills can be classified by instruction type:
-
-| Instruction Type | Purpose | Example Trigger Phrases |
-|------------------|---------|-------------------------|
-| **Generation** | How team generates new code | "create a new service", "implement feature", "write a function" |
-| **Review** | How team reviews code | "review this PR", "check quality", "audit code" |
-| **Refactor** | How team improves existing code | "clean up", "simplify", "optimize", "refactor" |
-| **Security** | How team checks for vulnerabilities | "check security", "audit", "vulnerability" |
-| **General Capability** | Self-contained capability | Any other reusable skill |
-
-#### Detecting Instruction Type
-
-When user input matches these patterns, auto-detect the instruction type:
-
-- Contains "generate", "create", "implement", "write new" → **Generation**
-- Contains "review", "check quality", "audit" → **Review**
-- Contains "refactor", "clean up", "simplify", "optimize" → **Refactor**
-- Contains "security", "vulnerability", "audit" → **Security**
-- Otherwise → **General Capability**
-
-### Four-Part Anatomy (Executable Standards)
-
-For **Generation**, **Review**, **Refactor**, and **Security** instruction types, apply the four-part anatomy from "Encoding Team Standards":
-
-#### Part 1: Role Definition
-
-Set the expertise level and perspective:
-
-```markdown
-Role: {senior engineer | reviewer | security expert} following team patterns for {instruction type}
-```
-
-#### Part 2: Context Requirements
-
-Specify what the instruction needs to operate:
-
-```markdown
-## Context Requirements
-
-- **Required**: {code context, project architecture, team conventions}
-- **Optional**: {additional constraints}
-```
-
-#### Part 3: Categorized Standards
-
-Priority structure per the article:
-
-```markdown
-## Categorized Standards
-
-### Critical (Must Follow)
-- {Non-negotiable patterns, security requirements, architectural constraints}
-
-### Standard (Should Follow)
-- {Conventions that are most commonly corrected}
-
-### Preference (Nice to Have)
-- {Style variations, minor optimizations}
-```
-
-#### Part 4: Output Format
-
-Structured response format:
-
-```markdown
-## Output Format
-
-- **Summary**: {Brief overview of what was done}
-- **Categorized Findings**: {Critical/Standard/Preference structure}
-- **Next Steps**: {Action items for the developer}
-```
+**Routing**: If user asks for these, redirect to the appropriate command.
 
 ## Execution Steps
+
+### Phase -1: Read Existing Skills (Read First)
+
+**Objective**: Analyze existing skill patterns for consistency
+
+Before building any new skill:
+
+1. List existing skills in `.specify/drafts/skills/`
+2. If any exist, read 2-3 SKILL.md files
+3. Note patterns in:
+   - Description style and length
+   - Section ordering (When to Use vs Capabilities)
+   - Verb tense (imperative vs descriptive)
+   - Trigger keyword density
+4. Match existing style in generated skill
+
+If no existing skills, use standard format in templates below.
 
 ### Phase 0: Environment Setup
 
@@ -175,15 +137,13 @@ Run `{SCRIPT}` from repository root and parse JSON output:
 }
 ```
 
-**IMPORTANT**: Run this script only ONCE. Use the JSON output to get all paths.
+Run script exactly ONCE. Cache JSON output for reuse.
 
 Skills will be created in SKILLS_DRAFTS directory.
 
 ### Phase 1: Validate Environment
 
 **Objective**: Ensure team-ai-directives is configured
-
-#### Step 1: Verify Team Directives
 
 Check if TEAM_DIRECTIVES has a value from script output.
 
@@ -210,7 +170,13 @@ Parse user input to identify:
 
 After parsing input, detect the instruction type:
 
-1. Check user input for trigger phrases (see Instruction Types section above)
+1. Check user input for trigger phrases:
+   - Contains "generate", "create", "implement", "write new" → **Generation**
+   - Contains "review", "check quality", "audit" → **Review**
+   - Contains "refactor", "clean up", "simplify", "optimize" → **Refactor**
+   - Contains "security", "vulnerability", "audit" → **Security**
+   - Otherwise → **General Capability**
+
 2. If matched, set instruction type accordingly
 3. If no match, default to "General Capability"
 
@@ -224,7 +190,7 @@ Apply four-part anatomy for executable standards? (Y/n)
 - n: Use standard skill format
 ```
 
-If user confirms Y, apply the four-part anatomy template in Phase 4.
+If user confirms Y, apply four-part anatomy template in Phase 4.
 
 If input is ambiguous, ask for clarification.
 
@@ -281,86 +247,20 @@ If not already detected in Phase 2, check the CDR's instruction type:
 1. Read the CDR's Context Type and any instruction_type field
 2. If instruction type is Generation/Review/Refactor/Security, apply four-part anatomy
 
-#### Step 3: Generate SKILL.md (Standard Format)
+#### Step 3: Generate SKILL.md
 
-If instruction type is **General Capability** or user chose "n" for standard format:
-
-Build SKILL.md from CDR content using standard format:
+Build SKILL.md from CDR content using merged template:
 
 ```markdown
 # {Skill Name}
 
 {Description from CDR with trigger keywords}
 
-Use this skill when: {trigger conditions}
-
-## When to Use
-
-- {Condition 1 from CDR context}
-- {Condition 2}
-- {Condition 3}
-
-**Trigger Keywords**: {keywords for skill discovery}
-
-## Capabilities
-
-This skill enables AI agents to:
-
-- {Capability 1 from CDR decision}
-- {Capability 2}
-- {Capability 3}
-
-## Instructions
-
-### Step 1: {First Step}
-
-{Instructions from CDR proposed content}
-
-### Step 2: {Second Step}
-
-{More instructions}
-
-## Examples
-
-### Example 1: {Example Name}
-
-{Code or usage example from CDR evidence}
-
-### Example 2: {Another Example}
-
-{Additional example}
-
-## References
-
-- [Pattern Details](references/pattern.md)
-- [Examples](references/examples/)
-
-## Source
-
-Built from CDRs:
-- CDR-{N}: {title}
-
----
-
-*Skill Version: 1.0.0*
-*Compatible with team-ai-directives*
-```
-
-#### Step 4: Generate SKILL.md (Four-Part Anatomy)
-
-If instruction type is **Generation**, **Review**, **Refactor**, or **Security** and user chose "Y":
-
-Build SKILL.md using the four-part anatomy:
-
-```markdown
-# {Skill Name}
-
-{Description from CDR with trigger keywords}
-
-**Instruction Type**: {Generation | Review | Refactor | Security}
+**Instruction Type**: {Generation | Review | Refactor | Security | General Capability}
 
 Use this skill when: {trigger conditions}
 
+{% if instruction_type in ["Generation", "Review", "Refactor", "Security"] %}
 ## Part 1: Role Definition
 
 Role: {senior engineer | reviewer | security expert} following team patterns for {instruction type}
@@ -389,6 +289,31 @@ Role: {senior engineer | reviewer | security expert} following team patterns for
 - **Summary**: {Brief overview of what was done}
 - **Categorized Findings**: {Critical/Standard/Preference structure}
 - **Next Steps**: {Action items for the developer}
+{% else %}
+## When to Use
+
+- {Condition 1 from CDR context}
+- {Condition 2}
+- {Condition 3}
+
+## Capabilities
+
+This skill enables AI agents to:
+
+- {Capability 1 from CDR decision}
+- {Capability 2}
+- {Capability 3}
+
+## Instructions
+
+### Step 1: {First Step}
+
+{Instructions from CDR proposed content}
+
+### Step 2: {Second Step}
+
+{More instructions}
+{% endif %}
 
 ## Trigger Keywords
 
@@ -404,6 +329,11 @@ Role: {senior engineer | reviewer | security expert} following team patterns for
 
 {Additional example}
 
+## References
+
+- [Pattern Details](references/pattern.md)
+- [Examples](references/examples/)
+
 ## Source
 
 Built from CDRs:
@@ -412,10 +342,10 @@ Built from CDRs:
 ---
 
 *Skill Version: 1.0.0*
-*Executable Team Standard - Compatible with team-ai-directives*
+*Compatible with team-ai-directives*
 ```
 
-#### Step 3: Create Reference Files
+#### Step 4: Create Reference Files
 
 If CDRs contain substantial content, create reference files:
 
@@ -446,7 +376,7 @@ Generate the entry for team-ai-directives `.skills.json`:
 }
 ```
 
-**Note**: The `instruction_type` field encodes how the skill should be used by AI agents - this follows the "Encoding Team Standards" article's approach.
+**Note**: The `instruction_type` field encodes how the skill should be used by AI agents.
 
 Save to `{REPO_ROOT}/.specify/drafts/skills/{skill-name}/.skills-entry.json` for `/levelup.implement`.
 
@@ -456,54 +386,17 @@ Save to `{REPO_ROOT}/.specify/drafts/skills/{skill-name}/.skills-entry.json` for
 
 Check skill completeness:
 
-- [ ] SKILL.md exists and has required sections
+- [ ] SKILL.md exists with required sections
 - [ ] Description includes trigger keywords
 - [ ] At least one example provided
-- [ ] References linked correctly (if any)
 - [ ] `.skills-entry.json` generated
-- [ ] Instruction type is specified (for Generation/Review/Refactor/Security types, four-part anatomy is applied)
-- [ ] For executable standards: Categorized Standards section has Critical/Standard/Preference structure
+- [ ] Instruction type specified
 
 ### Phase 7: Summary
 
 **Objective**: Present skill for review
 
-```markdown
-## LevelUp Skills Summary
-
-**Skill Name**: {skill-name}
-**Location**: `{REPO_ROOT}/.specify/drafts/skills/{skill-name}/`
-**Source CDRs**: {list}
-
-### Generated Files
-
-| File | Status |
-|------|--------|
-| SKILL.md | Created |
-| references/pattern.md | Created |
-| .skills-entry.json | Created |
-
-### SKILL.md Preview
-
-\`\`\`markdown
-{First 50 lines of SKILL.md}
-\`\`\`
-
-### Skills Manifest Entry
-
-\`\`\`json
-{.skills-entry.json content}
-\`\`\`
-
-### Next Steps
-
-1. **Review** the generated skill in `{REPO_ROOT}/.specify/drafts/skills/{skill-name}/`
-2. **Edit** SKILL.md if needed
-3. **Run** `/levelup.implement` to:
-   - Move skill to team-ai-directives
-   - Update `.skills.json`
-   - Create PR
-```
+Use the **Output Format** section defined at the top of this command.
 
 ## Output Files
 

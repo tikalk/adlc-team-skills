@@ -235,21 +235,35 @@ For each ADR:
    - Consistent styling across diagrams
 
 5. **View File Consistency** (DAG State Validation):
-   - Check if `.specify/architect/state.json` exists and reports views as "completed"
-   - Check if `.specify/architect/views/` directory exists
-   - Verify that for each "completed" view in state.json, a corresponding file exists on disk
-   - **Flag as HIGH severity if**:
-     - state.json reports views "completed" but views/ directory is empty
-     - View files exist but are under 20 lines (placeholder/skeleton content)
-     - View files cannot be read (corrupted/missing permissions)
-   - **Report format**:
-     ```
-     DAG State Inconsistency Detected:
-     - State reports: [N] views completed
-     - Files on disk: [M] view files found
-     - Missing files: [list of missing views]
-     - Recommendation: Regenerate views or reset state.json
-     ```
+    - Check if `.specify/architect/state.json` exists and reports views as "completed"
+    - Check if `.specify/architect/views/` directory exists
+    - Verify that for each "completed" view in state.json, a corresponding file exists on disk
+    - **Flag as HIGH severity if**:
+      - state.json reports views "completed" but views/ directory is empty
+      - View files exist but are under 20 lines (placeholder/skeleton content)
+      - View files cannot be read (corrupted/missing permissions)
+    - **Report format**:
+      ```
+      DAG State Inconsistency Detected:
+      - State reports: [N] views completed
+      - Files on disk: [M] view files found
+      - Missing files: [list of missing views]
+      - Recommendation: Regenerate views or reset state.json
+      ```
+
+6. **Technology Neutrality** (Functional View):
+    - Scan Functional View (§3.2) for product/vendor names in element descriptions and Mermaid diagrams
+    - **Architectural roles** (acceptable): Database, Object Storage, Cache, Message Queue, AI Gateway, Workflow Runtime, App Shell, API Gateway, Authentication Service, etc.
+    - **Product names** (flag as MEDIUM): PostgreSQL, Neon, Vercel, Next.js, Redis, MongoDB, AWS, Azure, S3, etc.
+    - **Severity**: MEDIUM - Not blocking but indicates abstraction violation
+    - **Note**: ADR Traceability sections may reference products (that's acceptable); only flag element descriptions and diagram labels
+
+7. **Functional-Development Mapping**:
+    - Verify Development View (§3.5) contains a Technology Stack Mapping table (§3.5.2)
+    - Check that every element in Functional View's element table (§3.2.1) has at least one corresponding entry in the mapping table
+    - N:1 mappings (multiple functional elements → one technology) are acceptable
+    - **Severity**: MEDIUM if elements are missing; LOW if mapping table is absent
+    - **Cross-check**: Technology Architecture diagram (§3.5.3) should mirror Functional View diagram (§3.2.2) structure
 
 #### Pass F: Staleness Detection
 

@@ -5,6 +5,6 @@
   "here": true,
   "integration": "opencode",
   "script": "sh",
-  "speckit_version": "0.8.12+adlc2",
-  "team_ai_directives": "./agentic-sdlc-team-ai-directives/"
+  "speckit_version": "0.8.12+adlc18",
+  "team_ai_directives": "agentic-sdlc-team-ai-directives/"
 }

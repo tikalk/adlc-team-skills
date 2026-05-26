@@ -11,11 +11,15 @@
 
 **Purpose**: Describe functional elements, their responsibilities, and interactions
 
+> **Technology Abstraction Rule**: Elements must be described by **architectural role** (Database, Object Storage, Cache, Message Queue, AI Gateway, Workflow Runtime, App Shell, etc.) — never by product name. This view captures *what* the system does, not *how* it's implemented.
+>
+> See Development View §3.5.2 for concrete technology choices mapped to these elements.
+
 ### 3.2.1 Functional Elements
 
 | Element | Responsibility | Interfaces Provided | Dependencies |
 |---------|----------------|---------------------|--------------|
-| [COMPONENT_1] | [e.g., User authentication] | [e.g., REST /auth/*] | [e.g., Database] |
+| [COMPONENT_1] | [e.g., User authentication] | [e.g., API /auth/*] | [e.g., Database] |
 | [COMPONENT_2] | [Responsibility] | [Interfaces] | [Dependencies] |
 
 ### 3.2.2 Element Interactions
@@ -84,6 +88,18 @@ _Source ADRs: [ADR-XXX]_
 [See: templates/perspectives/usability.md]
 
 _Source ADRs: [ADR-XXX]_
+
+---
+
+## Validation Checklist
+
+Before finalizing this view, verify:
+
+- [ ] **Technology Neutrality**: All elements described by architectural role, not product name (Database, not PostgreSQL; Object Storage, not S3)
+- [ ] **Diagram Consistency**: Mermaid diagram nodes use generic labels matching the element table
+- [ ] **Interface Abstraction**: Interfaces describe capabilities, not implementation protocols
+- [ ] **Complete Coverage**: Every major functional responsibility is represented
+- [ ] **Clear Boundaries**: "What system DOES" and "does NOT do" are clearly articulated
 
 ---
 

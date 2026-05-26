@@ -1,6 +1,6 @@
 {
   "integration": "speckit",
-  "version": "0.8.12+adlc2",
+  "version": "0.8.12+adlc18",
   "installed_at": "2026-05-16T18:25:32.119318+00:00",
   "files": {
     ".specify/scripts/bash/check-prerequisites.sh": "9370eb9075f70c8bc6ed220b1967ffdc99e69a6e532b683b197e9d8216ffb658",

@@ -2,6 +2,76 @@
 
 All notable changes to the Architect extension will be documented in this file.
 
+## [2.1.0] - 2026-05-20
+
+### Added
+
+- **Functional View template**: Technology Abstraction Rule and validation checklist
+  - Added explicit instruction to use architectural roles (Database, Object Storage) not product names
+  - Added forward cross-reference to Development View §3.5.2
+  - Added 5-point validation checklist for technology neutrality
+- **Development View template**: Enhanced structure for technology mapping
+  - Added §3.5.2 Technology Stack Mapping table (role → technology → ADR)
+  - Added §3.5.3 Technology Architecture diagram with concrete technology labels
+  - Added backward cross-reference to Functional View §3.2
+  - Added 5-point validation checklist for view parity
+- **Analyze Pass E.6**: Technology Neutrality check
+  - Scans Functional View for product/vendor names in elements and diagrams
+  - Distinguishes architectural roles (acceptable) from product names (flagged)
+  - Severity: MEDIUM (reported, not blocking)
+- **Analyze Pass E.7**: Functional-Development Mapping check
+  - Verifies Technology Stack Mapping table exists in Development View
+  - Checks that Functional View elements have corresponding mapping entries
+  - Supports N:1 mappings (multiple elements → one technology)
+  - Severity: MEDIUM if elements missing, LOW if table absent
+- **Config options**: `technology_neutrality` and `view_parity` toggles in `analysis:` section
+
+### Changed
+
+- Development View section renumbering:
+  - §3.5.2 → §3.5.4 (Module Dependencies)
+  - §3.5.3 → §3.5.5 (Build & CI/CD)
+  - §3.5.4 → §3.5.6 (Development Standards)
+- Functional View template example: `[e.g., REST /auth/*]` → `[e.g., API /auth/*]` (technology-neutral)
+
+## [2.0.8] - 2026-05-17
+
+### Fixed
+
+- **P1-Critical**: Fixed setup-architect.sh clarify action to check drafts/adr.md (not memory) with fallback
+- **P1-Critical**: Removed duplicate ADR_FILE variable definition in setup-architect.sh
+- **P2-High**: Hardened implement.md pre-flight validation with hard enforcement and --force flag
+- **P2-High**: Added workflow state tracking for clarify → implement pipeline enforcement
+- **P3-Medium**: Added placeholder validation to catch unfilled [TBD], [STAKEHOLDER_*] patterns
+- **P4-Low**: Added missing 3.1.2 Stakeholders subsection to context view template
+- **P4-Low**: Clarified stakeholder vs external entities distinction in AD-template.md
+
+### Added
+
+- `--force` flag for emergency bypass of workflow validation (with clear warnings)
+- Workflow state tracking in state.json (`workflow.clarify_completed`, etc.)
+- Placeholder validation report template
+- ADR fallback logic in clarify action (drafts → memory)
+
+## [2.0.7] - 2026-05-16
+
+### Fixed
+
+- **Sub-System Detection Hardening** for `/architect.init` and `/architect.specify`:
+  - Added **Detection Source Reconciliation** rules to handle script vs AI detection mismatches
+  - Made **Step 4 (Sub-System Proposal) MANDATORY** when sub-systems are identified through ANY method
+  - Added **Critical Enforcement Note**: Cannot skip to monolithic if sub-systems exist
+  - Strengthened **Threshold Logic Enforcement** with mandatory user confirmation for 4+ sub-systems
+  - Added **Self-Check Requirements** before proceeding to Phase 1
+  - Prevents agents from ignoring AI-identified sub-systems when script reports "none detected"
+
+### Changed
+
+- Step 4 headers now explicitly marked as "MANDATORY if sub-systems identified"
+- Threshold logic now presented as enforcement table with "Can Skip?" column
+- Clear rules for when user confirmation is required vs optional
+- Added explicit prohibition on proceeding as monolithic when sub-systems detected
+
 ## [2.0.6] - 2026-05-16
 
 ### Fixed

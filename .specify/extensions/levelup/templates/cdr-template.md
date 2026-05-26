@@ -4,9 +4,11 @@ Context Directive Records (CDRs) track decisions about contributing context modu
 
 ## CDR Index
 
-| ID | Target Module | Context Type | Instruction Type | Priority | Status | Date | Source |
-|----|---------------|--------------|------------------|----------|--------|------|--------|
-| CDR-001 | [target path] | [type] | [Generation/Review/Refactor/Security/General] | [Critical/Standard/Preference] | Proposed | YYYY-MM-DD | [source] |
+| ID | Target Module | Context Type | Cross-System | Priority | Status | Date | Source |
+|----|---------------|--------------|--------------|----------|--------|------|--------|
+| CDR-001 | [target path] | [type] | ✓ | [Critical/Standard/Preference] | Proposed | YYYY-MM-DD | [source] |
+| CDR-002 | [target path] | [type] | | [Critical/Standard/Preference] | Proposed | YYYY-MM-DD | [source] |
+| CDR-INC-001 | (Inconsistency) | Inconsistency | ✓ | High | Proposed | YYYY-MM-DD | Multi-agent synthesis |
 
 ---
 
@@ -24,13 +26,65 @@ YYYY-MM-DD
 
 [How this CDR was discovered: codebase scan, feature spec, manual identification]
 
+### Cross-System Metadata
+> Populated automatically when pattern is detected across multiple sub-systems during multi-agent analysis
+
+- **Appears in**: [List of sub-system IDs where pattern was found - e.g., auth, payments, users]
+- **Cross-system score**: [0.0-1.0 - percentage of sub-systems with this pattern]
+- **Consistency**: [Consistent | Inconsistent | Partial | N/A (single sub-system)]
+  - **Consistent**: Same implementation across all sub-systems
+  - **Inconsistent**: Different implementations for same concern
+  - **Partial**: Some sub-systems have pattern, others don't
+- **Reuse score**: [0.0-1.0 calculated by Pattern Agent]
+- **Team-directives match**: [None | Partial | Exact]
+  - **Similar patterns**: [List of similar existing TD patterns with similarity scores]
+
+### Cross-System Analysis
+
+Analysis of pattern across sub-systems:
+
+| Sub-System | Implementation | Confidence | Evidence | Notes |
+|------------|----------------|------------|----------|-------|
+| auth | [Pattern details or "Not implemented"] | High/Medium/Low | [File:line refs] | [Any notes] |
+| payments | [Pattern details or "Not implemented"] | High/Medium/Low | [File:line refs] | [Any notes] |
+| users | [Pattern details or "Not implemented"] | High/Medium/Low | [File:line refs] | [Any notes] |
+
+**Cross-system findings**:
+- **Sub-systems with pattern**: [N] of [Total]
+- **Implementations consistent**: [Yes/No]
+- **Variance noted**: [Description of differences if inconsistent]
+
+### Team-Directives Comparison
+
+Comparison against existing team-ai-directives content:
+
+- **Exact match**: [Yes/No - is this already in TD?]
+- **Similar existing patterns**: 
+  - `[rules/framework/python_error_handling.md]` - Similarity: 0.65 - [Brief description of similarity/difference]
+- **Gap identified**: [Yes/No - should this be added to TD?]
+- **Potential conflict**: [Any existing rules that might conflict]
+- **Enhancement opportunity**: [Could enhance existing TD pattern]
+
 ### Target Module
 
-`context_modules/rules/{domain}/{file}.md` | `context_modules/personas/{file}.md` | `context_modules/examples/{category}/{file}.md` | `skills/{skill-name}/`
+**Use functional categories (NOT technology folders):**
+
+- **Rules**: `context_modules/rules/{category}/{technology}_{pattern}.md`
+  - Categories: `style-guides/`, `framework/`, `security/`, `testing/`, `devops/`, `data/`
+  - Examples: `rules/style-guides/python_pydantic_patterns.md`, `rules/security/typescript_auth_middleware.md`
+
+- **Personas**: `context_modules/personas/{file}.md`
+
+- **Examples**: `context_modules/examples/{technology}/{file}.md` (technology-based)
+  - Examples: `examples/python/typed_api_client.md`, `examples/typescript/react_hooks.md`
+
+- **Skills**: `skills/{skill-name}/`
 
 ### Context Type
 
-Rule | Persona | Example | Constitution Amendment | Skill
+Rule | Persona | Example | Constitution Amendment | Skill | Inconsistency
+
+> **Inconsistency**: Used when the same pattern/concern has different implementations across sub-systems. Requires team decision to standardize.
 
 ### Skill Type
 
@@ -173,6 +227,44 @@ Links to code, commits, or discussions that support this CDR:
 
 - [CDR-XXX: Related decision]
 - [ADR-XXX: Related architecture decision (if applicable)]
+
+### Inconsistency Resolution
+> **Only for CDRs with Context Type = "Inconsistency"**
+
+Track resolution of cross-sub-system inconsistencies:
+
+#### Inconsistency Details
+- **Type**: [Implementation divergence | Naming conflict | Scope gap]
+- **Severity**: [High | Medium | Low]
+- **Sub-systems involved**: [List of sub-system IDs]
+- **Concern**: [What is inconsistent - e.g., "Authentication approach"]
+
+#### Conflicting Implementations
+| Sub-System | Implementation | Evidence | Rationale (if known) |
+|------------|----------------|----------|---------------------|
+| auth | JWT tokens | src/auth/jwt.py | Historical choice |
+| payments | OAuth2 with PKCE | src/payments/oauth.py | Security requirement |
+
+#### Options Considered
+1. **Option A**: [Description]
+   - **Pros**: [Benefits]
+   - **Cons**: [Drawbacks]
+2. **Option B**: [Description]
+   - **Pros**: [Benefits]
+   - **Cons**: [Drawbacks]
+
+#### Resolution
+- **Decision**: [Which option was chosen]
+- **Rationale**: [Why this option]
+- **Resolved by**: [@username or "Pending"]
+- **Resolution date**: [YYYY-MM-DD or "Pending"]
+- **Status**: [Unresolved | Resolved | Won't Fix]
+
+#### Implementation Plan
+- [ ] Update sub-system A to use chosen approach
+- [ ] Update sub-system B to use chosen approach
+- [ ] Create/update context module in team-directives
+- [ ] Mark this CDR as Resolved
 
 ### Implementation Notes
 

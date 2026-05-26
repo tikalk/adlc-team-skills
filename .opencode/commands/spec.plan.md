@@ -1,21 +1,15 @@
 ---
-description: Execute the implementation planning workflow using the plan template
-  to generate design artifacts.
-handoffs:
-- label: Create Tasks
-  agent: spec.tasks
-  prompt: Break the plan into tasks
-  send: true
-- label: Create Checklist
-  agent: spec.checklist
-  prompt: Create a checklist for the following domain...
-scripts:
-  sh: .specify/scripts/bash/setup-plan.sh --json
-  ps: .specify/scripts/powershell/setup-plan.ps1 -Json
+description: Execute the implementation planning workflow using the plan template to generate design artifacts.
+handoffs: 
+  - label: Create Tasks
+    agent: spec.tasks
+    prompt: Break the plan into tasks
+    send: true
+  - label: Create Checklist
+    agent: spec.checklist
+    prompt: Create a checklist for the following domain...
 ---
 
-
-<!-- Source: agentic-sdlc -->
 ## User Input
 
 ```text
@@ -27,7 +21,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 ## Pre-Execution Checks
 
 **Check for extension hooks (before planning)**:
-- Check if `.specify/extensions.yml` exists in the project root.
+- Check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
 - If it exists, read it and look for entries under the `hooks.before_plan` key
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -51,7 +45,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     - Execute the instructions in that command file immediately (run any referenced scripts)
     - Once the hook completes (successfully or with a graceful skip), proceed to the Outline
     - If the hook command file cannot be found, log a warning and proceed anyway
-- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+- If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
 
@@ -70,7 +64,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 4. **Stop and report**: Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generated artifacts.
 
-5. **Check for extension hooks**: After reporting, check if `.specify/extensions.yml` exists in the project root.
+5. **Check for extension hooks**: After reporting, check if `{REPO_ROOT}/.specify/extensions.yml` exists in the project root.
    - If it exists, read it and look for entries under the `hooks.after_plan` key
    - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
    - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
@@ -94,7 +88,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     - Execute the instructions in that command file immediately (run any referenced scripts)
     - Once the hook completes (successfully or with a graceful skip), proceed
     - If the hook command file cannot be found or execution fails, log a warning and continue
-    - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+    - If no hooks are registered or `{REPO_ROOT}/.specify/extensions.yml` does not exist, skip silently
 
 ## Phases
 
@@ -141,29 +135,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 **Output**: data-model.md, /contracts/*, quickstart.md, updated agent context file
 
-## Triage Framework: [SYNC] vs [ASYNC] Task Classification
-
-**Purpose**: Classify implementation tasks as [SYNC] (human-reviewed) or [ASYNC] (agent-delegated).
-
-**[SYNC] - Human Execution Required:**
-- Complex business logic, algorithms, state machines
-- Security-critical code (auth, encryption, data protection)
-- External integrations, third-party APIs
-- Architectural decisions, component boundaries
-- High-risk changes (schema, API contracts, breaking changes)
-
-**[ASYNC] - Agent Delegation Suitable:**
-- Well-defined CRUD operations with clear schemas
-- Boilerplate code, standard library usage
-- Independent components with minimal dependencies
-- Standard framework/library patterns
-- Testable units with comprehensive test coverage
-
-**Triage Output:**
-Document each task with: Classification ([SYNC]/[ASYNC]), Primary Criteria, Risk Level, Rationale
-
 ## Key rules
 
 - Use absolute paths for filesystem operations; use project-relative paths for references in documentation and agent context files
 - ERROR on gate failures or unresolved clarifications
-- All implementation tasks must be classified as [SYNC] or [ASYNC] with documented rationale

@@ -7,11 +7,11 @@
 
 ---
 
-## 7. Non-Functional Requirements (NFRs)
+## 8. Non-Functional Requirements (NFRs)
 
 **Purpose**: Define quality attributes and constraints
 
-### 7.1 Performance
+### 8.1 Performance
 
 | Requirement | Target | Measurement |
 |-------------|--------|-------------|
@@ -19,7 +19,7 @@
 | Throughput | [e.g., 1000 req/sec] | [How to measure] |
 | Latency | [e.g., < 50ms p50] | [How to measure] |
 
-### 7.2 Security
+### 8.2 Security
 
 | Requirement | Standard | Compliance |
 |-------------|----------|------------|
@@ -27,7 +27,7 @@
 | Authorization | [e.g., RBAC] | [Compliance requirement] |
 | Data Encryption | [e.g., AES-256] | [Compliance requirement] |
 
-### 7.3 Reliability
+### 8.3 Reliability
 
 | Requirement | Target | Measurement |
 |-------------|--------|-------------|
@@ -35,7 +35,7 @@
 | MTBF | [e.g., 720 hours] | [How to measure] |
 | MTTR | [e.g., < 1 hour] | [How to measure] |
 
-### 7.4 Usability
+### 8.4 Usability
 
 | Requirement | Target | Measurement |
 |-------------|--------|-------------|
@@ -43,7 +43,7 @@
 | Accessibility | [e.g., WCAG 2.1 AA] | [Compliance check] |
 | Error Rate | [e.g., < 5% user errors] | [How to measure] |
 
-### 7.5 Scalability
+### 8.5 Scalability
 
 | Requirement | Target | Measurement |
 |-------------|--------|-------------|
@@ -51,7 +51,7 @@
 | Data Volume | [e.g., 1TB] | [Capacity planning] |
 | Growth Rate | [e.g., 100% YoY] | [Projection] |
 
-### 7.6 NFRs Traced to PDRs
+### 8.6 NFRs Traced to PDRs
 
 | NFR Category | Requirement | PDR | Rationale |
 |--------------|-------------|-----|-----------|

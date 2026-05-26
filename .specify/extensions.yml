@@ -4,6 +4,7 @@ installed:
 - levelup
 - product
 - quick
+- team-ai-directives
 settings:
   auto_execute_hooks: true
 hooks:
@@ -14,6 +15,14 @@ hooks:
     optional: false
     prompt: Execute speckit.git.initialize?
     description: Initialize Git repository before constitution setup
+    condition: null
+  - extension: team-ai-directives
+    command: adlc.team-ai-directives.constitution
+    enabled: true
+    optional: false
+    prompt: Execute adlc.team-ai-directives.constitution?
+    description: Discover and inherit team constitution principles before project
+      constitution update
     condition: null
   before_specify:
   - extension: git
@@ -29,6 +38,13 @@ hooks:
     optional: true
     prompt: Execute adlc.product.link?
     description: Link feature to existing PDR (silent if no PDRs exist)
+    condition: null
+  - extension: team-ai-directives
+    command: adlc.team-ai-directives.discover
+    enabled: true
+    optional: false
+    prompt: Execute adlc.team-ai-directives.discover?
+    description: Auto-discover personas, rules, and examples from team-ai-directives
     condition: null
   before_clarify:
   - extension: git
@@ -60,6 +76,13 @@ hooks:
     prompt: Execute adlc.architect.validate?
     description: Validate feature aligns with architecture; escalate if new architectural
       decisions detected
+    condition: null
+  - extension: team-ai-directives
+    command: adlc.team-ai-directives.discover
+    enabled: true
+    optional: false
+    prompt: Execute adlc.team-ai-directives.discover?
+    description: Auto-discover architecture patterns and implementation guidelines
     condition: null
   before_tasks:
   - extension: git

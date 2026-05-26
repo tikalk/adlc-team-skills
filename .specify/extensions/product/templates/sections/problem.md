@@ -4,18 +4,19 @@
 **PDRs Referenced**: [PDR_IDS]
 **Generated**: [DATE]
 **Dependencies**: Overview
+**Section Number**: 3 (in final PRD)
 
 ---
 
-## 2. The Problem
+## 3. The Problem
 
 **Purpose**: Articulate the problem being solved
 
-### 2.1 Problem Statement
+### 3.1 Problem Statement
 
 [Problem statement - what pain point or opportunity this product addresses]
 
-### 2.2 Problem Context
+### 3.2 Problem Context
 
 **Current State:**
 
@@ -32,7 +33,7 @@
 - [User impact]
 - [Technical impact]
 
-### 2.3 Problem Validation
+### 3.3 Problem Validation
 
 | Evidence Type | Source | Finding |
 |---------------|--------|---------|

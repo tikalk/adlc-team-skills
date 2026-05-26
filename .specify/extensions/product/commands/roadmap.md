@@ -17,6 +17,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 - `"progress"` - Show completion progress without updating PDRs
 - `"update"` - Analyze specs and update PDR status to Completed
+- `"sync"` - Pull milestones from external tool (GitHub/GitLab/Jira/Linear) and update roadmap-timeline.md
 - `"M01"` - Show progress for specific milestone only
 - Empty input: Show progress and prompt for update
 
@@ -199,6 +200,79 @@ You are acting as a **Product Roadmap Analyst** tracking feature development pro
 - Only update PDR status, not PRD directly
 - product.implement will regenerate PRD with updated status
 - Preserve all other PDR fields when updating status
+
+### Phase 5: Sync with External Tools (Optional)
+
+**When**: User runs `/product.roadmap --sync`
+
+**Objective**: Pull milestones from project management tools and update `visuals/roadmap-timeline.md`
+
+#### Step 1: Detect Available Tools
+
+The agent will detect which tools are available:
+
+**MCP Tools** (preferred):
+- Check if MCP is configured
+- Try: `github_projects_list`, `gitlab_epics_list`, `jira_get_roadmap`, `linear_cycles_list`
+
+**CLI Tools** (fallback):
+- Check: `gh` (GitHub CLI)
+- Check: `glab` (GitLab CLI)
+- Check: `jira` (Jira CLI)
+- Check: `linear` (Linear CLI)
+
+#### Step 2: Attempt Sync
+
+**If MCP available**:
+```xml
+Use the first available MCP tool to list milestones/epics/cycles.
+Parse the response for: Title, Target date, Status
+```
+
+**If MCP fails/unavailable, try CLI**:
+```bash
+# Try each available CLI tool
+gitHub: gh project item-list [ID] --format json
+# OR
+gitLab: glab epic list --group [GROUP] --output json
+# OR
+jira: jira issue list --type=Epic --project [KEY] --json
+# OR
+linear: linear cycles list --team [TEAM] --format json
+```
+
+**If both fail**:
+```markdown
+⚠️ **Sync Warning**: Unable to automatically sync milestones.
+
+**Possible reasons**:
+- No MCP tools configured
+- CLI tools not installed or not authenticated
+- Network connectivity issues
+
+**Manual sync options**:
+1. Export milestones from your tool as CSV/JSON
+2. Share the file with me
+3. I'll parse and update the diagram
+
+**Supported formats**: CSV, JSON, TSV
+```
+
+#### Step 3: Update Roadmap Timeline
+
+Parse successful output and update `visuals/roadmap-timeline.md`:
+- Update Gantt chart with synced dates
+- Update sync status table
+- Log the sync attempt
+
+#### Step 4: Handle Errors (Warning Only)
+
+- Network errors: ⚠️ Warning + retry once
+- Auth errors: ⚠️ Warning + suggest checking credentials
+- Tool not found: ⚠️ Warning + skip to next option
+- Parse errors: ⚠️ Warning + attempt alternative parsing
+
+**Result**: Warning (non-blocking), user can continue or fix and retry.
 
 ## Workflow Guidance
 

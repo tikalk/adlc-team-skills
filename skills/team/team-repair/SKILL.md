@@ -1,6 +1,6 @@
 ---
 name: team-repair
-description: Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives. Use when indexes are inconsistent, orphans are detected, or after bulk changes to context modules or skills.
+description: Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives, scan for rule conflicts, and verify directive freshness. Use when indexes are inconsistent, orphans are detected, after bulk changes, or for periodic KB health validation.
 disable-model-invocation: true
 ---
 
@@ -19,7 +19,9 @@ Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives to fix incons
 3. Rebuilt .skills.json manifest from skills/
 4. Auto-added YAML frontmatter to orphan context modules
 5. Auto-generated .skills.json entries for orphan skills
-6. Summary report of all repairs
+6. Conflict scan across rules (creates conflict CDRs if issues found)
+7. Freshness verification (updates `verified` timestamps, flags stale directives)
+8. Summary report of all repairs
 
 You are acting as an **Index Repair Specialist** ensuring team-ai-directives indexes are consistent and complete. Your role involves:
 
@@ -63,10 +65,13 @@ You **MUST** consider the user input before proceeding (if not empty).
 |------|-------------|
 | `--dry-run` | Report only, don't write changes |
 | `--health-only` | Run Phase 0 health check only, then stop. |
+| `--validate` | Run conflict scan + freshness verification only (Phases 8-9) |
+| `--conflicts` | Scan for rule conflicts only |
+| `--freshness` | Verify directive freshness only |
 | `--cdr-only` | Only repair CDR.md |
 | `--skills-only` | Only repair .skills.json |
 | `--agents-only` | Only repair AGENTS.md |
-| (default) | Repair all indexes with auto-fix |
+| (default) | Repair all indexes + validate conflicts and freshness |
 
 ## Core Process
 
@@ -572,7 +577,117 @@ cat > "{TEAM_DIRECTIVES}/.skills.json" << 'EOF'
 EOF
 ```
 
-### Phase 8: Summary Report
+### Phase 8: Conflict Scanning
+
+**Objective**: Scan team-ai-directives rules for contradictions and overlaps.
+
+**Skip if**: `--skills-only`, `--agents-only`, or `--freshness` flag provided.
+
+#### Step 1: Load Rules and Constitution
+
+Load:
+- `{TEAM_DIRECTIVES}/context_modules/constitution.md`
+- `{TEAM_DIRECTIVES}/context_modules/rules/**/*.md`
+
+#### Step 2: Detect Conflicts
+
+Conflict levels:
+
+| Level | Pattern | Severity |
+|---|---|---|
+| Direct Contradiction | `must X` vs `never X` | CRITICAL |
+| Implicit Contradiction | Numeric/logical impossibility | ERROR |
+| Exception Conflict | Base rule vs exception | WARNING |
+| Scope Overlap | Overlapping rules | INFO |
+| Constitution Conflict | Rule vs principle | CRITICAL |
+
+Use `levelup-helpers.sh` conflict detection or implement inline:
+
+```bash
+skills/team/levelup-helpers.sh --conflicts "$TEAM_DIRECTIVES/context_modules/rules"
+```
+
+#### Step 3: Create Conflict CDRs
+
+For each conflict, create a CDR in `{REPO_ROOT}/.adlc/drafts/cdr/CDR-{NNN}.md`:
+
+```markdown
+## CDR-{NNN}: Resolve Rule Conflict: {title}
+
+### Status
+**Discovered**
+
+### Date
+{today}
+
+### Source
+Rule conflict detection via /team-repair --validate
+
+### Target Module
+`context_modules/rules/{domain}/`
+
+### Context Type
+Rule
+
+### Context
+**Conflict Details**:
+- Rule A: {path} — "{statement}"
+- Rule B: {path} — "{statement}"
+- Type: {critical|error|warning|info}
+
+### Decision
+**Proposed Resolution**:
+1. Add exception
+2. Edit rule to avoid conflict
+3. Mark intentional
+4. Deprecate one rule
+```
+
+Regenerate the local CDR index.
+
+Handoff: if conflict CDRs created, suggest `/levelup-clarify`.
+
+### Phase 9: Freshness Verification
+
+**Objective**: Update `verified` timestamps for valid directives and flag stale ones.
+
+**Skip if**: `--skills-only`, `--agents-only`, or `--conflicts` flag provided.
+
+#### Step 1: Identify Valid Directives
+
+For each context module file (rules, personas, examples, constitution) and skill SKILL.md:
+- If no conflicts detected for this file → eligible for verification update
+- If conflicts detected → skip (will be resolved via conflict CDRs)
+
+#### Step 2: Update Verification Metadata
+
+For each eligible directive:
+
+1. Parse YAML frontmatter
+2. Update `verified` to today's date
+3. Update `timestamp` to current ISO 8601 datetime
+4. Reset `age_days` to 0
+5. Append to verification log table:
+
+```markdown
+| Date | Verified By | Notes |
+|---|---|---|
+| {today} | /team-repair --validate | Validation passed, no conflicts |
+```
+
+#### Step 3: Report Stale Directives
+
+Flag directives with `age_days` > 30 or whose `verified` date is older than 30 days.
+
+```markdown
+### Stale Directives
+
+| File | Age | Last Verified |
+|---|---|---|
+| rules/old-pattern.md | 45d | 2026-04-01 |
+```
+
+### Phase 10: Summary Report
 
 ```markdown
 ## Team Repair Summary
@@ -605,6 +720,25 @@ EOF
 | Orphans repaired | {n} |
 | Missing removed | {n} |
 
+### Conflict Scanning
+
+| Metric | Count |
+|---|---|
+| Conflicts detected | {n} |
+| Conflict CDRs created | {n} |
+| Critical | {n} |
+| Error | {n} |
+| Warning | {n} |
+| Info | {n} |
+
+### Freshness Verification
+
+| Metric | Count |
+|---|---|
+| Directives updated | {n} |
+| Stale directives (>30d) | {n} |
+| Skipped (has conflicts) | {n} |
+
 ### Files Modified
 
 | File | Change |
@@ -617,7 +751,8 @@ EOF
 ### Next Steps
 
 1. Review repaired files
-2. Commit changes if satisfied
+2. If conflict CDRs were created, run `/levelup-clarify` to resolve them
+3. Commit changes if satisfied
 ```
 
 ### Notes
@@ -625,6 +760,7 @@ EOF
 - **Auto-fix**: Always repairs issues automatically (no confirmation needed)
 - **Dry run**: Use `--dry-run` to preview changes without writing
 - **Selective repair**: Use `--cdr-only`, `--skills-only`, or `--agents-only` for specific targets
+- **Validation modes**: `--validate` runs conflict scan + freshness; `--conflicts` and `--freshness` run each separately
 - **YAML frontmatter**: Auto-generated for orphan context modules
 - **Skills entries**: Auto-generated from SKILL.md content
 - **AGENTS.md**: Overwrites if corrupted (missing required sections)
@@ -662,6 +798,9 @@ EOF
 - [ ] No `.skills.json` entry references a skill directory that does not exist on disk.
 - [ ] The summary report lists non-zero counts for "Files scanned" / "Skills scanned" and shows consistent totals.
 - [ ] Re-running the skill with no flags produces zero "Files Modified" entries (idempotency check).
+- [ ] Conflict scan completed (if not skipped) and conflict CDRs created for any findings.
+- [ ] Freshness verification completed (if not skipped) and stale directives reported.
+- [ ] No rule contradictions remain unreported after `--validate`.
 
 ## Configuration
 

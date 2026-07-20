@@ -38,9 +38,20 @@ All architecture skills use the Rozanski & Woods viewpoints and perspectives met
 |---|---|---|
 | `team-boot` | Bootstrap session — load constitution, discover context | Model-invoked (auto) |
 | `team-discover` | Find relevant personas, rules, examples for current task | Model-invoked (auto) |
-| `team-repair` | Re-index CDR.md, .skills.json, AGENTS.md; health check + auto-fix | User-invoked |
+| `team-repair` | Re-index CDR.md, .skills.json, AGENTS.md; health check; conflict scan; freshness verification | User-invoked |
 | `team-skills` | Browse and install team skills from the directives KB | User-invoked |
 | `team-setup` | Clone, scaffold, or configure a team-ai-directives KB | User-invoked |
+
+### LevelUp / CDR Lifecycle (4 skills)
+
+Located under `skills/team/`. Contribute reusable patterns back to team-ai-directives via Context Directive Records (CDRs).
+
+| Skill | Use when | From |
+|---|---|---|
+| `levelup-init` | Brownfield CDR discovery from existing codebase | `/levelup.init` |
+| `levelup-specify` | Greenfield CDR extraction from a completed feature | `/levelup.specify` |
+| `levelup-clarify` | Review/accept/reject/defer CDRs | `/levelup.clarify` |
+| `levelup-implement` | Compile accepted CDRs into KB artifacts + draft PR | `/levelup.implement` |
 
 ### Workflows
 
@@ -54,8 +65,14 @@ Greenfield: architect-specify → architect-clarify → architect-implement → 
 ```text
 First time:   team-setup (clone/scaffold) → team-boot auto-loads on every session
 Health check: team-repair (or team-repair --health-only)
-Repair:       team-repair (Phase 0 health check → Phase 1-8 repairs)
+Repair:       team-repair (re-index, health check, conflict scan, freshness verification)
 Skills:       team-skills (browse, install team skills)
+```
+
+**LevelUp / CDR Lifecycle**:
+```text
+Brownfield: levelup-init → levelup-clarify → levelup-implement → team-repair
+Greenfield: levelup-specify → levelup-clarify → levelup-implement → team-repair
 ```
 
 ## Output
@@ -98,13 +115,21 @@ Replace `<agent>` with your agent name (e.g., `claude`, `codex`, `opencode`, `ge
 | "Set up team directives for this project" | team-setup |
 | "Check our team directives health" | team-repair --health-only |
 | "Repair our CDR index" | team-repair |
+| "Scan for rule conflicts" | team-repair --conflicts |
+| "Verify directive freshness" | team-repair --freshness |
 | "Show me available team skills" | team-skills |
+| "Discover directives from this codebase" | levelup-init |
+| "Extract lessons from this feature" | levelup-specify |
+| "Review pending CDRs" | levelup-clarify |
+| "Publish accepted CDRs to team KB" | levelup-implement |
+| "Build one skill from a CDR" | levelup-implement --skill CDR-NNN |
 
 ## Scripts & Templates
 
 Skills reference bundled scripts from the skill directory:
 
 - `team-helpers.sh` / `team-helpers.ps1` — shared path resolution, KB validation, and scaffolding (used by team-setup, team-repair, team-skills).
+- `levelup-helpers.sh` / `levelup-helpers.ps1` — shared CDR numbering, index generation, signal gate, and conflict detection (used by all levelup-* skills).
 
 Architecture skills seed templates into `.adlc/templates/` on first run.
 

@@ -1,6 +1,14 @@
 # ADLC Team Skills
 
-Agent skills for the Agentic SDLC (ADLC) workflow — architecture and team directives.
+Agent skills for the [**Twelve-Factor Agentic SDLC**](https://github.com/tikalk/agentic-sdlc-12-factors) workflow — architecture analysis and team directives management.
+
+**How the pieces fit:**
+
+- **[12-Factor Agentic SDLC](https://github.com/tikalk/agentic-sdlc-12-factors)** — the methodology (strategic mindset, structured planning, directives as code, traceability)
+- **[team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives)** — version-controlled team knowledge base (constitution, personas, rules, CDRs)
+- **This repo** — agent skills that implement the methodology
+
+The architecture skills implement Factor IV (Structured Planning via ADRs and Architecture Descriptions) and Factor IX (Traceability). The team skills implement Factor XI (Directives as Code) — automating discovery, repair, and setup of your team-ai-directives knowledge base.
 
 ## Install
 
@@ -62,32 +70,21 @@ Architecture skills write to `.adlc/` inside the target project:
 
 Team skills read from and write to the team-ai-directives knowledge base configured in `.adlc/init-options.json` or the `ADLC_TEAM_AI_DIRECTIVES` env var.
 
-## OpenCode
+## Agent Support
 
-opencode doesn't support slash commands for skills. Skills are **agent-driven**:
-the agent auto-selects the right skill based on your request description.
+Skills are **agent-driven**: the model auto-selects the right skill based on your request description. They work with any agent that supports the Agent Skills standard.
 
-### Install (global — recommended)
+### Install
 
 ```bash
-npx skills add tikalk/adlc-team-skills -a opencode -g
+# Global install (recommended)
+npx skills add tikalk/adlc-team-skills -a <agent> -g
+
+# Project-level install
+npx skills add tikalk/adlc-team-skills -a <agent>
 ```
 
-Installs to `~/.config/opencode/skills/` — opencode auto-loads these globally.
-
-### Install (project-level)
-
-`npx skills add -a opencode` installs to `.agents/skills/`, which opencode
-doesn't scan at project level by default. Configure `opencode.json`:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "skills": {
-    "paths": [".agents/skills"]
-  }
-}
-```
+Replace `<agent>` with your agent name (e.g., `claude`, `codex`, `opencode`, `gemini`, `qwen`).
 
 ### Usage
 

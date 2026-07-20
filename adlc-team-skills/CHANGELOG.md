@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-21
+
+### Added
+
+- Four new LevelUp skills under `skills/team/` aligned with the architect-* workflow:
+  - `levelup-init` — brownfield CDR discovery from codebase.
+  - `levelup-specify` — greenfield CDR extraction from feature implementation context.
+  - `levelup-clarify` — interactive review/accept/reject/defer of CDRs.
+  - `levelup-implement` — compile accepted CDRs into team-ai-directives artifacts and create a draft PR.
+- Shared `levelup-helpers.sh` / `levelup-helpers.ps1` under `skills/team/` — CDR numbering, index generation, signal gate, and rule-conflict scanning.
+- CDRs stored as individual files `.adlc/drafts/cdr/CDR-{NNN}.md` with auto-generated `.adlc/drafts/cdr/cdr.md` index.
+- `team-repair` conflict scanning and freshness verification (from former `/levelup.validate`).
+- `team-repair` flags: `--validate`, `--conflicts`, `--freshness`.
+
+### Changed
+
+- `team-repair` description updated to include conflict scanning and freshness verification.
+- `README.md` reorganized with separate LevelUp / CDR Lifecycle section.
+
 ## [0.3.0] - 2026-07-20
 
 ### Added

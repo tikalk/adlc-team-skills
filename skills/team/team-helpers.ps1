@@ -190,6 +190,9 @@ Context Directive Records (CDRs) track decisions about contributing context modu
 type: Constitution
 title: "${TeamName} Constitution"
 description: "Team-wide principles and governance"
+resource: ./context_modules/constitution.md
+tags: [constitution]
+timestamp: ${today}T00:00:00Z
 ---
 
 # ${TeamName} Constitution
@@ -198,6 +201,21 @@ No team-wide principles defined yet. Add principles as they are established.
 "@
   Set-Content -Path (Join-Path $Dest "context_modules/constitution.md") -Value $constitution
 
+  $indexTop = @"
+# Context Modules
+
+| Directory | Description |
+|-----------|-------------|
+| [rules/](rules/index.md) | Team rules and workflows |
+| [personas/](personas/index.md) | Team personas |
+| [examples/](examples/index.md) | Team examples |
+"@
+  Set-Content -Path (Join-Path $Dest "context_modules/index.md") -Value $indexTop
+
+  Set-Content -Path (Join-Path $Dest "context_modules/rules/index.md") -Value "# Rules`n`nNo rules defined yet. Use /levelup-specify to create rules via CDRs."
+  Set-Content -Path (Join-Path $Dest "context_modules/personas/index.md") -Value "# Personas`n`nNo personas defined yet. Use /levelup-specify to create personas via CDRs."
+  Set-Content -Path (Join-Path $Dest "context_modules/examples/index.md") -Value "# Examples`n`nNo examples defined yet. Use /levelup-specify to create examples via CDRs."
+
   $null = New-Item -ItemType File -Force -Path (Join-Path $Dest "context_modules/rules/.gitkeep")
   $null = New-Item -ItemType File -Force -Path (Join-Path $Dest "context_modules/personas/.gitkeep")
   $null = New-Item -ItemType File -Force -Path (Join-Path $Dest "context_modules/examples/.gitkeep")
@@ -205,7 +223,7 @@ No team-wide principles defined yet. Add principles as they are established.
 
   Write-Output "Scaffolded team-ai-directives at ${Dest}"
   Write-Output "Team name: ${TeamName}"
-  Write-Output "Files created: 10"
+  Write-Output "Files created: 14"
 
   $missing = Test-KbStructure -Dir $Dest
   if ($missing -gt 0) {

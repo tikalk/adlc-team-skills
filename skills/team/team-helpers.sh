@@ -178,12 +178,43 @@ MCPJSON
 type: Constitution
 title: "${team_name} Constitution"
 description: "Team-wide principles and governance"
+resource: ./context_modules/constitution.md
+tags: [constitution]
+timestamp: ${today}T00:00:00Z
 ---
 
 # ${team_name} Constitution
 
 No team-wide principles defined yet. Add principles as they are established.
 CONSTITUTION
+
+  cat > "${dest}/context_modules/index.md" << 'INDEXTOP'
+# Context Modules
+
+| Directory | Description |
+|-----------|-------------|
+| [rules/](rules/index.md) | Team rules and workflows |
+| [personas/](personas/index.md) | Team personas |
+| [examples/](examples/index.md) | Team examples |
+INDEXTOP
+
+  cat > "${dest}/context_modules/rules/index.md" << 'INDEXRULES'
+# Rules
+
+No rules defined yet. Use /levelup-specify to create rules via CDRs.
+INDEXRULES
+
+  cat > "${dest}/context_modules/personas/index.md" << 'INDEXPERS'
+# Personas
+
+No personas defined yet. Use /levelup-specify to create personas via CDRs.
+INDEXPERS
+
+  cat > "${dest}/context_modules/examples/index.md" << 'INDEXEX'
+# Examples
+
+No examples defined yet. Use /levelup-specify to create examples via CDRs.
+INDEXEX
 
   touch "${dest}/context_modules/rules/.gitkeep"
   touch "${dest}/context_modules/personas/.gitkeep"
@@ -192,7 +223,7 @@ CONSTITUTION
 
   echo "Scaffolded team-ai-directives at ${dest}"
   echo "Team name: ${team_name}"
-  echo "Files created: 10"
+  echo "Files created: 14"
 
   validate_kb "$dest" || true
 }

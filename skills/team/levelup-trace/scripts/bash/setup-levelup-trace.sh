@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-levelup-specify.sh — Setup for levelup-specify (self-contained)
+# setup-levelup-trace.sh — Setup for levelup-trace (self-contained)
 set -euo pipefail
 
 ###############################################################################
@@ -41,20 +41,6 @@ resolve_branch() {
   git branch --show-current 2>/dev/null || echo "unknown"
 }
 
-next_cdr_number() {
-  local dir="$1"
-  mkdir -p "$dir" 2>/dev/null || true
-  local max=0
-  for f in "$dir"/CDR-*.md; do
-    [[ -f "$f" ]] || continue
-    local num
-    num=$(basename "$f" | sed -E 's/CDR-([0-9]+).*/\1/')
-    [[ "$num" =~ ^[0-9]+$ ]] || continue
-    ((10#$num > max)) && max=$((10#$num))
-  done
-  printf '%03d' $((max + 1))
-}
-
 ###############################################################################
 # Main
 ###############################################################################
@@ -67,20 +53,13 @@ TRACE_FILE="${PROJECT_ROOT}/.adlc/drafts/trace.md"
 
 mkdir -p "$CDR_DRAFTS_DIR" "$(dirname "$TRACE_FILE")"
 
-NEXT_CDR=$(next_cdr_number "$CDR_DRAFTS_DIR")
-EXISTING_CDRS=$( { ls -1 "$CDR_DRAFTS_DIR"/CDR-*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
-TD_CONFIGURED=$([[ -d "$TEAM_AI_DIRECTIVE" ]] && echo "true" || echo "false")
-
-python3 - "$PROJECT_ROOT" "$CDR_DRAFTS_DIR" "$TRACE_FILE" "$TEAM_AI_DIRECTIVE" "$BRANCH" "$NEXT_CDR" "$EXISTING_CDRS" "$TD_CONFIGURED" << 'PY'
+python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVE" "$BRANCH" "$CDR_DRAFTS_DIR" "$TRACE_FILE" << 'PY'
 import json, sys
 print(json.dumps({
   "REPO_ROOT": sys.argv[1],
-  "CDR_DRAFTS_DIR": sys.argv[2],
-  "TRACE_FILE": sys.argv[3],
-  "TEAM_AI_DIRECTIVE": sys.argv[4],
-  "BRANCH": sys.argv[5],
-  "NEXT_CDR": sys.argv[6],
-  "EXISTING_CDRS": int(sys.argv[7]),
-  "TD_CONFIGURED": sys.argv[8] == "true"
+  "TEAM_AI_DIRECTIVE": sys.argv[2],
+  "BRANCH": sys.argv[3],
+  "CDR_DRAFTS_DIR": sys.argv[4],
+  "TRACE_FILE": sys.argv[5]
 }))
 PY

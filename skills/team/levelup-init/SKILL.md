@@ -281,7 +281,7 @@ For each high-value pattern, create an individual CDR file:
 
 #### Signal Gate (Strict Mode)
 
-Before publishing (handled later by `/levelup-implement`), CDRs must pass:
+Before publishing (handled later by `/levelup-publish`), CDRs must pass:
 
 - **Team-wide**: Pattern applicable across projects
 - **High Value**: Saves >30min per future use
@@ -317,7 +317,7 @@ Handoff context to include:
     ↓
 [Run /levelup-clarify] → Validate and accept/reject CDRs
     ↓
-[Run /levelup-implement] → Compile accepted CDRs into team-ai-directives PR
+[Run /levelup-publish] → Compile accepted CDRs into team-ai-directives PR
     ↓
 [Run /team-repair] → Re-index and validate KB after merge
 ```

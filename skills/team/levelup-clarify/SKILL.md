@@ -297,7 +297,7 @@ Regenerate `{REPO_ROOT}/.adlc/drafts/cdr/cdr.md` by listing all `CDR-*.md` files
 
 ### Next Steps
 
-1. **Accepted**: Run `/levelup-implement`
+1. **Accepted**: Run `/levelup-publish`
 2. **Deferred**: Will appear in next clarify session
 3. **Remaining**: Run `/levelup-clarify` again to continue
 ```
@@ -330,7 +330,7 @@ Regenerate `{REPO_ROOT}/.adlc/drafts/cdr/cdr.md` by listing all `CDR-*.md` files
 
 #### After `/levelup-clarify`
 
-If any CDRs were **Accepted**, handoff to `/levelup-implement`:
+If any CDRs were **Accepted**, handoff to `/levelup-publish`:
 
 ```json
 {
@@ -350,18 +350,18 @@ If any CDRs were **Accepted**, handoff to `/levelup-implement`:
     ↓
 [One CDR at a time] → Accept / Reject / Defer
     ↓
-[Run /levelup-implement] → Compile accepted CDRs
+[Run /levelup-publish] → Compile accepted CDRs
 ```
 
 ## Next Steps
 
-After accepting CDRs, run `/levelup-implement` to compile them into a team-ai-directives PR.
+After accepting CDRs, run `/levelup-publish` to compile them into a team-ai-directives PR.
 
 ## Verification
 
 - All reviewed CDR files updated with new status and clarification metadata.
 - `cdr.md` index regenerated.
-- Accepted CDRs are ready for `/levelup-implement`.
+- Accepted CDRs are ready for `/levelup-publish`.
 - No CDRs were auto-accepted or auto-rejected without user input.
 
 ## Context

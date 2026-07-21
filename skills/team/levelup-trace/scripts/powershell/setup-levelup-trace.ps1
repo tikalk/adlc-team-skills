@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# setup-levelup-implement.ps1 — Setup for levelup-implement (self-contained)
+# setup-levelup-trace.ps1 — Setup for levelup-trace (self-contained)
 $ErrorActionPreference = "Stop"
 
 ###############################################################################
@@ -47,46 +47,17 @@ $ProjectRoot = Resolve-ProjectRoot
 $TeamAiDirective = Resolve-TeamAiDirective $ProjectRoot
 $Branch = Resolve-Branch
 $CdrDraftsDir = Join-Path $ProjectRoot ".adlc/drafts/cdr"
-$SkillsDraftsDir = Join-Path $ProjectRoot ".adlc/drafts/skills"
+$TraceFile = Join-Path $ProjectRoot ".adlc/drafts/trace.md"
 
 New-Item -ItemType Directory -Path $CdrDraftsDir -Force | Out-Null
-New-Item -ItemType Directory -Path $SkillsDraftsDir -Force | Out-Null
-
-# Find accepted CDRs using single-line format: ### Status: **Accepted**
-$AcceptedCdrs = @()
-if (Test-Path $CdrDraftsDir) {
-    Get-ChildItem -Path $CdrDraftsDir -Filter "CDR-*.md" -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object {
-        $content = Get-Content $_.FullName -Raw
-        if ($content -match '(?m)^### Status: \*\*Accepted\*\*') {
-            $AcceptedCdrs += $_.BaseName
-        }
-    }
-}
-
-$TdConfigured = if (Test-Path $TeamAiDirective) { "true" } else { "false" }
-
-# Check if team-ai-directives is a git repo with a clean working tree
-$TdIsGit = "false"
-$TdClean = "false"
-if ($TdConfigured -eq "true") {
-    $gitCheck = git -C $TeamAiDirective rev-parse --is-inside-work-tree 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        $TdIsGit = "true"
-        $status = git -C $TeamAiDirective status --porcelain 2>$null
-        if (-not $status) { $TdClean = "true" }
-    }
-}
+New-Item -ItemType Directory -Path (Split-Path $TraceFile -Parent) -Force | Out-Null
 
 $result = @{
     REPO_ROOT = $ProjectRoot
-    CDR_DRAFTS_DIR = $CdrDraftsDir
-    SKILLS_DRAFTS_DIR = $SkillsDraftsDir
     TEAM_AI_DIRECTIVE = $TeamAiDirective
     BRANCH = $Branch
-    ACCEPTED_CDRS = $AcceptedCdrs
-    TD_CONFIGURED = ($TdConfigured -eq "true")
-    TD_IS_GIT = ($TdIsGit -eq "true")
-    TD_CLEAN = ($TdClean -eq "true")
+    CDR_DRAFTS_DIR = $CdrDraftsDir
+    TRACE_FILE = $TraceFile
 }
 
 $result | ConvertTo-Json -Compress

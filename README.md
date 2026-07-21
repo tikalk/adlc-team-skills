@@ -48,21 +48,22 @@ Repair:       team-repair (re-index, health check, conflict scan, freshness veri
 Skills:       team-skills (browse, install team skills)
 ```
 
-### LevelUp / CDR Lifecycle (4 skills)
+### LevelUp / CDR Lifecycle (5 skills)
 
-Located under `skills/team/`. Contribute reusable patterns back to team-ai-directives via Context Directive Records (CDRs).
+Contribute reusable patterns back to team-ai-directives via Context Directive Records (CDRs). Session-based — no spec-kit dependency.
 
 | Skill | Use when | From | Say |
 |---|---|---|---|
+| `levelup-trace` | Generate a session trace after completing work | `/levelup.trace` | "Generate a trace of this session" |
 | `levelup-init` | Brownfield CDR discovery from existing codebase | `/levelup.init` | "Discover directives from this codebase" |
-| `levelup-specify` | Greenfield CDR extraction from a completed feature | `/levelup.specify` | "Extract lessons from this feature" |
+| `levelup-specify` | Extract CDRs from session trace + implementation evidence | `/levelup.specify` | "Extract lessons from this session" |
 | `levelup-clarify` | Review/accept/reject/defer CDRs | `/levelup.clarify` | "Review pending CDRs" |
-| `levelup-implement` | Compile accepted CDRs into KB artifacts + draft PR | `/levelup.implement` | "Publish accepted CDRs to team KB"<br>"Build one skill from a CDR" (`--skill CDR-NNN`) |
+| `levelup-publish` | Compile accepted CDRs into KB artifacts + draft PR | `/levelup.publish` | "Publish accepted CDRs to team KB"<br>"Build one skill from a CDR" (`--skill CDR-NNN`) |
 
 **LevelUp / CDR Lifecycle workflow:**
 ```text
-Brownfield: levelup-init → levelup-clarify → levelup-implement → team-repair
-Greenfield: levelup-specify → levelup-clarify → levelup-implement → team-repair
+Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
+Session:    levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
 ```
 
 ### Architecture (5 skills)
@@ -94,6 +95,27 @@ Architecture skills write to `.adlc/` inside the target project:
 - `.adlc/memory/adr/ADR-{NNN}.md` — accepted ADRs (individual files)
 - `AD.md` — architecture description (in repo root)
 - `.adlc/architect/` — per-view DAG artifacts (for multi-subsystem projects)
+
+## OKF Compliance
+
+Generated context modules include [Open Knowledge Format (OKF) v0.1](https://blog.agentics.org/open-knowledge-format/) compliant frontmatter alongside custom fields.
+
+| OKF field | Status | Source |
+|-----------|--------|--------|
+| `type` | ✅ | CDR context type (Rule, Persona, Example, Constitution) |
+| `title` | ✅ | CDR title |
+| `description` | ✅ | CDR descriptor |
+| `resource` | ✅ | Relative path to the artifact file |
+| `tags` | ✅ | Context type tag |
+| `timestamp` | ✅ | ISO 8601 datetime of creation/modification |
+
+**Custom fields** (coexist with OKF fields in same frontmatter):
+`id`, `cdr_ref`, `created`, `modified`, `verified`, `age_days`, `evidence`
+
+**Directory structure** — OKF concepts:
+- `context_modules/{type}/index.md` — progressive disclosure per concept type
+- `context_modules/{type}/log.md` — chronological change history per concept type
+- Cross-links between related concepts (e.g., rule → example, rule → persona)
 
 ## Agent Support
 

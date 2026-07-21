@@ -62,7 +62,7 @@ After clone, verify the KB structure exists:
 
 ### Mode 2: Point to Existing Local Path
 
-Wire an existing local team-ai-directories directory into the project.
+Wire an existing local team-ai-directives directory into the project.
 
 **Explore**:
 1. Ask the user for the path to their existing KB directory
@@ -103,7 +103,7 @@ print(json.dumps(config, indent=2))
 
 ### Mode 3: Scaffold New Empty KB
 
-Create a fresh, neutral team-ai-directories knowledge base at a specified path.
+Create a fresh, neutral team-ai-directives knowledge base at a specified path.
 
 **Explore**:
 1. Ask the user where to create the KB (default: `./team-ai-directives`)
@@ -120,11 +120,15 @@ Show the user the 10 files that will be created:
 | 3 | `CDR.md` | Empty CDR index table |
 | 4 | `.skills.json` | Empty skills manifest (schema v2.0.0) |
 | 5 | `.mcp.json.example` | Empty MCP servers config example |
-| 6 | `context_modules/constitution.md` | Placeholder constitution |
-| 7 | `context_modules/rules/.gitkeep` | Rules directory placeholder |
-| 8 | `context_modules/personas/.gitkeep` | Personas directory placeholder |
-| 9 | `context_modules/examples/.gitkeep` | Examples directory placeholder |
-| 10 | `skills/.gitkeep` | Skills directory placeholder |
+| 6 | `context_modules/constitution.md` | Placeholder constitution (OKF-compliant frontmatter) |
+| 7 | `context_modules/index.md` | OKF toplevel index linking sub-directories |
+| 8 | `context_modules/rules/index.md` | OKF progressive disclosure (rules) |
+| 9 | `context_modules/rules/.gitkeep` | Rules directory placeholder |
+| 10 | `context_modules/personas/index.md` | OKF progressive disclosure (personas) |
+| 11 | `context_modules/personas/.gitkeep` | Personas directory placeholder |
+| 12 | `context_modules/examples/index.md` | OKF progressive disclosure (examples) |
+| 13 | `context_modules/examples/.gitkeep` | Examples directory placeholder |
+| 14 | `skills/.gitkeep` | Skills directory placeholder |
 
 **Confirm**:
 ```
@@ -230,11 +234,48 @@ Create `{DEST}/context_modules/constitution.md`:
 type: Constitution
 title: "{TEAM_NAME} Constitution"
 description: "Team-wide principles and governance"
+resource: ./context_modules/constitution.md
+tags: [constitution]
+timestamp: {TODAY}T00:00:00Z
 ---
 
 # {TEAM_NAME} Constitution
 
 No team-wide principles defined yet. Add principles as they are established.
+```
+
+Create OKF-compliant `index.md` files for progressive disclosure:
+
+Create `{DEST}/context_modules/index.md`:
+```markdown
+# Context Modules
+
+| Directory | Description |
+|-----------|-------------|
+| [rules/](rules/index.md) | Team rules and workflows |
+| [personas/](personas/index.md) | Team personas |
+| [examples/](examples/index.md) | Team examples |
+```
+
+Create `{DEST}/context_modules/rules/index.md`:
+```markdown
+# Rules
+
+No rules defined yet. Use `/levelup-specify` to create rules via CDRs.
+```
+
+Create `{DEST}/context_modules/personas/index.md`:
+```markdown
+# Personas
+
+No personas defined yet. Use `/levelup-specify` to create personas via CDRs.
+```
+
+Create `{DEST}/context_modules/examples/index.md`:
+```markdown
+# Examples
+
+No examples defined yet. Use `/levelup-specify` to create examples via CDRs.
 ```
 
 Create gitkeep files:
@@ -245,7 +286,7 @@ touch "{DEST}/context_modules/examples/.gitkeep"
 touch "{DEST}/skills/.gitkeep"
 ```
 
-Initialize git (required for `/levelup-implement` branch/commit/PR flow):
+Initialize git (required for `/levelup-publish` branch/commit/PR flow):
 ```bash
 cd "{DEST}" && git init && git add -A && git commit -m "Initial team-ai-directives scaffold"
 ```
@@ -312,7 +353,7 @@ After any mode completes successfully, update the project configuration:
 - **Scaffolding without required dirs being writable** — Mode 3 creates directories with `mkdir -p` but will fail on permission errors; check permissions first.
 - **Skipping the `team_ai_directive` config write** — without this field in `init-options.json`, agents cannot discover the KB.
 - **Using a relative path in `init-options.json`** — always resolve to an absolute path so the config is portable across working directories.
-- **Skipping `git init` in Mode 3** — a scaffolded KB without git cannot be used by `/levelup-implement` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/levelup-implement`.
+- **Skipping `git init` in Mode 3** — a scaffolded KB without git cannot be used by `/levelup-publish` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/levelup-publish`.
 
 ## Verification
 

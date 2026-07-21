@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-22
+
+### Added
+
+- **OKF compliance**: Generated context modules now include OKF v0.1 fields (`resource`, `tags`, `timestamp`) alongside custom fields in YAML frontmatter.
+- `team-repair` now generates OKF-compliant `index.md` (progressive disclosure) and `log.md` (chronological change history) per context module directory (`rules/`, `personas/`, `examples/`).
+- `team-setup` scaffold now includes OKF `index.md` files for each context module directory (14 files instead of 10).
+- `team-helpers.sh` and `team-helpers.ps1` scaffold templates updated with OKF frontmatter and index.md files.
+- OKF compliance section in README.
+
+### Changed
+
+- `levelup-publish` frontmatter template now generates OKF fields: `resource` (relative path), `tags` (context type), `timestamp` (ISO 8601 datetime).
+- `team-repair` output section updated to include index.md/log.md generation (was 9 phases, now 10).
+- `team-repair` summary report includes OKF index/log generation counts.
+- `team-repair` repair targets table includes OKF index.md and log.md targets.
+- `team-repair` freshness phase now updates `timestamp` field alongside `verified`.
+- Scaffold file count: 10 → 14 (4 new index.md files).
+
+## [0.6.0] - 2026-07-21
+
+### Added
+
+- New skill: `levelup-trace` — generates a session execution trace from the current agent session (not from spec-kit artifacts). Captures what the agent did, decisions made, files changed, and reusable patterns. Output: `.adlc/drafts/trace.md`.
+
+### Changed
+
+- **Renamed** `levelup-implement` → `levelup-publish` to clarify its purpose (publishing CDRs to the KB, not implementing features).
+- **Decoupled `levelup-specify` from spec-kit**: primary source is now the session trace (from `levelup-trace`) or direct session review. Removed all spec-kit artifact reading (`spec.md`, `plan.md`, `tasks.md`, `specs/` directory search). No spec-kit dependency.
+- `levelup-specify` setup scripts no longer search for feature directories or spec-kit artifacts.
+- `levelup-specify` setup scripts now output `TRACE_FILE` path (`.adlc/drafts/trace.md`).
+- CDR lifecycle updated: `levelup-trace → levelup-specify → levelup-clarify → levelup-publish`.
+- README updated: 5 LevelUp skills (was 4), session-based workflow, renamed references.
+
+### Removed
+
+- `levelup-specify` no longer reads `specs/{feature}/spec.md`, `plan.md`, `tasks.md`, or `tasks_meta.json`.
+- `levelup-specify` setup scripts no longer detect feature directories or search `specs/` subdirectories.
+- `--feature NAME` flag removed from `levelup-specify` (no longer needed — session-based, not feature-artifact-based).
+
 ## [0.5.1] - 2026-07-21
 
 ### Changed

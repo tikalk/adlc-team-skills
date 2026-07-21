@@ -17,11 +17,13 @@ Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives to fix incons
 1. Repaired AGENTS.md (if missing or corrupted)
 2. Rebuilt CDR.md index from context_modules/
 3. Rebuilt .skills.json manifest from skills/
-4. Auto-added YAML frontmatter to orphan context modules
+4. Auto-added YAML frontmatter to orphan context modules (including OKF fields: `resource`, `tags`, `timestamp`)
 5. Auto-generated .skills.json entries for orphan skills
-6. Conflict scan across rules (creates conflict CDRs if issues found)
-7. Freshness verification (updates `verified` timestamps, flags stale directives)
-8. Summary report of all repairs
+6. Generated OKF-compliant `index.md` (progressive disclosure) per context module directory
+7. Generated OKF-compliant `log.md` (chronological change history) per context module directory
+8. Conflict scan across rules (creates conflict CDRs if issues found)
+9. Freshness verification (updates `verified` timestamps, flags stale directives)
+10. Summary report of all repairs
 
 You are acting as an **Index Repair Specialist** ensuring team-ai-directives indexes are consistent and complete. Your role involves:
 
@@ -39,6 +41,8 @@ You are acting as an **Index Repair Specialist** ensuring team-ai-directives ind
 | **AGENTS.md** | `{TEAM_AI_DIRECTIVE}/AGENTS.md` | Main instruction file for AI agents |
 | **CDR.md** | `{TEAM_AI_DIRECTIVE}/CDR.md` | Index of approved context contributions |
 | **.skills.json** | `{TEAM_AI_DIRECTIVE}/.skills.json` | Skills manifest registry |
+| **OKF index.md** | `{TEAM_AI_DIRECTIVE}/context_modules/{type}/index.md` | Progressive disclosure per concept directory |
+| **OKF log.md** | `{TEAM_AI_DIRECTIVE}/context_modules/{type}/log.md` | Chronological change log per concept directory |
 
 ## When to Use
 
@@ -400,6 +404,49 @@ Create index structure:
 }
 ```
 
+#### Step 5: Generate index.md and log.md Per Directory
+
+Generate OKF-compliant `index.md` (progressive disclosure) and `log.md` (chronological history) for each context module directory that has entries.
+
+**index.md** — lists all files in the directory with type/title/description:
+
+```markdown
+# Rules
+
+| File | Type | Description | Tags |
+|------|------|-------------|------|
+| [python/error-handling.md](python/error-handling.md) | Rule | Python error handling patterns and best practices | python |
+| [frontend/version-modal.md](frontend/version-modal.md) | Rule | Version modal display rules | frontend |
+```
+
+Generate `{TEAM_AI_DIRECTIVE}/context_modules/rules/index.md`, `context_modules/personas/index.md`, `context_modules/examples/index.md`, and `context_modules/index.md` (toplevel index linking all sub-indexes).
+
+**log.md** — chronological log of additions and changes:
+
+```markdown
+# Rules Log
+
+| Date | Action | File | CDR |
+|------|--------|------|-----|
+| 2026-07-21 | Added | python/error-handling.md | CDR-2026-001 |
+| 2026-07-21 | Verified | frontend/version-modal.md | CDR-2026-002 |
+```
+
+Generate `{TEAM_AI_DIRECTIVE}/context_modules/rules/log.md`, `context_modules/personas/log.md`, `context_modules/examples/log.md`.
+
+If `--dry-run`:
+```markdown
+### index.md / log.md Preview
+
+| Directory | index.md | log.md |
+|-----------|----------|--------|
+| rules/ | Would generate ({N} entries) | Would generate ({N} entries) |
+| personas/ | Would generate ({N} entries) | Would generate ({N} entries) |
+| examples/ | Would generate ({N} entries) | Would generate ({N} entries) |
+```
+
+Otherwise, write each file.
+
 ### Phase 5: Scan Skills for .skills.json Reindex
 
 **Objective**: Find all skills and build manifest entries
@@ -734,10 +781,19 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 ### Freshness Verification
 
 | Metric | Count |
-|---|---|
+|---|---|---|
 | Directives updated | {n} |
 | Stale directives (>30d) | {n} |
 | Skipped (has conflicts) | {n} |
+
+### OKF index.md / log.md
+
+| Directory | index.md | log.md |
+|-----------|----------|--------|
+| context_modules/ | {written|skipped} | {written|skipped} |
+| rules/ | {written|skipped} ({n} entries) | {written|skipped} ({n} entries) |
+| personas/ | {written|skipped} ({n} entries) | {written|skipped} ({n} entries) |
+| examples/ | {written|skipped} ({n} entries) | {written|skipped} ({n} entries) |
 
 ### Files Modified
 

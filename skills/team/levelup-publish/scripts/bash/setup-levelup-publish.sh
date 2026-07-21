@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-levelup-implement.sh — Setup for levelup-implement (self-contained)
+# setup-levelup-publish.sh — Setup for levelup-publish (self-contained)
 set -euo pipefail
 
 ###############################################################################

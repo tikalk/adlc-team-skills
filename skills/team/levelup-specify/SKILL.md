@@ -1,6 +1,6 @@
 ---
 name: levelup-specify
-description: Extract Context Directive Records (CDRs) from a completed feature's specification, plan, tasks, and trace for contribution to team-ai-directives. Use after implementing a feature to capture reusable learnings.
+description: Extract Context Directive Records (CDRs) from the current session trace and implementation evidence. Use after completing work and running levelup-trace to capture reusable learnings for team-ai-directives.
 disable-model-invocation: true
 ---
 
@@ -8,11 +8,11 @@ disable-model-invocation: true
 
 ## What this skill does
 
-Extract **Context Directive Records (CDRs)** from the **current feature implementation context** after completing a feature.
+Extract **Context Directive Records (CDRs)** from the **current session** after completing work.
 
-This is the primary command for capturing learnings from a completed feature:
+This is the primary command for capturing learnings from completed work:
 
-- Analyze feature spec, plan, tasks, and trace artifacts
+- Read the session trace (from `/levelup-trace`) or review the current session directly
 - Identify reusable patterns, rules, examples, personas, and skill-worthy capabilities
 - Link CDRs to concrete implementation evidence (files, commits, tests)
 - Write CDRs to `{REPO_ROOT}/.adlc/drafts/cdr/CDR-{NNN}.md` with status **Proposed**
@@ -21,21 +21,21 @@ This is the primary command for capturing learnings from a completed feature:
 **Key Difference from `/levelup-init`**:
 
 - `/levelup-init` = **Discovers** patterns from existing codebase (brownfield)
-- `/levelup-specify` (this skill) = **Extracts** patterns from a completed feature (greenfield)
+- `/levelup-specify` (this skill) = **Extracts** patterns from the current session (greenfield)
 
-This skill focuses on **feature-level learnings** — what reusable knowledge emerged from this specific implementation.
+This skill focuses on **session-level learnings** — what reusable knowledge emerged from the work just completed.
 
 ## When to use
 
-- **After feature implementation**: Capture reusable patterns from the work just completed
-- **Before closing a feature branch**: Extract team-wide learnings
-- **Contributing back to team KB**: Turn feature work into reusable directives
-- **After `/spec.implement` or equivalent**: When spec/plan/tasks artifacts exist
+- **After completing work**: Capture reusable patterns from the session
+- **After `/levelup-trace`**: Extract CDRs from the generated trace
+- **Contributing back to team KB**: Turn session work into reusable directives
+- **Before closing a branch**: Extract team-wide learnings
 
 ### When NOT to use
 
 - **Brownfield projects**: Use `/levelup-init` to scan existing code
-- **No feature artifacts**: Run this only after spec/plan/tasks exist
+- **Before work is done**: Run this after completing the implementation
 - **Routine KB validation**: Use `/team-repair` for health checks
 
 ## Process
@@ -52,27 +52,25 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 - `"Focus on error handling patterns"` — Extract CDRs related to error handling
 - `"Document the testing approach"` — Focus on testing patterns
-- `"CDR-001"` — Enrich an existing CDR with more feature context
-- `"--feature 001-user-auth"` — Explicitly select feature directory
+- `"CDR-001"` — Enrich an existing CDR with more session evidence
 - `"--focus skills"` — Only propose skill-type CDRs
-- Empty input: Extract all patterns from current feature artifacts
+- Empty input: Extract all patterns from the session trace
 
 ### Flags
 
-- `--feature NAME`: Explicitly select feature directory (e.g., `001-user-auth`)
 - `--focus AREA`: Focus on specific context type
   - `rules`: Only propose rule CDRs
   - `personas`: Only propose persona CDRs
   - `examples`: Only propose example CDRs
   - `constitution`: Only propose constitution amendment CDRs
   - `skills`: Only propose skill CDRs
-- `--cdr-id ID`: Enrich an existing CDR with feature evidence instead of creating new ones
+- `--cdr-id ID`: Enrich an existing CDR with session evidence instead of creating new ones
 
 ### Role & Context
 
-You are acting as a **Context Extractor** — identifying reusable patterns from completed features. Your role involves:
+You are acting as a **Context Extractor** — identifying reusable patterns from the current session. Your role involves:
 
-- Analyzing feature artifacts (spec, plan, tasks, trace)
+- Reading the session trace (from `/levelup-trace`) or reviewing the current session
 - Identifying patterns that would benefit other projects
 - Creating CDRs for rules, personas, examples, constitution amendments, or **skills**
 - Linking CDRs to implementation evidence (code, commits, tests)
@@ -82,15 +80,15 @@ You are acting as a **Context Extractor** — identifying reusable patterns from
 | Scenario | Command | Input | Output |
 |---|---|---|---|
 | **Brownfield** (existing code) | `/levelup-init` | Codebase scan | Discovered CDRs |
-| **Greenfield** (feature complete) | `/levelup-specify` | Feature artifacts | Proposed CDRs |
+| **Greenfield** (session complete) | `/levelup-specify` | Session trace | Proposed CDRs |
 
 ### Outline
 
-1. **Environment Setup** (Phase 0): Resolve paths and detect feature
-2. **Load Feature Context** (Phase 1): Read spec/plan/tasks/trace
+1. **Environment Setup** (Phase 0): Resolve paths
+2. **Load Session Trace** (Phase 1): Read trace from `/levelup-trace` or review session directly
 3. **Load Existing CDRs** (Phase 2): Read pending CDRs for enrichment
 4. **Extract Patterns** (Phase 3): Identify reusable patterns by context type
-5. **Create/Enrich CDRs** (Phase 4): Write CDR files with feature evidence
+5. **Create/Enrich CDRs** (Phase 4): Write CDR files with session evidence
 6. **Regenerate Index** (Phase 5): Update `cdr.md`
 7. **Summary** (Phase 6): Present extraction results
 
@@ -98,20 +96,21 @@ You are acting as a **Context Extractor** — identifying reusable patterns from
 
 #### Phase 0: Environment Setup
 
-Run the setup script from repository root:
+Run the setup script from the skill's base directory:
 
 ```bash
 scripts/bash/setup-levelup-specify.sh
 ```
 
-Parse JSON output for paths, detected features, and next CDR number.
+Parse JSON output for paths and next CDR number.
 
 **If the setup script is unavailable or fails**, resolve paths manually:
 
 1. `REPO_ROOT` — walk up from cwd to find a directory containing `.adlc/`, or use `git rev-parse --show-toplevel`, or use `pwd`.
 2. `TEAM_AI_DIRECTIVE` — check `TEAM_AI_DIRECTIVE` env var, then `REPO_ROOT/.adlc/init-options.json` → `team_ai_directive` field, then fallback to `REPO_ROOT/team-ai-directives`.
 3. `CDR_DRAFTS_DIR` — `REPO_ROOT/.adlc/drafts/cdr`
-4. `NEXT_CDR` — list `CDR_DRAFTS_DIR/CDR-*.md`, find the highest number, increment by 1, zero-pad to 3 digits (e.g., `001`).
+4. `TRACE_FILE` — `REPO_ROOT/.adlc/drafts/trace.md`
+5. `NEXT_CDR` — list `CDR_DRAFTS_DIR/CDR-*.md`, find the highest number, increment by 1, zero-pad to 3 digits (e.g., `001`).
 
 If `TEAM_AI_DIRECTIVE` is not configured:
 
@@ -121,30 +120,32 @@ Run: team-setup
 Or set: export TEAM_AI_DIRECTIVE=/path/to/team-ai-directives
 ```
 
-#### Phase 1: Load Feature Context
+#### Phase 1: Load Session Trace
 
-Detect feature directory in this order:
+Read the session trace from `{TRACE_FILE}` (`.adlc/drafts/trace.md`).
 
-1. `--feature NAME` argument
-2. Current git branch name (e.g., `feature/001-user-auth`)
-3. `ADLC_FEATURE` environment variable
-4. Most recently modified feature directory under `specs/` — search both `{REPO_ROOT}/specs/` and immediate subdirectories (e.g., `{REPO_ROOT}/{subproject}/specs/`), plus `.adlc/drafts/`
+If the trace file exists (generated by `/levelup-trace`), read it and use it as the primary source for CDR extraction.
 
-Load available artifacts:
+If the trace file does **not** exist, review the current session directly:
 
-| Artifact | Path | Purpose |
-|---|---|---|
-| Spec | `specs/{feature}/spec.md` or `.adlc/drafts/spec.md` | Feature intent |
-| Plan | `specs/{feature}/plan.md` or `.adlc/drafts/plan.md` | Implementation approach |
-| Tasks | `specs/{feature}/tasks.md` or `.adlc/drafts/tasks.md` | Completed task log |
-| Trace | `specs/{feature}/trace.md` or `.adlc/drafts/trace.md` | Session trace |
+1. What did the user ask for?
+2. What did the agent do? (file changes, key decisions, approach)
+3. What was the outcome?
+4. What files were created/modified? (`git diff --stat`, `git log --oneline -10`)
+5. What reusable patterns emerged?
 
-When searching for `specs/`, check these locations in order:
-1. `{REPO_ROOT}/specs/`
-2. `{REPO_ROOT}/*/specs/` (immediate subdirectories — handles monorepo layouts where specs live under a subproject)
-3. `{REPO_ROOT}/.adlc/drafts/` (fallback for draft specs)
+Also collect implementation evidence:
 
-If artifacts are missing, note which are unavailable and proceed with available ones.
+```bash
+# Files changed
+git diff --stat 2>/dev/null
+
+# Recent commits
+git log --oneline -10 2>/dev/null
+
+# New/untracked files
+git status --short 2>/dev/null
+```
 
 #### Phase 2: Load Existing CDRs
 
@@ -155,15 +156,15 @@ Read `{REPO_ROOT}/.adlc/drafts/cdr/CDR-*.md`:
 
 #### Phase 3: Extract Patterns
 
-For each context type, look for reusable patterns:
+For each context type, look for reusable patterns from the session trace and evidence:
 
 **Rules**: Coding conventions, error handling, testing patterns, security practices
 **Personas**: Roles that emerged during implementation (e.g., "API consumer", "DevOps operator")
 **Examples**: Code patterns worth reusing
 **Skills**: Capabilities that could be packaged as agent skills (especially reusable workflows)
-**Constitution Amendments**: Cross-cutting principles discovered during the feature
+**Constitution Amendments**: Cross-cutting principles discovered during the session
 
-**Skill-Type CDRs**: Yes, `/levelup-specify` can propose skill-type CDRs. The actual `SKILL.md` is built later by `/levelup-implement --skill <name>`.
+**Skill-Type CDRs**: Yes, `/levelup-specify` can propose skill-type CDRs. The actual `SKILL.md` is built later by `/levelup-publish --skill <name>`.
 
 #### Phase 4: Create/Enrich CDRs
 
@@ -176,7 +177,7 @@ For each extracted pattern, create or enrich a CDR:
 
 ### Date: [YYYY-MM-DD]
 
-### Source: Feature implementation evidence via /levelup-specify
+### Source: Session evidence via /levelup-specify
 
 ### Target Module: `context_modules/rules/[domain]/[file].md` or `skills/[skill-name]/`
 
@@ -187,26 +188,20 @@ For each extracted pattern, create or enrich a CDR:
 ### Context
 [What reusable pattern was identified]
 
-### Feature Implementation Evidence
+### Evidence
 
-**Feature**: [feature-name]
+**Session**: [brief session description]
 **Branch**: [branch-name]
-
-**Spec References**:
-- [Quote from spec]
 
 **Implementation Evidence**:
 - [file/path]: [description]
 - `{commit-sha}`: [commit message]
 
-**Task References**:
-- Task N: [description]
-
 ### Decision
 [What should be contributed to team-ai-directives]
 ```
 
-When enriching an existing CDR, append a `### Feature Implementation Evidence` section and update the enrichment timestamp.
+When enriching an existing CDR, append to the `### Evidence` section and update the enrichment timestamp.
 
 #### Phase 5: Regenerate Index
 
@@ -238,7 +233,7 @@ Format:
 ```markdown
 ## LevelUp Specify Summary
 
-**Feature**: [feature-name]
+**Session**: [brief description]
 **Date**: [date]
 **CDRs Created**: N
 **CDRs Enriched**: N
@@ -257,33 +252,33 @@ Format:
 
 **Next**: Run `/levelup-clarify` to review the N proposed CDRs.
 
-CDRs are in `Proposed` status and cannot be implemented until accepted.
+CDRs are in `Proposed` status and cannot be published until accepted.
 
 Handoff context:
 
 ```json
 {
-  "source": "feature",
+  "source": "session",
   "command": "specify",
-  "feature": "[feature-name]",
   "cdrs_created": ["CDR-001", "CDR-002"],
   "cdrs_enriched": [],
   "next": "clarify"
 }
+```
 ```
 
 ### Next Steps
 
 1. Run `/levelup-clarify` to review proposed CDRs
 2. For low-evidence CDRs, add implementation evidence first
-3. Run `/levelup-implement` for accepted CDRs
+3. Run `/levelup-publish` for accepted CDRs
 ```
 
 ### Key Rules
 
 #### Link Evidence, Don't Fabricate
 
-- Every CDR must link to concrete feature artifacts
+- Every CDR must link to concrete session evidence
 - Cite specific file paths, commit SHAs, or test cases
 - Do not invent evidence
 
@@ -296,12 +291,12 @@ Handoff context:
 
 - `/levelup-specify` creates CDRs with `Context Type: Skill`
 - It does **not** create `SKILL.md` files directly
-- Skill artifacts are built by `/levelup-implement --skill <name>`
+- Skill artifacts are built by `/levelup-publish --skill <name>`
 
 #### Signal Gate Applies Later
 
-- Create CDRs generously from feature context
-- The signal gate (team-wide, high-value, unique, evidence) is applied at `/levelup-implement`
+- Create CDRs generously from session evidence
+- The signal gate (team-wide, high-value, unique, evidence) is applied at `/levelup-publish`
 
 ### Workflow Guidance & Transitions
 
@@ -309,22 +304,14 @@ Handoff context:
 
 **Required**: Run `/levelup-clarify` to review proposed CDRs.
 
-Handoff context:
-
-```json
-{
-  "source": "feature",
-  "command": "specify",
-  "feature": "001-user-auth",
-  "cdrs_created": ["CDR-001", "CDR-002"],
-  "cdrs_enriched": ["CDR-003"]
-}
-```
-
-#### Complete Greenfield Flow
+#### Complete CDR Lifecycle
 
 ```text
-[Feature implementation complete]
+[Agent session — work completed]
+    ↓
+/levelup-trace
+    ↓
+[Generate trace] → Write to .adlc/drafts/trace.md
     ↓
 /levelup-specify
     ↓
@@ -332,21 +319,31 @@ Handoff context:
     ↓
 [Run /levelup-clarify] → Review and accept/reject CDRs
     ↓
-[Run /levelup-implement] → Compile accepted CDRs into team-ai-directives PR
+[Run /levelup-publish] → Compile accepted CDRs into team-ai-directives PR
     ↓
 [Run /team-repair] → Re-index and validate KB after merge
 ```
 
 ## Next Steps
 
-After `specify` completes, run `/levelup-clarify` to review the proposed CDRs.
+After `/levelup-specify` completes, run `/levelup-clarify` to review the proposed CDRs.
 
 ## Verification
 
 - CDRs written to `{REPO_ROOT}/.adlc/drafts/cdr/CDR-{NNN}.md` with status **Proposed**.
 - Auto-generated `cdr.md` index exists in `{REPO_ROOT}/.adlc/drafts/cdr/`.
-- Each CDR includes feature implementation evidence.
+- Each CDR includes session implementation evidence.
 - Existing CDRs were enriched rather than duplicated when applicable.
+
+## Configuration
+
+- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
+- Default fallback: `team-ai-directives/` relative to project root.
+
+## 12-Factor Alignment
+
+Factor IX (Traceability) — extracts reusable patterns from session evidence for team-wide contribution.
 
 ## Context
 

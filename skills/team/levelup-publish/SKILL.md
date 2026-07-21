@@ -1,10 +1,10 @@
 ---
-name: levelup-implement
+name: levelup-publish
 description: Compile accepted Context Directive Records (CDRs) into team-ai-directives artifacts and create a draft PR. Builds context modules and/or skills based on CDR context types.
 disable-model-invocation: true
 ---
 
-# levelup-implement
+# levelup-publish
 
 ## What this skill does
 
@@ -93,7 +93,7 @@ Your role involves:
 Run:
 
 ```bash
-scripts/bash/setup-levelup-implement.sh
+scripts/bash/setup-levelup-publish.sh
 ```
 
 Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVE`, `CDR_DRAFTS_DIR`, `ACCEPTED_CDRS`, `TD_CONFIGURED`, `TD_IS_GIT`, `TD_CLEAN`.
@@ -125,7 +125,7 @@ If `TD_CLEAN` is false:
 
 ```text
 team-ai-directives has uncommitted changes.
-Please commit or stash changes before running /levelup-implement.
+Please commit or stash changes before running /levelup-publish.
 ```
 
 **Check Accepted CDRs**:
@@ -198,9 +198,12 @@ For each accepted non-skill CDR, create/update the target file.
 - `description` — from `### Descriptor:` line
 - `id` — from `## CDR-NNN` heading (e.g., `CDR-001`)
 - `cdr_ref` — same as `id`
+- `domain` — from `### Domain:` line (default: `general`)
+- `context-type` — from `### Context Type:` line (lowercased; default: `rule`)
 - `created` / `modified` / `verified` — from `### Date:` line (use today's date for modified/verified if not present)
 - `evidence` — from `### Feature Implementation Evidence` or `### Evidence` section body
 - `{Content from CDR}` — from `### Context` section body
+- OKF fields (`resource`, `tags`, `timestamp`) are derived: `resource` = relative path from context type/domain/file, `tags` = context type, `timestamp` = ISO 8601 datetime
 
 **Rules**:
 
@@ -209,6 +212,9 @@ For each accepted non-skill CDR, create/update the target file.
 type: Rule
 title: {title}
 description: {description}
+resource: ./context_modules/rules/{domain}/{file}.md
+tags: [{context-type}]
+timestamp: {today}T00:00:00Z
 id: {id}
 cdr_ref: {cdr_ref}
 created: {created}
@@ -450,7 +456,7 @@ Then follow steps 3–4 above (remote check).
 
 ### Workflow Guidance & Transitions
 
-#### After `/levelup-implement`
+#### After `/levelup-publish`
 
 After PR is merged in team-ai-directives, run `/team-repair` to:
 
@@ -465,7 +471,7 @@ After PR is merged in team-ai-directives, run `/team-repair` to:
     ↓
 /levelup-clarify
     ↓
-/levelup-implement
+/levelup-publish
     ↓
 PR merged
     ↓

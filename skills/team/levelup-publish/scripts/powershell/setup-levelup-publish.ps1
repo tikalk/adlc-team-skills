@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# setup-levelup-specify.ps1 — Setup for levelup-specify (self-contained)
+# setup-levelup-publish.ps1 — Setup for levelup-publish (self-contained)
 $ErrorActionPreference = "Stop"
 
 ###############################################################################
@@ -39,19 +39,6 @@ function Resolve-Branch {
     return "unknown"
 }
 
-function Get-NextCdrNumber {
-    param([string]$Dir)
-    if (-not (Test-Path $Dir)) { New-Item -ItemType Directory -Path $Dir -Force | Out-Null }
-    $max = 0
-    Get-ChildItem -Path $Dir -Filter "CDR-*.md" -ErrorAction SilentlyContinue | ForEach-Object {
-        if ($_.BaseName -match 'CDR-(\d+)') {
-            $num = [int]$Matches[1]
-            if ($num -gt $max) { $max = $num }
-        }
-    }
-    return ('{0:D3}' -f ($max + 1))
-}
-
 ###############################################################################
 # Main
 ###############################################################################
@@ -60,24 +47,46 @@ $ProjectRoot = Resolve-ProjectRoot
 $TeamAiDirective = Resolve-TeamAiDirective $ProjectRoot
 $Branch = Resolve-Branch
 $CdrDraftsDir = Join-Path $ProjectRoot ".adlc/drafts/cdr"
-$TraceFile = Join-Path $ProjectRoot ".adlc/drafts/trace.md"
+$SkillsDraftsDir = Join-Path $ProjectRoot ".adlc/drafts/skills"
 
 New-Item -ItemType Directory -Path $CdrDraftsDir -Force | Out-Null
-New-Item -ItemType Directory -Path (Split-Path $TraceFile -Parent) -Force | Out-Null
+New-Item -ItemType Directory -Path $SkillsDraftsDir -Force | Out-Null
 
-$NextCdr = Get-NextCdrNumber $CdrDraftsDir
-$ExistingCdrs = (Get-ChildItem -Path $CdrDraftsDir -Filter "CDR-*.md" -ErrorAction SilentlyContinue | Measure-Object).Count
+# Find accepted CDRs using single-line format: ### Status: **Accepted**
+$AcceptedCdrs = @()
+if (Test-Path $CdrDraftsDir) {
+    Get-ChildItem -Path $CdrDraftsDir -Filter "CDR-*.md" -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object {
+        $content = Get-Content $_.FullName -Raw
+        if ($content -match '(?m)^### Status: \*\*Accepted\*\*') {
+            $AcceptedCdrs += $_.BaseName
+        }
+    }
+}
+
 $TdConfigured = if (Test-Path $TeamAiDirective) { "true" } else { "false" }
+
+# Check if team-ai-directives is a git repo with a clean working tree
+$TdIsGit = "false"
+$TdClean = "false"
+if ($TdConfigured -eq "true") {
+    $gitCheck = git -C $TeamAiDirective rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $TdIsGit = "true"
+        $status = git -C $TeamAiDirective status --porcelain 2>$null
+        if (-not $status) { $TdClean = "true" }
+    }
+}
 
 $result = @{
     REPO_ROOT = $ProjectRoot
     CDR_DRAFTS_DIR = $CdrDraftsDir
-    TRACE_FILE = $TraceFile
+    SKILLS_DRAFTS_DIR = $SkillsDraftsDir
     TEAM_AI_DIRECTIVE = $TeamAiDirective
     BRANCH = $Branch
-    NEXT_CDR = $NextCdr
-    EXISTING_CDRS = $ExistingCdrs
+    ACCEPTED_CDRS = $AcceptedCdrs
     TD_CONFIGURED = ($TdConfigured -eq "true")
+    TD_IS_GIT = ($TdIsGit -eq "true")
+    TD_CLEAN = ($TdClean -eq "true")
 }
 
 $result | ConvertTo-Json -Compress

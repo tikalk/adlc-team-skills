@@ -131,7 +131,7 @@ Parse the JSON output for `REPO_ROOT`, `CDR_DRAFTS_DIR`, `TEAM_AI_DIRECTIVE`, `N
 **If the setup script is unavailable or fails**, resolve manually:
 
 1. `REPO_ROOT` — walk up from cwd to find `.adlc/`, or `git rev-parse --show-toplevel`, or `pwd`.
-2. `TEAM_AI_DIRECTIVE` — `TEAM_AI_DIRECTIVE` env var, then `.adlc/init-options.json` → `team_ai_directive`, then `REPO_ROOT/.adlc/team-ai-directives`.
+2. `TEAM_AI_DIRECTIVE` — `TEAM_AI_DIRECTIVE` env var, then `.adlc/init-options.json` → `team_ai_directive`, then `REPO_ROOT/team-ai-directives`.
 3. `CDR_DRAFTS_DIR` — `REPO_ROOT/.adlc/drafts/cdr`
 4. `NEXT_CDR` — list `CDR_DRAFTS_DIR/CDR-*.md`, find highest number, increment, zero-pad to 3 digits.
 

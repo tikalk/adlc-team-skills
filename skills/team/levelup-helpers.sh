@@ -54,7 +54,7 @@ except Exception:
     print('')
 " 2>/dev/null || true)
     fi
-    [[ -z "$TEAM_AI_DIRECTIVE" ]] && TEAM_AI_DIRECTIVE="${PROJECT_ROOT}/.adlc/team-ai-directives"
+    [[ -z "$TEAM_AI_DIRECTIVE" ]] && TEAM_AI_DIRECTIVE="${PROJECT_ROOT}/team-ai-directives"
   fi
 
   CDR_DRAFTS_DIR="${PROJECT_ROOT}/.adlc/drafts/cdr"

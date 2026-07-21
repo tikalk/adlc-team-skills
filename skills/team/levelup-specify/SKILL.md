@@ -109,7 +109,7 @@ Parse JSON output for paths, detected features, and next CDR number.
 **If the setup script is unavailable or fails**, resolve paths manually:
 
 1. `REPO_ROOT` — walk up from cwd to find a directory containing `.adlc/`, or use `git rev-parse --show-toplevel`, or use `pwd`.
-2. `TEAM_AI_DIRECTIVE` — check `TEAM_AI_DIRECTIVE` env var, then `REPO_ROOT/.adlc/init-options.json` → `team_ai_directive` field, then fallback to `REPO_ROOT/.adlc/team-ai-directives`.
+2. `TEAM_AI_DIRECTIVE` — check `TEAM_AI_DIRECTIVE` env var, then `REPO_ROOT/.adlc/init-options.json` → `team_ai_directive` field, then fallback to `REPO_ROOT/team-ai-directives`.
 3. `CDR_DRAFTS_DIR` — `REPO_ROOT/.adlc/drafts/cdr`
 4. `NEXT_CDR` — list `CDR_DRAFTS_DIR/CDR-*.md`, find the highest number, increment by 1, zero-pad to 3 digits (e.g., `001`).
 
@@ -252,6 +252,25 @@ Format:
 | Skills | N |
 | Personas | N |
 | Constitution Amendments | N |
+
+### Handover
+
+**Next**: Run `/levelup-clarify` to review the N proposed CDRs.
+
+CDRs are in `Proposed` status and cannot be implemented until accepted.
+
+Handoff context:
+
+```json
+{
+  "source": "feature",
+  "command": "specify",
+  "feature": "[feature-name]",
+  "cdrs_created": ["CDR-001", "CDR-002"],
+  "cdrs_enriched": [],
+  "next": "clarify"
+}
+```
 
 ### Next Steps
 

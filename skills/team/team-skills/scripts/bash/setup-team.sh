@@ -18,7 +18,7 @@ except Exception:
 fi
 
 if [[ -z "$TEAM_AI_DIRECTIVE" ]]; then
-  TEAM_AI_DIRECTIVE="${PROJECT_ROOT}/.adlc/team-ai-directives"
+  TEAM_AI_DIRECTIVE="${PROJECT_ROOT}/team-ai-directives"
 fi
 
 if [[ "${1:-}" == "--json" || "${1:-}" == "-Json" ]]; then

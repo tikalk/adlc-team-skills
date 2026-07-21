@@ -30,7 +30,7 @@ function Resolve-TeamAiDirective {
             if ($config.team_ai_directive) { return $config.team_ai_directive }
         } catch {}
     }
-    return (Join-Path $ProjectRoot ".adlc/team-ai-directives")
+    return (Join-Path $ProjectRoot "team-ai-directives")
 }
 
 function Resolve-Branch {

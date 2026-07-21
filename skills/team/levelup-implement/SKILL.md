@@ -101,7 +101,7 @@ Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVE`, `CDR_DRAFTS_DIR`, `ACCEPTED_CDR
 **If the setup script is unavailable or fails**, resolve manually:
 
 1. `REPO_ROOT` — walk up from cwd to find `.adlc/`, or `git rev-parse --show-toplevel`, or `pwd`.
-2. `TEAM_AI_DIRECTIVE` — `TEAM_AI_DIRECTIVE` env var, then `.adlc/init-options.json` → `team_ai_directive`, then `REPO_ROOT/.adlc/team-ai-directives`.
+2. `TEAM_AI_DIRECTIVE` — `TEAM_AI_DIRECTIVE` env var, then `.adlc/init-options.json` → `team_ai_directive`, then `REPO_ROOT/team-ai-directives`.
 3. `CDR_DRAFTS_DIR` — `REPO_ROOT/.adlc/drafts/cdr`
 4. `ACCEPTED_CDRS` — `grep -l '^### Status: \*\*Accepted\*\*' CDR_DRAFTS_DIR/CDR-*.md` and extract IDs.
 5. `TD_IS_GIT` — `git -C "$TEAM_AI_DIRECTIVE" rev-parse --is-inside-work-tree` (exit 0 = true).

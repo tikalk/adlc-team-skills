@@ -48,7 +48,7 @@ if (-not $TeamAiDirective) {
 
 # 3. Fallback to default path
 if (-not $TeamAiDirective) {
-  $TeamAiDirective = Join-Path $ProjectRoot ".adlc" "team-ai-directives"
+  $TeamAiDirective = Join-Path $ProjectRoot "team-ai-directives"
 }
 
 function Write-OutputKeyValue {

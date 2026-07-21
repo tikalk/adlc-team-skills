@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-07-21
+
+### Changed
+
+- Default team-ai-directive path changed from `.adlc/team-ai-directives` to `team-ai-directives` (repo root) across all scripts, helpers, and SKILL.md files.
+- `team-setup` Mode 1 clone default destination: `./.adlc/team-ai-directives` → `./team-ai-directives`.
+- `team-setup` Mode 3 scaffold default: "current directory" → `./team-ai-directives`.
+
+### Added
+
+- `levelup-specify` Phase 6 Summary now includes a prominent **Handover** section with handoff JSON context, directing the agent to run `/levelup-clarify` next.
+
 ## [0.5.0] - 2026-07-21
 
 ### Fixed

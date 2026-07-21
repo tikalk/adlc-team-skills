@@ -39,7 +39,7 @@ except Exception:
 
   # 3. Fallback to default path
   if [[ -z "$TEAM_AI_DIRECTIVE" ]]; then
-    TEAM_AI_DIRECTIVE="${PROJECT_ROOT}/.adlc/team-ai-directives"
+    TEAM_AI_DIRECTIVE="${PROJECT_ROOT}/team-ai-directives"
   fi
 
   echo "PROJECT_ROOT=$PROJECT_ROOT"

@@ -30,7 +30,7 @@ if (-not $TeamAiDirective) {
     }
 }
 if (-not $TeamAiDirective) {
-    $TeamAiDirective = Join-Path $ProjectRoot ".adlc\team-ai-directives"
+    $TeamAiDirective = Join-Path $ProjectRoot "team-ai-directives"
 }
 
 if ($Json) {

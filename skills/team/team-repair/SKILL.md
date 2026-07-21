@@ -806,7 +806,7 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 
 - `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
-- Default fallback: `.adlc/team-ai-directives/` relative to project root.
+- Default fallback: `team-ai-directives/` relative to project root.
 - `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for path resolution.
 
 ## 12-Factor Alignment

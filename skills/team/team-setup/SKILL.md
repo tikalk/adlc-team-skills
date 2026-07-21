@@ -32,7 +32,7 @@ Clone an existing team-ai-directives repository from GitHub.
 
 **Explore**:
 1. Ask the user for the GitHub repository URL (default: `https://github.com/tikalk/agentic-sdlc-team-ai-directives`)
-2. Ask where to clone it (default: `./.adlc/team-ai-directives`)
+2. Ask where to clone it (default: `./team-ai-directives`)
 3. Check that the destination does not already exist
 
 **Present**:
@@ -106,7 +106,7 @@ print(json.dumps(config, indent=2))
 Create a fresh, neutral team-ai-directories knowledge base at a specified path.
 
 **Explore**:
-1. Ask the user where to create the KB (default: current directory)
+1. Ask the user where to create the KB (default: `./team-ai-directives`)
 2. Ask for the team name
 3. Check the destination does not already exist or is empty
 
@@ -260,7 +260,7 @@ The KB is already configured. Verify and report status.
 1. Check `.adlc/init-options.json` for `team_ai_directive` field
 2. If found, resolve the path and validate the KB structure
 3. Check `TEAM_AI_DIRECTIVE` env var as fallback
-4. Check default path `.adlc/team-ai-directives` as final fallback
+4. Check default path `team-ai-directives` as final fallback
 
 **Present**:
 Show the user the resolved KB path and validation results.
@@ -331,7 +331,7 @@ After any mode completes successfully, update the project configuration:
 
 - `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
-- Default fallback: `.adlc/team-ai-directives/` relative to project root.
+- Default fallback: `team-ai-directives/` relative to project root.
 - `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for scaffolding and path resolution.
 
 ## 12-Factor Alignment

@@ -34,7 +34,7 @@ except Exception:
 " 2>/dev/null || true)
     [[ -n "$td" ]] && { echo "$td"; return; }
   fi
-  echo "${project_root}/.adlc/team-ai-directives"
+  echo "${project_root}/team-ai-directives"
 }
 
 resolve_branch() {

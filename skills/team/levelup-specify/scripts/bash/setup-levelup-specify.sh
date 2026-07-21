@@ -43,7 +43,7 @@ except Exception:
   fi
 
   # 3. Default fallback
-  echo "${project_root}/.adlc/team-ai-directives"
+  echo "${project_root}/team-ai-directives"
 }
 
 resolve_branch() {

@@ -137,7 +137,7 @@ The bootstrap is complete when ALL of the following are true:
 
 - `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
-- Default fallback: `.adlc/team-ai-directives/` relative to project root.
+- Default fallback: `team-ai-directives/` relative to project root.
 
 ## 12-Factor Alignment
 

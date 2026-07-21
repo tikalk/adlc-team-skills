@@ -44,7 +44,7 @@ if (-not $TeamAiDirective) {
   }
 }
 if (-not $TeamAiDirective) {
-  $TeamAiDirective = Join-Path $ProjectRoot ".adlc" "team-ai-directives"
+  $TeamAiDirective = Join-Path $ProjectRoot "team-ai-directives"
 }
 
 $cdrDraftsDir = Join-Path $ProjectRoot ".adlc" "drafts" "cdr"

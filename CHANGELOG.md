@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-07-22
+
+### Added
+
+- `levelup-publish` now publishes the session trace to the team-ai-directives KB alongside context modules and skills. The trace is copied from `.adlc/drafts/trace.md` to `traces/{BRANCH}.md` in the KB, following the `spec.trace` branch-based naming convention.
+- `--skip-trace` flag on `levelup-publish` to opt out of trace publication (useful for the brownfield `levelup-init` path where no implementation session exists).
+- If no trace exists when `levelup-publish` runs, it invokes `/levelup-trace` to generate one before publishing.
+- New Phase 6 (Session Trace Publication) in `levelup-publish` — phases renumbered (6→7→8→9→10→11).
+- `traces/` directory in the team-ai-directives KB output.
+- `TRACE_FILE` and `TRACE_EXISTS` fields in `setup-levelup-publish.sh` / `.ps1` JSON output.
+
+### Changed
+
+- `levelup-publish` description updated to mention session trace publication.
+- `levelup-publish` commit message template now includes the trace path.
+- `levelup-publish` summary report includes a Traces row in the Artifacts Created table.
+- `levelup-publish` verification checklist includes trace publication check.
+- README LevelUp skills table and KB output section updated to reflect trace publication.
+
+## [0.8.0] - 2026-07-22
+
+### Added
+
+- **6 new Product skills** under `skills/team/product-*`: `product-init`, `product-specify`, `product-clarify`, `product-implement`, `product-analyze`, `product-roadmap`. Ported from `agentic-sdlc-spec-kit/extensions/product/` with all spec-kit dependencies removed.
+- **PDR individual-file format**: PDRs are now stored as individual `PDR-{NNN}.md` files in `.adlc/drafts/pdr/` (mirroring architect ADR and levelup CDR patterns), with an auto-generated `pdr.md` index. Accepted PDRs are promoted to `.adlc/memory/pdr/` on implement.
+- Product templates: `pdr-file-template.md`, `prd-template.md`, 15 section templates, 3 subagent prompt templates — all under `skills/team/product-templates/` and `skills/team/product-implement/templates/`.
+- Validation scripts: `validate-pdr.sh` and `validate-prd.sh` under `product-implement/scripts/bash/`.
+- README: new Product / PDR Lifecycle section, updated 12-Factor table (Factor III added), updated Output section with PDR/PRD paths, full lifecycle diagram.
+
+### Changed
+
+- **Moved `architect-*` skills** from `skills/architect/` to `skills/team/` — all guardrails and directive lifecycles now live in one group. Skill names unchanged; no user action required.
+- `product-implement` PDR lifecycle: Accepted PDRs are **moved** from `.adlc/drafts/pdr/` to `.adlc/memory/pdr/` (was: copied to monolithic `.specify/memory/pdr.md`).
+- `product-roadmap`: milestone tracking derived from PDR status fields only (feature-spec reading from `specs/*/` removed).
+
+### Removed
+
+- `product-validate` (feature-spec validation against PRD) — purpose disappears when stripping feature-spec reading; PDR↔PRD consistency covered by `product-analyze`.
+- `product-link` (PDR linker for spec-kit hooks) — existed only to feed the `before_specify` hook.
+- `extension.yml` — spec-kit extension manifest; not needed in Agent Skills format.
+- All `.specify/` paths → `.adlc/`, all `/spec.specify` references removed, all hook references removed.
+
 ## [0.7.0] - 2026-07-22
 
 ### Added

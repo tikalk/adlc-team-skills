@@ -1,6 +1,6 @@
 ---
 name: levelup-publish
-description: Compile accepted Context Directive Records (CDRs) into team-ai-directives artifacts and create a draft PR. Builds context modules and/or skills based on CDR context types.
+description: Compile accepted Context Directive Records (CDRs) into team-ai-directives artifacts and create a draft PR. Builds context modules and/or skills based on CDR context types, and publishes the session trace alongside them.
 disable-model-invocation: true
 ---
 
@@ -16,6 +16,7 @@ It is the implementation phase of the CDR lifecycle:
 - Detect cross-CDR conflicts before publishing
 - Generate context module files (rules, personas, examples, constitution)
 - Generate skill artifacts (`SKILL.md` + `.skills-entry.json`)
+- Publish the session trace to the team-ai-directives KB
 - Update `.skills.json` manifest
 - Update `CDR.md` index in team-ai-directives
 - Create a branch, commit, and open a draft PR
@@ -50,6 +51,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 - `"--ready"` — Create ready PR instead of draft
 - `"--skip-skills"` — Don't include skill CDRs
 - `"--context-only"` — Only build context modules
+- `"--skip-trace"` — Don't publish the session trace
 - `"--skill CDR-005"` — Build only the skill from CDR-005
 - `"CDR-001 CDR-003"` — Only implement specific CDRs
 - Empty input: Implement all accepted CDRs as draft PR
@@ -60,6 +62,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 - `--skip-skills`: Skip skill-type CDRs
 - `--context-only`: Build only context modules (skip all skills)
 - `--skill <name|CDR-id>`: Build only one skill from a specific accepted skill CDR
+- `--skip-trace`: Do not publish the session trace to the KB
 
 ### Role & Context
 
@@ -80,11 +83,12 @@ Your role involves:
 4. **Cross-CDR Conflict Check** (Phase 3): Detect duplicate targets and rule conflicts
 5. **Branch Preparation** (Phase 4): Create branch in team-ai-directives
 6. **Context Module Generation** (Phase 5): Build rules/personas/examples/constitution
-7. **Skill Generation** (Phase 6): Build SKILL.md + .skills-entry.json
-8. **CDR.md Update** (Phase 7): Update KB root CDR.md index
-9. **AGENTS.md Check** (Phase 8): Create if missing
-10. **Commit and PR** (Phase 9): Publish changes
-11. **Summary** (Phase 10): Report results
+7. **Session Trace Publication** (Phase 6): Publish session trace to KB
+8. **Skill Generation** (Phase 7): Build SKILL.md + .skills-entry.json
+9. **CDR.md Update** (Phase 8): Update KB root CDR.md index
+10. **AGENTS.md Check** (Phase 9): Create if missing
+11. **Commit and PR** (Phase 10): Publish changes
+12. **Summary** (Phase 11): Report results
 
 ### Execution Steps
 
@@ -96,7 +100,7 @@ Run:
 scripts/bash/setup-levelup-publish.sh
 ```
 
-Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVE`, `CDR_DRAFTS_DIR`, `ACCEPTED_CDRS`, `TD_CONFIGURED`, `TD_IS_GIT`, `TD_CLEAN`.
+Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVE`, `CDR_DRAFTS_DIR`, `ACCEPTED_CDRS`, `TD_CONFIGURED`, `TD_IS_GIT`, `TD_CLEAN`, `TRACE_FILE`, `TRACE_EXISTS`.
 
 **If the setup script is unavailable or fails**, resolve manually:
 
@@ -106,8 +110,10 @@ Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVE`, `CDR_DRAFTS_DIR`, `ACCEPTED_CDR
 4. `ACCEPTED_CDRS` — `grep -l '^### Status: \*\*Accepted\*\*' CDR_DRAFTS_DIR/CDR-*.md` and extract IDs.
 5. `TD_IS_GIT` — `git -C "$TEAM_AI_DIRECTIVE" rev-parse --is-inside-work-tree` (exit 0 = true).
 6. `TD_CLEAN` — `git -C "$TEAM_AI_DIRECTIVE" status --porcelain` (empty = clean).
+7. `TRACE_FILE` — `REPO_ROOT/.adlc/drafts/trace.md`
+8. `TRACE_EXISTS` — `[[ -f "$TRACE_FILE" ]]`
 
-If `TD_IS_GIT` is false, Phase 9 (branch/commit/PR) cannot run. Offer to `git init` the KB or write files directly without git.
+If `TD_IS_GIT` is false, Phase 10 (branch/commit/PR) cannot run. Offer to `git init` the KB or write files directly without git.
 
 #### Phase 1: Prerequisites Check
 
@@ -182,7 +188,7 @@ Cross-CDR conflicts detected. Resolve via /levelup-clarify before implementing.
 
 #### Phase 4: Branch Preparation
 
-Create branch in team-ai-directives (skip if `TD_IS_GIT=false` — git operations are handled in Phase 9):
+Create branch in team-ai-directives (skip if `TD_IS_GIT=false` — git operations are handled in Phase 10):
 
 ```bash
 cd "$TEAM_AI_DIRECTIVE"
@@ -248,7 +254,53 @@ CDR: {cdr_ref}
 - For Constitution Creation CDRs: create `context_modules/constitution.md`
 - For Constitution Amendment CDRs: append to existing constitution
 
-#### Phase 6: Skill Generation
+#### Phase 6: Session Trace Publication
+
+Skip if `--skip-trace` is set.
+
+Publish the session trace alongside the context modules so the team has an evidence trail for every contribution. The trace is stored at `{TEAM_AI_DIRECTIVE}/traces/{BRANCH}.md`, following the `spec.trace` convention of branch-based naming (`specs/{BRANCH}/trace.md` in spec-kit).
+
+**Step 1: Ensure trace exists**
+
+Check `TRACE_EXISTS` (from Phase 0 setup output).
+
+If `TRACE_EXISTS` is **false** (`.adlc/drafts/trace.md` does not exist):
+
+```text
+No session trace found at {TRACE_FILE}.
+Generating one via /levelup-trace...
+```
+
+Invoke the `levelup-trace` skill to generate a trace from the current session. After it completes, re-check that `{TRACE_FILE}` now exists. If it still doesn't (e.g., the session had no meaningful work), skip trace publication with a warning:
+
+```text
+Warning: Session trace could not be generated. Continuing without trace.
+```
+
+**Step 2: Copy trace to KB**
+
+Create the traces directory if it doesn't exist:
+
+```bash
+mkdir -p "$TEAM_AI_DIRECTIVE/traces"
+```
+
+Copy the trace file:
+
+```bash
+cp "$TRACE_FILE" "$TEAM_AI_DIRECTIVE/traces/${BRANCH}.md"
+```
+
+**Step 3: Report**
+
+```text
+Session trace published: traces/{BRANCH}.md
+Source: {existing trace | generated via /levelup-trace}
+```
+
+**Brownfield note**: The brownfield path (`/levelup-init → /levelup-clarify → /levelup-publish`) has no implementation session to trace. In that case `/levelup-trace` will trace the init/clarify/publish session itself — still useful but not an implementation trace. Use `--skip-trace` if you prefer to skip trace publication for brownfield contributions.
+
+#### Phase 7: Skill Generation
 
 Skip if `--skip-skills` or if all skill CDRs excluded.
 
@@ -317,7 +369,7 @@ disable-model-invocation: true
 
 4. Update `AGENTS.md` Skills section with the new skill.
 
-#### Phase 7: CDR.md Update
+#### Phase 8: CDR.md Update
 
 Create/update `{TEAM_AI_DIRECTIVE}/CDR.md` with accepted CDRs:
 
@@ -331,11 +383,11 @@ Create/update `{TEAM_AI_DIRECTIVE}/CDR.md` with accepted CDRs:
 | CDR-001 | context_modules/rules/... | Rule | Accepted | ... | ... | 0 | ... |
 ```
 
-#### Phase 8: AGENTS.md Check
+#### Phase 9: AGENTS.md Check
 
 If `AGENTS.md` is missing, create it from a template.
 
-#### Phase 9: Commit and PR
+#### Phase 10: Commit and PR
 
 Verify files created, then follow the git decision tree:
 
@@ -355,6 +407,8 @@ git commit -m "Add context modules from $(basename "$REPO_ROOT")
 CDRs implemented:
 - CDR-001: ...
 - CDR-002: ...
+
+Session trace: traces/{BRANCH}.md
 "
 ```
 
@@ -395,7 +449,7 @@ Then follow steps 3–4 above (remote check).
 
 2. **Write files only** — skip all git operations. Files are written directly to the working tree. Report: "Files written to `{TEAM_AI_DIRECTIVE}`. Initialize git and commit when ready."
 
-#### Phase 10: Summary
+#### Phase 11: Summary
 
 ```markdown
 ## LevelUp Implement Summary
@@ -414,6 +468,7 @@ Then follow steps 3–4 above (remote check).
 | Examples | N |
 | Skills | N |
 | Constitution Changes | N |
+| Traces | N |
 
 ### PR Details
 
@@ -487,6 +542,7 @@ After implementation, monitor the PR for review. Once merged, run `/team-repair`
 - All accepted CDRs passed signal gate or were explicitly skipped
 - Context module files created in `{TEAM_AI_DIRECTIVE}/context_modules/`
 - Skill directories created in `{TEAM_AI_DIRECTIVE}/skills/` (unless skipped)
+- Session trace published at `{TEAM_AI_DIRECTIVE}/traces/{BRANCH}.md` (unless `--skip-trace`)
 - `.skills.json` updated with new skills
 - `CDR.md` updated at `{TEAM_AI_DIRECTIVE}/CDR.md`
 - Draft PR created with proper description

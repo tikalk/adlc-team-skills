@@ -48,9 +48,11 @@ $TeamAiDirective = Resolve-TeamAiDirective $ProjectRoot
 $Branch = Resolve-Branch
 $CdrDraftsDir = Join-Path $ProjectRoot ".adlc/drafts/cdr"
 $SkillsDraftsDir = Join-Path $ProjectRoot ".adlc/drafts/skills"
+$TraceFile = Join-Path $ProjectRoot ".adlc/drafts/trace.md"
 
 New-Item -ItemType Directory -Path $CdrDraftsDir -Force | Out-Null
 New-Item -ItemType Directory -Path $SkillsDraftsDir -Force | Out-Null
+$TraceExists = (Test-Path $TraceFile)
 
 # Find accepted CDRs using single-line format: ### Status: **Accepted**
 $AcceptedCdrs = @()
@@ -87,6 +89,8 @@ $result = @{
     TD_CONFIGURED = ($TdConfigured -eq "true")
     TD_IS_GIT = ($TdIsGit -eq "true")
     TD_CLEAN = ($TdClean -eq "true")
+    TRACE_FILE = $TraceFile
+    TRACE_EXISTS = $TraceExists
 }
 
 $result | ConvertTo-Json -Compress

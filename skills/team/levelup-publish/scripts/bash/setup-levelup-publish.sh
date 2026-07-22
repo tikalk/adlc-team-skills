@@ -50,8 +50,10 @@ TEAM_AI_DIRECTIVE=$(resolve_team_ai_directive "$PROJECT_ROOT")
 BRANCH=$(resolve_branch)
 CDR_DRAFTS_DIR="${PROJECT_ROOT}/.adlc/drafts/cdr"
 SKILLS_DRAFTS_DIR="${PROJECT_ROOT}/.adlc/drafts/skills"
+TRACE_FILE="${PROJECT_ROOT}/.adlc/drafts/trace.md"
 
 mkdir -p "$CDR_DRAFTS_DIR" "$SKILLS_DRAFTS_DIR"
+TRACE_EXISTS=$([[ -f "$TRACE_FILE" ]] && echo "true" || echo "false")
 
 # Find accepted CDRs using single-line format: ### Status: **Accepted**
 ACCEPTED_CDRS=()
@@ -74,7 +76,7 @@ if [[ "$TD_CONFIGURED" == "true" ]]; then
   fi
 fi
 
-python3 - "$PROJECT_ROOT" "$CDR_DRAFTS_DIR" "$SKILLS_DRAFTS_DIR" "$TEAM_AI_DIRECTIVE" "$BRANCH" "$ACCEPTED_JSON" "$TD_CONFIGURED" "$TD_IS_GIT" "$TD_CLEAN" << 'PY'
+python3 - "$PROJECT_ROOT" "$CDR_DRAFTS_DIR" "$SKILLS_DRAFTS_DIR" "$TEAM_AI_DIRECTIVE" "$BRANCH" "$ACCEPTED_JSON" "$TD_CONFIGURED" "$TD_IS_GIT" "$TD_CLEAN" "$TRACE_FILE" "$TRACE_EXISTS" << 'PY'
 import json, sys
 print(json.dumps({
   "REPO_ROOT": sys.argv[1],
@@ -85,6 +87,8 @@ print(json.dumps({
   "ACCEPTED_CDRS": json.loads(sys.argv[6]),
   "TD_CONFIGURED": sys.argv[7] == "true",
   "TD_IS_GIT": sys.argv[8] == "true",
-  "TD_CLEAN": sys.argv[9] == "true"
+  "TD_CLEAN": sys.argv[9] == "true",
+  "TRACE_FILE": sys.argv[10],
+  "TRACE_EXISTS": sys.argv[11] == "true"
 }))
 PY

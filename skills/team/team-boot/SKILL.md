@@ -79,9 +79,7 @@ pulled on demand by `team-discover` and the product/architect skills.
 **PDR index** (product decisions):
 
 1. Read `{REPO_ROOT}/.adlc/memory/pdr/pdr.md` (accepted PDRs) directly.
-2. If missing, fall back to `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` (all PDRs,
-   including Discovered/Proposed).
-3. If neither exists but `{REPO_ROOT}/PRD.md` exists (legacy/monolithic
+2. If missing but `{REPO_ROOT}/PRD.md` exists (legacy/monolithic
    project without PDRs), skim `PRD.md` at heading level: read the headings
    plus overview/mission/requirements sections only. Skip mermaid blocks,
    diagrams, and appendices.
@@ -89,7 +87,7 @@ pulled on demand by `team-discover` and the product/architect skills.
 **ADR index** (architecture decisions):
 
 1. Read `{REPO_ROOT}/.adlc/memory/adr/adr.md` (accepted ADRs) directly.
-2. If missing, fall back to `{REPO_ROOT}/.adlc/drafts/adr/adr.md`.
+2. If missing, skip — ADR index is absent.
 
 **Presence notes**: If `{REPO_ROOT}/PRD.md` or `{REPO_ROOT}/AD.md` exist, note
 their paths as deep-read pointers for architecture- or product-heavy tasks —
@@ -123,7 +121,7 @@ to respond to the user's request. This confirms the bootstrap completed and
 makes the skill check visible. Include:
 
 - Constitution loaded (or skipped)
-- PDR index: N entries (memory | drafts | legacy PRD skim | none)
+- PDR index: N entries (memory | legacy PRD skim | none)
 - ADR index: N entries (memory | drafts | none)
 - Discovery matches surfaced
 
@@ -167,10 +165,9 @@ The bootstrap is complete when ALL of the following are true:
    results were returned and the skill exited.
 2. The constitution at `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
    was read in full.
-3. The PDR index was read if present (memory preferred, drafts fallback, or
-   legacy `PRD.md` heading skim), and the ADR index was read if present
-   (memory preferred, drafts fallback). Full PDR/ADR bodies and full
-   `PRD.md`/`AD.md` were NOT loaded.
+3. The PDR index was read if present (memory or legacy `PRD.md` heading
+   skim), and the ADR index was read if present (memory only). Full PDR/ADR
+   bodies and full `PRD.md`/`AD.md` were NOT loaded.
 4. `team-discover` was invoked with domain, technology, patterns, and actions
    extracted from the user's request.
 5. The loaded team context (constitution, indexes, discovery matches) was

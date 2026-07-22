@@ -1,198 +1,262 @@
 # ADLC Team Skills
 
-Agent skills for the [**Twelve-Factor Agentic SDLC**](https://github.com/tikalk/agentic-sdlc-12-factors) workflow — team directives management and architecture analysis.
+Agent skills for the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/agentic-sdlc-12-factors) workflow — team directives management, product decision records, and architecture analysis.
 
-**How the pieces fit:**
+**Relationship to 12 factors:** This repo is referenced from [team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives) and together with the 12-factor methodology forms the Foundation layer of the ADLC stack. The skills implement Factors III, IV, IX, X, XI, and XII.
 
-- **[12-Factor Agentic SDLC](https://github.com/tikalk/agentic-sdlc-12-factors)** — the methodology (strategic mindset, structured planning, directives as code, team capability, traceability)
-- **[team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives)** — version-controlled team AI directives (constitution, personas, rules, CDRs)
-- **This repo** — agent skills that implement the methodology
-
-## 12-Factor Alignment
-
-These skills implement six of the Twelve Factors:
-
-| Factor | Implemented by | How |
-|---|---|---|
-| **Factor III — Mission Definition** | Product skills | PRD/PDR lifecycle ensures product decisions are documented, reviewed, and traceable before execution. "Debug the spec, not the code" starts at the PRD. |
-| **Factor IV — Structured Planning** | Architecture skills | ADRs and Architecture Descriptions (AD.md) provide structured planning artifacts using the Rozanski & Woods methodology. |
-| **Factor IX — Traceability** | Product + Architecture skills | Every product decision traces from PDR → PRD → feature, and every architecture decision from ADR → AD → code. |
-| **Factor X — Context Engineering** | Team Directives skills | `team-boot` and `team-discover` load only the relevant context modules per task, preventing context bloat. |
-| **Factor XI — Directives as Code** | Team Directives + LevelUp + Product + Architecture skills | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, not in prompt walls. Each has draft → clarify → accept → publish → analyze stages. |
-| **Factor XII — Team Capability** | All 22 skills | Skills are packaged, installable, and reusable across projects and agents. Teams build a shared capability library that any member can install via `team-skills`. |
-
-## Install
+## Quickstart
 
 ```bash
-npx skills add tikalk/adlc-team-skills
+# Install skills globally
+npx skills add tikalk/adlc-team-skills -a claude -g
+
+# Or for a specific project
+npx skills add tikalk/adlc-team-skills -a claude
 ```
 
-The skills work with any agent that supports the [Agent Skills standard](https://agentskills.io), including Claude Code, Codex, Cursor, OpenCode, GitHub Copilot, Pi, and Antigravity.
+Works with any agent that supports the [Agent Skills standard](https://agentskills.io) — Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, and others.
 
-## Available Skills
+**Before anything else:** Run `team-setup` once to configure the team AI directives path, or ensure `.adlc/init-options.json` is present.
+
+---
+
+## #1: The Agent Doesn't Know How Your Team Works
+
+**Factor X — Context Engineering. Factor XI — Directives as Code. Factor XII — Team Capability.**
+
+An agent assigned to your repo has no idea about your team's coding conventions, review standards, architectural principles, or product strategy. Without structured context injection, every session starts from zero — and every session drifts.
+
+`team-boot` loads the team constitution, PDR and ADR indexes, and relevant context modules automatically on session start. `team-discover` retrieves the specific personas, rules, and examples relevant to the current task. No prompt walls, no manual context dumping.
+
+```
+team-boot      → auto-loads constitution + PDR/ADR indexes + discover
+team-discover  → fetches rules/personas/examples for the current task
+team-constitution → create or amend the team constitution interactively
+team-repair    → re-index CDR.md, scan for conflicts, verify freshness
+```
+
+---
+
+## #2: Lessons From Sessions Evaporate
+
+**Factor IX — Traceability. Factor XI — Directives as Code. Factor XII — Team Capability.**
+
+Every agent session surfaces patterns, gotchas, and team knowledge. Without a structured capture mechanism, that knowledge is lost when the session ends.
+
+LevelUp skills capture session traces, extract reusable Context Directive Records (CDRs), and publish them back to the team AI directives repository as skills, rules, personas, or examples — creating a closed feedback loop where every session enriches the next.
+
+```
+levelup-trace    → generate session execution trace
+levelup-specify  → extract CDRs from trace + evidence
+levelup-clarify  → review, accept, reject, or defer CDRs
+levelup-publish  → compile into team directives + draft PR
+```
+
+---
+
+## #3: Product Decisions Are Invisible
+
+**Factor III — Mission Definition.**
+
+Without documented product decisions, every implementation session re-derives (or misinterprets) the product's intent. Feature scope, target audience, business constraints, and trade-offs are locked in someone's head or buried in a Slack thread.
+
+Product skills capture product decisions as individual PDR files, refine them through a clarification workflow, and compile them into a self-contained PRD.md. The `product-roadmap` skill tracks milestone progress from decisions through execution, evidence, and gates — with live issue counting via MCP.
+
+```
+product-init      → discover PDRs from existing codebase/docs (brownfield)
+product-specify   → create PDRs interactively (greenfield)
+product-clarify   → refine, validate, and approve PDRs
+product-implement → generate PRD.md from accepted PDRs
+product-analyze   → check PDR↔PRD consistency
+product-roadmap   → track milestone progress (decisions + issues + code + gates)
+```
+
+---
+
+## #4: Architecture Decisions Are Invisible
+
+**Factor IV — Structured Planning.**
+
+Unrecorded architecture decisions produce inconsistent implementations, duplicated effort, and systems that are harder to maintain or evolve. The adage "the architecture is in the code" is only true if you're willing to reverse-engineer every decision from the source.
+
+Architecture skills capture Architectural Decision Records (ADRs) and compose them into a unified Architecture Description (AD) using the Rozanski & Woods viewpoints methodology.
+
+```
+architect-init      → reverse-engineer ADRs from codebase (brownfield)
+architect-specify   → create ADRs from PRD or feature description (greenfield)
+architect-clarify   → refine and validate ADRs
+architect-implement → generate AD.md from accepted ADRs
+architect-analyze   → check ADR↔AD consistency and quality
+```
+
+---
+
+## Reference
 
 ### Team Directives (6 skills)
 
-| Skill | Use when | Invocation | Say |
-|---|---|---|---|
-| `team-boot` | Bootstrap session — load constitution, PDR/ADR indexes, discover context | Model-invoked (auto) | — |
-| `team-constitution` | Create or amend the team constitution interactively | User-invoked | "Create our team constitution"<br>"Amend our team principles" |
-| `team-discover` | Find relevant personas, rules, examples, PDRs, ADRs for current task | Model-invoked (auto) | — |
-| `team-repair` | Re-index CDR.md, .skills.json, AGENTS.md; health check; conflict scan; freshness verification | User-invoked | "Check our team directives health" (`--health-only`)<br>"Repair our CDR index"<br>"Scan for rule conflicts" (`--conflicts`)<br>"Verify directive freshness" (`--freshness`) |
-| `team-skills` | Browse and install team skills from the team AI directives | User-invoked | "Show me available team skills" |
-| `team-setup` | Clone, scaffold, or configure a team AI directives repository | User-invoked | "Set up team directives for this project" |
+#### Model-invoked
 
-**Team Directives workflow:**
-```text
-First time:   team-setup (clone/scaffold) → team-constitution (fill placeholder) → team-boot auto-loads on every session
-Health check: team-repair (or team-repair --health-only)
-Repair:       team-repair (re-index, health check, conflict scan, freshness verification)
-Skills:       team-skills (browse, install team skills)
-```
+- **`team-boot`** — Bootstrap session: load constitution, PDR/ADR indexes, discover context. Auto-triggered on session start.
+- **`team-discover`** — Fetch relevant personas, rules, examples, PDRs, and ADRs for the current task. Auto-triggered.
+
+#### User-invoked
+
+- **`team-constitution`** — Create or amend the team constitution interactively. Say "Create our team constitution" or "Amend our team principles."
+- **`team-repair`** — Re-index CDR.md, .skills.json, AGENTS.md; health check; conflict scan; freshness verification. Say "Check our team directives health" (`--health-only`), "Repair our CDR index," or "Scan for rule conflicts" (`--conflicts`).
+- **`team-skills`** — Browse and install team skills from the team AI directives. Say "Show me available team skills."
+- **`team-setup`** — Clone, scaffold, or configure a team AI directives repository. Say "Set up team directives for this project."
 
 ### LevelUp / CDR Lifecycle (5 skills)
 
-Contribute reusable patterns back to team-ai-directives via Context Directive Records (CDRs). Session-based — no spec-kit dependency.
+All user-invoked. Capture and publish reusable patterns to team-ai-directives.
 
-| Skill | Use when | From | Say |
-|---|---|---|---|
-| `levelup-trace` | Generate a session trace after completing work | `/levelup.trace` | "Generate a trace of this session" |
-| `levelup-init` | Brownfield CDR discovery from existing codebase | `/levelup.init` | "Discover directives from this codebase" |
-| `levelup-specify` | Extract CDRs from session trace + implementation evidence | `/levelup.specify` | "Extract lessons from this session" |
-| `levelup-clarify` | Review/accept/reject/defer CDRs | `/levelup.clarify` | "Review pending CDRs" |
-| `levelup-publish` | Compile accepted CDRs into team AI directives artifacts + session trace + draft PR | `/levelup.publish` | "Publish accepted CDRs to team AI directives"<br>"Build one skill from a CDR" (`--skill CDR-NNN`)<br>"Skip trace" (`--skip-trace`) |
-
-**LevelUp / CDR Lifecycle workflow:**
-```text
-Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
-Session:    levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
-```
-
-### Full Lifecycle (Product → Architecture → Team AI Directives)
-
-```text
-Product:     product-specify → product-clarify → product-implement → product-analyze
-Architecture: architect-specify → architect-clarify → architect-implement → architect-analyze
-Team AI Directives:     levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
-```
+- **`levelup-trace`** — Generate a session execution trace after completing work. Say "Generate a trace of this session."
+- **`levelup-init`** — Brownfield CDR discovery from an existing codebase. Say "Discover directives from this codebase."
+- **`levelup-specify`** — Extract CDRs from session trace and implementation evidence. Say "Extract lessons from this session."
+- **`levelup-clarify`** — Review, accept, reject, or defer pending CDRs. Say "Review pending CDRs."
+- **`levelup-publish`** — Compile accepted CDRs into team directives artifacts, session trace, and draft PR. Say "Publish accepted CDRs" or "Build one skill from a CDR" (`--skill CDR-NNN`).
 
 ### Product / PDR Lifecycle (6 skills)
 
-Document product decisions as individual PDR files and compile them into a self-contained PRD.md. No spec-kit dependency.
+All user-invoked. Document product decisions as individual PDRs and compile into a self-contained PRD.md.
 
-| Skill | Use when | Say |
-|---|---|---|
-| `product-init` | Brownfield PDR discovery from existing codebase/docs | "Discover product decisions from this codebase" |
-| `product-specify` | Greenfield PDR creation through interactive exploration | "Let's define our product strategy" |
-| `product-clarify` | Refine, validate, and approve PDRs before PRD generation | "Review our product decisions" |
-| `product-implement` | Generate PRD.md from accepted PDRs (DAG orchestration) | "Generate our PRD" |
-| `product-analyze` | Read-only PDR↔PRD consistency and quality analysis | "Analyze our product docs" |
-| `product-roadmap` | Track milestone progress — decision, execution (issues via MCP), evidence (code), gates | "Show roadmap progress" |
-
-**Product / PDR Lifecycle workflow:**
-```text
-Brownfield: product-init → product-clarify → product-implement → product-analyze
-Greenfield: product-specify → product-clarify → product-implement → product-analyze
-Roadmap:    product-roadmap (anytime)
-```
+- **`product-init`** — Brownfield PDR discovery from existing codebase and documentation. Say "Discover product decisions from this codebase."
+- **`product-specify`** — Greenfield PDR creation through interactive product exploration. Say "Let's define our product strategy."
+- **`product-clarify`** — Refine, validate, and approve PDRs before PRD generation. Say "Review our product decisions."
+- **`product-implement`** — Generate PRD.md from accepted PDRs (multi-agent DAG orchestration). Say "Generate our PRD."
+- **`product-analyze`** — Read-only PDR↔PRD consistency and quality analysis. Say "Analyze our product docs."
+- **`product-roadmap`** — Track milestone progress: decision status, live issues via MCP, code evidence, and gates. Say "Show roadmap progress."
 
 ### Architecture (5 skills)
 
-| Skill | Use when | Say |
-|---|---|---|
-| `architect-init` | Reverse-engineering architecture from an existing codebase (brownfield) | "Reverse-engineer architecture from this codebase" |
-| `architect-specify` | Creating ADRs from a PRD or feature description (greenfield) | "Create ADRs from this PRD" |
-| `architect-clarify` | Refining and validating existing ADRs | "Refine and validate my ADRs" |
-| `architect-implement` | Generating an Architecture Description (AD.md) from accepted ADRs | "Generate AD.md from my ADRs" |
-| `architect-analyze` | Checking ADR↔AD consistency and architecture quality | "Analyze architecture consistency" |
+All user-invoked. Create and manage Architecture Decision Records using the Rozanski & Woods methodology.
 
-All architecture skills use the Rozanski & Woods viewpoints and perspectives methodology.
+- **`architect-init`** — Reverse-engineer ADRs from an existing codebase (brownfield). Say "Reverse-engineer architecture from this codebase."
+- **`architect-specify`** — Create ADRs from a PRD or feature description (greenfield). Say "Create ADRs from this PRD."
+- **`architect-clarify`** — Refine and validate existing ADRs. Say "Refine and validate my ADRs."
+- **`architect-implement`** — Generate an Architecture Description (AD.md) from accepted ADRs. Say "Generate AD.md from my ADRs."
+- **`architect-analyze`** — Check ADR↔AD consistency and architecture quality. Say "Analyze architecture consistency."
 
-**Architecture workflow:**
-```text
-Brownfield: architect-init → architect-clarify → architect-implement → architect-analyze
-Greenfield: architect-specify → architect-clarify → architect-implement → architect-analyze
-```
+---
 
-## Output
+<details>
+<summary><strong>Output File Layout</strong></summary>
 
-Team skills read from and write to the team AI directives configured in `.adlc/init-options.json` or the `TEAM_AI_DIRECTIVE` env var.
+All skills write to `.adlc/` (project root) and the team AI directives repo.
 
-**Team Directives skills** (inside the team AI directives):
+**Team Directives** (inside the team AI directives repository):
 
 - `AGENTS.md` — agent instructions (loading order, rules, skills)
 - `CDR.md` — index of approved context contributions
 - `.skills.json` — skills manifest (schema v2.0.0)
-- `.mcp.json.example` — MCP servers config example (scaffold)
+- `.mcp.json.example` — MCP servers config example
 - `context_modules/constitution.md` — team constitution (OKF frontmatter)
 - `context_modules/{rules,personas,examples}/**/*.md` — context modules
-- `context_modules/{type}/index.md` — OKF progressive disclosure per concept type
-- `context_modules/{type}/log.md` — OKF chronological change log per concept type
+- `context_modules/{type}/index.md` — progressive disclosure per concept type
+- `context_modules/{type}/log.md` — chronological change log per concept type
 - `skills/{name}/SKILL.md` + `.skills-entry.json` — published team skills
-- `traces/{branch}.md` — published session traces (`levelup-publish`)
+- `traces/{branch}.md` — published session traces
 
-**LevelUp skills** write to `.adlc/` inside the target project:
+**LevelUp** (inside `.adlc/` of the target project):
 
-- `.adlc/drafts/trace.md` — session execution trace (`levelup-trace`)
+- `.adlc/drafts/trace.md` — session execution trace
 - `.adlc/drafts/cdr/CDR-{NNN}.md` — proposed/discovered CDRs (individual files)
 - `.adlc/drafts/cdr/cdr.md` — auto-generated CDR index
-- `.adlc/init-options.json` — `team_ai_directive` path config (`team-setup`)
+- `.adlc/init-options.json` — team AI directives path config
 
-**Product skills** write to `.adlc/` and repo root:
+**Product** (inside `.adlc/` and repo root):
 
-- `.adlc/drafts/pdr/PDR-{NNN}.md` — proposed/discovered PDRs (individual files)
+- `.adlc/drafts/pdr/PDR-{NNN}.md` — proposed/discovered PDRs
 - `.adlc/drafts/pdr/pdr.md` — auto-generated PDR index
-- `.adlc/memory/pdr/PDR-{NNN}.md` — accepted/completed PDRs (individual files, promoted from drafts)
-- `.adlc/memory/pdr/pdr.md` — accepted PDR index (read by `team-boot`, `team-discover`)
-- `.adlc/product/sections/{feature-area}/{section}.md` — PRD section build artifacts (`product-implement`)
-- `.adlc/product/state.json` — DAG execution state (`product-implement`)
-- `PRD.md` — Product Requirements Document (repo root, self-contained)
+- `.adlc/memory/pdr/PDR-{NNN}.md` — accepted/completed PDRs
+- `.adlc/memory/pdr/pdr.md` — accepted PDR index
+- `.adlc/product/sections/{feature-area}/{section}.md` — PRD section build artifacts
+- `.adlc/product/state.json` — DAG execution state
+- `PRD.md` — Product Requirements Document (repo root)
 
-**Architecture skills** write to `.adlc/` inside the target project:
+**Architecture** (inside `.adlc/` and repo root):
 
-- `.adlc/drafts/adr/ADR-{NNN}.md` — proposed/discovered ADRs (individual files)
+- `.adlc/drafts/adr/ADR-{NNN}.md` — proposed/discovered ADRs
 - `.adlc/drafts/adr/adr.md` — auto-generated ADR index
-- `.adlc/memory/adr/ADR-{NNN}.md` — accepted ADRs (individual files)
-- `.adlc/memory/adr/adr.md` — accepted ADR index (read by `team-boot`, `team-discover`)
-- `AD.md` — architecture description (in repo root)
-- `.adlc/architect/` — per-view DAG artifacts (for multi-subsystem projects)
+- `.adlc/memory/adr/ADR-{NNN}.md` — accepted ADRs
+- `.adlc/memory/adr/adr.md` — accepted ADR index
+- `AD.md` — Architecture Description (repo root)
+- `.adlc/architect/` — per-view DAG artifacts
 
-## OKF Compliance
+</details>
+
+<details>
+<summary><strong>OKF Compliance</strong></summary>
 
 Generated context modules include [Open Knowledge Format (OKF) v0.1](https://blog.agentics.org/open-knowledge-format/) compliant frontmatter alongside custom fields.
 
 | OKF field | Status | Source |
 |-----------|--------|--------|
-| `type` | ✅ | CDR context type (Rule, Persona, Example, Constitution) |
+| `type` | ✅ | CDR context type |
 | `title` | ✅ | CDR title |
 | `description` | ✅ | CDR descriptor |
-| `resource` | ✅ | Relative path to the artifact file |
+| `resource` | ✅ | Relative path to artifact |
 | `tags` | ✅ | Context type tag |
-| `timestamp` | ✅ | ISO 8601 datetime of creation/modification |
+| `timestamp` | ✅ | ISO 8601 datetime |
 
-**Custom fields** (coexist with OKF fields in same frontmatter):
-`id`, `cdr_ref`, `created`, `modified`, `verified`, `age_days`, `evidence`
+Custom fields co-exist with OKF frontmatter: `id`, `cdr_ref`, `created`, `modified`, `verified`, `age_days`, `evidence`.
 
-**Directory structure** — OKF concepts:
-- `context_modules/{type}/index.md` — progressive disclosure per concept type
-- `context_modules/{type}/log.md` — chronological change history per concept type
-- Cross-links between related concepts (e.g., rule → example, rule → persona)
+Directory structure: `context_modules/{type}/index.md` (progressive disclosure), `context_modules/{type}/log.md` (change history), cross-links between related concepts.
 
-## Agent Support
+</details>
 
-Skills are **agent-driven**: the model auto-selects the right skill based on your request description. They work with any agent that supports the Agent Skills standard.
+<details>
+<summary><strong>Workflows</strong></summary>
 
-### Install
-
-```bash
-# Global install (recommended)
-npx skills add tikalk/adlc-team-skills -a <agent> -g
-
-# Project-level install
-npx skills add tikalk/adlc-team-skills -a <agent>
+**Team Directives setup:**
+```
+team-setup → team-constitution → team-boot (auto on every session)
 ```
 
-Replace `<agent>` with your agent name (e.g., `claude`, `codex`, `opencode`, `gemini`, `qwen`).
+**Product lifecycle:**
+```
+Brownfield: product-init → product-clarify → product-implement → product-analyze
+Greenfield: product-specify → product-clarify → product-implement → product-analyze
+Roadmap:    product-roadmap (anytime)
+```
+
+**Architecture lifecycle:**
+```
+Brownfield: architect-init → architect-clarify → architect-implement → architect-analyze
+Greenfield: architect-specify → architect-clarify → architect-implement → architect-analyze
+```
+
+**LevelUp / CDR lifecycle:**
+```
+Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
+Session:    levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
+```
+
+**Full product → architecture → team:**
+```
+Product:     product-specify → product-clarify → product-implement → product-analyze
+Architecture: architect-specify → architect-clarify → architect-implement → architect-analyze
+Team:        levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
+```
+
+</details>
+
+<details>
+<summary><strong>12-Factor Alignment</strong></summary>
+
+| Factor | Skills | How |
+|--------|--------|-----|
+| **III — Mission Definition** | Product skills | PRD/PDR lifecycle ensures product decisions are documented, reviewed, and traceable before execution |
+| **IV — Structured Planning** | Architecture skills | ADRs and AD.md provide structured planning artifacts using Rozanski & Woods viewpoints |
+| **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
+| **X — Context Engineering** | Team Directives | `team-boot` and `team-discover` load only relevant context per task, preventing bloat |
+| **XI — Directives as Code** | Team + LevelUp + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
+| **XII — Team Capability** | All 22 skills | Skills are packaged, installable, and reusable across projects and agents |
+
+</details>
+
+---
 
 ## Release Process
 

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-07-22
+
+### Changed
+
+- **Moved `product-*` and `architect-*` skills** from `skills/team/` to `skills/workflow/` — product and architecture skills now live in their own top-level directory parallel to `team/`. Skill names, frontmatter, and command references unchanged. Re-install required: `npx skills add tikalk/adlc-team-skills`.
+- **README.md** rewritten to mattpocock/skills style: problem-first quickstart, 12-factor-oriented rationale sections, reference with user-invoked/model-invoked split, collapsible details for output layout, OKF compliance, workflows, and 12-factor alignment.
+- **`team-boot`** no longer falls back to `.adlc/drafts/` for PDR/ADR indexes — accepted (memory) decisions only. PDR: memory → legacy PRD.md heading skim → none. ADR: memory → none.
+
 ## [0.9.0] - 2026-07-22
 
 ### Added
@@ -59,9 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **6 new Product skills** under `skills/team/product-*`: `product-init`, `product-specify`, `product-clarify`, `product-implement`, `product-analyze`, `product-roadmap`. Ported from `agentic-sdlc-spec-kit/extensions/product/` with all spec-kit dependencies removed.
+- **6 new Product skills** under `skills/workflow/product-*`: `product-init`, `product-specify`, `product-clarify`, `product-implement`, `product-analyze`, `product-roadmap`. Ported from `agentic-sdlc-spec-kit/extensions/product/` with all spec-kit dependencies removed.
 - **PDR individual-file format**: PDRs are now stored as individual `PDR-{NNN}.md` files in `.adlc/drafts/pdr/` (mirroring architect ADR and levelup CDR patterns), with an auto-generated `pdr.md` index. Accepted PDRs are promoted to `.adlc/memory/pdr/` on implement.
-- Product templates: `pdr-file-template.md`, `prd-template.md`, 15 section templates, 3 subagent prompt templates — all under `skills/team/product-templates/` and `skills/team/product-implement/templates/`.
+- Product templates: `pdr-file-template.md`, `prd-template.md`, 15 section templates, 3 subagent prompt templates — all under `skills/workflow/product-templates/` and `skills/workflow/product-implement/templates/`.
 - Validation scripts: `validate-pdr.sh` and `validate-prd.sh` under `product-implement/scripts/bash/`.
 - README: new Product / PDR Lifecycle section, updated 12-Factor table (Factor III added), updated Output section with PDR/PRD paths, full lifecycle diagram.
 

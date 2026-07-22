@@ -1,6 +1,6 @@
 ---
 name: team-skills
-description: Browse and install team skills from the team directives knowledge base. Use when listing, adding, or onboarding team skills to the current agent's skills directory.
+description: Browse and install team skills from the team AI directives. Use when listing, adding, or onboarding team skills to the current agent's skills directory.
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## Overview
 
-Browse available skills from the team directives knowledge base and install
+Browse available skills from the team AI directives and install
 selected ones to the current agent's skills directory. Required skills are
 installed automatically during init; this skill handles recommended, internal,
 and remote skills on demand.
@@ -166,7 +166,7 @@ Source: local:./skills/github-actions
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 - `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for path resolution.

@@ -1,6 +1,6 @@
 ---
 name: team-setup
-description: Interactive setup of team-ai-directives knowledge base. Use when bootstrapping a team directives repository from scratch, cloning an existing one, pointing to a local path, or checking an existing configuration.
+description: Interactive setup of team AI directives. Use when bootstrapping a team directives repository from scratch, cloning an existing one, pointing to a local path, or checking an existing configuration.
 disable-model-invocation: true
 ---
 
@@ -8,23 +8,23 @@ disable-model-invocation: true
 
 ## Overview
 
-`team-setup` is a user-invoked interactive skill that guides you through setting up the team-ai-directives knowledge base. It presents four modes, explains each option, confirms your choice, and executes the setup.
+`team-setup` is a user-invoked interactive skill that guides you through setting up the team AI directives. It presents four modes, explains each option, confirms your choice, and executes the setup.
 
-The skill is non-destructive: it never overwrites existing files or directories. If the target path already contains a configured KB, it detects this and offers the "Already configured" mode instead.
+The skill is non-destructive: it never overwrites existing files or directories. If the target path already contains a configured team AI directives, it detects this and offers the "Already configured" mode instead.
 
 ## When to Use
 
-- Starting a new team from scratch and need a neutral KB scaffold to fill in later.
+- Starting a new team from scratch and need a neutral team AI directives scaffold to fill in later.
 - Your team already has a directives repo on GitHub and you want to clone it locally.
-- You have a local KB directory already (e.g., from a previous project) and want to wire it up.
-- You're unsure whether the KB is already configured and want a quick check.
+- You have a local team AI directives directory already (e.g., from a previous project) and want to wire it up.
+- You're unsure whether the team AI directives is already configured and want a quick check.
 - After `specify init` when `--team-ai-directives` wasn't provided.
 
 ## Core Process
 
 ### Goal
 
-Set up a team-ai-directives knowledge base using one of four modes.
+Set up a team AI directives using one of four modes.
 
 ### Mode 1: Clone from GitHub
 
@@ -52,7 +52,7 @@ Clone team-ai-directives from {URL} to {DEST}?
 git clone "{URL}" "{DEST}"
 ```
 
-After clone, verify the KB structure exists:
+After clone, verify the team AI directives structure exists:
 - `{DEST}/context_modules/constitution.md`
 - `{DEST}/context_modules/rules/`
 - `{DEST}/context_modules/personas/`
@@ -65,9 +65,9 @@ After clone, verify the KB structure exists:
 Wire an existing local team-ai-directives directory into the project.
 
 **Explore**:
-1. Ask the user for the path to their existing KB directory
+1. Ask the user for the path to their existing team AI directives directory
 2. Validate the path exists
-3. Validate the KB structure (same checks as Mode 1 post-clone)
+3. Validate the team AI directives structure (same checks as Mode 1 post-clone)
 4. If validation fails, explain what's missing and ask the user to fix it or choose a different mode
 
 **Present**:
@@ -101,12 +101,12 @@ print(json.dumps(config, indent=2))
 " > ".adlc/init-options.json"
 ```
 
-### Mode 3: Scaffold New Empty KB
+### Mode 3: Scaffold New Empty team AI directives
 
-Create a fresh, neutral team-ai-directives knowledge base at a specified path.
+Create a fresh, neutral team AI directives at a specified path.
 
 **Explore**:
-1. Ask the user where to create the KB (default: `./team-ai-directives`)
+1. Ask the user where to create the team AI directives (default: `./team-ai-directives`)
 2. Ask for the team name
 3. Check the destination does not already exist or is empty
 
@@ -150,7 +150,7 @@ Create `{DEST}/README.md`:
 ```markdown
 # {TEAM_NAME} Team AI Directives
 
-Team AI directives knowledge base for {TEAM_NAME}.
+Team AI directives repository for {TEAM_NAME}.
 
 ## Getting Started
 
@@ -303,19 +303,19 @@ After scaffold, run the post-setup configuration (same as Mode 4 below).
 
 ### Mode 4: Already Configured
 
-The KB is already configured. Verify and report status.
+The team AI directives is already configured. Verify and report status.
 
 **Explore**:
 1. Check `.adlc/init-options.json` for `team_ai_directive` field
-2. If found, resolve the path and validate the KB structure
+2. If found, resolve the path and validate the team AI directives structure
 3. Check `TEAM_AI_DIRECTIVE` env var as fallback
 4. Check default path `team-ai-directives` as final fallback
 
 **Present**:
-Show the user the resolved KB path and validation results.
+Show the user the resolved team AI directives path and validation results.
 
 **Write/Execute**:
-No writes needed — the KB is already configured.
+No writes needed — the team AI directives is already configured.
 
 ### Mode Selection Flow
 
@@ -324,8 +324,8 @@ No writes needed — the KB is already configured.
    How would you like to set up team-ai-directives?
 
    1) Clone from GitHub — Clone an existing repository
-   2) Point to existing local path — Use a KB you already have
-   3) Scaffold new empty KB — Create a fresh neutral KB
+   2) Point to existing local path — Use a team AI directives you already have
+   3) Scaffold new empty team AI directives — Create a fresh neutral team AI directives
    4) Already configured — Check existing configuration
    ```
 
@@ -340,7 +340,7 @@ No writes needed — the KB is already configured.
 After any mode completes successfully, update the project configuration:
 
 1. Write `team_ai_directive` to `.adlc/init-options.json`
-2. Verify the KB is accessible by running a quick health check:
+2. Verify the team AI directives is accessible by running a quick health check:
    - `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md` exists
    - `{TEAM_AI_DIRECTIVE}/.skills.json` exists and is valid JSON
 
@@ -348,24 +348,24 @@ After any mode completes successfully, update the project configuration:
 
 | Rationalization | Why it's wrong | What to do instead |
 |---|---|---|
-| "I'll just clone it manually." | Manual cloning skips the `.adlc/init-options.json` wiring, so agents won't find the KB. | Use Mode 1 — it clones AND configures. |
-| "I already have a KB directory, I'll just use it." | The directory may be incomplete (missing required files) or not wired in config. | Use Mode 2 — it validates the structure and creates the config entry. |
+| "I'll just clone it manually." | Manual cloning skips the `.adlc/init-options.json` wiring, so agents won't find the team AI directives. | Use Mode 1 — it clones AND configures. |
+| "I already have a team AI directives directory, I'll just use it." | The directory may be incomplete (missing required files) or not wired in config. | Use Mode 2 — it validates the structure and creates the config entry. |
 | "I'll just create a few files by hand." | An incomplete scaffold breaks health checks and agent discovery. | Use Mode 3 — it creates all 10 required files with valid structure. |
 | "I'm sure it's already configured." | The path may be stale, moved, or the env var may point to a deleted dir. | Use Mode 4 — it validates the existing configuration. |
-| "Scaffolding without a team name is fine." | The team name is used in `README.md` — a blank name makes the KB anonymous and harder to audit. | Always provide a team name in Mode 3. |
+| "Scaffolding without a team name is fine." | The team name is used in `README.md` — a blank name makes the team AI directives anonymous and harder to audit. | Always provide a team name in Mode 3. |
 
 ## Red Flags
 
 - **Cloning over an existing directory** — Mode 1 refuses if the destination already exists to prevent overwrites.
 - **Pointing to a non-existent path** — Mode 2 validates the path exists before proceeding.
 - **Scaffolding without required dirs being writable** — Mode 3 creates directories with `mkdir -p` but will fail on permission errors; check permissions first.
-- **Skipping the `team_ai_directive` config write** — without this field in `init-options.json`, agents cannot discover the KB.
+- **Skipping the `team_ai_directive` config write** — without this field in `init-options.json`, agents cannot discover the team AI directives.
 - **Using a relative path in `init-options.json`** — always resolve to an absolute path so the config is portable across working directories.
-- **Skipping `git init` in Mode 3** — a scaffolded KB without git cannot be used by `/levelup-publish` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/levelup-publish`.
+- **Skipping `git init` in Mode 3** — a scaffolded team AI directives without git cannot be used by `/levelup-publish` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/levelup-publish`.
 
 ## Verification
 
-- [ ] The KB directory exists at the configured path.
+- [ ] The team AI directives directory exists at the configured path.
 - [ ] `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md` exists.
 - [ ] `{TEAM_AI_DIRECTIVE}/context_modules/rules/` exists.
 - [ ] `{TEAM_AI_DIRECTIVE}/context_modules/personas/` exists.
@@ -378,7 +378,7 @@ After any mode completes successfully, update the project configuration:
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 - `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for scaffolding and path resolution.

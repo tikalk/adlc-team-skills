@@ -3,7 +3,7 @@
 #
 # Flags:
 #   -Json              Output path info as JSON (default: key=value)
-#   -Scaffold DIR      Create a fresh 11-file KB scaffold at DIR
+#   -Scaffold DIR      Create a fresh 11-file team AI directives scaffold at DIR
 #   -AgentsOnly DIR    Create only AGENTS.md at DIR (for repair use)
 #   -Name NAME         Team name for scaffold (default: "My Team")
 param(
@@ -66,8 +66,8 @@ function Write-OutputJson {
   return $output | ConvertTo-Json
 }
 
-# 2. KB STRUCTURE VALIDATION
-function Test-KbStructure {
+# 2. TEAM AI DIRECTIVES STRUCTURE VALIDATION
+function Test-TeamAiDirectivesStructure {
   param([string]$Dir)
   $missing = 0
   $required = @(
@@ -89,7 +89,7 @@ function Test-KbStructure {
 }
 
 # 3. SCAFFOLD
-function New-KbScaffold {
+function New-TeamAiDirectivesScaffold {
   param([string]$Dest, [string]$TeamName = "My Team")
   $today = Get-Date -Format "yyyy-MM-dd"
 
@@ -106,7 +106,7 @@ function New-KbScaffold {
   $readme = @"
 # ${TeamName} Team AI Directives
 
-Team AI directives knowledge base for ${TeamName}.
+Team AI directives repository for ${TeamName}.
 
 ## Getting Started
 
@@ -226,7 +226,7 @@ No team-wide principles defined yet. Add principles as they are established.
   Write-Output "Team name: ${TeamName}"
   Write-Output "Files created: 14"
 
-  $missing = Test-KbStructure -Dir $Dest
+  $missing = Test-TeamAiDirectivesStructure -Dir $Dest
   if ($missing -gt 0) {
     Write-Output "WARNING: $missing required items missing"
   }
@@ -270,7 +270,7 @@ The CDR.md file tracks approved context contributions. Update it when adding new
 
 # MAIN
 if ($Scaffold) {
-  New-KbScaffold -Dest $Scaffold -TeamName $Name
+  New-TeamAiDirectivesScaffold -Dest $Scaffold -TeamName $Name
 } elseif ($AgentsOnly) {
   New-AgentsOnly -Dest $AgentsOnly
 } elseif ($Json) {

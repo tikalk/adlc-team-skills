@@ -287,6 +287,9 @@ D) Cancel — Stop execution
 ### 11.1 Roadmap Overview [MERMAID gantt]
 [Milestone details with demo sentences]
 
+### 11.2 Milestone Gates & Progress
+[Per milestone: done-means definition, feature rollup, gate table, issue/evidence status — sourced from milestone PDRs]
+
 ## 11.5 Go-to-Market Strategy
 [Launch phases, pricing, messaging]
 

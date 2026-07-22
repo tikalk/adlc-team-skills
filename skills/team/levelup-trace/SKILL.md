@@ -292,7 +292,7 @@ Handoff context:
     ↓
 [Run /levelup-publish] → Compile accepted CDRs into team-ai-directives PR
     ↓
-[Run /team-repair] → Re-index and validate KB after merge
+[Run /team-repair] → Re-index and validate team AI directives after merge
 ```
 
 ## Verification
@@ -305,7 +305,7 @@ Handoff context:
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 

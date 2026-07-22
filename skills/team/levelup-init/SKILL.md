@@ -30,13 +30,13 @@ This skill focuses on **current state analysis** — what IS reusable, not what 
 - **Brownfield projects**: Existing code without team-wide directives
 - **Legacy modernization**: Extract reusable patterns before refactoring
 - **Team onboarding**: Turn implicit conventions into explicit directives
-- **Knowledge-base bootstrapping**: Populate a new team-ai-directives repository
+- **Team AI Directives bootstrapping**: Populate a new team-ai-directives repository
 
 ### When NOT to use
 
 - **Greenfield projects**: Use `/levelup-specify` after implementing a feature
 - **CDRs already exist**: If `.adlc/drafts/cdr/` has pending CDRs, use `/levelup-clarify` to review
-- **Routine KB health checks**: Use `/team-repair` for re-indexing and conflict scanning
+- **Routine team AI directives health checks**: Use `/team-repair` for re-indexing and conflict scanning
 
 ## Process
 
@@ -319,7 +319,7 @@ Handoff context to include:
     ↓
 [Run /levelup-publish] → Compile accepted CDRs into team-ai-directives PR
     ↓
-[Run /team-repair] → Re-index and validate KB after merge
+[Run /team-repair] → Re-index and validate team AI directives after merge
 ```
 
 ## Next Steps

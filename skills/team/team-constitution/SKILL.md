@@ -1,6 +1,6 @@
 ---
 name: team-constitution
-description: Interactively create or amend the team constitution in team-ai-directives. Use when bootstrapping a new team KB, establishing team-wide principles for the first time, or amending existing ones.
+description: Interactively create or amend the team constitution in team-ai-directives. Use when bootstrapping a new team AI directives, establishing team-wide principles for the first time, or amending existing ones.
 disable-model-invocation: true
 ---
 
@@ -19,20 +19,20 @@ The scaffold written by `team-setup` (Mode 3) contains only a placeholder ("No t
 **What this skill is NOT**:
 
 - Not a port of spec-kit's `spec.constitution` template machinery — no placeholder tokens, no hooks, no `extensions.yml`, no template propagation, no Sync Impact Report
-- Not semantic versioning — the team constitution is versioned by **git history** in the KB repo; freshness is tracked by OKF frontmatter (`modified`, `verified`) via `/team-repair`
+- Not semantic versioning — the team constitution is versioned by **git history** in the team AI directives repo; freshness is tracked by OKF frontmatter (`modified`, `verified`) via `/team-repair`
 - Not for **project-level** constitutions (`.adlc/memory/constitution.md`) — those remain `spec.constitution` territory when spec-kit is in play
 
 ## When to use
 
 - **After `team-setup` Mode 3**: the scaffold wrote a placeholder constitution — fill it with real principles
-- **New team KB (cloned or existing)**: constitution is missing or still a placeholder
+- **New team AI directives (cloned or existing)**: constitution is missing or still a placeholder
 - **Amending principles**: the team wants to add, reword, or remove principles
 
 ### When NOT to use
 
 - **Project-level constitution**: use spec-kit's `spec.constitution` for `.adlc/memory/constitution.md`
 - **Constitution changes via CDR flow**: if a constitution change was proposed as a CDR, let `/levelup-publish` handle it
-- **KB not configured**: run `/team-setup` first
+- **team AI directives not configured**: run `/team-setup` first
 
 ## Process
 
@@ -109,7 +109,7 @@ Read the following to inform principle proposals:
 3. **Existing rules**: skim `{TEAM_AI_DIRECTIVE}/context_modules/rules/` file names and headings
 4. **AGENTS.md** at `{TEAM_AI_DIRECTIVE}/AGENTS.md` — loading order and skill usage expectations
 
-Principles must be **grounded in what you find** — e.g., if the rules directory is heavy on security modules, a "Security by Default" principle is evidence-based, not boilerplate. If the KB is nearly empty, fall back to a small starter set and say so explicitly.
+Principles must be **grounded in what you find** — e.g., if the rules directory is heavy on security modules, a "Security by Default" principle is evidence-based, not boilerplate. If the team AI directives is nearly empty, fall back to a small starter set and say so explicitly.
 
 #### Phase 2: Elicit Principles
 
@@ -124,7 +124,7 @@ Principles must be **grounded in what you find** — e.g., if the rules director
 
 **Rationale**: {Why this principle exists; what failure it prevents}
 
-**Grounding**: {What team context motivated this — or "starter suggestion, no KB evidence yet"}
+**Grounding**: {What team context motivated this — or "starter suggestion, no team AI directives evidence yet"}
 
 Reply: [Y] accept / [e] edit / [n] reject
 ```
@@ -194,7 +194,7 @@ timestamp: {TODAY}T00:00:00Z
 Rules for writing:
 
 - Preserve the existing OKF frontmatter fields when amending; update `timestamp` to today. If the file carries custom fields (`created`, `modified`, `verified`, `age_days`, `id`, `cdr_ref`, `evidence`), preserve them and set `modified` to today.
-- `title` and H1: keep the existing team name if present; otherwise derive from the KB directory name or ask.
+- `title` and H1: keep the existing team name if present; otherwise derive from the team AI directives directory name or ask.
 - Numbered flat list (`1. **Name**`) — no `###` subsections per principle, no version/ratified date lines.
 - If `CONSTITUTION_STATE` was `missing`, create the parent directory first: `mkdir -p "{TEAM_AI_DIRECTIVE}/context_modules"`.
 
@@ -209,7 +209,7 @@ Commit the constitution update to team-ai-directives?
 [Y/n]
 ```
 
-If `TD_CLEAN` is false, skip the commit offer and note the KB has uncommitted changes.
+If `TD_CLEAN` is false, skip the commit offer and note the team AI directives has uncommitted changes.
 
 Report:
 
@@ -228,7 +228,7 @@ Report:
 
 ### Next Steps
 
-1. Run `/team-repair` to validate the KB and refresh verification timestamps
+1. Run `/team-repair` to validate the team AI directives and refresh verification timestamps
 2. Review project constitutions for alignment (team-repair Check 6)
 ```
 
@@ -237,7 +237,7 @@ Report:
 #### Grounded, Not Boilerplate
 
 - Proposals must cite team context when available (CDR descriptors, rule headings, AGENTS.md)
-- When the KB is empty, say the starter set is generic and keep it small (3–5)
+- When the team AI directives is empty, say the starter set is generic and keep it small (3–5)
 
 #### Team Format Only
 
@@ -264,7 +264,7 @@ Report:
     ↓
 /team-constitution (this skill — real principles)
     ↓
-/team-repair (validate KB, refresh freshness)
+/team-repair (validate team AI directives, refresh freshness)
 ```
 
 Ongoing amendments follow the CDR lifecycle (`/levelup-init` or `/levelup-specify` → `/levelup-clarify` → `/levelup-publish`), with `/team-constitution` available for explicit interactive edits.
@@ -281,7 +281,7 @@ Ongoing amendments follow the CDR lifecycle (`/levelup-init` or `/levelup-specif
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 

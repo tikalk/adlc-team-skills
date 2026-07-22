@@ -31,7 +31,7 @@ This is the quality gate for all contributions to `team-ai-directives`:
 
 - **No pending CDRs**: If no CDRs have status Discovered/Proposed, there is nothing to clarify
 - **Direct editing**: Do not use this skill to bypass the review workflow
-- **Routine health checks**: Use `/team-repair` for KB maintenance
+- **Routine health checks**: Use `/team-repair` for team AI directives maintenance
 
 ## Process
 

@@ -29,14 +29,14 @@ This skill focuses on **session-level learnings** — what reusable knowledge em
 
 - **After completing work**: Capture reusable patterns from the session
 - **After `/levelup-trace`**: Extract CDRs from the generated trace
-- **Contributing back to team KB**: Turn session work into reusable directives
+- **Contributing back to team AI directives**: Turn session work into reusable directives
 - **Before closing a branch**: Extract team-wide learnings
 
 ### When NOT to use
 
 - **Brownfield projects**: Use `/levelup-init` to scan existing code
 - **Before work is done**: Run this after completing the implementation
-- **Routine KB validation**: Use `/team-repair` for health checks
+- **Routine team AI directives validation**: Use `/team-repair` for health checks
 
 ## Process
 
@@ -321,7 +321,7 @@ Handoff context:
     ↓
 [Run /levelup-publish] → Compile accepted CDRs into team-ai-directives PR
     ↓
-[Run /team-repair] → Re-index and validate KB after merge
+[Run /team-repair] → Re-index and validate team AI directives after merge
 ```
 
 ## Next Steps
@@ -337,7 +337,7 @@ After `/levelup-specify` completes, run `/levelup-clarify` to review the propose
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 

@@ -5,7 +5,7 @@ Agent skills for the [**Twelve-Factor Agentic SDLC**](https://github.com/tikalk/
 **How the pieces fit:**
 
 - **[12-Factor Agentic SDLC](https://github.com/tikalk/agentic-sdlc-12-factors)** — the methodology (strategic mindset, structured planning, directives as code, team capability, traceability)
-- **[team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives)** — version-controlled team knowledge base (constitution, personas, rules, CDRs)
+- **[team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives)** — version-controlled team AI directives (constitution, personas, rules, CDRs)
 - **This repo** — agent skills that implement the methodology
 
 ## 12-Factor Alignment
@@ -39,8 +39,8 @@ The skills work with any agent that supports the [Agent Skills standard](https:/
 | `team-constitution` | Create or amend the team constitution interactively | User-invoked | "Create our team constitution"<br>"Amend our team principles" |
 | `team-discover` | Find relevant personas, rules, examples, PDRs, ADRs for current task | Model-invoked (auto) | — |
 | `team-repair` | Re-index CDR.md, .skills.json, AGENTS.md; health check; conflict scan; freshness verification | User-invoked | "Check our team directives health" (`--health-only`)<br>"Repair our CDR index"<br>"Scan for rule conflicts" (`--conflicts`)<br>"Verify directive freshness" (`--freshness`) |
-| `team-skills` | Browse and install team skills from the directives KB | User-invoked | "Show me available team skills" |
-| `team-setup` | Clone, scaffold, or configure a team-ai-directives KB | User-invoked | "Set up team directives for this project" |
+| `team-skills` | Browse and install team skills from the team AI directives | User-invoked | "Show me available team skills" |
+| `team-setup` | Clone, scaffold, or configure a team AI directives repository | User-invoked | "Set up team directives for this project" |
 
 **Team Directives workflow:**
 ```text
@@ -60,7 +60,7 @@ Contribute reusable patterns back to team-ai-directives via Context Directive Re
 | `levelup-init` | Brownfield CDR discovery from existing codebase | `/levelup.init` | "Discover directives from this codebase" |
 | `levelup-specify` | Extract CDRs from session trace + implementation evidence | `/levelup.specify` | "Extract lessons from this session" |
 | `levelup-clarify` | Review/accept/reject/defer CDRs | `/levelup.clarify` | "Review pending CDRs" |
-| `levelup-publish` | Compile accepted CDRs into KB artifacts + session trace + draft PR | `/levelup.publish` | "Publish accepted CDRs to team KB"<br>"Build one skill from a CDR" (`--skill CDR-NNN`)<br>"Skip trace" (`--skip-trace`) |
+| `levelup-publish` | Compile accepted CDRs into team AI directives artifacts + session trace + draft PR | `/levelup.publish` | "Publish accepted CDRs to team AI directives"<br>"Build one skill from a CDR" (`--skill CDR-NNN`)<br>"Skip trace" (`--skip-trace`) |
 
 **LevelUp / CDR Lifecycle workflow:**
 ```text
@@ -68,12 +68,12 @@ Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
 Session:    levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
 ```
 
-### Full Lifecycle (Product → Architecture → Team KB)
+### Full Lifecycle (Product → Architecture → Team AI Directives)
 
 ```text
 Product:     product-specify → product-clarify → product-implement → product-analyze
 Architecture: architect-specify → architect-clarify → architect-implement → architect-analyze
-Team KB:     levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
+Team AI Directives:     levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
 ```
 
 ### Product / PDR Lifecycle (6 skills)
@@ -87,7 +87,7 @@ Document product decisions as individual PDR files and compile them into a self-
 | `product-clarify` | Refine, validate, and approve PDRs before PRD generation | "Review our product decisions" |
 | `product-implement` | Generate PRD.md from accepted PDRs (DAG orchestration) | "Generate our PRD" |
 | `product-analyze` | Read-only PDR↔PRD consistency and quality analysis | "Analyze our product docs" |
-| `product-roadmap` | Track milestone progress from PDR status | "Show roadmap progress" |
+| `product-roadmap` | Track milestone progress — decision, execution (issues via MCP), evidence (code), gates | "Show roadmap progress" |
 
 **Product / PDR Lifecycle workflow:**
 ```text
@@ -116,9 +116,9 @@ Greenfield: architect-specify → architect-clarify → architect-implement → 
 
 ## Output
 
-Team skills read from and write to the team-ai-directives knowledge base configured in `.adlc/init-options.json` or the `TEAM_AI_DIRECTIVE` env var.
+Team skills read from and write to the team AI directives configured in `.adlc/init-options.json` or the `TEAM_AI_DIRECTIVE` env var.
 
-**Team Directives skills** (inside the team-ai-directives KB):
+**Team Directives skills** (inside the team AI directives):
 
 - `AGENTS.md` — agent instructions (loading order, rules, skills)
 - `CDR.md` — index of approved context contributions

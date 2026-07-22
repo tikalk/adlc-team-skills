@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## What this skill does
 
-Compile **accepted CDRs** into actual artifacts in the `team-ai-directives` knowledge base and create a **draft PR**.
+Compile **accepted CDRs** into actual artifacts in the `team-ai-directives` team AI directives and create a **draft PR**.
 
 It is the implementation phase of the CDR lifecycle:
 
@@ -16,7 +16,7 @@ It is the implementation phase of the CDR lifecycle:
 - Detect cross-CDR conflicts before publishing
 - Generate context module files (rules, personas, examples, constitution)
 - Generate skill artifacts (`SKILL.md` + `.skills-entry.json`)
-- Publish the session trace to the team-ai-directives KB
+- Publish the session trace to the team AI directives
 - Update `.skills.json` manifest
 - Update `CDR.md` index in team-ai-directives
 - Create a branch, commit, and open a draft PR
@@ -62,7 +62,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 - `--skip-skills`: Skip skill-type CDRs
 - `--context-only`: Build only context modules (skip all skills)
 - `--skill <name|CDR-id>`: Build only one skill from a specific accepted skill CDR
-- `--skip-trace`: Do not publish the session trace to the KB
+- `--skip-trace`: Do not publish the session trace to the team AI directives
 
 ### Role & Context
 
@@ -83,9 +83,9 @@ Your role involves:
 4. **Cross-CDR Conflict Check** (Phase 3): Detect duplicate targets and rule conflicts
 5. **Branch Preparation** (Phase 4): Create branch in team-ai-directives
 6. **Context Module Generation** (Phase 5): Build rules/personas/examples/constitution
-7. **Session Trace Publication** (Phase 6): Publish session trace to KB
+7. **Session Trace Publication** (Phase 6): Publish session trace to team AI directives
 8. **Skill Generation** (Phase 7): Build SKILL.md + .skills-entry.json
-9. **CDR.md Update** (Phase 8): Update KB root CDR.md index
+9. **CDR.md Update** (Phase 8): Update team AI directives root CDR.md index
 10. **AGENTS.md Check** (Phase 9): Create if missing
 11. **Commit and PR** (Phase 10): Publish changes
 12. **Summary** (Phase 11): Report results
@@ -113,7 +113,7 @@ Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVE`, `CDR_DRAFTS_DIR`, `ACCEPTED_CDR
 7. `TRACE_FILE` — `REPO_ROOT/.adlc/drafts/trace.md`
 8. `TRACE_EXISTS` — `[[ -f "$TRACE_FILE" ]]`
 
-If `TD_IS_GIT` is false, Phase 10 (branch/commit/PR) cannot run. Offer to `git init` the KB or write files directly without git.
+If `TD_IS_GIT` is false, Phase 10 (branch/commit/PR) cannot run. Offer to `git init` the team AI directives or write files directly without git.
 
 #### Phase 1: Prerequisites Check
 
@@ -277,7 +277,7 @@ Invoke the `levelup-trace` skill to generate a trace from the current session. A
 Warning: Session trace could not be generated. Continuing without trace.
 ```
 
-**Step 2: Copy trace to KB**
+**Step 2: Copy trace to team AI directives**
 
 Create the traces directory if it doesn't exist:
 
@@ -535,7 +535,7 @@ PR merged
 
 ## Next Steps
 
-After implementation, monitor the PR for review. Once merged, run `/team-repair` to validate the updated KB.
+After implementation, monitor the PR for review. Once merged, run `/team-repair` to validate the updated team AI directives.
 
 ## Verification
 

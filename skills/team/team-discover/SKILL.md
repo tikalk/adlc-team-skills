@@ -1,6 +1,6 @@
 ---
 name: team-discover
-description: Discover relevant personas, rules, examples, and skills from the team-ai-directives knowledge base, plus project-level Product Decision Records (PDRs) and Architecture Decision Records (ADRs), for the current feature. Use when starting a spec, plan, or implementation task and needing to load applicable team directives and project decisions before proceeding.
+description: Discover relevant personas, rules, examples, and skills from the team AI directives, plus project-level Product Decision Records (PDRs) and Architecture Decision Records (ADRs), for the current feature. Use when starting a spec, plan, or implementation task and needing to load applicable team directives and project decisions before proceeding.
 ---
 
 # team-discover
@@ -11,7 +11,7 @@ Discover relevant personas, rules, examples, and skills from team-ai-directives 
 
 ### CDR Index as Search Surface
 
-`CDR.md` in the team-ai-directives knowledge base serves as the authoritative, LLM-readable catalog of all available context modules — analogous to how `.skills.json` is the index for skills. Each Accepted CDR row in the index table provides:
+`CDR.md` in the team AI directives serves as the authoritative, LLM-readable catalog of all available context modules — analogous to how `.skills.json` is the index for skills. Each Accepted CDR row in the index table provides:
 
 - **Target Module path**: the file to load if relevant
 - **Type**: rule, persona, example
@@ -37,7 +37,7 @@ Manual invocation:
 
 ## Core Process
 
-### Step 1: Locate Knowledge Base
+### Step 1: Locate Team AI Directives
 
 Read the file `.adlc/init-options.json` directly. Do NOT use glob, find,
 or any file-search tool to locate it — search tools may silently skip
@@ -50,7 +50,7 @@ and so on — up to 4 levels. Stop at the first successful read.
 
 From the JSON, extract the `team_ai_directive` field.
 
-- If present and the path exists: use it as the knowledge base root.
+- If present and the path exists: use it as the team AI directives root.
 - If not found or path doesn't exist: output empty results and exit.
 
 In subsequent steps, `{TEAM_AI_DIRECTIVE}` refers to this value, resolved
@@ -95,11 +95,11 @@ Extract each table row where `Status` is `Accepted`:
 
 Also read `{TEAM_AI_DIRECTIVE}/.skills.json` for the skill registry.
 
-**Fallback**: If `CDR.md` is missing, unparseable, or contains no Accepted rows, read all files from `{TEAM_AI_DIRECTIVE}/context_modules/` directly (constitution.md, personas/, rules/, examples/) and use each file's name and path as the matching surface. This ensures the command works with any valid team-ai-directives knowledge base regardless of CDR maturity.
+**Fallback**: If `CDR.md` is missing, unparseable, or contains no Accepted rows, read all files from `{TEAM_AI_DIRECTIVE}/context_modules/` directly (constitution.md, personas/, rules/, examples/) and use each file's name and path as the matching surface. This ensures the command works with any valid team AI directives regardless of CDR maturity.
 
 ### Step 3b: Load Project Decision Indexes
 
-Read the project's PDR and ADR **indexes** from `{REPO_ROOT}` (the project root where `.adlc/` lives) as additional matching surfaces. These are project-level decisions, independent of the team KB — load them even when the team KB is unconfigured or yields no matches.
+Read the project's PDR and ADR **indexes** from `{REPO_ROOT}` (the project root where `.adlc/` lives) as additional matching surfaces. These are project-level decisions, independent of the team AI directives — load them even when the team AI directives is unconfigured or yields no matches.
 
 **PDR index**:
 
@@ -216,7 +216,7 @@ Output structured discovery results as a markdown table:
 ```
 
 - **ID**: The CDR identifier from `CDR.md` (omitted in legacy fallback mode), or the `PDR-NNN` / `ADR-NNN` identifier from the project indexes.
-- **Module**: Path to the full context module file relative to knowledge base root — or, for PDRs/ADRs, the record path relative to the project root (e.g., `.adlc/memory/pdr/PDR-001.md`).
+- **Module**: Path to the full context module file relative to team AI directives root — or, for PDRs/ADRs, the record path relative to the project root (e.g., `.adlc/memory/pdr/PDR-001.md`).
 - **Type**: Rule, Persona, Example, PDR, or ADR.
 - **Descriptor**: The "when to use" summary from the CDR index; for PDRs, the `feature_area` + `category`; for ADRs, the `sub_system` + short decision.
 - **Relevance**: High / Medium / Low based on keyword overlap.
@@ -278,10 +278,10 @@ If team-ai-directives is not configured or files cannot be read:
 
 ## Red Flags
 
-- Using `glob`, `find`, or any file-search tool to locate `.adlc/init-options.json` or knowledge-base files — these silently skip dotfile path segments. Read exact paths directly.
+- Using `glob`, `find`, or any file-search tool to locate `.adlc/init-options.json` or team AI directives files — these silently skip dotfile path segments. Read exact paths directly.
 - Loading every file under `context_modules/` by default instead of matching against the CDR index first (only the fallback path does full scans).
 - Writing `team-context.md` (or any file) when `$ARGUMENTS` contains `--no-write` or when invoked as a skill with no hook context.
-- Hardcoding the knowledge-base path instead of resolving `team_ai_directive` from `.adlc/init-options.json`.
+- Hardcoding the team AI directives path instead of resolving `team_ai_directive` from `.adlc/init-options.json`.
 - Blocking the preset command on discovery failure — the command must exit 0 with empty results.
 
 ## Verification
@@ -296,7 +296,7 @@ If team-ai-directives is not configured or files cannot be read:
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 

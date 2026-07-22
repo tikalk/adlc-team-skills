@@ -1,6 +1,6 @@
 ---
 name: team-repair
-description: Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives, scan for rule conflicts, and verify directive freshness. Use when indexes are inconsistent, orphans are detected, after bulk changes, or for periodic KB health validation.
+description: Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives, scan for rule conflicts, and verify directive freshness. Use when indexes are inconsistent, orphans are detected, after bulk changes, or for periodic team AI directives health validation.
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives to fix incons
 **Input**: team-ai-directives repository
 
 **Output**:
-0. Health check report (7 checks: extension installed, KB configured, context modules exist, skills registry, CDR tracking, constitution alignment, type field presence)
+0. Health check report (7 checks: extension installed, team AI directives configured, context modules exist, skills registry, CDR tracking, constitution alignment, type field presence)
 1. Repaired AGENTS.md (if missing or corrupted)
 2. Rebuilt CDR.md index from context_modules/
 3. Rebuilt .skills.json manifest from skills/
@@ -93,17 +93,17 @@ Execute all seven checks below. Each check prints a status line. If any check is
 
 Output: `[OK]` or `[FAIL]` with reason
 
-#### Check 2: Knowledge Base Configured
+#### Check 2: Team AI Directives Configured
 
 1. Read `.adlc/init-options.json`
 2. Verify `team_ai_directive` field exists and points to valid path
-3. Check the knowledge base path exists
+3. Check the team AI directives path exists
 
 Output: `[OK]` or `[FAIL]` with reason
 
 #### Check 3: Context Modules Exist
 
-1. Read `.adlc/init-options.json` → get knowledge base path
+1. Read `.adlc/init-options.json` → get team AI directives path
 2. Verify:
    - `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
    - `{TEAM_AI_DIRECTIVE}/context_modules/personas/`
@@ -160,7 +160,7 @@ If any check is `[FAIL]`, print the report, set exit code 1, and **STOP**. Do no
 #### Health Check Red Flags
 
 - **`[FAIL]` on Check 1 or Check 2**: the directives framework is effectively absent — agents have nothing to inherit from. Stop and reinstall before repairing.
-- **Knowledge base path resolves outside the repo** or to a temp/scratch location: the project is pointing at a transient or shared KB that may vanish or diverge.
+- **Team AI Directives path resolves outside the repo** or to a temp/scratch location: the project is pointing at a transient or shared team AI directives that may vanish or diverge.
 - **`{TEAM_AI_DIRECTIVE}/.skills.json` is missing or not valid JSON**: skill discovery is broken; agents cannot find team skills even if the files exist.
 - **Project constitution exists but shows no team inheritance** (`[WARN]` on Check 6): the project was bootstrapped without the directives extension, or the constitution was hand-edited and the inheritance markers were removed.
 - **Multiple checks return `[WARN]` simultaneously**: systemic drift, usually from an extension upgrade or a moved `.adlc/` directory. Treat as a `[FAIL]`-equivalent and re-init.
@@ -860,7 +860,7 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 - `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for path resolution.

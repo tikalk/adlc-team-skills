@@ -33,7 +33,7 @@ You do NOT need to re-invoke if:
 
 ## Core Process
 
-### Step 1: Locate Knowledge Base
+### Step 1: Locate Team AI Directives
 
 Read the file `.adlc/init-options.json` directly. Do NOT use glob, find,
 or any file-search tool to locate it — search tools may silently skip
@@ -46,7 +46,7 @@ and so on — up to 4 levels. Stop at the first successful read.
 
 From the JSON, extract the `team_ai_directive` field.
 
-- If present and the path exists: use it as the knowledge base root.
+- If present and the path exists: use it as the team AI directives root.
 - If not found or path doesn't exist: output empty results and exit.
 
 In subsequent steps, `{TEAM_AI_DIRECTIVE}` refers to this value, resolved
@@ -111,7 +111,7 @@ If the user's message describes a specific feature or task, extract:
 - **Actions**: What is the feature doing?
 
 Use these to drive the discovery matching. If the user's message is vague
-("I need to add a login modal"), still run discovery — the team knowledge base
+("I need to add a login modal"), still run discovery — the team AI directives
 may contain relevant rules (e.g., security patterns, testing standards) that
 apply broadly.
 
@@ -180,7 +180,7 @@ The bootstrap is complete when ALL of the following are true:
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team-ai-directives knowledge base (overrides `.adlc/init-options.json`).
+- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 

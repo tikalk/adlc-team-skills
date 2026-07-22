@@ -3,7 +3,7 @@
 # 
 # Flags:
 #   --json              Output path info as JSON (default: key=value)
-#   --scaffold [DIR]    Create a fresh 11-file KB scaffold at DIR
+#   --scaffold [DIR]    Create a fresh 11-file team AI directives scaffold at DIR
 #   --agents-only DIR   Create only AGENTS.md at DIR (for repair use)
 #   --name NAME         Team name for scaffold (default: "My Team")
 set -euo pipefail
@@ -53,10 +53,10 @@ output_json() {
 }
 
 ###############################################################################
-# 2. KB STRUCTURE VALIDATION
+# 2. TEAM AI DIRECTIVES STRUCTURE VALIDATION
 ###############################################################################
 
-validate_kb() {
+validate_team_ai_directives() {
   local dir="$1"
   local missing=0
 
@@ -80,7 +80,7 @@ validate_kb() {
 # 3. SCAFFOLD
 ###############################################################################
 
-scaffold_kb() {
+scaffold_team_ai_directives() {
   local dest="$1"
   local team_name="${2:-My Team}"
   local today
@@ -99,7 +99,7 @@ scaffold_kb() {
   cat > "${dest}/README.md" << README
 # ${team_name} Team AI Directives
 
-Team AI directives knowledge base for ${team_name}.
+Team AI directives repository for ${team_name}.
 
 ## Getting Started
 
@@ -226,7 +226,7 @@ INDEXEX
   echo "Team name: ${team_name}"
   echo "Files created: 14"
 
-  validate_kb "$dest" || true
+  validate_team_ai_directives "$dest" || true
 }
 
 scaffold_agents_only() {
@@ -336,7 +336,7 @@ main() {
       echo "ERROR: --scaffold requires a destination directory argument" >&2
       exit 1
     fi
-    scaffold_kb "$scaffold_dest" "$team_name"
+    scaffold_team_ai_directives "$scaffold_dest" "$team_name"
     return
   fi
 

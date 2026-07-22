@@ -135,6 +135,7 @@ See [Agentic SDLC Spec Kit](https://github.com/tikalk/agentic-sdlc-spec-kit) for
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
+- `traces/` — Published session traces (from `/levelup-publish`)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order
@@ -245,6 +246,7 @@ function New-AgentsOnly {
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
+- `traces/` — Published session traces (from `/levelup-publish`)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order

@@ -1,13 +1,13 @@
 ---
 name: team-discover
-description: Discover relevant personas, rules, examples, and skills from the team-ai-directives knowledge base for the current feature. Use when starting a spec, plan, or implementation task and needing to load applicable team directives before proceeding.
+description: Discover relevant personas, rules, examples, and skills from the team-ai-directives knowledge base, plus project-level Product Decision Records (PDRs) and Architecture Decision Records (ADRs), for the current feature. Use when starting a spec, plan, or implementation task and needing to load applicable team directives and project decisions before proceeding.
 ---
 
 # team-discover
 
 ## Overview
 
-Discover relevant personas, rules, examples, and skills from team-ai-directives that apply to the current feature being specified or planned.
+Discover relevant personas, rules, examples, and skills from team-ai-directives that apply to the current feature being specified or planned. Also surfaces relevant **project-level decision records** — PDRs (`.adlc/**/pdr/pdr.md` index) and ADRs (`.adlc/**/adr/adr.md` index) — so the agent works with full knowledge of the product and architecture decisions already made.
 
 ### CDR Index as Search Surface
 
@@ -97,6 +97,44 @@ Also read `{TEAM_AI_DIRECTIVE}/.skills.json` for the skill registry.
 
 **Fallback**: If `CDR.md` is missing, unparseable, or contains no Accepted rows, read all files from `{TEAM_AI_DIRECTIVE}/context_modules/` directly (constitution.md, personas/, rules/, examples/) and use each file's name and path as the matching surface. This ensures the command works with any valid team-ai-directives knowledge base regardless of CDR maturity.
 
+### Step 3b: Load Project Decision Indexes
+
+Read the project's PDR and ADR **indexes** from `{REPO_ROOT}` (the project root where `.adlc/` lives) as additional matching surfaces. These are project-level decisions, independent of the team KB — load them even when the team KB is unconfigured or yields no matches.
+
+**PDR index**:
+
+1. Read `{REPO_ROOT}/.adlc/memory/pdr/pdr.md` (accepted PDRs).
+2. If missing, fall back to `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` (all PDRs including Discovered/Proposed).
+3. Parse each table row into a candidate:
+
+```json
+{
+  "id": "PDR-001",
+  "feature_area": "business",
+  "category": "Business Model",
+  "status": "Accepted",
+  "file": ".adlc/memory/pdr/PDR-001.md"
+}
+```
+
+**ADR index**:
+
+1. Read `{REPO_ROOT}/.adlc/memory/adr/adr.md` (accepted ADRs).
+2. If missing, fall back to `{REPO_ROOT}/.adlc/drafts/adr/adr.md`.
+3. Parse each table row into a candidate:
+
+```json
+{
+  "id": "ADR-003",
+  "sub_system": "auth",
+  "decision": "Use JWT for session tokens",
+  "status": "Accepted",
+  "file": ".adlc/memory/adr/ADR-003.md"
+}
+```
+
+Skip silently for any index that does not exist — projects without the PDR/ADR lifecycle simply contribute no candidates here.
+
 ### Step 4: Match Against Index
 
 For each candidate in the parsed CDR index, determine relevance based on:
@@ -114,7 +152,17 @@ For each candidate in the parsed CDR index, determine relevance based on:
 - Example descriptor/domain/technology overlaps with feature
 - Similar feature type or pattern demonstrated
 
-The **descriptor** column is the primary matching surface — it carries the condensed "when to use" summary authored during CDR publication. The **target module path** and **type** provide secondary matching signals.
+**PDRs** (from Step 3b) — Match when:
+- PDR `feature_area` matches the feature domain
+- PDR `category` aligns with the work (e.g., `NFR` for performance/reliability work, `Persona` for user-facing features, `Metric` for analytics, `Business Model` for pricing/billing)
+- PDR id/title keywords overlap with the feature description
+
+**ADRs** (from Step 3b) — Match when:
+- ADR `sub_system` matches the feature's technical area
+- ADR `decision` text mentions matching technology or patterns
+- The feature would modify code governed by the ADR (when evident from the sub-system mapping)
+
+The **descriptor** column is the primary matching surface — it carries the condensed "when to use" summary authored during CDR publication. The **target module path** and **type** provide secondary matching signals. For PDRs, `feature_area` + `category` are the primary surface; for ADRs, `sub_system` + `decision`.
 
 **Skills**: Match from `.skills.json` against the feature context:
 - **Default skills** (the `default` list): Check each skill's description
@@ -131,6 +179,9 @@ Include matched skills in the discovery output table with Type "Skill".
 
 For every module selected as relevant in Step 4, read the full file content from:
 `{TEAM_AI_DIRECTIVE}/{target_module}`
+
+For every **PDR/ADR** selected as relevant, read the full record content from its project-relative path:
+`{REPO_ROOT}/{file}` (e.g., `{REPO_ROOT}/.adlc/memory/pdr/PDR-001.md`)
 
 Include the full content in the output so the AI agent has the complete directive text without needing a second file read.
 
@@ -164,20 +215,20 @@ Output structured discovery results as a markdown table:
 | CDR-2026-020 | context_modules/rules/security/api-security.md | Rule | API security patterns for web services | High |
 ```
 
-- **ID**: The CDR identifier from `CDR.md` (omitted in legacy fallback mode).
-- **Module**: Path to the full context module file relative to knowledge base root.
-- **Type**: Rule, Persona, or Example.
-- **Descriptor**: The "when to use" summary from the CDR index.
+- **ID**: The CDR identifier from `CDR.md` (omitted in legacy fallback mode), or the `PDR-NNN` / `ADR-NNN` identifier from the project indexes.
+- **Module**: Path to the full context module file relative to knowledge base root — or, for PDRs/ADRs, the record path relative to the project root (e.g., `.adlc/memory/pdr/PDR-001.md`).
+- **Type**: Rule, Persona, Example, PDR, or ADR.
+- **Descriptor**: The "when to use" summary from the CDR index; for PDRs, the `feature_area` + `category`; for ADRs, the `sub_system` + short decision.
 - **Relevance**: High / Medium / Low based on keyword overlap.
 
 For personas and rules with **High** relevance, load the full module file content and
 include it directly under the table so the agent has the complete directive text
-without a second file read.
+without a second file read. The same applies to High-relevance PDRs and ADRs.
 
 Include a `search_metadata` section after the table:
 
 ```markdown
-_Searched 42 CDR entries, 8 matches found._
+_Searched 42 CDR entries, 6 PDR entries, 9 ADR entries, 8 matches found._
 ```
 
 ### Step 6: Persist Team Context
@@ -236,8 +287,9 @@ If team-ai-directives is not configured or files cannot be read:
 ## Verification
 
 - A **Discovered Team Context** table is produced with columns: `ID`, `Module`, `Type`, `Descriptor`, `Relevance`.
-- Full module file content is included inline for every entry marked **High** relevance.
-- A `search_metadata` line is present showing entries searched and matches found (e.g., `_Searched N CDR entries, M matches found._`).
+- Project PDR and ADR indexes (memory preferred, drafts fallback) were read when present, and matching rows appear with Type `PDR` / `ADR`.
+- Full module file content is included inline for every entry marked **High** relevance — including PDR/ADR record bodies.
+- A `search_metadata` line is present showing entries searched per source and matches found (e.g., `_Searched N CDR entries, M PDR entries, K ADR entries, J matches found._`).
 - In persist mode, `team-context.md` is written to the correct target (feature dir or `.adlc/drafts/`) and a delta section is included when a previous file existed.
 - In no-write mode (or skill invocation), **no files are created or modified** — output is inline only.
 - On misconfiguration or unreadable files, results are empty, `search_metadata` shows `0 files searched`, and the process exits successfully (code 0).

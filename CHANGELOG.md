@@ -5,7 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.0] - 2026-07-22
+## [0.9.0] - 2026-07-22
+
+### Added
+
+- **New skill: `team-constitution`** — interactively create or amend the team constitution in team-ai-directives. Detects the scaffold placeholder ("No team-wide principles defined yet") for create mode, or reviews existing principles in amend mode. Ports the interactive elicitation flow from spec-kit's `spec.constitution` without the SDD machinery (no hooks, no template tokens, no template propagation). Output uses the established team format: OKF frontmatter + numbered principles + lightweight Governance section; versioning is git history, not semantic version stamps.
+- **PDR/ADR index loading in `team-boot`**: new Step 3 (Load Product & Architecture Context) reads `.adlc/memory/pdr/pdr.md` and `.adlc/memory/adr/adr.md` (drafts fallback) for awareness-level product/architecture context. Legacy fallback: heading-level skim of monolithic `PRD.md` when no PDR index exists. Full PRD/AD bodies and individual PDR/ADR records are never loaded during boot.
+- **PDR/ADR matching in `team-discover`**: new Step 3b (Load Project Decision Indexes) matches project PDRs and ADRs against the feature context alongside team CDR matching. Output table gains `Type: PDR` / `Type: ADR` rows; High-relevance records load inline bodies; `search_metadata` reports per-source counts.
+- Setup scripts for `team-constitution` (bash + PowerShell) outputting `CONSTITUTION_STATE` (`missing`|`placeholder`|`populated`), `TD_IS_GIT`, `TD_CLEAN`.
+
+### Changed
+
+- `team-boot`: steps renumbered (Run Discovery → Step 4, Acknowledge → Step 5); acknowledgment now reports index entry counts; description, verification, and red flags updated for decision-record loading.
+- `team-discover`: description, output table docs, and verification updated for PDR/ADR matching.
+- `team-setup` Mode 3: scaffold follow-up now directs the user to run `/team-constitution` to fill the placeholder constitution; file table notes the placeholder's purpose.
+- `team-helpers.sh` / `.ps1`: KB AGENTS.md templates (scaffold + agents-only) now list the `traces/` directory.
+- README: Team Directives table (5 → 6 skills), `team-boot`/`team-discover` row updates, skill count fix (22 skills), Output section gains memory-scope PDR/ADR index entries.
+
+### Fixed
+
+- CHANGELOG duplicate `## [0.8.0]` section — the Product skills entry is now correctly numbered `## [0.8.1]`.
+
+## [0.8.1] - 2026-07-22
 
 ### Added
 

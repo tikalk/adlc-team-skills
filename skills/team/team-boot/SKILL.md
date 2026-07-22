@@ -1,6 +1,6 @@
 ---
 name: team-boot
-description: Bootstrap the session with team-ai-directives context before responding to any user task or question. Use when starting a new session, before any task or question, before spec workflow commands, or before making code changes.
+description: Bootstrap the session with team-ai-directives context and project decision records (PDR/ADR indexes) before responding to any user task or question. Use when starting a new session, before any task or question, before spec workflow commands, or before making code changes.
 ---
 
 # team-boot
@@ -8,8 +8,9 @@ description: Bootstrap the session with team-ai-directives context before respon
 ## Overview
 
 Bootstrap the session with team-ai-directives context before responding to any
-user task or question. This skill loads the team constitution and runs
-discovery to surface relevant rules, personas, and examples.
+user task or question. This skill loads the team constitution, reads the
+project's decision-record indexes (PDR/ADR) for product and architecture
+awareness, and runs discovery to surface relevant rules, personas, and examples.
 
 You MUST invoke this skill BEFORE responding to any user task or question.
 This is not optional and applies to EVERY interaction — not just spec workflow
@@ -66,7 +67,38 @@ The team constitution is the foundational principles document. It governs
 agent behavior and team interactions. Internalize its principles before
 proceeding — they apply to every task you will work on in this session.
 
-### Step 3: Run Discovery
+### Step 3: Load Product & Architecture Context
+
+Load the project's decision-record **indexes** for awareness-level product and
+architecture context. Indexes are small tables — read them in full. Do NOT read
+full `PRD.md`, `AD.md`, or individual PDR/ADR bodies during boot; those are
+pulled on demand by `team-discover` and the product/architect skills.
+
+`{REPO_ROOT}` is the project root (where `.adlc/` lives).
+
+**PDR index** (product decisions):
+
+1. Read `{REPO_ROOT}/.adlc/memory/pdr/pdr.md` (accepted PDRs) directly.
+2. If missing, fall back to `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` (all PDRs,
+   including Discovered/Proposed).
+3. If neither exists but `{REPO_ROOT}/PRD.md` exists (legacy/monolithic
+   project without PDRs), skim `PRD.md` at heading level: read the headings
+   plus overview/mission/requirements sections only. Skip mermaid blocks,
+   diagrams, and appendices.
+
+**ADR index** (architecture decisions):
+
+1. Read `{REPO_ROOT}/.adlc/memory/adr/adr.md` (accepted ADRs) directly.
+2. If missing, fall back to `{REPO_ROOT}/.adlc/drafts/adr/adr.md`.
+
+**Presence notes**: If `{REPO_ROOT}/PRD.md` or `{REPO_ROOT}/AD.md` exist, note
+their paths as deep-read pointers for architecture- or product-heavy tasks —
+without loading them.
+
+Skip silently for any artifact that does not exist. Projects without the PDR
+or ADR lifecycle in place simply produce less context here — that is fine.
+
+### Step 4: Run Discovery
 
 Invoke the `team-discover` skill to scan the CDR
 index and match personas, rules, examples, and skills against the current
@@ -83,11 +115,17 @@ Use these to drive the discovery matching. If the user's message is vague
 may contain relevant rules (e.g., security patterns, testing standards) that
 apply broadly.
 
-### Step 4: Acknowledge Context
+### Step 5: Acknowledge Context
 
-After loading the constitution and running discovery, briefly acknowledge what
-team context was loaded before proceeding to respond to the user's request.
-This confirms the bootstrap completed and makes the skill check visible.
+After loading the constitution, the decision-record indexes, and running
+discovery, briefly acknowledge what team context was loaded before proceeding
+to respond to the user's request. This confirms the bootstrap completed and
+makes the skill check visible. Include:
+
+- Constitution loaded (or skipped)
+- PDR index: N entries (memory | drafts | legacy PRD skim | none)
+- ADR index: N entries (memory | drafts | none)
+- Discovery matches surfaced
 
 ### Failure Handling
 
@@ -113,6 +151,9 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 - Responding to a user task without having read the team constitution first.
 - Using glob/find or any file-search tool to locate `.adlc/init-options.json`
   instead of reading the exact relative path directly.
+- Reading full `PRD.md`, `AD.md`, or individual PDR/ADR bodies during boot
+  when the `pdr.md`/`adr.md` indexes exist — indexes are the awareness layer;
+  bodies load on demand.
 - Skipping discovery because the request "seems simple" or "obvious."
 - Proceeding to answer without acknowledging what team context was loaded.
 - Re-invoking on every follow-up that is a direct continuation of the same task.
@@ -126,11 +167,15 @@ The bootstrap is complete when ALL of the following are true:
    results were returned and the skill exited.
 2. The constitution at `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
    was read in full.
-3. `team-discover` was invoked with domain, technology, patterns, and actions
+3. The PDR index was read if present (memory preferred, drafts fallback, or
+   legacy `PRD.md` heading skim), and the ADR index was read if present
+   (memory preferred, drafts fallback). Full PDR/ADR bodies and full
+   `PRD.md`/`AD.md` were NOT loaded.
+4. `team-discover` was invoked with domain, technology, patterns, and actions
    extracted from the user's request.
-4. The loaded team context was briefly acknowledged before responding to the
-   user's request.
-5. The skill exited successfully (best-effort) even if team-ai-directives is
+5. The loaded team context (constitution, indexes, discovery matches) was
+   briefly acknowledged before responding to the user's request.
+6. The skill exited successfully (best-effort) even if team-ai-directives is
    unconfigured or files cannot be read.
 
 ## Configuration

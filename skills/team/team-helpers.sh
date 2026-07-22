@@ -127,6 +127,7 @@ README
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
+- `traces/` — Published session traces (from `/levelup-publish`)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order
@@ -242,6 +243,7 @@ scaffold_agents_only() {
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
+- `traces/` — Published session traces (from `/levelup-publish`)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order

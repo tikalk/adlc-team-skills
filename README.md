@@ -19,7 +19,7 @@ These skills implement six of the Twelve Factors:
 | **Factor IX — Traceability** | Product + Architecture skills | Every product decision traces from PDR → PRD → feature, and every architecture decision from ADR → AD → code. |
 | **Factor X — Context Engineering** | Team Directives skills | `team-boot` and `team-discover` load only the relevant context modules per task, preventing context bloat. |
 | **Factor XI — Directives as Code** | Team Directives + LevelUp + Product + Architecture skills | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, not in prompt walls. Each has draft → clarify → accept → publish → analyze stages. |
-| **Factor XII — Team Capability** | All 20 skills | Skills are packaged, installable, and reusable across projects and agents. Teams build a shared capability library that any member can install via `team-skills`. |
+| **Factor XII — Team Capability** | All 22 skills | Skills are packaged, installable, and reusable across projects and agents. Teams build a shared capability library that any member can install via `team-skills`. |
 
 ## Install
 
@@ -31,19 +31,20 @@ The skills work with any agent that supports the [Agent Skills standard](https:/
 
 ## Available Skills
 
-### Team Directives (5 skills)
+### Team Directives (6 skills)
 
 | Skill | Use when | Invocation | Say |
 |---|---|---|---|
-| `team-boot` | Bootstrap session — load constitution, discover context | Model-invoked (auto) | — |
-| `team-discover` | Find relevant personas, rules, examples for current task | Model-invoked (auto) | — |
+| `team-boot` | Bootstrap session — load constitution, PDR/ADR indexes, discover context | Model-invoked (auto) | — |
+| `team-constitution` | Create or amend the team constitution interactively | User-invoked | "Create our team constitution"<br>"Amend our team principles" |
+| `team-discover` | Find relevant personas, rules, examples, PDRs, ADRs for current task | Model-invoked (auto) | — |
 | `team-repair` | Re-index CDR.md, .skills.json, AGENTS.md; health check; conflict scan; freshness verification | User-invoked | "Check our team directives health" (`--health-only`)<br>"Repair our CDR index"<br>"Scan for rule conflicts" (`--conflicts`)<br>"Verify directive freshness" (`--freshness`) |
 | `team-skills` | Browse and install team skills from the directives KB | User-invoked | "Show me available team skills" |
 | `team-setup` | Clone, scaffold, or configure a team-ai-directives KB | User-invoked | "Set up team directives for this project" |
 
 **Team Directives workflow:**
 ```text
-First time:   team-setup (clone/scaffold) → team-boot auto-loads on every session
+First time:   team-setup (clone/scaffold) → team-constitution (fill placeholder) → team-boot auto-loads on every session
 Health check: team-repair (or team-repair --health-only)
 Repair:       team-repair (re-index, health check, conflict scan, freshness verification)
 Skills:       team-skills (browse, install team skills)
@@ -142,6 +143,7 @@ Team skills read from and write to the team-ai-directives knowledge base configu
 - `.adlc/drafts/pdr/PDR-{NNN}.md` — proposed/discovered PDRs (individual files)
 - `.adlc/drafts/pdr/pdr.md` — auto-generated PDR index
 - `.adlc/memory/pdr/PDR-{NNN}.md` — accepted/completed PDRs (individual files, promoted from drafts)
+- `.adlc/memory/pdr/pdr.md` — accepted PDR index (read by `team-boot`, `team-discover`)
 - `.adlc/product/sections/{feature-area}/{section}.md` — PRD section build artifacts (`product-implement`)
 - `.adlc/product/state.json` — DAG execution state (`product-implement`)
 - `PRD.md` — Product Requirements Document (repo root, self-contained)
@@ -151,6 +153,7 @@ Team skills read from and write to the team-ai-directives knowledge base configu
 - `.adlc/drafts/adr/ADR-{NNN}.md` — proposed/discovered ADRs (individual files)
 - `.adlc/drafts/adr/adr.md` — auto-generated ADR index
 - `.adlc/memory/adr/ADR-{NNN}.md` — accepted ADRs (individual files)
+- `.adlc/memory/adr/adr.md` — accepted ADR index (read by `team-boot`, `team-discover`)
 - `AD.md` — architecture description (in repo root)
 - `.adlc/architect/` — per-view DAG artifacts (for multi-subsystem projects)
 

@@ -5,6 +5,7 @@
 #   --json              Output path info as JSON (default: key=value)
 #   --scaffold [DIR]    Create a fresh 11-file team AI directives scaffold at DIR
 #   --agents-only DIR   Create only AGENTS.md at DIR (for repair use)
+#   --inject-agents [DIR]  Inject team-boot directive into project-level AGENTS.md at DIR
 #   --name NAME         Team name for scaffold (default: "My Team")
 set -euo pipefail
 
@@ -266,6 +267,101 @@ AGENTS
 }
 
 ###############################################################################
+# 4. INJECT PROJECT-LEVEL AGENTS.md DIRECTIVE
+###############################################################################
+
+inject_project_agents() {
+  local project_root="${1:-.}"
+  local team_directive="${2:-}"
+
+  # Resolve team_ai_directive if not provided
+  if [[ -z "$team_directive" ]]; then
+    local init_options="${project_root}/.adlc/init-options.json"
+    if [[ -f "$init_options" ]]; then
+      team_directive=$(python3 -c "
+import json, sys
+try:
+    with open('$init_options') as f:
+        print(json.load(f).get('team_ai_directive', ''))
+except Exception:
+    print('')
+" 2>/dev/null || true)
+    fi
+  fi
+
+  # Fallback to env var
+  if [[ -z "$team_directive" ]] && [[ -n "${TEAM_AI_DIRECTIVE:-}" ]]; then
+    team_directive="$TEAM_AI_DIRECTIVE"
+  fi
+
+  # Fallback to default path
+  if [[ -z "$team_directive" ]]; then
+    team_directive="${project_root}/team-ai-directives"
+  fi
+
+  local agents_file="${project_root}/AGENTS.md"
+  local marker_start="<!-- TEAM_AI_DIRECTIVES START -->"
+  local marker_end="<!-- TEAM_AI_DIRECTIVES END -->"
+
+  # Build the managed section
+  local section
+  section=$(cat <<SECTION
+${marker_start}
+## Team Directives & Constitution
+
+This project is bound by the team AI directives repository at \`${team_directive}\`.
+- **Strict Compliance**: You MUST invoke the \`team-boot\` skill BEFORE responding to any task or question. This is not optional and applies to every interaction. If a skill applies, you MUST invoke it immediately.
+- **Anti-Patterns** (do NOT rationalize skipping the skill check):
+  - "Let me explore the codebase first" -> Skills tell you HOW to explore. Check first.
+  - "This is a plain message, not a spec command" -> Skill check applies to EVERY interaction.
+  - "I'll check after understanding the request" -> Check BEFORE understanding -- skills guide your questions.
+  - "This is too simple" -> Simple things become complex. Check first.
+- **Team Constitution**: Read and strictly adhere to the principles in \`${team_directive}/context_modules/constitution.md\`. When creating or updating the project's constitution, you MUST inherit and align with these principles.
+- **Rules, Personas & Examples**: Use the \`team-discover\` skill to find and load relevant rules, personas, or examples before making changes.
+${marker_end}
+SECTION
+)
+
+  # Create AGENTS.md if it doesn't exist, or update the managed section
+  python3 - "$agents_file" "$marker_start" "$marker_end" "$section" <<'PY'
+import os, sys
+
+agents_path, start, end, section_content = sys.argv[1:5]
+
+if os.path.exists(agents_path):
+    with open(agents_path, "r", encoding="utf-8") as f:
+        content = f.read()
+else:
+    content = ""
+
+# Check if markers already exist
+s_idx = content.find(start)
+e_idx = content.find(end)
+
+if s_idx != -1 and e_idx != -1 and s_idx < e_idx:
+    # Replace existing managed section
+    new_content = content[:s_idx] + section_content + content[e_idx + len(end):]
+    if new_content.endswith("\n"):
+        new_content += "\n"
+    elif not new_content.endswith("\n\n"):
+        new_content += "\n"
+    with open(agents_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    print(f"Updated team AI directives section in {agents_path}")
+else:
+    # Append managed section
+    if content and not content.endswith("\n"):
+        content += "\n"
+    if content and not content.endswith("\n\n"):
+        content += "\n"
+    content += section_content + "\n"
+    with open(agents_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"Injected team AI directives section into {agents_path}")
+PY
+}
+
+###############################################################################
 # MAIN
 ###############################################################################
 
@@ -278,12 +374,15 @@ main() {
   local has_json=false
   local has_scaffold=false
   local has_agents_only=false
+  local has_inject_agents=false
   local scaffold_dest=""
   local agents_only_dest=""
+  local inject_dest=""
   local team_name="My Team"
   local parsing_scaffold=false
   local parsing_agents=false
   local parsing_name=false
+  local parsing_inject=false
 
   for arg in "$@"; do
     if [[ "$arg" == "--json" || "$arg" == "-Json" ]]; then
@@ -291,7 +390,7 @@ main() {
       continue
     fi
     if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
-      echo "Usage: team-helpers.sh [--json] [--scaffold DIR] [--agents-only DIR] [--name NAME]"
+      echo "Usage: team-helpers.sh [--json] [--scaffold DIR] [--agents-only DIR] [--inject-agents [DIR]] [--name NAME]"
       exit 0
     fi
     if [[ "$arg" == "--scaffold" ]]; then
@@ -299,6 +398,7 @@ main() {
       parsing_scaffold=true
       parsing_agents=false
       parsing_name=false
+      parsing_inject=false
       continue
     fi
     if [[ "$arg" == "--agents-only" ]]; then
@@ -306,12 +406,22 @@ main() {
       parsing_agents=true
       parsing_scaffold=false
       parsing_name=false
+      parsing_inject=false
+      continue
+    fi
+    if [[ "$arg" == "--inject-agents" ]]; then
+      has_inject_agents=true
+      parsing_inject=true
+      parsing_scaffold=false
+      parsing_agents=false
+      parsing_name=false
       continue
     fi
     if [[ "$arg" == "--name" ]]; then
       parsing_name=true
       parsing_scaffold=false
       parsing_agents=false
+      parsing_inject=false
       continue
     fi
     if $parsing_scaffold && [[ -n "$arg" ]]; then
@@ -322,6 +432,11 @@ main() {
     if $parsing_agents && [[ -n "$arg" ]]; then
       agents_only_dest="$arg"
       parsing_agents=false
+      continue
+    fi
+    if $parsing_inject && [[ -n "$arg" ]]; then
+      inject_dest="$arg"
+      parsing_inject=false
       continue
     fi
     if $parsing_name && [[ -n "$arg" ]]; then
@@ -346,6 +461,12 @@ main() {
       exit 1
     fi
     scaffold_agents_only "$agents_only_dest"
+    return
+  fi
+
+  if $has_inject_agents; then
+    local project_root="${inject_dest:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+    inject_project_agents "$project_root"
     return
   fi
 

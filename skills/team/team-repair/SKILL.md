@@ -13,7 +13,7 @@ Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives to fix incons
 **Input**: team-ai-directives repository
 
 **Output**:
-0. Health check report (7 checks: extension installed, team AI directives configured, context modules exist, skills registry, CDR tracking, constitution alignment, type field presence)
+0. Health check report (8 checks: extension installed, team AI directives configured, context modules exist, skills registry, CDR tracking, constitution alignment, type field presence, project AGENTS.md directive)
 1. Repaired AGENTS.md (if missing or corrupted)
 2. Rebuilt CDR.md index from context_modules/
 3. Rebuilt .skills.json manifest from skills/
@@ -83,7 +83,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 **Objective**: Run a non-destructive health check against the team directives framework before proceeding with repairs. If any check returns `[FAIL]`, present the report and stop — the framework is not healthy enough to repair safely.
 
-Execute all seven checks below. Each check prints a status line. If any check is `[FAIL]`, abort repair.
+Execute all eight checks below. Each check prints a status line. If any check is `[FAIL]`, abort repair.
 
 #### Check 1: Extension Installed
 
@@ -146,6 +146,18 @@ Output: `[OK]` or `[FAIL]` with reason
 4. Output:
    - `[OK]` — All concept files have valid `type` fields
    - `[WARN]` — Some files missing `type` field (list files)
+
+#### Check 8: Project AGENTS.md Directive
+
+1. Read `{REPO_ROOT}/AGENTS.md` (the project-level agent instructions file)
+2. Check if it contains the `<!-- TEAM_AI_DIRECTIVES START -->` marker
+3. If the marker exists, verify the managed section includes:
+   - The `team-boot` strict-compliance directive ("MUST invoke the `team-boot` skill")
+   - A reference to `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
+4. Output:
+   - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
+   - `[WARN]` — Project AGENTS.md exists but is missing the managed section (agents won't auto-invoke `team-boot`)
+   - `[INFO]` — Project AGENTS.md doesn't exist yet (first-time setup)
 
 #### Health Check Output
 
@@ -256,6 +268,36 @@ Store for summary:
   "agents_md": {
     "status": "VALID|CREATED|OVERWRITTEN",
     "action": "No changes|Created from template|Re-created from template"
+  }
+}
+```
+
+#### Step 5: Inject Project-Level AGENTS.md Directive
+
+After repairing the team AI directives' own `AGENTS.md`, also ensure the **project-level** `AGENTS.md` (at `{REPO_ROOT}/AGENTS.md`) contains the team-boot strict-compliance directive. This is what tells agents to invoke `team-boot` at session start.
+
+If Check 8 returned `[WARN]` or `[INFO]`, run the injection:
+
+```bash
+bash "team-helpers.sh" --inject-agents "{REPO_ROOT}"
+# or: pwsh team-helpers.ps1 -InjectAgents "{REPO_ROOT}"
+```
+
+If `--dry-run`:
+```markdown
+### Project AGENTS.md Status: {WARN|INFO}
+
+**Action**: Would inject team AI directives managed section into {REPO_ROOT}/AGENTS.md
+```
+
+Otherwise, execute the injection. The function is idempotent — if the managed section already exists (between `<!-- TEAM_AI_DIRECTIVES START -->` and `<!-- TEAM_AI_DIRECTIVES END -->` markers), it replaces the section in place rather than duplicating.
+
+Store for summary:
+```json
+{
+  "project_agents_md": {
+    "status": "VALID|INJECTED|UPDATED",
+    "action": "No changes|Created with managed section|Updated managed section"
   }
 }
 ```
@@ -830,6 +872,7 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 | "I'll just hand-edit CDR.md to add the missing row." | Manual edits drift from actual content; a rebuild guarantees the index matches the filesystem. |
 | "Dry run is unnecessary — just write the changes." | A dry run surfaces unexpected orphans and null CDR refs before any file is mutated. |
 | "AGENTS.md looks valid, so I'll skip Phase 2." | Missing sections can be subtle (e.g., a renamed heading). Validation is cheap and idempotent. |
+| "Skipping Step 5 — the project AGENTS.md is not my job." | The team AI directives' own AGENTS.md describes structure; the project-level AGENTS.md is what tells agents to invoke `team-boot` at session start. Without it, the directives remain invisible. |
 | "I can skip the CDR_LOOKUP step for orphans." | Without the lookup, existing CDR refs are lost and orphaned entries get `cdr_ref: null`, breaking traceability. |
 | "I'll just jump to the repair — no need for a health check first." | Phase 0 exists precisely because an unhealthy framework makes repairs dangerous or meaningless. Run it. |
 | "A `[WARN]` on Phase 0 is basically an `[OK]`." | Warnings are non-blocking for exit code but often signal drift that becomes a `[FAIL]` later. Track warnings across runs. |
@@ -842,11 +885,13 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 - **Writing `.skills.json` entries without parsing the actual `SKILL.md`** — fabricated descriptions and categories make skills unsearchable and misrepresent capabilities.
 - **Proceeding past Phase 2 when `TEAM_AI_DIRECTIVE` is empty** — operating without a configured repository writes to undefined paths and corrupts the wrong workspace.
 - **Skipping Phase 0 Health Check** — jumping straight into repairs without verifying the framework is installed risks writing to an absent or misconfigured workspace.
+- **Skipping Step 5 (project AGENTS.md injection)** — the team AI directives' own `AGENTS.md` describes its structure, but the **project-level** `AGENTS.md` is what tells agents to invoke `team-boot` at session start. Without it, agents have no session-start instruction and the team AI directives remains invisible until manually loaded.
 
 ## Verification
 
-- [ ] Phase 0 Health Check passes all 7 checks (no `[FAIL]`) before any repair is attempted.
+- [ ] Phase 0 Health Check passes all 8 checks (no `[FAIL]`) before any repair is attempted.
 - [ ] AGENTS.md exists at `{TEAM_AI_DIRECTIVE}/AGENTS.md` and contains all six required sections.
+- [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the `team-boot` strict-compliance directive.
 - [ ] CDR.md entry count equals the number of scanned context module `.md` files (excluding `constitution.md`).
 - [ ] Every context module file under `context_modules/{rules,personas,examples}/` has YAML frontmatter with a non-empty `id` field.
 - [ ] Every `cdr_ref` in orphan frontmatter matches the pre-existing CDR lookup (no regression to `null` where a prior ref existed).

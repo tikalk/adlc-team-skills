@@ -5,11 +5,13 @@
 #   -Json              Output path info as JSON (default: key=value)
 #   -Scaffold DIR      Create a fresh 11-file team AI directives scaffold at DIR
 #   -AgentsOnly DIR    Create only AGENTS.md at DIR (for repair use)
+#   -InjectAgents DIR  Inject team-boot directive into project-level AGENTS.md at DIR
 #   -Name NAME         Team name for scaffold (default: "My Team")
 param(
   [switch]$Json,
   [string]$Scaffold = "",
   [string]$AgentsOnly = "",
+  [string]$InjectAgents = "",
   [string]$Name = "My Team"
 )
 
@@ -268,11 +270,87 @@ The CDR.md file tracks approved context contributions. Update it when adding new
   Write-Output "Created AGENTS.md at ${Dest}"
 }
 
+# 4. INJECT PROJECT-LEVEL AGENTS.md DIRECTIVE
+function Invoke-ProjectAgentsInjection {
+  param([string]$ProjectRoot = ".")
+
+  $TeamDirective = ""
+
+  # Resolve team_ai_directive from .adlc/init-options.json
+  $InitOptions = Join-Path $ProjectRoot ".adlc" "init-options.json"
+  if (Test-Path $InitOptions) {
+    try {
+      $Config = Get-Content $InitOptions -Raw | ConvertFrom-Json
+      if ($Config.team_ai_directive) {
+        $TeamDirective = $Config.team_ai_directive
+      }
+    } catch {}
+  }
+
+  # Fallback to env var
+  if (-not $TeamDirective -and $env:TEAM_AI_DIRECTIVE) {
+    $TeamDirective = $env:TEAM_AI_DIRECTIVE
+  }
+
+  # Fallback to default path
+  if (-not $TeamDirective) {
+    $TeamDirective = Join-Path $ProjectRoot "team-ai-directives"
+  }
+
+  $AgentsFile = Join-Path $ProjectRoot "AGENTS.md"
+  $MarkerStart = "<!-- TEAM_AI_DIRECTIVES START -->"
+  $MarkerEnd = "<!-- TEAM_AI_DIRECTIVES END -->"
+
+  $Section = @"
+$MarkerStart
+## Team Directives & Constitution
+
+This project is bound by the team AI directives repository at ``$TeamDirective``.
+- **Strict Compliance**: You MUST invoke the ``team-boot`` skill BEFORE responding to any task or question. This is not optional and applies to every interaction. If a skill applies, you MUST invoke it immediately.
+- **Anti-Patterns** (do NOT rationalize skipping the skill check):
+  - "Let me explore the codebase first" -> Skills tell you HOW to explore. Check first.
+  - "This is a plain message, not a spec command" -> Skill check applies to EVERY interaction.
+  - "I'll check after understanding the request" -> Check BEFORE understanding -- skills guide your questions.
+  - "This is too simple" -> Simple things become complex. Check first.
+- **Team Constitution**: Read and strictly adhere to the principles in ``$TeamDirective/context_modules/constitution.md``. When creating or updating the project's constitution, you MUST inherit and align with these principles.
+- **Rules, Personas & Examples**: Use the ``team-discover`` skill to find and load relevant rules, personas, or examples before making changes.
+$MarkerEnd
+"@
+
+  if (Test-Path $AgentsFile) {
+    $Content = Get-Content $AgentsFile -Raw -Encoding UTF8
+    $StartIdx = $Content.IndexOf($MarkerStart)
+    $EndIdx = $Content.IndexOf($MarkerEnd)
+
+    if ($StartIdx -ge 0 -and $EndIdx -gt $StartIdx) {
+      # Replace existing managed section
+      $NewContent = $Content.Substring(0, $StartIdx) + $Section + $Content.Substring($EndIdx + $MarkerEnd.Length)
+      if (-not $NewContent.EndsWith("`n")) { $NewContent += "`n" }
+      elseif (-not $NewContent.EndsWith("`n`n")) { $NewContent += "`n" }
+      Set-Content -Path $AgentsFile -Value $NewContent -Encoding UTF8
+      Write-Output "Updated team AI directives section in $AgentsFile"
+    } else {
+      # Append managed section
+      if ($Content -and -not $Content.EndsWith("`n")) { $Content += "`n" }
+      if ($Content -and -not $Content.EndsWith("`n`n")) { $Content += "`n" }
+      $Content += $Section + "`n"
+      Set-Content -Path $AgentsFile -Value $Content -Encoding UTF8
+      Write-Output "Injected team AI directives section into $AgentsFile"
+    }
+  } else {
+    # Create new AGENTS.md
+    Set-Content -Path $AgentsFile -Value ($Section + "`n") -Encoding UTF8
+    Write-Output "Created $AgentsFile with team AI directives section"
+  }
+}
+
 # MAIN
 if ($Scaffold) {
   New-TeamAiDirectivesScaffold -Dest $Scaffold -TeamName $Name
 } elseif ($AgentsOnly) {
   New-AgentsOnly -Dest $AgentsOnly
+} elseif ($InjectAgents -ne "") {
+  Invoke-ProjectAgentsInjection -ProjectRoot $InjectAgents
 } elseif ($Json) {
   Write-OutputJson
 } else {

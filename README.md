@@ -194,6 +194,10 @@ npx skills add tikalk/adlc-team-skills -a <agent>
 
 Replace `<agent>` with your agent name (e.g., `claude`, `codex`, `opencode`, `gemini`, `qwen`).
 
+## Release Process
+
+See [RELEASE.md](./RELEASE.md) for the release runbook, tag naming conventions, and recovery procedures.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

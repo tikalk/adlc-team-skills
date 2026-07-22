@@ -120,7 +120,7 @@ Show the user the 10 files that will be created:
 | 3 | `CDR.md` | Empty CDR index table |
 | 4 | `.skills.json` | Empty skills manifest (schema v2.0.0) |
 | 5 | `.mcp.json.example` | Empty MCP servers config example |
-| 6 | `context_modules/constitution.md` | Placeholder constitution (OKF-compliant frontmatter) |
+| 6 | `context_modules/constitution.md` | Placeholder constitution (OKF frontmatter) — fill via `/team-constitution` |
 | 7 | `context_modules/index.md` | OKF toplevel index linking sub-directories |
 | 8 | `context_modules/rules/index.md` | OKF progressive disclosure (rules) |
 | 9 | `context_modules/rules/.gitkeep` | Rules directory placeholder |
@@ -289,6 +289,14 @@ touch "{DEST}/skills/.gitkeep"
 Initialize git (required for `/levelup-publish` branch/commit/PR flow):
 ```bash
 cd "{DEST}" && git init && git add -A && git commit -m "Initial team-ai-directives scaffold"
+```
+
+**Follow-up**: The scaffolded `context_modules/constitution.md` is a placeholder ("No team-wide principles defined yet"). Tell the user:
+
+```text
+Scaffold complete. Run /team-constitution next to establish your team's
+principles interactively — it detects the placeholder and walks you through
+creating the real constitution.
 ```
 
 After scaffold, run the post-setup configuration (same as Mode 4 below).

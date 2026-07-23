@@ -199,18 +199,24 @@ Include the full content in the output so the AI agent has the complete directiv
 
 The command supports two modes:
 
-- **Persist mode** (default): Writes the discovered context to
+- **Persist mode**: Writes the discovered context to
   `.adlc/drafts/team-context.md` for reuse and delta comparison on subsequent
   prompts.
-- **No-write mode** (`--no-write` in `$ARGUMENTS`): Outputs the discovery table
-  inline only. No files are created or modified.
+- **No-write mode**: Outputs the discovery table inline only. No files are
+  created or modified.
 
 Mode is detected in this order:
 1. If `$ARGUMENTS` contains `--no-write`: no-write mode.
-2. Otherwise: persist mode — write `.adlc/drafts/team-context.md`.
+2. **If the session is in plan mode or any read-only / no-write phase** (a
+   system reminder says you cannot modify files, or you are otherwise barred
+   from writing): no-write mode — output the table inline. Persisting a file
+   would violate the read-only constraint.
+3. Otherwise: persist mode — write `.adlc/drafts/team-context.md`.
 
-Every invocation (auto-invoked by `team-boot` on a prompt, or manual) is
-persist mode unless `--no-write` is passed.
+Auto-invocations by `team-boot` (per-prompt) and manual runs both default to
+persist mode, but flip to no-write whenever the session is read-only. The
+discovery table and `search_metadata` are produced in **both** modes — only
+file persistence differs.
 
 ### Step 5: Output Discovered Context
 
@@ -248,7 +254,9 @@ _Searched 42 CDR entries, 6 PDR entries, 9 ADR entries, 8 matches found._
 **Persistence rules (in order of priority)**:
 
 1. **If `--no-write` detected**: Skip all file persistence. Output inline only.
-2. **Otherwise**: Write to `.adlc/drafts/team-context.md`.
+2. **If in plan mode / read-only phase**: Skip all file persistence. Output
+   inline only (same as `--no-write`).
+3. **Otherwise**: Write to `.adlc/drafts/team-context.md`.
 
 **Metadata header**: Every written file begins with a frontmatter header so
 stale context can be detected and reset between features:
@@ -304,7 +312,7 @@ If team-ai-directives is not configured or files cannot be read:
 - Using `glob`, `find`, or any file-search tool to locate `.adlc/init-options.json` or team AI directives files — these silently skip dotfile path segments. Read exact paths directly.
 - Loading every file under `context_modules/` by default instead of matching against the CDR index first (only the fallback path does full scans).
 - Treating the skill load as the discovery itself — loading this SKILL.md is step 0; the Core Process below must actually run. The invocation is incomplete until the Discovered Team Context table and `search_metadata` exist. Never report discovery results that were not produced by actually reading the index.
-- Writing `team-context.md` (or any file) when `$ARGUMENTS` contains `--no-write`.
+- Writing `team-context.md` (or any file) when `$ARGUMENTS` contains `--no-write`, or when the session is in plan mode / read-only phase.
 - Dropping the metadata header (`feature`/`phase`/`generated`) — without it, stale-context reset between features is impossible.
 - Computing a delta against a different feature's file — reset instead of diffing across features.
 - Hardcoding the team AI directives path instead of resolving `team_ai_directive` from `.adlc/init-options.json`.
@@ -318,8 +326,8 @@ If team-ai-directives is not configured or files cannot be read:
 - A `search_metadata` line is present showing entries searched per source and matches found (e.g., `_Searched N CDR entries, M PDR entries, K ADR entries, J matches found._`).
 - In persist mode, `team-context.md` is written to `.adlc/drafts/team-context.md` with a metadata header (`feature`/`phase`/`generated`).
 - Same-feature re-runs include a delta section; different-feature (or missing/unknown header) re-runs reset with a discard line and no delta.
-- In no-write mode (`--no-write`), **no files are created or modified** — output is inline only.
-- Discovery runs on every prompt (auto-invoked by `team-boot`) and persists each run; there is no spec/plan gate and no continuation exemption.
+- In no-write mode (`--no-write` or plan / read-only phase), **no files are created or modified** — output is inline only.
+- Discovery runs on every prompt (auto-invoked by `team-boot`); in build mode it persists each run, in plan / read-only mode it outputs inline only. There is no spec/plan gate and no continuation exemption.
 - On misconfiguration or unreadable files, results are empty, `search_metadata` shows `0 files searched`, and the process exits successfully (code 0).
 
 ## Configuration

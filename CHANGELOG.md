@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-07-23
+
+### Fixed
+
+- **`team-discover` (plan-mode regression)**: v0.11.0 made every invocation persist `.adlc/drafts/team-context.md`, which broke read-only / plan-mode sessions (the skill would attempt a forbidden file write). Restored a no-write fallback: if `$ARGUMENTS` contains `--no-write` **or** the session is in plan mode / any read-only phase (a system reminder bars file writes), discovery runs inline — the table and `search_metadata` are still produced, only persistence is skipped. Build-mode sessions still persist per prompt (delta-aware). Updated Modes, Step 6, Red Flags, and Verification.
+- **`team-boot` (hollow-trigger hardening)**: strengthened Step 5 into an **output contract** — the visible response MUST contain the `team-discover` table and `search_metadata` line before the task response; if either is absent, discovery did not run and must be executed. Addresses a session-trace defect where `team-discover` was invoked but its Core Process never executed (no table produced), yet the agent proceeded. Added a matching Red Flag and updated Verification item 5. Step 4 now notes that plan mode runs discovery inline (no file writes).
+
 ## [0.11.0] - 2026-07-23
 
 ### Changed

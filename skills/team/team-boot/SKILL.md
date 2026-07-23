@@ -107,8 +107,10 @@ or ADR lifecycle in place simply produce less context here — that is fine.
 
 Invoke the `team-discover` skill on **every prompt** — specify, plan,
 implement, question, debugging, or chat. Discovery re-matches team context to
-the current message and persists results to `.adlc/drafts/team-context.md`
-(same feature → delta-aware overwrite; different feature → reset).
+the current message. In build mode it persists results to
+`.adlc/drafts/team-context.md` (same feature → delta-aware overwrite; different
+feature → reset); in plan mode / read-only phases it outputs the table inline
+only (no file writes).
 
 Do **not** decide the prompt is a "continuation" and skip discovery. The
 follow-up "fix the help message" is a different task surface than "add help
@@ -120,22 +122,31 @@ discovery. When the prompt is a pure acknowledgment with no task content
 Extract domain, technology, patterns, and actions from the user's request to
 drive discovery matching, then invoke `team-discover`.
 
-### Step 5: Acknowledge Context
+`team-discover` returns a **Discovered Team Context** table and a
+`search_metadata` line. These are Step 4's output — Step 5 surfaces them.
+
+### Step 5: Acknowledge Context (Output Contract)
 
 After loading the constitution and the decision-record indexes and running
-discovery (Step 4), briefly acknowledge what team context was loaded before
-proceeding to respond to the user's request. This confirms the bootstrap
-completed and makes the skill check visible. Include:
+discovery (Step 4), surface the bootstrap result in the **visible response**
+(not only in reasoning/thinking). This confirms the bootstrap completed and
+makes the skill check verifiable.
 
-- Constitution loaded (or skipped)
+**Output contract** — the visible response MUST contain, before the task
+response:
+
+- Constitution: loaded (or skipped)
 - PDR index: N entries (memory | legacy PRD skim | none)
 - ADR index: N entries (memory | drafts | none)
-- Team context: discovery matches summary (N matches; new/changed vs previous
-  run) — from the `team-discover` table produced this prompt
+- **The `team-discover` table** (Discovered Team Context: ID / Module / Type /
+  Descriptor / Relevance) **and the `search_metadata` line**, produced this
+  prompt. If discovery found no matches, the table is empty but the
+  `search_metadata` line still appears (e.g. `_Searched 0 CDR entries …_`).
 
-The acknowledgment must appear in the **visible response**, not only in
-reasoning/thinking. A skill check that produces no visible acknowledgment is
-incomplete.
+If the discovery table or `search_metadata` is absent from the visible
+response, discovery did not actually run — go back and execute `team-discover`
+before proceeding. Loading a SKILL.md without producing its output table is a
+failed Step 4, not a completed one.
 
 ### Failure Handling
 
@@ -169,6 +180,8 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 - Skipping discovery on any prompt — there is no continuation exemption and no spec/plan gate; every prompt re-runs `team-discover` so context matches the current message.
 - Treating a follow-up like "fix the help message" as a continuation and skipping discovery — it is a new task surface and may surface different rules.
 - Re-reading the constitution and PDR/ADR indexes on every follow-up prompt — once loaded in the session, skip Steps 1–3 and go straight to Step 4.
+- Producing a Step 5 acknowledgment that references no discovery table / `search_metadata` — that means `team-discover` was loaded but not executed.
+- Persisting `team-context.md` in plan mode / read-only phase — `team-discover` must run inline (no-write) there.
 
 ## Verification
 
@@ -188,7 +201,8 @@ The bootstrap is complete when ALL of the following are true:
    On follow-up prompts in the same session, Steps 1–3 re-reads were skipped
    but Step 4 still ran — no continuation exemption.
 5. The loaded team context (constitution, indexes, discovery matches) was
-   briefly acknowledged before responding to the user's request.
+   surfaced in the **visible response** before the task response — including
+   the `team-discover` table and `search_metadata` line (the output contract).
 6. The skill exited successfully (best-effort) even if team-ai-directives is
    unconfigured or files cannot be read.
 

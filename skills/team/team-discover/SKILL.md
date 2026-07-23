@@ -1,6 +1,6 @@
 ---
 name: team-discover
-description: Discover relevant personas, rules, examples, and skills from the team AI directives, plus project-level Product Decision Records (PDRs) and Architecture Decision Records (ADRs), for the current feature. Use when starting a spec, plan, or implementation task and needing to load applicable team directives and project decisions before proceeding.
+description: Discover relevant personas, rules, examples, and skills from the team AI directives, plus project-level Product Decision Records (PDRs) and Architecture Decision Records (ADRs), for the current prompt. Auto-invoked by team-boot on every user prompt, or manually, to load team directives and project decisions matched to the current task before proceeding.
 ---
 
 # team-discover
@@ -23,30 +23,27 @@ If `CDR.md` is missing or cannot be parsed, the command falls back to scanning `
 
 ### Lifecycle Contract
 
-`team-context.md` follows a generate-then-reference lifecycle:
+`team-context.md` follows a regenerate-per-prompt lifecycle:
 
-- **Generated** only during spec/plan phases (this skill runs and persists a
-  fresh file matched to the current feature).
-- **Referenced** read-only everywhere else — implementation, questions, coding,
-  and chat prompts read the existing file instead of regenerating it.
-- **Single canonical location**: `.adlc/drafts/team-context.md`. No per-feature
-  directory variant.
-- **Cleanup between phases** is driven by a metadata header on the file (see
-  Step 6): same feature → delta-aware overwrite; different feature → reset.
+- **Generated on every prompt** — `team-boot` invokes this skill for each user
+  message (specify, plan, implement, question, debugging, or chat) and the
+  skill re-matches context to the current prompt.
+- **Persisted each run** to a single canonical location:
+  `.adlc/drafts/team-context.md`. No per-feature directory variant.
+- **Cleanup between prompts** is driven by a metadata header on the file (see
+  Step 6): same feature → delta-aware overwrite (so the agent sees only what
+  moved since the last prompt); different feature → reset.
 
 ## When to Use
 
-`team-discover` runs **only during specification or planning phases** — when a
-feature or system is being specified, designed, or planned. It is triggered by:
+`team-discover` runs on **every user prompt** — it is auto-invoked by
+`team-boot` Step 4 for each message (specify, plan, implement, question,
+debugging, or chat). It is also available for manual invocation.
 
-- `team-boot`'s prompt assessment (the model judges the current prompt to be a
-  specify/plan/design request)
-- An explicit user request to specify, plan, or design a feature/system
-- Manual invocation
-
-Outside spec/plan phases (implementation, questions, coding, chat), discovery is
-**not** re-run — the persisted `team-context.md` is read and referenced instead.
-See the lifecycle contract below.
+There is no spec/plan gate and no continuation exemption: the follow-up "fix the
+help message" is a different task surface than "add help modal" and re-runs
+discovery so newly-relevant rules (accessibility, testing) surface. See the
+lifecycle contract above.
 
 Manual invocation:
 ```
@@ -83,8 +80,8 @@ them.
 
 The feature description comes from the user's current message — or the feature
 description provided by the invoking skill (e.g. a specify/plan workflow skill
-or `team-boot` when it assessed the prompt as a spec/plan phase). The user's
-message is a valid feature description; use it directly.
+or `team-boot` when it invokes this skill on every prompt). The user's message
+is a valid feature description; use it directly.
 
 Extract the feature's:
 - **Domain**: What business area is this? (e.g., payments, auth, analytics)
@@ -203,7 +200,8 @@ Include the full content in the output so the AI agent has the complete directiv
 The command supports two modes:
 
 - **Persist mode** (default): Writes the discovered context to
-  `.adlc/drafts/team-context.md` for reuse by later (non-spec/plan) prompts.
+  `.adlc/drafts/team-context.md` for reuse and delta comparison on subsequent
+  prompts.
 - **No-write mode** (`--no-write` in `$ARGUMENTS`): Outputs the discovery table
   inline only. No files are created or modified.
 
@@ -211,8 +209,8 @@ Mode is detected in this order:
 1. If `$ARGUMENTS` contains `--no-write`: no-write mode.
 2. Otherwise: persist mode — write `.adlc/drafts/team-context.md`.
 
-Every invocation (skill, model-triggered during a spec/plan phase, or manual)
-is persist mode unless `--no-write` is passed.
+Every invocation (auto-invoked by `team-boot` on a prompt, or manual) is
+persist mode unless `--no-write` is passed.
 
 ### Step 5: Output Discovered Context
 
@@ -258,7 +256,7 @@ stale context can be detected and reset between features:
 ```markdown
 ---
 feature: {feature identifier — derived from the current task, or "unknown"}
-phase: specify | plan | manual
+phase: specify | plan | implement | chat | manual   # informational only
 generated: {ISO-8601 timestamp}
 ---
 ```
@@ -282,7 +280,7 @@ generated: {ISO-8601 timestamp}
 ```
 
 `feature: unknown` (e.g. a manual run with no clear feature) is treated as its
-own feature — the next real spec/plan phase for a named feature resets it.
+own feature — the next run for a named feature resets it.
 
 ### Failure Handling
 
@@ -305,8 +303,8 @@ If team-ai-directives is not configured or files cannot be read:
 
 - Using `glob`, `find`, or any file-search tool to locate `.adlc/init-options.json` or team AI directives files — these silently skip dotfile path segments. Read exact paths directly.
 - Loading every file under `context_modules/` by default instead of matching against the CDR index first (only the fallback path does full scans).
+- Treating the skill load as the discovery itself — loading this SKILL.md is step 0; the Core Process below must actually run. The invocation is incomplete until the Discovered Team Context table and `search_metadata` exist. Never report discovery results that were not produced by actually reading the index.
 - Writing `team-context.md` (or any file) when `$ARGUMENTS` contains `--no-write`.
-- Regenerating `team-context.md` outside spec/plan phases — implementation, questions, coding, and chat prompts must reference the persisted file, not re-run discovery.
 - Dropping the metadata header (`feature`/`phase`/`generated`) — without it, stale-context reset between features is impossible.
 - Computing a delta against a different feature's file — reset instead of diffing across features.
 - Hardcoding the team AI directives path instead of resolving `team_ai_directive` from `.adlc/init-options.json`.
@@ -321,7 +319,7 @@ If team-ai-directives is not configured or files cannot be read:
 - In persist mode, `team-context.md` is written to `.adlc/drafts/team-context.md` with a metadata header (`feature`/`phase`/`generated`).
 - Same-feature re-runs include a delta section; different-feature (or missing/unknown header) re-runs reset with a discard line and no delta.
 - In no-write mode (`--no-write`), **no files are created or modified** — output is inline only.
-- Discovery is run only during spec/plan phases; other phases reference the persisted file.
+- Discovery runs on every prompt (auto-invoked by `team-boot`) and persists each run; there is no spec/plan gate and no continuation exemption.
 - On misconfiguration or unreadable files, results are empty, `search_metadata` shows `0 files searched`, and the process exits successfully (code 0).
 
 ## Configuration

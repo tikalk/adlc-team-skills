@@ -12,9 +12,9 @@ user task or question. This skill loads the team constitution, reads the
 project's decision-record indexes (PDR/ADR) for product and architecture
 awareness, and runs discovery to surface relevant rules, personas, and examples.
 
-Discovery is **phase-gated**: `team-discover` runs only when the current prompt
-is a specification or planning request; every other prompt references the
-persisted `team-context.md` instead of regenerating it.
+Discovery runs on **every prompt**: `team-discover` re-matches team context to
+the current message and persists it; repeats for the same feature produce a
+delta so the agent can see what moved without re-reading the whole file.
 
 You MUST invoke this skill BEFORE responding to any user task or question.
 This is not optional and applies to EVERY interaction — not just spec workflow
@@ -35,8 +35,8 @@ Re-invocation per prompt:
 - **First prompt in a session**: run the full bootstrap (Steps 1–5).
 - **Every subsequent prompt**: skip re-reading the constitution and
   PDR/ADR indexes (Steps 1–3) if already loaded this session, but ALWAYS
-  perform Step 4 (Reference or Run Team Context) so the agent works with
-  context matched to the current prompt, then briefly acknowledge (Step 5).
+  perform Step 4 (Run Discovery) so the agent works with context matched to
+  the current prompt, then briefly acknowledge (Step 5).
 
 ## Core Process
 
@@ -103,42 +103,39 @@ without loading them.
 Skip silently for any artifact that does not exist. Projects without the PDR
 or ADR lifecycle in place simply produce less context here — that is fine.
 
-### Step 4: Reference or Run Team Context
+### Step 4: Run Discovery
 
-Assess the current prompt. Discovery (`team-discover`) runs **only** during
-spec/plan phases; every other prompt references the persisted context file.
+Invoke the `team-discover` skill on **every prompt** — specify, plan,
+implement, question, debugging, or chat. Discovery re-matches team context to
+the current message and persists results to `.adlc/drafts/team-context.md`
+(same feature → delta-aware overwrite; different feature → reset).
 
-- **Spec/plan phase** — the user is asking to specify, plan, or design a feature
-  or system (e.g. "specify X", "plan the auth module", "design the payments
-  service", or invoking a specify/plan workflow skill):
-  - Invoke the `team-discover` skill. It persists results to
-    `.adlc/drafts/team-context.md` (persist mode).
-  - Extract domain, technology, patterns, and actions from the user's request
-    to drive discovery matching.
+Do **not** decide the prompt is a "continuation" and skip discovery. The
+follow-up "fix the help message" is a different task surface than "add help
+modal" and may surface different rules (accessibility, testing). There is no
+prompt-type gate and no continuation exemption — every prompt re-runs
+discovery. When the prompt is a pure acknowledgment with no task content
+("ok", "thanks"), the run is still cheap: the delta will show "no changes".
 
-- **Any other prompt** — implementation, questions, coding, debugging, chat:
-  - Do **not** re-run discovery.
-  - Read and reference the existing `.adlc/drafts/team-context.md`.
-  - If no `team-context.md` exists yet, note "no team-context generated — it is
-    created during spec/plan phases" and continue.
-
-Even when the prompt seems vague ("I need to add a login modal"), if it is not a
-spec/plan/design request, reference the persisted file rather than regenerating
-it. The persisted file captures the discovery from the most recent spec/plan
-phase and remains valid for the surrounding work.
+Extract domain, technology, patterns, and actions from the user's request to
+drive discovery matching, then invoke `team-discover`.
 
 ### Step 5: Acknowledge Context
 
-After loading the constitution, the decision-record indexes, and either running
-discovery or referencing the persisted context, briefly acknowledge what team
-context was loaded before proceeding to respond to the user's request. This
-confirms the bootstrap completed and makes the skill check visible. Include:
+After loading the constitution and the decision-record indexes and running
+discovery (Step 4), briefly acknowledge what team context was loaded before
+proceeding to respond to the user's request. This confirms the bootstrap
+completed and makes the skill check visible. Include:
 
 - Constitution loaded (or skipped)
 - PDR index: N entries (memory | legacy PRD skim | none)
 - ADR index: N entries (memory | drafts | none)
-- Team context: generated (feature + phase) **or** referenced (path + feature +
-  generated-at) **or** none yet
+- Team context: discovery matches summary (N matches; new/changed vs previous
+  run) — from the `team-discover` table produced this prompt
+
+The acknowledgment must appear in the **visible response**, not only in
+reasoning/thinking. A skill check that produces no visible acknowledgment is
+incomplete.
 
 ### Failure Handling
 
@@ -169,8 +166,8 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
   bodies load on demand.
 - Skipping discovery because the request "seems simple" or "obvious."
 - Proceeding to answer without acknowledging what team context was loaded.
-- Skipping discovery on a spec/plan prompt — the persisted file may be stale or from a different feature; regenerate it.
-- Running `team-discover` on a non-spec/plan prompt — implementation, questions, coding, and chat prompts reference the persisted `team-context.md` instead of regenerating it.
+- Skipping discovery on any prompt — there is no continuation exemption and no spec/plan gate; every prompt re-runs `team-discover` so context matches the current message.
+- Treating a follow-up like "fix the help message" as a continuation and skipping discovery — it is a new task surface and may surface different rules.
 - Re-reading the constitution and PDR/ADR indexes on every follow-up prompt — once loaded in the session, skip Steps 1–3 and go straight to Step 4.
 
 ## Verification
@@ -185,11 +182,11 @@ The bootstrap is complete when ALL of the following are true:
 3. The PDR index was read if present (memory or legacy `PRD.md` heading
    skim), and the ADR index was read if present (memory only). Full PDR/ADR
    bodies and full `PRD.md`/`AD.md` were NOT loaded.
-4. Step 4 was performed: `team-discover` was invoked (spec/plan phase) with
-   domain, technology, patterns, and actions extracted from the user's request —
-   OR the persisted `team-context.md` was referenced (non-spec/plan phase). On
-   follow-up prompts in the same session, Steps 1–3 re-reads were skipped but
-   Step 4 still ran.
+4. Step 4 was performed on every prompt: `team-discover` was invoked **and
+   executed** (Discovered Team Context table + `search_metadata` produced) with
+   domain, technology, patterns, and actions extracted from the user's request.
+   On follow-up prompts in the same session, Steps 1–3 re-reads were skipped
+   but Step 4 still ran — no continuation exemption.
 5. The loaded team context (constitution, indexes, discovery matches) was
    briefly acknowledged before responding to the user's request.
 6. The skill exited successfully (best-effort) even if team-ai-directives is

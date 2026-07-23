@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-07-23
+
+### Changed
+
+- **`team-boot`**: Step 4 retitled "Run Discovery" — `team-discover` is now invoked on **every prompt** (specify, plan, implement, question, debugging, chat) with no spec/plan gate and no continuation exemption. Reverses the 0.10.0 phase-gated design, where discovery ran only on spec/plan prompts and other prompts referenced the persisted `team-context.md`. A session trace showed follow-up implementation prompts like "fix the help message" skipping discovery entirely (the model treated them as "direct continuation" and skipped `team-boot`, and `team-discover` has no standalone trigger for plain follow-ups). The acknowledgment (Step 5) must now appear in the **visible response**, not only in reasoning. Full bootstrap (constitution + PDR/ADR indexes) still happens once per session; subsequent prompts skip Steps 1–3 but always run Steps 4–5.
+- **`team-discover`**: lifecycle switched from generate-then-reference (0.10.0) to **regenerate-per-prompt**. Runs on every user prompt (auto-invoked by `team-boot`) and persists `.adlc/drafts/team-context.md` each run; same-feature repeats are delta-aware, different features reset. Frontmatter description updated to reflect every-prompt invocation. The `phase` metadata field extended to `specify | plan | implement | chat | manual` (informational).
+
+### Fixed
+
+- **`team-discover`**: added an execution-contract red flag — loading this SKILL.md is not discovery; the run is incomplete until the Discovered Team Context table and `search_metadata` exist, and matches must never be fabricated. Addresses a session-trace defect where `team-discover` was invoked but its Core Process was never executed (no index read, no table produced), yet "discovery matches" were reported in reasoning.
+
 ## [0.10.0] - 2026-07-23
 
 ### Added

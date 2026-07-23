@@ -91,6 +91,32 @@ architect-analyze   → check ADR↔AD consistency and quality
 
 ---
 
+## #5: End-to-End Feature Work Spans Many Skills
+
+**Factor III — Mission Definition. Factor XIII — Loop Engineering.**
+
+A real feature isn't one skill — it's specify → plan → tasks → implement ↔
+converge, with gates, a circuit breaker, resume across sessions, and an audit
+trail. Orchestrating that by hand is error-prone and loses state on every
+compaction. `mission-brief` structures the description into a Mission Brief
+(goal, constraints, success criteria), generates an ordered step list with
+prompts that trigger installed SDD skills via model invocation or command-file
+discovery, and walks those steps to converged implementation. No YAML workflow
+files, no per-framework profiles — the step prompts use canonical SDD
+terminology that works with any installed skill set. Supports 30+ agents via
+externalized command discovery (`references/agent-integrations.md`).
+
+```
+mission-brief            → brief → generate steps → run end-to-end (sync default, --async across sessions)
+mission-brief --resume   → continue an interrupted mission from the persisted checkpoint
+```
+
+Runs sync (interactive, gated) or async (ungated, checkpoint across sessions),
+with a converge loop, circuit breaker, spec-correction routing (config-gated),
+per-step model tiers, and a `mission-log.json` audit trail.
+
+---
+
 ## Reference
 
 ### Team Directives (6 skills)
@@ -138,6 +164,12 @@ All user-invoked. Create and manage Architecture Decision Records using the Roza
 - **`architect-implement`** — Generate an Architecture Description (AD.md) from accepted ADRs. Say "Generate AD.md from my ADRs."
 - **`architect-analyze`** — Check ADR↔AD consistency and architecture quality. Say "Analyze architecture consistency."
 
+### Missions (1 skill)
+
+User-invoked. Structure a feature description into a Mission Brief and run it end-to-end with any installed SDD skill set.
+
+- **`mission-brief`** — Takes a description, structures it into a Mission Brief (goal, constraints, success criteria), generates an ordered step list with prompts that trigger installed SDD skills, and walks those steps to converged implementation. Sync (gated) or `--async` (ungated, checkpoint across sessions). Say "Build this feature end to end" or `mission-brief "add dark mode"`. Resume with `mission-brief --resume`.
+
 ---
 
 <details>
@@ -183,6 +215,13 @@ All skills write to `.adlc/` (project root) and the team AI directives repo.
 - `.adlc/memory/adr/adr.md` — accepted ADR index
 - `AD.md` — Architecture Description (repo root)
 - `.adlc/architect/` — per-view DAG artifacts
+
+**Missions** (inside `.adlc/` of the target project):
+
+- `.adlc/workflow/workflow-config.yml` — mission execution/supervision/budgets config
+- `.adlc/workflow/.mission-state.json` — step list, completed steps, brief, discovery results
+- `.adlc/workflow/runs/<feature>/mission-log.json` — final audit trail
+- `.adlc/workflow/runs/<feature>/iterations.md` — per-implement audit entries
 
 </details>
 
@@ -231,6 +270,11 @@ Greenfield: architect-specify → architect-clarify → architect-implement → 
 ```
 Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
 Session:    levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
+```
+
+**Mission:**
+```
+mission-brief "feature" → review brief → execute steps → converge → mission-log.json
 ```
 
 **Full product → architecture → team:**

@@ -31,13 +31,25 @@ Examples: `adlc-team-skills-v0.9.0`, `adlc-team-skills-v1.0.0`
 
 ## Automated release
 
-Use the helper script to automate steps 3-5:
+1. Update `CHANGELOG.md` with the new version entry and commit/push to `main`.
+2. Tag and push:
+   ```bash
+   git tag adlc-team-skills-vX.Y.Z -m "vX.Y.Z"
+   git push origin adlc-team-skills-vX.Y.Z
+   ```
+3. The **Release** GitHub Actions workflow validates the CHANGELOG entry,
+   confirms the commit is on `main`, extracts the notes, and creates the
+   release with `--latest` — automatically.
+
+If validation fails (e.g., missing CHANGELOG entry), the tag exists but no
+release is created. Fix the issue, delete the tag, and re-tag:
 
 ```bash
-./scripts/release.sh 0.9.1
+git push origin :refs/tags/adlc-team-skills-vX.Y.Z
+# fix CHANGELOG.md, commit, push to main
+git tag adlc-team-skills-vX.Y.Z -m "vX.Y.Z"
+git push origin adlc-team-skills-vX.Y.Z
 ```
-
-The script validates: CHANGELOG entry exists, working tree clean, HEAD pushed to origin, tag doesn't already exist — then tags, pushes, extracts notes, and creates the GitHub release with `--latest`.
 
 ## Recovery procedures
 

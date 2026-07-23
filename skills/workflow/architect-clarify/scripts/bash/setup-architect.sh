@@ -565,8 +565,36 @@ detect_adr_format() {
     echo "hybrid"
 }
 
+# Parse a YAML frontmatter field from a markdown file (MADR 3.0.0 frontmatter).
+# Usage: parse_fm_field "file" "fieldname"
+# Returns the field value with quotes, inline comments, and surrounding whitespace stripped.
+parse_fm_field() {
+    local file="$1"
+    local field="$2"
+    awk -v fld="^[[:space:]]*$2:[[:space:]]*" '
+        /^---[[:space:]]*$/ { fm++; next }
+        fm == 1 && $0 ~ fld {
+            # strip the "key:" prefix
+            sub(fld, "")
+            # strip inline YAML comments
+            sub(/[[:space:]]+#.*$/, "")
+            # strip surrounding quotes
+            gsub(/^["'\'']|["'\'']$/, "")
+            # strip list brackets / leading "- "
+            gsub(/^\[|\]$/, "")
+            # trim
+            sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
+            print
+            exit
+        }
+    ' "$file"
+}
 
-
+# Extract the MADR H1 title (first "# " line after frontmatter) from a markdown file.
+# Usage: parse_fm_title "file"
+parse_fm_title() {
+    awk '/^---[[:space:]]*$/ { fm++; next } fm >= 2 && /^#[[:space:]]+/ { sub(/^#[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print; exit }' "$1"
+}
 
 # Generate adr.md index from individual ADR files
 generate_adr_index() {
@@ -582,8 +610,8 @@ generate_adr_index() {
 
 ## ADR Index
 
-| ID | Sub-System | Decision | Status | Date | Owner | File |
-|----|------------|----------|--------|------|-------|------|
+| ID | Sub-System | Decision | Status | Date | Decision Makers | File |
+|----|------------|----------|--------|------|------------------|------|
 "
 
     local quick_links=$'\n---\n\n## Quick Links\n\n'
@@ -595,47 +623,27 @@ generate_adr_index() {
         local id
         id=$(echo "$fname" | sed -E 's/ADR-([0-9]+)\.md/\1/')
 
-        # Extract metadata from individual ADR file
+        # Extract metadata from MADR frontmatter (fallback to empty + defaults)
         local title=""
         local subsystem=""
         local status=""
         local date=""
-        local owner=""
+        local decision_makers=""
 
-        # Parse title from first header line
-        title=$(head -1 "$f" | sed -E 's/^## ADR-[0-9]+:[[:space:]]*//')
-
-        # Parse fields from ADR content
-        while IFS= read -r line; do
-            if [[ "$line" =~ ^###[[:space:]]+Status ]]; then
-                local next_line
-                next_line=$(grep -A1 "^### Status" "$f" | tail -1)
-                status=$(echo "$next_line" | sed -E 's/^[[:space:]]*\*\*//' | sed -E 's/\*\*[[:space:]]*$//' | awk '{print $1}')
-            fi
-            if [[ "$line" =~ ^###[[:space:]]+Date ]]; then
-                local next_line
-                next_line=$(grep -A1 "^### Date" "$f" | tail -1)
-                date=$(echo "$next_line" | sed -E 's/^[[:space:]]*//')
-            fi
-            if [[ "$line" =~ ^###[[:space:]]+Owner ]]; then
-                local next_line
-                next_line=$(grep -A1 "^### Owner" "$f" | tail -1)
-                owner=$(echo "$next_line" | sed -E 's/^[[:space:]]*//')
-            fi
-            if [[ "$line" =~ ^###[[:space:]]+Sub-System ]]; then
-                local next_line
-                next_line=$(grep -A1 "^### Sub-System" "$f" | tail -1)
-                subsystem=$(echo "$next_line" | sed -E 's/^[[:space:]]*//')
-            fi
-        done < "$f"
+        title=$(parse_fm_title "$f")
+        status=$(parse_fm_field "$f" "status")
+        date=$(parse_fm_field "$f" "date")
+        decision_makers=$(parse_fm_field "$f" "decision-makers")
+        subsystem=$(parse_fm_field "$f" "sub-system")
 
         # Defaults
         [[ -z "$status" ]] && status="Proposed"
         [[ -z "$date" ]] && date="YYYY-MM-DD"
-        [[ -z "$owner" ]] && owner=""
+        [[ -z "$decision_makers" ]] && decision_makers=""
         [[ -z "$subsystem" ]] && subsystem="System"
+        [[ -z "$title" ]] && title="ADR-$id"
 
-        index_content+="| ADR-$(printf "%03d" "$id") | $subsystem | $title | $status | $date | $owner | [$fname]($fname) |\n"
+        index_content+="| ADR-$(printf "%03d" "$id") | $subsystem | $title | $status | $date | $decision_makers | [$fname]($fname) |\n"
         quick_links+="- [ADR-$(printf "%03d" "$id"): $title]($fname)\n"
     done
 
@@ -1359,7 +1367,7 @@ action_plan_dag() {
         for f in "$adr_dir"/ADR-*.md; do
             [[ -f "$f" ]] || continue
             local subsystem=""
-            subsystem=$(grep -A1 "^### Sub-System" "$f" 2>/dev/null | tail -1 | sed -E 's/^[[:space:]]*//')
+            subsystem=$(parse_fm_field "$f" "sub-system")
             if [[ -n "$subsystem" && "$subsystem" != "Sub-System" ]]; then
                 local found=false
                 for s in "${subsystems[@]}"; do

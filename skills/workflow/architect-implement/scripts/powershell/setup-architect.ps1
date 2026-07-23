@@ -578,7 +578,7 @@ function Invoke-Specify {
     Write-Host "  1. Analyze your PRD/requirements input"
     Write-Host "  2. Ask clarifying questions about architecture"
     Write-Host "  3. Create ADRs for each key decision"
-    Write-Host "  4. Save decisions to .adlc/drafts/adr.md (Proposed status)"
+    Write-Host "  4. Save decisions to .adlc/drafts/adr/ADR-{NNN}.md (Proposed status)"
     Write-Host "     (ADRs will be moved to .adlc/memory after /architect.implement)"
     if ($Decompose) {
         Write-Host "  5. Organize ADRs by sub-system"
@@ -604,9 +604,8 @@ function Invoke-Clarify {
     
     Write-Host "🔍 Loading existing ADRs for clarification..." -ForegroundColor Cyan
     
-    # Count existing ADRs
-    $content = Get-Content $adrDir -Raw
-    $adrCount = ([regex]::Matches($content, "^## ADR-", [System.Text.RegularExpressions.RegexOptions]::Multiline)).Count
+    # Count existing ADRs (individual ADR-{NNN}.md files in the directory)
+    $adrCount = (Get-ChildItem -Path $adrDir -Filter "ADR-*.md" -File -ErrorAction SilentlyContinue).Count
     Write-Host "Found $adrCount ADR(s) in $adrDir"
     
     Write-Host ""
@@ -651,14 +650,13 @@ function Invoke-Implement {
         Write-Host "✅ AD.md already exists, will be updated: $adFile" -ForegroundColor Green
     }
     
-    # Count ADRs for context
-    $content = Get-Content $adrDir -Raw
-    $adrCount = ([regex]::Matches($content, "^## ADR-", [System.Text.RegularExpressions.RegexOptions]::Multiline)).Count
-    
+    # Count ADRs for context (individual ADR-{NNN}.md files in the directory)
+    $adrCount = (Get-ChildItem -Path $adrDir -Filter "ADR-*.md" -File -ErrorAction SilentlyContinue).Count
+
     Write-Host ""
     Write-Host "Ready for Architecture Description generation."
     Write-Host "The AI agent will:"
-    Write-Host "  1. Read all $adrCount ADR(s) from .adlc/drafts/adr.md"
+    Write-Host "  1. Read all $adrCount ADR(s) from $adrDir"
     Write-Host "  2. Generate 7 Rozanski & Woods viewpoints"
     Write-Host "  3. Apply Security and Performance perspectives"
     Write-Host "  4. Create Mermaid diagrams for each view"
@@ -981,8 +979,7 @@ function Invoke-Analyze {
     }
     
     if ($adrExists) {
-        $content = Get-Content $adrDir -Raw
-        $adrCount = ([regex]::Matches($content, "^### ADR-", [System.Text.RegularExpressions.RegularExpressions]('Multiline'))).Count
+        $adrCount = (Get-ChildItem -Path $adrDir -Filter "ADR-*.md" -File -ErrorAction SilentlyContinue).Count
         Write-Host "📋 ADR file found: $adrDir ($adrCount ADRs)" -ForegroundColor Green
     } else {
         Write-Host "⚠️  ADR file not found at $adrDir" -ForegroundColor Yellow
@@ -1053,9 +1050,8 @@ function Invoke-Validate {
         exit 0
     }
     
-    $content = Get-Content $adrDir -Raw
-    $adrCount = ([regex]::Matches($content, "^## ADR-", [System.Text.RegularExpressions.RegexOptions]::Multiline)).Count
-    
+    $adrCount = (Get-ChildItem -Path $adrDir -Filter "ADR-*.md" -File -ErrorAction SilentlyContinue).Count
+
     Write-Host "📋 ADR file found: $adrDir" -ForegroundColor Green
     Write-Host "   Found $adrCount ADR(s)" -ForegroundColor Cyan
     Write-Host ""
@@ -1097,19 +1093,21 @@ function Invoke-PlanDag {
         New-Item -ItemType Directory -Path $viewsDir -Force | Out-Null
     }
     
-    # Count ADRs and extract sub-systems
-    $content = Get-Content $adrDir -Raw
-    $adrCount = ([regex]::Matches($content, "^### ADR-|^## ADR-", [System.Text.RegularExpressions.RegexOptions]::Multiline)).Count
-    
-    # Extract unique sub-systems from ADR index table
+    # Count ADRs (individual ADR-{NNN}.md files) and extract sub-systems from the index
+    $adrCount = (Get-ChildItem -Path $adrDir -Filter "ADR-*.md" -File -ErrorAction SilentlyContinue).Count
+
+    # Extract unique sub-systems from the generated adr.md index table (written by setup-architect.sh)
     $subsystems = @()
-    $lines = $content -split "`n"
-    foreach ($line in $lines) {
-        # Parse ADR index table rows: | ADR-XXX | SubSystem | ...
-        if ($line -match '^\|\s*ADR-\d+\s*\|\s*([^|]+)\s*\|') {
-            $subsystem = $Matches[1].Trim()
-            if ($subsystem -and $subsystem -ne "Sub-System" -and $subsystems -notcontains $subsystem) {
-                $subsystems += $subsystem
+    $indexFile = Join-Path $adrDir "adr.md"
+    if (Test-Path $indexFile) {
+        $lines = Get-Content $indexFile
+        foreach ($line in $lines) {
+            # Parse ADR index table rows: | ADR-XXX | SubSystem | ...
+            if ($line -match '^\|\s*ADR-\d+\s*\|\s*([^|]+)\s*\|') {
+                $subsystem = $Matches[1].Trim()
+                if ($subsystem -and $subsystem -ne "Sub-System" -and $subsystems -notcontains $subsystem) {
+                    $subsystems += $subsystem
+                }
             }
         }
     }

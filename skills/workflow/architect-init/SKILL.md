@@ -383,49 +383,54 @@ For each discovered architectural decision:
    - What alternatives were available when this was built?
    - What forces likely drove this decision?
 
-2. **Create ADR Entry**:
+2. **Create ADR Entry** (MADR 3.0.0 — see `templates/adr-template.md`):
 
 ```markdown
-## ADR-[NNN]: [Discovered Decision]
+---
+status: discovered  # inferred from codebase (brownfield)
+date: YYYY-MM-DD
+decision-makers: [Legacy/Inferred]
+consulted: []
+informed: []
+sub-system: System
+---
 
-### Status
-Discovered (Inferred from codebase)
+# {Discovered Decision}
 
-### Date
-[Current date]
-
-### Owner
-Legacy/Inferred
-
-### Context
+## Context and Problem Statement
 [Inferred problem statement based on code patterns]
 
 **Evidence Found**:
-- [File/pattern evidence 1]
-- [File/pattern evidence 2]
+* [File/pattern evidence 1]
+* [File/pattern evidence 2]
 
-### Decision
-[Statement of what was decided, inferred from implementation]
+## Decision Drivers
+* {inferred driver 1}
+* {inferred driver 2}
+
+## Considered Options
+* {Likely Alternative}
+* {Discovered choice}
+
+## Decision Outcome
+Chosen option: "{Discovered choice}", because {inferred rationale from implementation}.
 
 ### Consequences
+* Good, because {benefit visible in codebase}
+* Bad, because {trade-off inherent to this choice}
+* Bad, because {risk if this decision is not well understood}
 
-#### Positive (Observed)
-- [Benefit visible in codebase]
+### Confirmation
+{How compliance can be confirmed in the codebase}
 
-#### Negative (Potential)
-- [Trade-off inherent to this choice]
-
-#### Risks
-- [Risk if this decision is not well understood]
-
-### Common Alternatives
-#### [Likely Alternative]
-**Description**: [What it is]
-**Trade-offs**: [Why it might have been considered, neutral assessment - NO "Rejected because"]
+## Pros and Cons of the Options
+### {Likely Alternative}
+* Good, because {argument}
+* Bad, because {argument}
 ← DO NOT fabricate rejection rationale - we don't know why it wasn't chosen
 
-### Confidence Level
-[HIGH/MEDIUM/LOW] - [Explanation of confidence in inference]
+## More Information
+**Confidence Level**: [HIGH/MEDIUM/LOW] - [Explanation of confidence in inference]
 ```
 
 3. **ADR Categories to Generate** (apply surprise-value heuristic):

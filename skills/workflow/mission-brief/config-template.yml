@@ -1,0 +1,29 @@
+# mission-brief — workflow configuration
+#
+# Copy to .adlc/workflow/workflow-config.yml in your project and edit.
+# Every field is optional; defaults are shown below.
+
+workflow:
+  # Execution mode (sync default). The --async / --sync invocation flag
+  # overrides this per mission.
+  execution: sync            # sync | async
+
+  # Supervision (sync only — async always forces autonomous).
+  supervision: gated         # gated | hybrid | autonomous
+
+  # Convergence loop budgets.
+  max_iterations: 5          # do-while cap on implement↺converge
+  max_spec_corrections: 2    # outer spec-correction cap (config-gated)
+  circuit_breaker: 3         # max consecutive non-converging iterations
+
+  # Spec-correction loop. Off by default. Set to a filename (e.g.
+  # "next-spec.md") to enable: the executor checks for that file in the
+  # feature directory after each step; if found, the pipeline re-runs.
+  spec_correction_signal: null
+
+  # Per-step model routing (optional). If omitted, every step uses the
+  # harness default model. Steps carry a `tier:` annotation (strong | fast);
+  # the executor resolves tier -> concrete model using this map at dispatch.
+  # models:
+  #   strong: "claude-opus-4-6"   # brainstorm, specify, plan, implement
+  #   fast: "claude-haiku-4-5"    # clarify, tasks, analyze, converge, trace

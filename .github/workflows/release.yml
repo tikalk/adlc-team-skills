@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'adlc-team-skills-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: v
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#adlc-team-skills-v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Validate semver format
+        run: |
+          [[ "${{ steps.v.outputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "ERROR: not semver: ${{ steps.v.outputs.version }}"; exit 1; }
+
+      - name: Validate CHANGELOG entry exists
+        run: |
+          grep -q "^## \[${{ steps.v.outputs.version }}\]" CHANGELOG.md \
+            || { echo "ERROR: no CHANGELOG entry for [${{ steps.v.outputs.version }}]"; exit 1; }
+
+      - name: Validate tagged commit is on main
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "ERROR: tagged commit is not on main"; exit 1; }
+
+      - name: Extract CHANGELOG notes
+        run: |
+          awk "/^## \[${{ steps.v.outputs.version }}\]/{flag=1; next} /^## \[/{flag=0} flag" \
+            CHANGELOG.md > notes.md
+          [[ -s notes.md ]] || { echo "WARNING: empty notes extracted" >&2; }
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          name: adlc-team-skills v${{ steps.v.outputs.version }}
+          body_path: notes.md
+          make_latest: true

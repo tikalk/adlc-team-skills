@@ -476,48 +476,56 @@ If decomposed, structure the ADR file as:
 
 3. **Cross-Cutting ADRs**: Some decisions affect multiple sub-systems (e.g., "Use PostgreSQL for all sub-systems"). Mark these as **System-Level** and note impact on each sub-system.
 
-4. **ADR Format**:
+4. **ADR Format** (MADR 3.0.0 — see `templates/adr-template.md`):
 
 ```markdown
-## ADR-[NNN]: [Decision Title]
+---
+status: proposed  # proposed | accepted | rejected | deprecated | superseded by ADR-0123 | discovered
+date: YYYY-MM-DD
+decision-makers: [list everyone involved in the decision]
+consulted: [list everyone whose opinions were sought]
+informed: [list everyone kept up-to-date on progress]
+sub-system: System  # System | Auth | Payments | ...
+superseded-by: ""
+---
 
-### Status
-Proposed
+# {short title, representative of the solved problem and the found solution}
 
-### Date
-[YYYY-MM-DD]
-
-### Owner
-[User/AI collaboration]
-
-### Context
+## Context and Problem Statement
 [Problem statement and forces from exploration]
 
-### Decision
-[Clear statement of what was decided]
+## Decision Drivers
+* {decision driver 1}
+* {decision driver 2}
+
+## Considered Options
+* {title option 1}
+* {title option 2}
+
+## Decision Outcome
+Chosen option: "{title option 1}", because {justification}.
 
 ### Consequences
+* Good, because {positive consequence}
+* Bad, because {negative consequence / risk with mitigation}
 
-#### Positive
-- [Benefit 1]
-- [Benefit 2]
+### Confirmation
+{How implementation of / compliance with this ADR will be confirmed}
 
-#### Negative
-- [Trade-off 1]
-- [Trade-off 2]
+## Pros and Cons of the Options
+### {title option 1}
+* Good, because {argument}
+* Bad, because {argument}
 
-#### Risks
-- [Risk 1 with mitigation]
+## Constitution Alignment
+| Principle | Alignment | Notes |
+|-----------|-----------|-------|
 
-### Common Alternatives
+## Related ADRs
+* [ADR-XXX: {Related decision}](ADR-XXX.md)
 
-#### Option A: [Alternative Name]
-**Description**: [Brief description]
-**Trade-offs**: [Neutral comparison - when this would be better/worse, not "rejected because"]
-
-#### Option B: [Alternative Name]
-**Description**: [Brief description]
-**Trade-offs**: [Neutral comparison]
+## More Information
+{Additional evidence, links, when/how to re-visit}
 ```
 
 3. **Number ADRs sequentially**: Start from ADR-001 for new projects, or continue from highest existing number

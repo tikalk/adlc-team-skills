@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2026-07-23
 
 ### Added
 
-- **New skill: `mission`** — mission-driven SDLC orchestrator, detached from spec-kit. Converts the spec-kit `extensions/workflow` (mission / run / resume / persist) into a single Agent Skills-standard skill that composes a workflow from **any** SDD skill set and walks it step by step, each step a `type: prompt` invoking the designated skill. No `.specify/` paths, no `specify` CLI engine, no `integration`/`model` engine coupling — agent-interpreted only. Ships per-system example workflows (`workflows/*.yml`) the skill tweaks per mission prompt: `agentic-sdlc`, `agentic-change` (quick falls back to change), `addyosmani-agent-skills`, `mattpocock-skills`, `superpowers`, `openspec`, and a `custom` template. Sync (default, gated inline) / `--async` (forces ungated, checkpoint across sessions via `.adlc/workflow/.mission-state.json`) / `mission --resume` (explicit resume; fresh `mission` asks before clobbering an interrupted state). Keeps the source's supervision modes, do-while converge loop, circuit breaker, converge-independence hint, spec-correction routing (config-gated; `next-spec.md` for agentic presets), per-step model tiers (optional `models: {strong, fast}`), `iterations.md` + `mission-log.json` audit trail, and optional persist to `.adlc/workflow/saved/`.
+- **New skill: `mission-brief`** — mission-driven SDD orchestrator, detached from spec-kit. Takes a feature description, structures it into a Mission Brief (goal, constraints, success criteria), generates an ordered step list with prompts that trigger installed SDD skills via model invocation or command-file discovery, and walks those steps to converged implementation. No YAML workflow files, no per-framework profiles — step prompts use canonical SDD terminology (specify, plan, implement, converge) that works with any installed skill set (addyosmani/agent-skills, mattpocock/skills, superpowers, openspec, agentic-* presets, or custom). Supports 30+ agents via externalized command discovery (`references/agent-integrations.md`). Sync (default, gated inline) / `--async` (forces ungated, checkpoint across sessions via `.adlc/workflow/.mission-state.json`) / `mission-brief --resume` (explicit resume; fresh `mission-brief` asks before clobbering an interrupted state). Keeps supervision modes, do-while converge loop, circuit breaker, converge-independence hint, spec-correction routing (config-gated), per-step model tiers (optional `models: {strong, fast}`), and `iterations.md` + `mission-log.json` audit trail. Replaces the earlier `mission` skill (removed).
 
 ### Changed
 
@@ -26,7 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Scrubbed spec-kit operational references from `team-skills`, `team-repair`, `team-helpers.sh`/`.ps1`, and `architect-implement` (`specify init` → `/team-setup`; `before_plan` hook mention removed). Explanatory spec-kit comparisons in `team-constitution`, `levelup-*`, and `workflow/mission` left intact.
+- Scrubbed spec-kit operational references from `team-skills`, `team-repair`, `team-helpers.sh`/`.ps1`, and `architect-implement` (`specify init` → `/team-setup`; `before_plan` hook mention removed). Explanatory spec-kit comparisons in `team-constitution`, `levelup-*`, and `workflow/mission-brief` left intact.
+
+### Changed (MADR Alignment)
+
+- **Architect ADRs aligned to [MADR 3.0.0](https://adr.github.io/madr/)**: `adr-template.md` rewritten across all 5 architect skills (specify/init/clarify/implement/analyze). Added YAML frontmatter (status, date, decision-makers, consulted, informed, sub-system, superseded-by — MADR-0013); H1 title (no numbers in headings — MADR-0002); explicit Considered Options list; Decision Outcome + Consequences (Good/Bad/Neutral, MADR v3.0.0 merged) + Confirmation; Pros and Cons of the Options with per-option Good/Bad/Neutral arguments (MADR-0014); More Information; links between ADRs (MADR-0009); asterisk list markers (MADR-0011); `rejected` status (MADR-0008).
+- **Project extensions retained**: `sub-system` frontmatter field (MADR-0010 categories equivalent); `discovered` status (brownfield reverse-engineering via `/architect-init`); Constitution Alignment + Related ADRs sections.
+- **Filename convention**: `ADR-{NNN}.md` kept (MADR-0005 explicitly permits other patterns); stable numeric ID used by `adr.md` index, supersession refs, and architect skills.
+- **`setup-architect.sh`** (all 5 copies): `generate_adr_index` now parses MADR frontmatter + H1 title via new `parse_fm_field`/`parse_fm_title` helpers instead of prose `### Status`/`### Date`/`### Owner`/`### Sub-System` sections. Index column renamed `Owner` → `Decision Makers` (populated from `decision-makers` frontmatter). Sub-system extraction in view generation also reads frontmatter.
+- **`setup-architect.ps1`** (all 5 copies): fixed stale monolith `adr.md` path assumptions — ADR count now uses `Get-ChildItem -Filter "ADR-*.md"` (was `Get-Content $adrDir -Raw` on a directory + `^## ADR-` regex that no longer matches the H1 title format). Sub-system extraction reads the generated `adr.md` index file.
+- **`architect-specify/SKILL.md` + `architect-init/SKILL.md`**: ADR Format examples updated to MADR frontmatter + sections.
 
 ## [0.9.1] - 2026-07-22
 

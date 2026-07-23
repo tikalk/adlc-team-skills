@@ -26,7 +26,7 @@ Generate a full Architecture Description (AD.md) from Architecture Decision Reco
 ### When NOT to use
 
 - **No ADRs exist**: Use `/architect-specify` or `/architect-init` first.
-- **Feature-level**: Feature AD generated via `before_plan` hook.
+- **Feature-level**: Feature AD is generated during the feature's plan phase, not by this skill.
 - **Minor updates**: Use direct editing for small changes.
 
 ## Process

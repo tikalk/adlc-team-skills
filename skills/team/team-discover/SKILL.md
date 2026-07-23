@@ -21,17 +21,36 @@ The discovery process reads the index first, matches against it (using descripto
 
 If `CDR.md` is missing or cannot be parsed, the command falls back to scanning `context_modules/` directly.
 
+### Lifecycle Contract
+
+`team-context.md` follows a generate-then-reference lifecycle:
+
+- **Generated** only during spec/plan phases (this skill runs and persists a
+  fresh file matched to the current feature).
+- **Referenced** read-only everywhere else — implementation, questions, coding,
+  and chat prompts read the existing file instead of regenerating it.
+- **Single canonical location**: `.adlc/drafts/team-context.md`. No per-feature
+  directory variant.
+- **Cleanup between phases** is driven by a metadata header on the file (see
+  Step 6): same feature → delta-aware overwrite; different feature → reset.
+
 ## When to Use
 
-This skill is automatically executed via hooks in the spec-kit extension:
-- **before_specify**: Runs before specification to discover context
-- **before_plan**: Runs before planning to discover context
-- **before_implement** (optional): Runs before implementation — no-write mode,
-  outputs inline context without file persistence
+`team-discover` runs **only during specification or planning phases** — when a
+feature or system is being specified, designed, or planned. It is triggered by:
+
+- `team-boot`'s prompt assessment (the model judges the current prompt to be a
+  specify/plan/design request)
+- An explicit user request to specify, plan, or design a feature/system
+- Manual invocation
+
+Outside spec/plan phases (implementation, questions, coding, chat), discovery is
+**not** re-run — the persisted `team-context.md` is read and referenced instead.
+See the lifecycle contract below.
 
 Manual invocation:
 ```
-/team-discover               # Persist mode (writes team-context.md)
+/team-discover               # Persist mode (writes .adlc/drafts/team-context.md)
 /team-discover --no-write    # Inline only, no file persistence
 ```
 
@@ -62,16 +81,10 @@ them.
 
 `{REPO_ROOT}` is the project root (where `.adlc/` lives).
 
-Read the feature description from:
-- Environment variable: `${SPECIFY_FEATURE_DESCRIPTION}` (if set)
-- Context file: `{REPO_ROOT}/specs/${SPECIFY_FEATURE}/context.md`
-- Spec file: `{REPO_ROOT}/specs/${SPECIFY_FEATURE}/spec.md` (Mission Brief section)
-
-**Fallback for plain-message invocation**: If none of the above sources
-are available (no env var set, no feature directory, invoked as a skill
-from team-boot rather than a spec workflow hook), extract the feature
-context from the user's current message instead. The user's message is a
-valid feature description — use it directly.
+The feature description comes from the user's current message — or the feature
+description provided by the invoking skill (e.g. a specify/plan workflow skill
+or `team-boot` when it assessed the prompt as a spec/plan phase). The user's
+message is a valid feature description; use it directly.
 
 Extract the feature's:
 - **Domain**: What business area is this? (e.g., payments, auth, analytics)
@@ -189,18 +202,17 @@ Include the full content in the output so the AI agent has the complete directiv
 
 The command supports two modes:
 
-- **Persist mode** (default): Writes the discovered context to a `team-context.md` file for reuse.
-- **No-write mode** (`--no-write` in `$ARGUMENTS`): Outputs the discovery table inline only.
-  No files are created or modified. Used by the `before_implement` hook where feature directories
-  may not exist and Quick workflows forbid file artifacts.
+- **Persist mode** (default): Writes the discovered context to
+  `.adlc/drafts/team-context.md` for reuse by later (non-spec/plan) prompts.
+- **No-write mode** (`--no-write` in `$ARGUMENTS`): Outputs the discovery table
+  inline only. No files are created or modified.
 
 Mode is detected in this order:
 1. If `$ARGUMENTS` contains `--no-write`: no-write mode.
-2. If the environment variable `SPECIFY_FEATURE_DIRECTORY` is set: persist mode to feature dir.
-3. If run via `before_specify` hook (feature dir unknown): persist mode to staging path.
-4. If run via `before_implement` hook (Quick context): no-write mode.
-5. **If invoked as a skill** (no `$ARGUMENTS`, no env vars, no hook context):
-   no-write mode. Output the discovery table inline. Do not write any files.
+2. Otherwise: persist mode — write `.adlc/drafts/team-context.md`.
+
+Every invocation (skill, model-triggered during a spec/plan phase, or manual)
+is persist mode unless `--no-write` is passed.
 
 ### Step 5: Output Discovered Context
 
@@ -233,20 +245,33 @@ _Searched 42 CDR entries, 6 PDR entries, 9 ADR entries, 8 matches found._
 
 ### Step 6: Persist Team Context
 
-**Canonical artifact**: `team-context.md`
+**Canonical artifact**: `.adlc/drafts/team-context.md` (single location).
 
 **Persistence rules (in order of priority)**:
 
 1. **If `--no-write` detected**: Skip all file persistence. Output inline only.
-2. **If feature directory is known** (`SPECIFY_FEATURE_DIRECTORY` is set):
-   Write to `SPECIFY_FEATURE_DIRECTORY/team-context.md`.
-   If `.adlc/drafts/team-context.md` exists, delete it after successful write.
-3. **Otherwise** (feature directory not yet known, e.g. `before_specify`):
-   Write to `.adlc/drafts/team-context.md`.
+2. **Otherwise**: Write to `.adlc/drafts/team-context.md`.
 
-**Delta awareness**: Before writing, read the existing `team-context.md` file from the
-target location (staging or feature dir, whichever is applicable). Compare the new
-discovery results against the previous file. Include a delta section in the output:
+**Metadata header**: Every written file begins with a frontmatter header so
+stale context can be detected and reset between features:
+
+```markdown
+---
+feature: {feature identifier — derived from the current task, or "unknown"}
+phase: specify | plan | manual
+generated: {ISO-8601 timestamp}
+---
+```
+
+**Cleanup between phases (reset vs. delta)**: Before writing, read the existing
+`.adlc/drafts/team-context.md` and inspect its metadata header:
+
+- **Same `feature`** as the current task → delta-aware overwrite. Include a
+  `### Changes from Previous Discovery` section (New / Dropped / Changed) so the
+  agent sees what moved since the last phase without re-reading the whole file.
+- **Different `feature`**, or missing/unparseable header → **reset**. Write a
+  fresh file with no delta section, and include one line at the top of the body:
+  `_Previous team-context for {old feature or "unknown"} discarded._`
 
 ```markdown
 ### Changes from Previous Discovery
@@ -256,8 +281,8 @@ discovery results against the previous file. Include a delta section in the outp
 - **Changed**: CDR-2026-003 — relevance Medium → High
 ```
 
-This enables the agent to quickly understand what's new or changed without re-reading
-the entire context.
+`feature: unknown` (e.g. a manual run with no clear feature) is treated as its
+own feature — the next real spec/plan phase for a named feature resets it.
 
 ### Failure Handling
 
@@ -280,9 +305,12 @@ If team-ai-directives is not configured or files cannot be read:
 
 - Using `glob`, `find`, or any file-search tool to locate `.adlc/init-options.json` or team AI directives files — these silently skip dotfile path segments. Read exact paths directly.
 - Loading every file under `context_modules/` by default instead of matching against the CDR index first (only the fallback path does full scans).
-- Writing `team-context.md` (or any file) when `$ARGUMENTS` contains `--no-write` or when invoked as a skill with no hook context.
+- Writing `team-context.md` (or any file) when `$ARGUMENTS` contains `--no-write`.
+- Regenerating `team-context.md` outside spec/plan phases — implementation, questions, coding, and chat prompts must reference the persisted file, not re-run discovery.
+- Dropping the metadata header (`feature`/`phase`/`generated`) — without it, stale-context reset between features is impossible.
+- Computing a delta against a different feature's file — reset instead of diffing across features.
 - Hardcoding the team AI directives path instead of resolving `team_ai_directive` from `.adlc/init-options.json`.
-- Blocking the preset command on discovery failure — the command must exit 0 with empty results.
+- Blocking on discovery failure — the process must exit 0 with empty results.
 
 ## Verification
 
@@ -290,8 +318,10 @@ If team-ai-directives is not configured or files cannot be read:
 - Project PDR and ADR indexes (memory preferred, drafts fallback) were read when present, and matching rows appear with Type `PDR` / `ADR`.
 - Full module file content is included inline for every entry marked **High** relevance — including PDR/ADR record bodies.
 - A `search_metadata` line is present showing entries searched per source and matches found (e.g., `_Searched N CDR entries, M PDR entries, K ADR entries, J matches found._`).
-- In persist mode, `team-context.md` is written to the correct target (feature dir or `.adlc/drafts/`) and a delta section is included when a previous file existed.
-- In no-write mode (or skill invocation), **no files are created or modified** — output is inline only.
+- In persist mode, `team-context.md` is written to `.adlc/drafts/team-context.md` with a metadata header (`feature`/`phase`/`generated`).
+- Same-feature re-runs include a delta section; different-feature (or missing/unknown header) re-runs reset with a discard line and no delta.
+- In no-write mode (`--no-write`), **no files are created or modified** — output is inline only.
+- Discovery is run only during spec/plan phases; other phases reference the persisted file.
 - On misconfiguration or unreadable files, results are empty, `search_metadata` shows `0 files searched`, and the process exits successfully (code 0).
 
 ## Configuration

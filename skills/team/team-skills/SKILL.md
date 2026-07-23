@@ -1,6 +1,6 @@
 ---
 name: team-skills
-description: Browse and install team skills from the team AI directives. Use when listing, adding, or onboarding team skills to the current agent's skills directory.
+description: Browse and install team skills from the team AI directives. Use when listing, adding, or onboarding team skills to the current agent's skills directory. Supports --all to install every default and external skill at once.
 disable-model-invocation: true
 ---
 
@@ -9,15 +9,17 @@ disable-model-invocation: true
 ## Overview
 
 Browse available skills from the team AI directives and install
-selected ones to the current agent's skills directory. Required skills are
-installed automatically during init; this skill handles recommended, internal,
-and remote skills on demand.
+selected ones to the current agent's skills directory. Use `--all` to
+install every `default` and `external` skill in one pass. Skills are
+installed under their **original names** (no prefix) so they stay in sync
+with the manifest.
 
 ## When to Use
 
 - When the user asks to browse, list, or install team skills.
 - When the input names a specific skill to install.
 - When extending the agent's capabilities with team-shared skills.
+- When `team-setup` delegates `/team-skills --all` after initial configuration.
 
 ```text
 $ARGUMENTS
@@ -48,7 +50,7 @@ If `team_ai_directive` is not set, STOP:
 
 ```
 Team AI directives not configured.
-Run: specify init --team-ai-directives <path-or-url>
+Run: /team-setup
 ```
 
 Helper scripts (relative to skill directory):
@@ -61,22 +63,20 @@ Helper scripts (relative to skill directory):
 Read `{REPO_ROOT}/.skills.json` (where `{REPO_ROOT}` denotes the project
 root — the directory where `.adlc/` lives) and `{TEAM_AI_DIRECTIVE}/.skills.json`
 (team directives manifest). Merge both, with project-root entries taking
-precedence. Parse the `skills` section. Group by category:
+precedence. Parse the manifest sections (schema v2.0.0):
 
-| Category | Description | Auto-installed? |
-|----------|-------------|-----------------|
-| `required` | Must be installed | Yes (during init) |
-| `recommended` | Suggested for the team | No |
-| `internal` | Team-specific local skills | No |
-| `blocked` | Rejected on install | N/A |
+| Section | Description | Installed by `--all`? |
+|---------|-------------|-----------------------|
+| `default` | Local skills (in `skills/{name}/`) auto-installed during setup | Yes |
+| `external` | Remote skills fetched by URL, installed on demand | Yes |
+| `blocked` | Rejected — must never be installed | Never |
 
 ### Step 2: Show Available Skills
 
-Present skills grouped by category. For each skill show:
+Present skills grouped by section. For each skill show:
 
-- Name (the key, e.g. `local:./skills/github-actions`)
+- Name (the key, e.g. `github-actions` for local, `react-best-practices` for external)
 - Description
-- Categories/tags
 - Whether it's already installed (check agent skills directory)
 
 Format:
@@ -84,84 +84,90 @@ Format:
 ```
 Team Skills from {TEAM_AI_DIRECTIVE}
 
-Required (auto-installed):
-  [installed] team-dbt-template - DBT project templates and best practices
-
-Recommended:
+Default (local, installed by --all):
+  [installed] dbt-template - DBT project templates and best practices
   [available] github-actions - GitHub Actions CI/CD pipeline patterns
   [available] helm-charts - Helm chart patterns for Kubernetes
   [available] crossplane - Crossplane Composition and XRD patterns
   [available] external-secrets - External Secrets Operator patterns
   [available] gke-workload-identity - GKE Workload Identity patterns
 
-  Remote:
-  [available] react-best-practices (vercel-labs) - React performance optimization
-  [available] web-design-guidelines (vercel-labs) - Web interface best practices
-
-Internal:
-  [installed] team-dbt-template - DBT project templates
-  [available] github-actions - GitHub Actions patterns
+External (remote, installed by --all):
+  [available] react-best-practices - React performance optimization
+  [available] web-design-guidelines - Web interface best practices
 ```
 
 ### Step 3: Install Selected Skills
 
-If the user provided a skill name as input, install that skill directly.
+Determine the install target from the arguments:
 
-If no input provided, ask the user which skills to install.
+- **`--all`**: Install every `default` skill **and** every `external` skill,
+  skipping anything in `blocked` and anything already installed.
+- **A skill name**: Install that one skill directly.
+- **No input**: Ask the user which skills to install.
 
-For **local skills** (`local:./skills/{name}`):
+Determine the agent's skills directory:
+1. Read `.adlc/integration.json` to get the current agent
+2. Use `{agent_folder}/skills/` as the destination
+
+Install under the **original name** (no prefix), frontmatter `name` unchanged:
+
+For **local skills** (`default` list — names map to `skills/{name}/`):
 
 1. Locate `{TEAM_AI_DIRECTIVE}/skills/{name}/SKILL.md`
-2. Determine the agent's skills directory:
-   - Read `.adlc/integration.json` to get the current agent
-   - Use `{agent_folder}/skills/` as the destination
-3. Copy `SKILL.md` to `{skills_dir}/team-{name}/SKILL.md`
-4. Update the `name` field in SKILL.md frontmatter to `team-{name}`
+2. Copy `SKILL.md` to `{skills_dir}/{name}/SKILL.md`
 
-For **remote skills** (GitHub URLs):
+For **external skills** (`external` map — entries have a `url`):
 
-1. Download SKILL.md from the `url` field in `.skills.json`
+1. Download `SKILL.md` from the entry's `url` field
 2. Save to `{skills_dir}/{name}/SKILL.md`
+
+Never install any skill listed in `blocked`. Skip skills already present at the
+destination (report them as `[installed]`).
 
 ### Step 4: Confirm
 
 ```
-Installed: team-github-actions
-Location: .opencode/skills/team-github-actions/SKILL.md
-Source: local:./skills/github-actions
+Installed: github-actions
+Location: .opencode/skills/github-actions/SKILL.md
+Source: default (local:./skills/github-actions)
 ```
 
 ### Notes
 
-- Required skills are installed automatically during `specify init --team-ai-directives`
-- This skill is for installing recommended/internal/remote skills on demand
-- Skills are prefixed with `team-` to distinguish from other skills
-- Blocked skills from `.skills.json` are never installed
+- Default skills are installed via `--all`, typically invoked by `team-setup`
+  after initial configuration or run manually at any time.
+- Skills are installed under their original names — no `team-` prefix — so the
+  on-disk name matches the manifest key.
+- Skills from the `blocked` list are never installed.
+- External skills are fetched over HTTPS from the URL in the manifest.
 
 ## Common Rationalizations
 
 | Rationalization | Why it's wrong | Do this instead |
 |---|---|---|
-| "I'll copy SKILL.md without the `team-` prefix" | Loses traceability and collides with non-team skills | Always prefix installed skill names with `team-` |
+| "I'll add a `team-` prefix to installed skills" | Diverges the on-disk name from the manifest key, breaking lookups | Install under the original name; frontmatter `name` stays unchanged |
 | "Search tools will find `.adlc/init-options.json`" | Glob/find silently skip dotfile-prefixed path segments | Read the exact relative path directly |
 | "Blocked skills are just strong recommendations" | `blocked` means explicitly rejected on install | Never install blocked skills |
-| "Required skills need re-installing here" | They are auto-installed during init | Handle only recommended/internal/remote skills |
+| "Default skills already auto-installed elsewhere" | Only `--all` (via team-setup or manual) installs them | Run `/team-skills --all` to onboard the default set |
 | "I'll skip merging the project-root manifest" | Project entries are meant to override team defaults | Merge both manifests; project-root wins conflicts |
 
 ## Red Flags
 
 - Using glob, find, or grep to locate `.adlc/init-options.json` instead of reading the exact path.
-- Installing a skill without the `team-` name prefix in its frontmatter.
-- Installing a skill listed under the `blocked` category.
+- Renaming a skill or adding a `team-` prefix on install — install under the original name so it matches the manifest.
+- Installing a skill listed under the `blocked` section.
 - Writing skills to any directory other than the agent's configured skills folder.
 - Proceeding past an unset `team_ai_directive` field instead of stopping with the config message.
+- Fetching an external skill over a non-HTTPS URL.
 
 ## Verification
 
 - `.adlc/init-options.json` was read directly (no search tool) and `team_ai_directive` resolved to a path.
 - Both `{REPO_ROOT}/.skills.json` and `{TEAM_AI_DIRECTIVE}/.skills.json` were merged; project-root entries won any conflicts.
-- Each installed skill lives at `{skills_dir}/team-{name}/SKILL.md` with `name: team-{name}` in its frontmatter.
-- No skill from the `blocked` category was installed.
+- Each installed skill lives at `{skills_dir}/{name}/SKILL.md` with its original `name` in frontmatter (no prefix).
+- No skill from the `blocked` section was installed.
+- `--all` installed every `default` and `external` skill (skipping `blocked` and already-installed).
 - A confirmation block was emitted showing the installed name, on-disk location, and source.
 
 ## Configuration

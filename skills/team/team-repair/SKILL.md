@@ -204,7 +204,7 @@ Check if TEAM_AI_DIRECTIVE has a value from script output.
 If empty, **STOP**:
 ```
 Team AI directives repository not configured.
-Run: specify init --team-ai-directives <path-or-url>
+Run: /team-setup
 Or set: export TEAM_AI_DIRECTIVE=/path/to/team-ai-directives
 ```
 

@@ -112,18 +112,19 @@ Team AI directives repository for ${TeamName}.
 
 ## Getting Started
 
-1. Initialize a project with this directives repository:
+1. Wire this directives repository into a project:
    ```
-   specify init my-project --team-ai-directives ./path/to/this/dir
+   /team-setup
    ```
+   Choose "Point to existing local path" and select this directory.
 
 2. Add context modules to `context_modules/` (rules, personas, examples).
 
-3. Add skills to `skills/`.
+3. Add skills to `skills/` and register them in `.skills.json`.
 
 4. Update `CDR.md` as context modules are approved.
 
-See [Agentic SDLC Spec Kit](https://github.com/tikalk/agentic-sdlc-spec-kit) for full documentation.
+See [ADLC Team Skills](https://github.com/tikalk/adlc-team-skills) for full documentation.
 "@
   Set-Content -Path (Join-Path $Dest "README.md") -Value $readme
 
@@ -173,10 +174,17 @@ Context Directive Records (CDRs) track decisions about contributing context modu
 
   $skillsJson = @'
 {
-  "schema_version": "2.0.0",
+  "version": "2.0.0",
+  "source": "team-ai-directives",
+  "description": "Team skills manifest. The `default` list contains skill names that are auto-installed during project setup. The `external` map contains on-demand skills fetched by URL. The `blocked` list contains skills that must never be installed.",
   "default": [],
-  "skills": {},
-  "external": {}
+  "external": {},
+  "blocked": [],
+  "policy": {
+    "auto_install_default": true,
+    "enforce_blocked": true,
+    "allow_project_override": true
+  }
 }
 '@
   Set-Content -Path (Join-Path $Dest ".skills.json") -Value $skillsJson

@@ -12,6 +12,10 @@ user task or question. This skill loads the team constitution, reads the
 project's decision-record indexes (PDR/ADR) for product and architecture
 awareness, and runs discovery to surface relevant rules, personas, and examples.
 
+Discovery is **phase-gated**: `team-discover` runs only when the current prompt
+is a specification or planning request; every other prompt references the
+persisted `team-context.md` instead of regenerating it.
+
 You MUST invoke this skill BEFORE responding to any user task or question.
 This is not optional and applies to EVERY interaction — not just spec workflow
 commands. If you think this does not apply to your current task, read the
@@ -27,9 +31,12 @@ Invoke this skill:
 - Before making code changes
 - Before answering questions about the project
 
-You do NOT need to re-invoke if:
-- You already ran `/team-boot` in the current session AND
-- The user's follow-up is a direct continuation of the same task
+Re-invocation per prompt:
+- **First prompt in a session**: run the full bootstrap (Steps 1–5).
+- **Every subsequent prompt**: skip re-reading the constitution and
+  PDR/ADR indexes (Steps 1–3) if already loaded this session, but ALWAYS
+  perform Step 4 (Reference or Run Team Context) so the agent works with
+  context matched to the current prompt, then briefly acknowledge (Step 5).
 
 ## Core Process
 
@@ -96,34 +103,42 @@ without loading them.
 Skip silently for any artifact that does not exist. Projects without the PDR
 or ADR lifecycle in place simply produce less context here — that is fine.
 
-### Step 4: Run Discovery
+### Step 4: Reference or Run Team Context
 
-Invoke the `team-discover` skill to scan the CDR
-index and match personas, rules, examples, and skills against the current
-task context.
+Assess the current prompt. Discovery (`team-discover`) runs **only** during
+spec/plan phases; every other prompt references the persisted context file.
 
-If the user's message describes a specific feature or task, extract:
-- **Domain**: What business area is this?
-- **Technology**: What tech stack?
-- **Patterns**: What architectural patterns?
-- **Actions**: What is the feature doing?
+- **Spec/plan phase** — the user is asking to specify, plan, or design a feature
+  or system (e.g. "specify X", "plan the auth module", "design the payments
+  service", or invoking a specify/plan workflow skill):
+  - Invoke the `team-discover` skill. It persists results to
+    `.adlc/drafts/team-context.md` (persist mode).
+  - Extract domain, technology, patterns, and actions from the user's request
+    to drive discovery matching.
 
-Use these to drive the discovery matching. If the user's message is vague
-("I need to add a login modal"), still run discovery — the team AI directives
-may contain relevant rules (e.g., security patterns, testing standards) that
-apply broadly.
+- **Any other prompt** — implementation, questions, coding, debugging, chat:
+  - Do **not** re-run discovery.
+  - Read and reference the existing `.adlc/drafts/team-context.md`.
+  - If no `team-context.md` exists yet, note "no team-context generated — it is
+    created during spec/plan phases" and continue.
+
+Even when the prompt seems vague ("I need to add a login modal"), if it is not a
+spec/plan/design request, reference the persisted file rather than regenerating
+it. The persisted file captures the discovery from the most recent spec/plan
+phase and remains valid for the surrounding work.
 
 ### Step 5: Acknowledge Context
 
-After loading the constitution, the decision-record indexes, and running
-discovery, briefly acknowledge what team context was loaded before proceeding
-to respond to the user's request. This confirms the bootstrap completed and
-makes the skill check visible. Include:
+After loading the constitution, the decision-record indexes, and either running
+discovery or referencing the persisted context, briefly acknowledge what team
+context was loaded before proceeding to respond to the user's request. This
+confirms the bootstrap completed and makes the skill check visible. Include:
 
 - Constitution loaded (or skipped)
 - PDR index: N entries (memory | legacy PRD skim | none)
 - ADR index: N entries (memory | drafts | none)
-- Discovery matches surfaced
+- Team context: generated (feature + phase) **or** referenced (path + feature +
+  generated-at) **or** none yet
 
 ### Failure Handling
 
@@ -154,7 +169,9 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
   bodies load on demand.
 - Skipping discovery because the request "seems simple" or "obvious."
 - Proceeding to answer without acknowledging what team context was loaded.
-- Re-invoking on every follow-up that is a direct continuation of the same task.
+- Skipping discovery on a spec/plan prompt — the persisted file may be stale or from a different feature; regenerate it.
+- Running `team-discover` on a non-spec/plan prompt — implementation, questions, coding, and chat prompts reference the persisted `team-context.md` instead of regenerating it.
+- Re-reading the constitution and PDR/ADR indexes on every follow-up prompt — once loaded in the session, skip Steps 1–3 and go straight to Step 4.
 
 ## Verification
 
@@ -168,8 +185,11 @@ The bootstrap is complete when ALL of the following are true:
 3. The PDR index was read if present (memory or legacy `PRD.md` heading
    skim), and the ADR index was read if present (memory only). Full PDR/ADR
    bodies and full `PRD.md`/`AD.md` were NOT loaded.
-4. `team-discover` was invoked with domain, technology, patterns, and actions
-   extracted from the user's request.
+4. Step 4 was performed: `team-discover` was invoked (spec/plan phase) with
+   domain, technology, patterns, and actions extracted from the user's request —
+   OR the persisted `team-context.md` was referenced (non-spec/plan phase). On
+   follow-up prompts in the same session, Steps 1–3 re-reads were skipped but
+   Step 4 still ran.
 5. The loaded team context (constitution, indexes, discovery matches) was
    briefly acknowledged before responding to the user's request.
 6. The skill exited successfully (best-effort) even if team-ai-directives is

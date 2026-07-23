@@ -18,7 +18,7 @@ The skill is non-destructive: it never overwrites existing files or directories.
 - Your team already has a directives repo on GitHub and you want to clone it locally.
 - You have a local team AI directives directory already (e.g., from a previous project) and want to wire it up.
 - You're unsure whether the team AI directives is already configured and want a quick check.
-- After `specify init` when `--team-ai-directives` wasn't provided.
+- When the project isn't yet wired to a team AI directives (no `.adlc/init-options.json` `team_ai_directive` field).
 
 ## Core Process
 
@@ -26,14 +26,34 @@ The skill is non-destructive: it never overwrites existing files or directories.
 
 Set up a team AI directives using one of four modes.
 
+### Security: Input Validation (all modes)
+
+Before executing any mode, validate every user-supplied value (paths, URLs, team
+names). These values are interpolated into shell commands; unvalidated input is
+a command-injection vector.
+
+- **Paths** (`{DEST}`, `{ABSOLUTE_PATH}`): reject if they contain any of
+  `` ` ``, `$`, `;`, `|`, `&`, `(`, `)`, `<`, `>`, newline, or backslash.
+  Resolve to an absolute path with `realpath`/`Resolve-Path` before use.
+- **Team name**: must match `^[A-Za-z0-9 ._-]+$`. Reject anything else.
+- **Clone URL** (Mode 1): must start with `https://`. Reject `file://`, `ssh://`,
+  and any non-`https` scheme unless the user explicitly confirms the risk.
+  Cloning runs no code from the repo, but the cloned content is read by agents
+  later — only clone repositories you trust.
+
+If any value fails validation, report which value and why, and re-ask. Never
+interpolate a user value into a Python/eval source string — pass it through the
+environment (see Mode 2).
+
 ### Mode 1: Clone from GitHub
 
 Clone an existing team-ai-directives repository from GitHub.
 
 **Explore**:
 1. Ask the user for the GitHub repository URL (default: `https://github.com/tikalk/agentic-sdlc-team-ai-directives`)
-2. Ask where to clone it (default: `./team-ai-directives`)
-3. Check that the destination does not already exist
+2. Validate the URL starts with `https://` (reject `file://`, `ssh://`, and other schemes — see Input Validation). Only clone repositories you trust; the cloned content is read by agents later.
+3. Ask where to clone it (default: `./team-ai-directives`)
+4. Check that the destination does not already exist
 
 **Present**:
 Show the user:
@@ -84,7 +104,12 @@ Use existing team-ai-directives at {ABSOLUTE_PATH}?
 **Write/Execute**:
 Update the project's `.adlc/init-options.json` to set the `team_ai_directive` field to the resolved path.
 
+The path is passed to Python via the environment (`TEAM_AI_DIRECTIVE_PATH`) — never interpolate user input into Python source, as that is a command-injection vector.
+
 ```bash
+# Resolve to an absolute path and validate (see Input Validation)
+ABSOLUTE_PATH="$(realpath "$USER_PATH")"
+
 # Read existing or create new
 if [[ -f ".adlc/init-options.json" ]]; then
   CONFIG=$(cat ".adlc/init-options.json")
@@ -92,13 +117,13 @@ else
   CONFIG="{}"
 fi
 
-# Update or add team_ai_directive field
-echo "$CONFIG" | python3 -c "
-import json, sys
+# Pass the path through the environment, NOT via string interpolation
+TEAM_AI_DIRECTIVE_PATH="$ABSOLUTE_PATH" python3 -c "
+import json, os, sys
 config = json.load(sys.stdin)
-config['team_ai_directive'] = '$ABSOLUTE_PATH'
+config['team_ai_directive'] = os.environ['TEAM_AI_DIRECTIVE_PATH']
 print(json.dumps(config, indent=2))
-" > ".adlc/init-options.json"
+" <<< "$CONFIG" > ".adlc/init-options.json"
 ```
 
 ### Mode 3: Scaffold New Empty team AI directives
@@ -118,7 +143,7 @@ Show the user the 10 files that will be created:
 | 1 | `README.md` | Getting started documentation |
 | 2 | `AGENTS.md` | Agent instructions (loading order, rules, skills) |
 | 3 | `CDR.md` | Empty CDR index table |
-| 4 | `.skills.json` | Empty skills manifest (schema v2.0.0) |
+| 4 | `.skills.json` | Empty skills manifest (schema v2.0.0: `default`/`external`/`blocked`/`policy`) |
 | 5 | `.mcp.json.example` | Empty MCP servers config example |
 | 6 | `context_modules/constitution.md` | Placeholder constitution (OKF frontmatter) — fill via `/team-constitution` |
 | 7 | `context_modules/index.md` | OKF toplevel index linking sub-directories |
@@ -154,18 +179,19 @@ Team AI directives repository for {TEAM_NAME}.
 
 ## Getting Started
 
-1. Initialize a project with this directives repository:
+1. Wire this directives repository into a project:
    ```
-   specify init my-project --team-ai-directives ./path/to/this/dir
+   /team-setup
    ```
+   Choose "Point to existing local path" and select this directory.
 
 2. Add context modules to `context_modules/` (rules, personas, examples).
 
-3. Add skills to `skills/`.
+3. Add skills to `skills/` and register them in `.skills.json`.
 
 4. Update `CDR.md` as context modules are approved.
 
-See [Agentic SDLC Spec Kit](https://github.com/tikalk/agentic-sdlc-spec-kit) for full documentation.
+See [ADLC Team Skills](https://github.com/tikalk/adlc-team-skills) for full documentation.
 ```
 
 Create `{DEST}/AGENTS.md`:
@@ -214,10 +240,17 @@ Context Directive Records (CDRs) track decisions about contributing context modu
 Create `{DEST}/.skills.json`:
 ```json
 {
-  "schema_version": "2.0.0",
+  "version": "2.0.0",
+  "source": "team-ai-directives",
+  "description": "Team skills manifest. The `default` list contains skill names that are auto-installed during project setup. The `external` map contains on-demand skills fetched by URL. The `blocked` list contains skills that must never be installed.",
   "default": [],
-  "skills": {},
-  "external": {}
+  "external": {},
+  "blocked": [],
+  "policy": {
+    "auto_install_default": true,
+    "enforce_blocked": true,
+    "allow_project_override": true
+  }
 }
 ```
 
@@ -315,7 +348,10 @@ The team AI directives is already configured. Verify and report status.
 Show the user the resolved team AI directives path and validation results.
 
 **Write/Execute**:
-No writes needed — the team AI directives is already configured.
+No writes needed — the team AI directives is already configured. Then run the
+**team skills installation check** (see Post-Setup Configuration step 4): report
+which `default`/`external` skills from `.skills.json` are already installed vs
+missing, and offer to install the missing ones via `/team-skills --all`.
 
 ### Mode Selection Flow
 
@@ -356,11 +392,20 @@ pwsh "$(Split-Path $PSCommandPath -Parent)/team-helpers.ps1" -InjectAgents "{PRO
 This creates or updates the project's `AGENTS.md` with a managed section (between `<!-- TEAM_AI_DIRECTIVES START -->` and `<!-- TEAM_AI_DIRECTIVES END -->` markers) containing:
 
 - **Strict Compliance** directive: "You MUST invoke the `team-boot` skill BEFORE responding to any task or question"
-- **Anti-pattern counter-rationalizations** (same as spec-kit's `agent-context` extension)
+- **Anti-pattern counter-rationalizations**
 - **Team Constitution** reference path
 - **team-discover** invocation guidance
 
-This is the skills-based equivalent of the spec-kit's `update-agent-context.sh` — without it, the agent has no session-start instruction to invoke `team-boot`, and the team AI directives repository remains invisible until manually loaded. The section is idempotent: re-running `team-setup` or `team-repair` updates the section in place without duplicating content.
+Without this section, the agent has no session-start instruction to invoke `team-boot`, and the team AI directives repository remains invisible until manually loaded. The section is idempotent: re-running `team-setup` or `team-repair` updates the section in place without duplicating content.
+
+4. **Offer team skills installation**: Read `{TEAM_AI_DIRECTIVE}/.skills.json`. If the `default` and/or `external` lists are non-empty and `policy.auto_install_default` is not `false`:
+
+   - Present the skills that would be installed (name + description), grouped by `default` (local) and `external` (remote).
+   - Confirm: `Install {N} team skills (default + external) via /team-skills --all? [Y/n]`
+   - On yes: invoke `/team-skills --all` (it installs every `default` + `external` skill, skipping `blocked` and already-installed, under original names).
+   - On no: note that `/team-skills` is available on demand later.
+
+   Skip silently when the manifest is empty (fresh Mode 3 scaffold) or `policy.auto_install_default` is `false`.
 
 ## Common Rationalizations
 
@@ -381,6 +426,10 @@ This is the skills-based equivalent of the spec-kit's `update-agent-context.sh` 
 - **Using a relative path in `init-options.json`** — always resolve to an absolute path so the config is portable across working directories.
 - **Skipping `git init` in Mode 3** — a scaffolded team AI directives without git cannot be used by `/levelup-publish` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/levelup-publish`.
 - **Skipping the project-level AGENTS.md injection** — without the `<!-- TEAM_AI_DIRECTIVES START -->` managed section in the project's `AGENTS.md`, agents have no session-start instruction to invoke `team-boot`. The `.adlc/init-options.json` config alone is insufficient — it tells skills where the team AI directives is, but nothing tells the agent to check skills before responding.
+- **Interpolating user input into Python/shell source strings** — pass paths through the environment (`os.environ`) instead; string interpolation of `$ABSOLUTE_PATH` into a Python one-liner is a command-injection vector.
+- **Cloning a non-`https://` URL in Mode 1** — reject `file://`/`ssh://`/other schemes; cloned content is read by agents later, so only clone trusted repos.
+- **Skipping the skills-install offer** — default skills declared in `.skills.json` stay uninstalled; the spec-kit auto-install path no longer covers `team-setup` flows, so the offer is the onboarding step.
+- **Accepting shell metacharacters in paths or team names** — validate before interpolating into `mkdir`/`git commit`/heredocs (see Input Validation).
 
 ## Verification
 
@@ -395,6 +444,9 @@ This is the skills-based equivalent of the spec-kit's `update-agent-context.sh` 
 - [ ] Project-level `AGENTS.md` exists and contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the `team-boot` strict-compliance directive.
 - [ ] (Mode 3 only) `git rev-parse --is-inside-work-tree` succeeds inside `{TEAM_AI_DIRECTIVE}`.
 - [ ] Running `team-verify` (Phase 0 of team-repair) passes all 7 checks.
+- [ ] All user-supplied paths/URLs/team names passed Input Validation (no shell metacharacters; clone URL is `https://`).
+- [ ] Mode 2 wrote `team_ai_directive` via the environment (no `$ABSOLUTE_PATH` interpolation into Python source).
+- [ ] The skills-install offer was presented (or skipped due to empty manifest / `auto_install_default: false`); on accept, `/team-skills --all` was invoked.
 
 ## Configuration
 

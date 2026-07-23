@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **New skill: `mission`** — mission-driven SDLC orchestrator, detached from spec-kit. Converts the spec-kit `extensions/workflow` (mission / run / resume / persist) into a single Agent Skills-standard skill that composes a workflow from **any** SDD skill set and walks it step by step, each step a `type: prompt` invoking the designated skill. No `.specify/` paths, no `specify` CLI engine, no `integration`/`model` engine coupling — agent-interpreted only. Ships per-system example workflows (`workflows/*.yml`) the skill tweaks per mission prompt: `agentic-sdlc`, `agentic-change` (quick falls back to change), `addyosmani-agent-skills`, `mattpocock-skills`, `superpowers`, `openspec`, and a `custom` template. Sync (default, gated inline) / `--async` (forces ungated, checkpoint across sessions via `.adlc/workflow/.mission-state.json`) / `mission --resume` (explicit resume; fresh `mission` asks before clobbering an interrupted state). Keeps the source's supervision modes, do-while converge loop, circuit breaker, converge-independence hint, spec-correction routing (config-gated; `next-spec.md` for agentic presets), per-step model tiers (optional `models: {strong, fast}`), `iterations.md` + `mission-log.json` audit trail, and optional persist to `.adlc/workflow/saved/`.
+
+### Changed
+
+- **`team-discover`**: persists `.adlc/drafts/team-context.md` on every run (skill, model-triggered, or manual) instead of no-write inline-only for skill invocations. New lifecycle contract: discovery runs only during spec/plan phases; all other prompts reference the persisted file. `team-context.md` carries a metadata header (`feature`/`phase`/`generated`); same-feature re-runs are delta-aware, different-feature re-runs reset. Removed spec-kit hook machinery (`before_specify`/`before_plan`/`before_implement`, `SPECIFY_*` env vars, `specs/` feature dirs) — single canonical location `.adlc/drafts/team-context.md`.
+- **`team-boot`**: Step 4 renamed to "Reference or Run Team Context" — the model assesses each prompt: spec/plan/design requests invoke `team-discover` (persist), everything else references the existing `team-context.md`. Full bootstrap (constitution + PDR/ADR indexes) happens once per session; subsequent prompts skip Steps 1–3 but always run Step 4.
+- **`team-skills`**: new `--all` mode installs every `default` and `external` skill (skipping `blocked` and already-installed). Dropped the `team-` prefix convention — skills install under their original names with unchanged frontmatter. Fixed stale category table to match schema v2.0.0 (`default`/`external`/`blocked`).
+- **`team-setup`**: Post-Setup step 4 offers to install team skills from `.skills.json` via `/team-skills --all` (skip on empty manifest or `auto_install_default: false`). Mode 4 reports installed-vs-missing and offers the same. Mode 3 scaffold `.skills.json` now uses the real schema v2.0.0 shape (`version`/`source`/`description`/`default`/`external`/`blocked`/`policy`). Scrubbed spec-kit references (`specify init`, `update-agent-context.sh`, `agent-context` extension).
+
+### Security
+
+- **`team-setup` (Mode 2)**: fixed command-injection vulnerability — `team_ai_directive` path is now passed to Python via the environment (`os.environ`), not interpolated into Python source. Added an Input Validation section covering all modes: paths, team names, and clone URLs are validated before interpolation into shell commands.
+- **`team-setup` (Mode 1)**: clone URLs must use `https://`; `file://`/`ssh://`/other schemes are rejected unless explicitly confirmed.
+- **`team-setup` (all modes)**: user-supplied paths and team names are validated for shell metacharacters before use in `mkdir`/`git clone`/`git commit`/heredocs.
+
+### Fixed
+
+- Scrubbed spec-kit operational references from `team-skills`, `team-repair`, `team-helpers.sh`/`.ps1`, and `architect-implement` (`specify init` → `/team-setup`; `before_plan` hook mention removed). Explanatory spec-kit comparisons in `team-constitution`, `levelup-*`, and `workflow/mission` left intact.
+
 ## [0.9.1] - 2026-07-22
 
 ### Changed

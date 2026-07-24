@@ -1,6 +1,6 @@
 import re
 
-def evaluate(output: str, context: dict = None) -> dict:
+def get_assert(output: str, context: dict = None) -> dict:
     """Grader for EVAL-003: Goldset formatting integrity."""
     # Must contain type: Eval, id, and inline pass/fail cases
     has_type = re.search(r"type:\s*Eval", output, re.IGNORECASE)

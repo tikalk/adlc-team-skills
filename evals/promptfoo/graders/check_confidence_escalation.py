@@ -1,6 +1,6 @@
 import re
 
-def evaluate(output: str, context: dict = None) -> dict:
+def get_assert(output: str, context: dict = None) -> dict:
     """Grader for EVAL-002: Mission-brief confidence-based escalation."""
     # Must find "gated", "low confidence", and confirmation prompt (yes/no)
     has_gated = re.search(r"gated|SYNC", output, re.IGNORECASE)

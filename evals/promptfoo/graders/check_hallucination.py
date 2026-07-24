@@ -1,6 +1,6 @@
 import re
 
-def evaluate(output: str, context: dict = None) -> dict:
+def get_assert(output: str, context: dict = None) -> dict:
     """Binary pass/fail grader for hallucination detection (EDD Principle II)."""
     # Simple regex checking for common placeholders or obvious fabrications
     hallucination_indicators = [

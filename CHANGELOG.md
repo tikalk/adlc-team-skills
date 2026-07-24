@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-07-24
+
+### Fixed
+
+- **PromptFoo grader function contract**: Renamed the grader entrypoint from `evaluate(output, context)` to `get_assert(output, context)` across all 7 python graders in `evals/promptfoo/graders/`. PromptFoo's python assertion runner invokes `get_assert` by convention; the old name raised `AttributeError: module has no attribute 'get_assert'`.
+- **Eval prompt contract**: Rewrote the evaluation prompt in `evals/promptfoo/config.js` so the model role-plays as the ADLC agent harness and emits the *literal compliance output* (matching what the graders check), instead of producing free-form analysis prose. Added a per-test `instruction` variable defining the exact output contract for each scenario, resolving the 100% false-fail rate.
+
 ## [0.12.3] - 2026-07-24
 
 ### Fixed

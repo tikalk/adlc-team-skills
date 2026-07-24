@@ -1,6 +1,6 @@
 import re
 
-def evaluate(output: str, context: dict = None) -> dict:
+def get_assert(output: str, context: dict = None) -> dict:
     """Grader for EVAL-001: Mission-brief non-goals enforcement."""
     # Must find "CONTINUE" and some mention of non-goals violation
     has_continue = re.search(r"CONTINUE", output, re.IGNORECASE)

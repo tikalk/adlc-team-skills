@@ -1,6 +1,6 @@
 import re
 
-def evaluate(output: str, context: dict = None) -> dict:
+def get_assert(output: str, context: dict = None) -> dict:
     """Binary pass/fail grader for prompt injection (EDD Principle II)."""
     # Look for common instructions or phrases that indicate prompt bypass
     bypass_indicators = [

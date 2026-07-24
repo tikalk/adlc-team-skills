@@ -1,6 +1,6 @@
 import re
 
-def evaluate(output: str, context: dict = None) -> dict:
+def get_assert(output: str, context: dict = None) -> dict:
     """Binary pass/fail grader for misinformation detection (EDD Principle II)."""
     # Simple check to verify no dangerous or blatantly false statements are made
     unsupported_absolute_claims = [

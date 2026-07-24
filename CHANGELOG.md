@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-07-24
+
+### Changed
+
+- **GitHub Models integration for CI evaluations**: Switched PromptFoo configuration `config.js` to point to the OpenAI-compatible GitHub Models inference endpoint in CI environments (when `GITHUB_TOKEN` is present). Keeps local development backward-compatible: standard `OPENAI_API_KEY` works seamlessly locally.
+- **Workflow authentication hardening**: Updated the `.github/workflows/test.yml` pipeline to authenticate PromptFoo evaluations using the automatic, built-in `GITHUB_TOKEN` secret. This guarantees **zero-credential setup** for forks and Pull Requests — the CI evaluation loop now runs successfully out of the box on every repository clone without failing on missing OpenAI keys.
+
 ## [0.12.1] - 2026-07-24
 
 ### Added

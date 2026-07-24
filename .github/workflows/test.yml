@@ -34,4 +34,5 @@ jobs:
         run: |
           promptfoo eval --config evals/promptfoo/config.js --no-cache
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Automatically provided by GitHub Actions - no credential setup needed!
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

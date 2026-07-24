@@ -3,7 +3,17 @@ module.exports = {
   prompts: [
     'Evaluate this scenario and return the expected compliance output:\n\nScenario: {{scenario}}\nContext: {{input_context}}\n\nOutput:',
   ],
-  providers: ['openai:gpt-4o-mini'],
+  providers: [
+    {
+      id: 'openai:chat:gpt-4o-mini',
+      config: {
+        // Point to GitHub Models OpenAI-compatible endpoint in CI
+        apiBaseUrl: process.env.GITHUB_TOKEN ? 'https://models.inference.ai.azure.com' : undefined,
+        // Authenticate using GITHUB_TOKEN (CI) or fall back to OPENAI_API_KEY (local)
+        apiKey: process.env.GITHUB_TOKEN || process.env.OPENAI_API_KEY,
+      }
+    }
+  ],
   tests: [
     {
       vars: {

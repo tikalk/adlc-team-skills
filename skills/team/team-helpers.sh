@@ -16,22 +16,22 @@ set -euo pipefail
 resolve_paths() {
   PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
   BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
-  TEAM_AI_DIRECTIVE=""
+  TEAM_AI_DIRECTIVES=""
 
-  # 1. Check TEAM_AI_DIRECTIVE env var (highest priority)
-  if [[ -n "${TEAM_AI_DIRECTIVE:-}" ]]; then
-    TEAM_AI_DIRECTIVE="$TEAM_AI_DIRECTIVE"
+  # 1. Check TEAM_AI_DIRECTIVES env var (highest priority)
+  if [[ -n "${TEAM_AI_DIRECTIVES:-}" ]]; then
+    TEAM_AI_DIRECTIVES="$TEAM_AI_DIRECTIVES"
   fi
 
   # 2. Check .adlc/init-options.json
-  if [[ -z "$TEAM_AI_DIRECTIVE" ]]; then
+  if [[ -z "$TEAM_AI_DIRECTIVES" ]]; then
     INIT_OPTIONS="${PROJECT_ROOT}/.adlc/init-options.json"
     if [[ -f "$INIT_OPTIONS" ]]; then
-      TEAM_AI_DIRECTIVE=$(python3 -c "
+      TEAM_AI_DIRECTIVES=$(python3 -c "
 import json, sys
 try:
     with open('$INIT_OPTIONS') as f:
-        print(json.load(f).get('team_ai_directive', ''))
+        print(json.load(f).get('team_ai_directives', ''))
 except Exception:
     print('')
 " 2>/dev/null || true)
@@ -39,18 +39,18 @@ except Exception:
   fi
 
   # 3. Fallback to default path
-  if [[ -z "$TEAM_AI_DIRECTIVE" ]]; then
-    TEAM_AI_DIRECTIVE="${PROJECT_ROOT}/team-ai-directives"
+  if [[ -z "$TEAM_AI_DIRECTIVES" ]]; then
+    TEAM_AI_DIRECTIVES="${PROJECT_ROOT}/team-ai-directives"
   fi
 
   echo "PROJECT_ROOT=$PROJECT_ROOT"
-  echo "TEAM_AI_DIRECTIVE=$TEAM_AI_DIRECTIVE"
+  echo "TEAM_AI_DIRECTIVES=$TEAM_AI_DIRECTIVES"
   echo "BRANCH=$BRANCH"
 }
 
 output_json() {
-  printf '{"REPO_ROOT": "%s", "TEAM_AI_DIRECTIVE": "%s", "BRANCH": "%s"}\n' \
-    "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVE" "$BRANCH"
+  printf '{"REPO_ROOT": "%s", "TEAM_AI_DIRECTIVES": "%s", "BRANCH": "%s"}\n' \
+    "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$BRANCH"
 }
 
 ###############################################################################
@@ -129,7 +129,7 @@ README
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
-- `traces/` — Published session traces (from `/levelup-publish`)
+- `evals/` — Directive compliance goldensets (pass/fail cases)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order
@@ -282,7 +282,7 @@ inject_project_agents() {
   local project_root="${1:-.}"
   local team_directive="${2:-}"
 
-  # Resolve team_ai_directive if not provided
+  # Resolve team_ai_directives if not provided
   if [[ -z "$team_directive" ]]; then
     local init_options="${project_root}/.adlc/init-options.json"
     if [[ -f "$init_options" ]]; then
@@ -290,7 +290,7 @@ inject_project_agents() {
 import json, sys
 try:
     with open('$init_options') as f:
-        print(json.load(f).get('team_ai_directive', ''))
+        print(json.load(f).get('team_ai_directives', ''))
 except Exception:
     print('')
 " 2>/dev/null || true)
@@ -298,8 +298,8 @@ except Exception:
   fi
 
   # Fallback to env var
-  if [[ -z "$team_directive" ]] && [[ -n "${TEAM_AI_DIRECTIVE:-}" ]]; then
-    team_directive="$TEAM_AI_DIRECTIVE"
+  if [[ -z "$team_directive" ]] && [[ -n "${TEAM_AI_DIRECTIVES:-}" ]]; then
+    team_directive="$TEAM_AI_DIRECTIVES"
   fi
 
   # Fallback to default path

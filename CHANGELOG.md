@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Confidence-Based Escalation (C1)** in `mission-brief`: Subagents now estimate their confidence (HIGH/MEDIUM/LOW) in the correctness of their work and report unresolved details. If confidence is `LOW` and active supervision is `autonomous` or `hybrid`, the orchestrator overrides the supervision level to `gated` review (SYNC mode) — halting execution and prompting for human confirmation.
+- **Non-Goals Enforcement (C2)** in `mission-brief`: Added a `Non-Goals` section to the Mission Brief template. Inferred boundaries are defined upfront, passed to every subagent's prompt context, and explicitly verified by the converge step as an independent grader. Violations report CONTINUE with the non-goals violation details.
+- **Eval CDR type**: New `Eval` context type for CDRs, paired with any directive type (rule, persona, example, constitution). Eval CDRs contain self-contained binary pass/fail cases extracted from session evidence (levelup-specify) or codebase patterns (levelup-init). Each case includes scenario, input context, agent output, and why it passes/fails — no external trace file dependency.
+- **`levelup-specify`**: Now extracts paired eval CDRs alongside directive CDRs from the current session. Pass cases = moments the agent followed the pattern; fail cases = moments the agent violated it.
+- **`levelup-init`**: Now extracts paired eval CDRs from codebase patterns. Pass cases = code examples demonstrating the pattern; fail cases = inconsistent implementations from cross-sub-system analysis.
+- **`levelup-clarify`**: New evals regression gate (Phase 2a, default ON). Runs existing goldensets from `team-ai-directives/evals/` via LLM calls before accepting CDRs. If accepting a CDR would break existing eval cases → marks as `Blocked (Evals)`. Use `--no-evals-gate` to disable.
+- **`levelup-publish`**: New Phase 6 (Eval Goldenset Generation). For eval-type CDRs, writes `evals/{directive-id}/goldset.md` (human-readable) and `goldset.json` (machine-readable) to team-ai-directives. Goldensets are self-contained with inline evidence.
+- **`team-repair`**: New `--build-to-delete` mode (Phase 10). Reads all goldensets from `team-ai-directives/evals/`, temporarily removes paired directives, runs goldenset cases against the agent via LLM calls. If model passes 100% without the directive → creates deletion CDR (Harness Decay). Produces a report classifying directives as Delete candidates (100%), Review candidates (80-99%), or Keep (<80%). Implements Factor XII (Build to Delete).
+- **12-Factor alignment**: README now documents Factors VII (Verification-First Evals), VIII (Ratchet Effect), and XII (Build to Delete) in the alignment table.
+
+### Removed
+
+- **`levelup-trace` skill**: Removed entirely (directory, scripts, SKILL.md). The skill generated a session trace file (`.adlc/drafts/trace.md`) for levelup-specify to consume. Since levelup-specify now reviews the current session directly (the agent observes what it did), the trace file is unnecessary. Eval CDRs are built from session memory, not from trace files.
+- **Trace publication from `levelup-publish`**: Phase 6 (Session Trace Publication) removed. Traces are no longer copied to `team-ai-directives/traces/`. The goldenset is self-contained — it carries extracted evidence inline. `--skip-trace` flag removed.
+- **`traces/` directory from team-ai-directives output layout**: No longer populated. Replaced by `evals/` directory for directive compliance goldensets.
+
+### Changed
+
+- **`levelup-specify`**: No longer depends on a trace file. Reviews the current session directly. Description and workflow updated. Setup scripts no longer output `TRACE_FILE`.
+- **`levelup-publish`**: Setup scripts no longer output `TRACE_FILE` or `TRACE_EXISTS`. Outline updated: Phase 6 is now Eval Goldenset Generation (was Session Trace Publication). Summary table includes Evals instead of Traces.
+- **`team-helpers.sh` / `team-helpers.ps1`**: AGENTS.md template updated — `traces/` directory listing replaced with `evals/` (directive compliance goldensets).
+- **README.md**: LevelUp workflow diagrams updated (removed levelup-trace step). Skill listings updated. Output file layout updated. 12-Factor alignment table updated.
+
+### Breaking Changes
+
+- **`levelup-trace` removed**: Any automation or scripts referencing `/levelup-trace` will fail. The CDR lifecycle is now: `levelup-specify → levelup-clarify → levelup-publish → team-repair`.
+- **`--skip-trace` flag removed from `levelup-publish`**: Scripts passing this flag will get an unknown-flag warning.
+- **`traces/` directory no longer populated in team-ai-directives**: Existing `traces/` directories can be deleted; goldensets are self-contained.
+
 ## [0.11.1] - 2026-07-23
 
 ### Fixed

@@ -19,15 +19,15 @@ function Resolve-ProjectRoot {
     return (Get-Location).Path
 }
 
-function Resolve-TeamAiDirective {
+function Resolve-TeamAiDirectives {
     param([string]$ProjectRoot)
-    $td = $env:TEAM_AI_DIRECTIVE
+    $td = $env:TEAM_AI_DIRECTIVES
     if ($td) { return $td }
     $initOpts = Join-Path $ProjectRoot ".adlc/init-options.json"
     if (Test-Path $initOpts) {
         try {
             $config = Get-Content $initOpts -Raw | ConvertFrom-Json
-            if ($config.team_ai_directive) { return $config.team_ai_directive }
+            if ($config.team_ai_directives) { return $config.team_ai_directives }
         } catch {}
     }
     return (Join-Path $ProjectRoot "team-ai-directives")
@@ -38,8 +38,8 @@ function Resolve-TeamAiDirective {
 ###############################################################################
 
 $ProjectRoot = Resolve-ProjectRoot
-$TeamAiDirective = Resolve-TeamAiDirective $ProjectRoot
-$ConstitutionFile = Join-Path $TeamAiDirective "context_modules/constitution.md"
+$TeamAiDirectives = Resolve-TeamAiDirectives $ProjectRoot
+$ConstitutionFile = Join-Path $TeamAiDirectives "context_modules/constitution.md"
 
 # Detect constitution state: missing | placeholder | populated
 $ConstitutionState = "missing"
@@ -55,18 +55,18 @@ if (Test-Path $ConstitutionFile) {
 # Check if team-ai-directives is a git repo with a clean working tree
 $TdIsGit = "false"
 $TdClean = "false"
-if (Test-Path $TeamAiDirective) {
-    $gitCheck = git -C $TeamAiDirective rev-parse --is-inside-work-tree 2>$null
+if (Test-Path $TeamAiDirectives) {
+    $gitCheck = git -C $TeamAiDirectives rev-parse --is-inside-work-tree 2>$null
     if ($LASTEXITCODE -eq 0) {
         $TdIsGit = "true"
-        $status = git -C $TeamAiDirective status --porcelain 2>$null
+        $status = git -C $TeamAiDirectives status --porcelain 2>$null
         if (-not $status) { $TdClean = "true" }
     }
 }
 
 $result = @{
     REPO_ROOT = $ProjectRoot
-    TEAM_AI_DIRECTIVE = $TeamAiDirective
+    TEAM_AI_DIRECTIVES = $TeamAiDirectives
     CONSTITUTION_FILE = $ConstitutionFile
     CONSTITUTION_STATE = $ConstitutionState
     TD_IS_GIT = ($TdIsGit -eq "true")

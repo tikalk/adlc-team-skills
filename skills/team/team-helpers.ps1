@@ -28,41 +28,41 @@ $Branch = if ($env:BRANCH) { $env:BRANCH } else {
   if ($b) { $b } else { "unknown" }
 }
 
-$TeamAiDirective = ""
+$TeamAiDirectives = ""
 
-# 1. Check TEAM_AI_DIRECTIVE env var (highest priority)
-if ($env:TEAM_AI_DIRECTIVE) {
-  $TeamAiDirective = $env:TEAM_AI_DIRECTIVE
+# 1. Check TEAM_AI_DIRECTIVES env var (highest priority)
+if ($env:TEAM_AI_DIRECTIVES) {
+  $TeamAiDirectives = $env:TEAM_AI_DIRECTIVES
 }
 
 # 2. Check .adlc/init-options.json
-if (-not $TeamAiDirective) {
+if (-not $TeamAiDirectives) {
   $InitOptions = Join-Path $ProjectRoot ".adlc" "init-options.json"
   if (Test-Path $InitOptions) {
     try {
       $Config = Get-Content $InitOptions -Raw | ConvertFrom-Json
-      if ($Config.team_ai_directive) {
-        $TeamAiDirective = $Config.team_ai_directive
+      if ($Config.team_ai_directives) {
+        $TeamAiDirectives = $Config.team_ai_directives
       }
     } catch {}
   }
 }
 
 # 3. Fallback to default path
-if (-not $TeamAiDirective) {
-  $TeamAiDirective = Join-Path $ProjectRoot "team-ai-directives"
+if (-not $TeamAiDirectives) {
+  $TeamAiDirectives = Join-Path $ProjectRoot "team-ai-directives"
 }
 
 function Write-OutputKeyValue {
   Write-Output "PROJECT_ROOT=$ProjectRoot"
-  Write-Output "TEAM_AI_DIRECTIVE=$TeamAiDirective"
+  Write-Output "TEAM_AI_DIRECTIVES=$TeamAiDirectives"
   Write-Output "BRANCH=$Branch"
 }
 
 function Write-OutputJson {
   $output = @{
     REPO_ROOT = $ProjectRoot
-    TEAM_AI_DIRECTIVE = $TeamAiDirective
+    TEAM_AI_DIRECTIVES = $TeamAiDirectives
     BRANCH = $Branch
   }
   return $output | ConvertTo-Json
@@ -138,7 +138,7 @@ See [ADLC Team Skills](https://github.com/tikalk/adlc-team-skills) for full docu
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
-- `traces/` — Published session traces (from `/levelup-publish`)
+- `evals/` — Directive compliance goldensets (pass/fail cases)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order
@@ -256,7 +256,7 @@ function New-AgentsOnly {
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
-- `traces/` — Published session traces (from `/levelup-publish`)
+- `evals/` — Directive compliance goldensets (pass/fail cases)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order
@@ -284,20 +284,20 @@ function Invoke-ProjectAgentsInjection {
 
   $TeamDirective = ""
 
-  # Resolve team_ai_directive from .adlc/init-options.json
+  # Resolve team_ai_directives from .adlc/init-options.json
   $InitOptions = Join-Path $ProjectRoot ".adlc" "init-options.json"
   if (Test-Path $InitOptions) {
     try {
       $Config = Get-Content $InitOptions -Raw | ConvertFrom-Json
-      if ($Config.team_ai_directive) {
-        $TeamDirective = $Config.team_ai_directive
+      if ($Config.team_ai_directives) {
+        $TeamDirective = $Config.team_ai_directives
       }
     } catch {}
   }
 
   # Fallback to env var
-  if (-not $TeamDirective -and $env:TEAM_AI_DIRECTIVE) {
-    $TeamDirective = $env:TEAM_AI_DIRECTIVE
+  if (-not $TeamDirective -and $env:TEAM_AI_DIRECTIVES) {
+    $TeamDirective = $env:TEAM_AI_DIRECTIVES
   }
 
   # Fallback to default path

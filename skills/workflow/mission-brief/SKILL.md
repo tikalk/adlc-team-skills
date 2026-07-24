@@ -48,6 +48,7 @@ Before generating steps, the description is structured into:
 
 **Goal**: <what to build — one sentence>
 **Constraints**: <tech stack, limitations, dependencies, requirements>
+**Non-Goals**: <what is explicitly out of scope — e.g., "no database storage, local memory cache only">
 **Success Criteria**:
 - <measurable outcome 1>
 - <measurable outcome 2>
@@ -106,7 +107,7 @@ workflow:
   max_iterations: 5
   max_spec_corrections: 2
   circuit_breaker: 3
-  spec_correction_signal: null
+  quality_threshold: null    # optional 0-100, blocks DONE below threshold
   # models: { strong: "...", fast: "..." }   # optional
 ```
 
@@ -145,7 +146,10 @@ Structure `spec_description` into the Mission Brief template:
    description and the project context (check `package.json`, `go.mod`,
    language files, existing specs). If unclear, leave a placeholder and mark
    it for the user to fill.
-3. **Success Criteria**: derive 2-5 measurable outcomes. If the description is
+3. **Non-Goals**: infer 1–2 reasonable boundaries or features that should be
+   explicitly excluded to keep implementation focused and simple. If none can
+   be inferred, mark as "None".
+4. **Success Criteria**: derive 2-5 measurable outcomes. If the description is
    vague, generate reasonable defaults based on the feature type and mark them
    as "suggested — edit if needed".
 
@@ -278,6 +282,11 @@ For each step with `status: pending`:
    > implementation is correct — verify against the spec independently. Try
    > to make each requirement fail at the primary source (run the test, check
    > the file, grep for the reference). You are the checker, not the maker.
+   >
+   > **CRITICAL**: Verify that NO features or implementations listed under
+   > **Non-Goals** have been introduced. If any out-of-scope work was built,
+   > report CONTINUE as your outcome signal, and list the non-goals violation
+   > in your summary.
 3. Delegate to a subagent with this prompt **verbatim**:
 
    ```markdown
@@ -291,6 +300,7 @@ For each step with `status: pending`:
 
    **Goal**: <goal>
    **Constraints**: <constraints>
+   **Non-Goals**: <non-goals>
    **Success Criteria**: <success criteria>
 
    ## How to execute
@@ -308,6 +318,12 @@ For each step with `status: pending`:
    3. **Direct execution**: If neither exists, execute the task directly using
       your available tools.
 
+   **Confidence Self-Estimation**:
+   Evaluate your confidence (HIGH/MEDIUM/LOW) in this implementation or task. If
+   you are missing critical context, have low confidence, or find the requirements
+   ambiguous, report `Confidence score: LOW` (or `MEDIUM`) and list the specific
+   unresolved details in your return summary.
+
    If you found a skill or command, note its name in your summary.
 
    Do NOT follow handoffs to other skills or commands — return your results to
@@ -317,9 +333,18 @@ For each step with `status: pending`:
    1. A 1-2 sentence summary (mention which skill/command you used, if any).
    2. Files changed (if any).
    3. Test results (if any).
-   4. Outcome signal: DONE or CONTINUE. Report DONE if the work is complete /
-      verified; report CONTINUE if more work is needed (e.g., tasks remain,
-      review found issues).
+   4. Outcome signal: DONE | CONTINUE | SPEC_CORRECTION_NEEDED.
+      - DONE: work is complete and verified.
+      - CONTINUE: more work is needed (tasks remain, review found issues).
+      - SPEC_CORRECTION_NEEDED: verification found spec-level issues that
+        require re-running specify. Include a `spec_corrections` field with
+        the specific issues.
+   5. (optional) Quality score: "X/Y (Z%)" — if a verification skill ran
+      quality gates, report the score.
+   6. (optional) Gate summary: "N passed, M failed" — if quality gates were
+      checked, list which passed and which failed.
+   7. (optional) Confidence score: HIGH | MEDIUM | LOW. Self-estimated confidence in the correctness of your work.
+   8. (optional) Unresolved details: <brief description of what is uncertain or missing context>.
    ```
 
    `<DISCOVERED_PATHS>` is replaced with the discovered directories from
@@ -332,10 +357,23 @@ For each step with `status: pending`:
      consult `references/agent-integrations.md` for known locations."
 
 4. Wait for the subagent.
-5. **Update `.mission-state.json` now** — before the next step. Store a 1-2
-   sentence summary as `step_results.<id>.output`; append `<id>` to
-   `completed_steps`; mark `state.steps[N].status` = `completed`; write the
-   file. Discard the full subagent response.
+5. **Update `.mission-state.json` now** — before the next step. Store the
+   subagent's returned values in state under `step_results.<id>`:
+   - Store 1-2 sentence summary as `step_results.<id>.output`
+   - Store confidence score as `step_results.<id>.confidence` (if provided, otherwise default to `HIGH`)
+   - Store unresolved details as `step_results.<id>.unresolved`
+   - Append `<id>` to `completed_steps`
+   - Mark `state.steps[N].status` = `completed`
+   - Write the state file. Discard the full subagent response.
+
+   **Confidence Escalation Gate**: If the parsed confidence score is `LOW` and
+   the active supervision mode is `autonomous` or `hybrid`:
+   - **Auto-escalate supervision to `gated`** for this step's verification.
+   - Halt execution and present the subagent's findings and unresolved details
+     to the user:
+     > *"⚠️ Subagent completed step <id> but reported **LOW** confidence due to: [unresolved details]. Supervision auto-escalated to gated. Review changes and confirm before proceeding? (yes/no)"*
+   - Wait for explicit user confirmation before continuing the step list. If
+     confirmed, proceed; if denied, pause the mission.
 6. If the step was `implement`, append to `<FEATURE_DIR>/iterations.md`:
    ```markdown
    ## Iteration <N> - <date>
@@ -343,9 +381,9 @@ For each step with `status: pending`:
    - Summary: <1-2 sentences>
    - Tests: <pass/fail>
    ```
-7. If `spec_correction_signal` is set (config), check for that file in the
-   feature directory. If it exists → **stop and return**
-   `spec_correction_needed` to Phase 6. Do not continue.
+7. If the converge subagent returned `SPEC_CORRECTION_NEEDED` as its outcome
+   signal → **stop and return** `spec_correction_needed` to Phase 6. Do not
+   continue.
 
 #### Gate steps (sync, gated/hybrid only)
 
@@ -385,6 +423,18 @@ the counter reaches `circuit_breaker` (default 3) → stop the loop and return
 review needed — the loop is not converging." This counter persists across
 resume.
 
+**Score regression tracking.** Track `consecutive_score_regressions` in state
+(initialized to 0). After each converge step that returns a quality score:
+- If current score < previous score → increment `consecutive_score_regressions`
+- If current score >= previous score → reset to 0
+- If `consecutive_score_regressions` reaches `circuit_breaker` (default 3) →
+  stop: "Circuit breaker: N consecutive score regressions. Quality is trending
+  downward — human review needed." This counter persists across resume.
+
+**Quality threshold enforcement.** If `quality_threshold` is set (non-null) and
+the converge subagent returns `DONE` with a quality score below the threshold →
+treat as `CONTINUE` instead (the work is not done to the required quality bar).
+
 #### Context budget awareness
 
 After every step, summarize and discard the full subagent response. After 5+
@@ -396,14 +446,13 @@ repetitive, suggest a fresh chat.
 
 When all steps complete (or a signal forces a return), act on the signal:
 
-**`spec_correction_needed`** (only if `spec_correction_signal` is set):
+**`spec_correction_needed`** (returned by converge subagent as `SPEC_CORRECTION_NEEDED`):
 
 1. Read state. If `spec_corrections >= max_spec_corrections` → **STOP**:
    "Spec repeatedly fails evaluation (N/M). Human review of the spec
-   required." Keep the signal file and state for inspection.
-2. Otherwise: consume the signal file, increment `spec_corrections`, reset
-   all step statuses to `pending` (fresh pipeline run), re-execute (Phase 5),
-   repeat Phase 6.
+   required." Keep state for inspection.
+2. Otherwise: increment `spec_corrections`, reset all step statuses to
+   `pending` (fresh pipeline run), re-execute (Phase 5), repeat Phase 6.
 
 **`converged` or `tasks_appended`** (loop finished):
 
@@ -434,11 +483,23 @@ When all steps complete (or a signal forces a return), act on the signal:
 - **Supervision modes**: gated (default) gates inline; autonomous runs freely
   but requires checkable done-criteria (refuse "TBD"); hybrid gates only at
   spec review + final sign-off.
+- **Confidence Escalation**: If the subagent reports `Confidence score: LOW`
+  during execution, the system overrides autonomous/hybrid modes and forces
+  an interactive human gate.
+- **Non-Goals Enforcement**: The Mission Brief includes out-of-scope boundaries.
+  The converge step acts as an independent grader that explicitly checks for and
+  rejects any non-goals violations.
 - **Async forces ungated**: `--async` + gated/hybrid config → warn + autonomous.
 - **Inner loop cap**: `max_iterations` (default 5).
 - **Circuit breaker**: stops after N consecutive non-converging iterations
   (default 3) — prevents infinite spinning; persists across resume.
-- **Outer loop cap**: `max_spec_corrections` (default 2).
+- **Outer loop cap**: `max_spec_corrections` (default 2), triggered by
+  `SPEC_CORRECTION_NEEDED` signal from converge subagent.
+- **Score regression detection**: if quality scores trend downward for N
+  consecutive iterations (circuit_breaker), stops the loop even if
+  subagent reports CONTINUE.
+- **Quality threshold**: if configured, blocks DONE below threshold —
+  treats as CONTINUE instead.
 - **Converge independence hint**: converge subagent verifies independently.
 - **Audit trail**: `iterations.md` + `mission-log.json` — not deleted.
 - **State persistence**: `.mission-state.json` survives compaction/restarts.
@@ -470,6 +531,11 @@ When all steps complete (or a signal forces a return), act on the signal:
   `mission-log.json`.
 - Hardcoding a specific agent's commands directory instead of using the
   discovered paths from `state.discovered`.
+- Ignoring a `SPEC_CORRECTION_NEEDED` signal from the converge subagent
+  and proceeding as if DONE.
+- Ignoring a subagent's `LOW` confidence report and proceeding without human
+  escalation.
+- Allowing non-goals violations to pass through the converge step without reporting CONTINUE.
 
 ## Verification
 
@@ -485,11 +551,19 @@ When all steps complete (or a signal forces a return), act on the signal:
 - A `--resume` with `mission-log.json` present reports "already completed".
 - The delegation prompt includes discovered paths (not a hardcoded list).
 - Gate steps appear only in sync + gated/hybrid runs, never in `--async`.
+- `SPEC_CORRECTION_NEEDED` signals from converge are routed to Phase 6
+  (not treated as DONE or CONTINUE).
+- If `quality_threshold` is set, converge scores below threshold are
+  treated as CONTINUE.
+- `Confidence score: LOW` reports from subagents trigger an automatic
+  supervision override to `gated` review.
+- The `Non-Goals` section is successfully populated in the brief and passed
+  to every subagent's prompt context.
 
 ## Configuration
 
 - `.adlc/workflow/workflow-config.yml` — execution, supervision, budgets,
-  spec-correction signal, optional models map. See `config-template.yml`.
+  quality threshold, optional models map. See `config-template.yml`.
 - `references/agent-integrations.md` — full agent→directory mapping table.
   Update when new agents are added or conventions change. The executor reads
   it at generation time for command/skills discovery.

@@ -1,0 +1,225 @@
+# Evals Configuration (Standalone EDD)
+# Copy to .adlc/evals/evals-config.yml to customize
+
+# Evaluation System (EDD Principle I: Spec-Driven Contracts)
+system: "promptfoo"  # promptfoo | deepeval | custom | llm-judge
+
+# File Locations
+paths:
+  # Draft eval records (markdown + YAML frontmatter)
+  drafts: ".adlc/drafts/evals/"
+
+  # Published evals (markdown + YAML frontmatter)
+  goldset: "evals/{system}/goldset.md"
+
+  # Auto-generated for PromptFoo consumption
+  goldset_json: "evals/{system}/goldset.json"
+
+  # Generated evaluation config
+  eval_config: "evals/{system}/config.js"  # .js for promptfoo, .py for deepeval
+
+  # System-specific config
+  system_config: "evals/{system}/config.yml"
+
+  # Graders directory
+  graders: "evals/{system}/graders/"
+
+  # Git-ignored; outputs + traces
+  results: "evals/results/"
+
+# EDD Principle II: Binary Pass/Fail (No Likert scales)
+evaluation:
+  binary_pass_fail: true
+  likert_scales_disabled: true
+
+# EDD Principle III: Error Analysis & Pattern Discovery
+error_analysis:
+  # Open coding → axial coding → theoretical saturation
+  theoretical_saturation_required: true
+  min_traces_analyzed: 20
+  max_traces_per_session: 100
+
+  # Bottom-up failure taxonomy
+  taxonomy_approach: "bottom_up"  # bottom_up | top_down | hybrid
+
+# EDD Principle IV: Evaluation Pyramid (Offline vs. Online)
+evaluation_pyramid:
+  tier1:
+    # Fast deterministic checks for CI/CD
+    enabled: true
+    security_baseline: true  # Always applied: PII leakage, injection, hallucination, misinformation
+    timeout_seconds: 30
+
+  tier2:
+    # Goldset LLM judges for CI/CD
+    enabled: true
+    goldset_judges: true
+    timeout_seconds: 300
+
+  production:
+    # 10-20% sampling in production
+    sampling_rate: 0.15
+    annotation_routing: true
+
+# EDD Principle V: Trajectory Observability
+trajectory:
+  # Full multi-turn traces, not just outputs
+  full_traces: true
+  include_tool_calls: true
+  include_retrieval_steps: true
+
+# EDD Principle VI: RAG Decomposition
+rag:
+  # Separate retrieval from generation
+  decompose_enabled: true
+
+  retrieval_metrics:
+    # IR metrics + LLM judges
+    ir_metrics: true      # precision, recall, nDCG
+    llm_judge: true
+
+  generation_metrics:
+    llm_judge: true
+
+# EDD Principle VII: Annotation Queues
+annotation:
+  # Route high-risk traces to humans for binary review
+  enabled: true
+  high_risk_routing: true
+  binary_human_review: true
+
+  # Risk threshold for human routing
+  risk_threshold: 0.8
+
+  # Integration settings
+  system: "promptfoo"  # promptfoo | custom
+  queue_size_limit: 1000
+
+# EDD Principle VIII: Close the Production Loop
+production_loop:
+  # Gate in evals.implement
+  failure_routing:
+    specification_failure:
+      action: "fix_directive"
+      target: "team-ai-directives/context_modules/rules/"
+
+    generalization_failure:
+      action: "build_evaluator"
+      evaluator_types: ["code-based", "llm-judge"]
+
+# EDD Principle IX: Test Data is Code
+test_data:
+  # Version datasets
+  version_control: true
+
+  # Include adversarial inputs
+  adversarial_required: true
+  adversarial_ratio: 0.1
+
+  # Hold-out test set
+  holdout_enabled: true
+  holdout_ratio: 0.2
+
+  # Dataset versioning
+  dataset_versioning: "git"  # git | semantic | timestamp
+
+# EDD Principle X: Cross-Functional Observability
+cross_functional:
+  # PMs, domain experts, and AI engineers collaborate
+  enabled: true
+
+  # Target for levelup PRs
+  team_directives_target: "team-ai-directives/AGENTS.md"
+
+  # Stakeholder groups
+  stakeholders:
+    - "product_managers"
+    - "domain_experts"
+    - "ai_engineers"
+    - "qa_engineers"
+
+# PromptFoo Integration Settings
+promptfoo:
+  # PromptFoo configuration generation
+  config_generation: true
+
+  # Grader template settings
+  grader_template: "python"  # python | javascript | custom
+
+  # Security baseline graders (always applied)
+  security_baseline:
+    pii_leakage: true
+    prompt_injection: true
+    hallucination_detection: true
+    misinformation_detection: true
+
+  # Quality thresholds
+  quality:
+    min_pass_rate: 0.8
+    max_failure_rate: 0.2
+
+    # TPR/TNR thresholds
+    min_true_positive_rate: 0.9
+    max_false_positive_rate: 0.1
+
+# DeepEval Integration Settings
+deepeval:
+  # DeepEval configuration generation
+  config_generation: true
+
+  # Grader template settings
+  grader_template: "python"  # python (deepeval uses python-based metrics)
+
+  # Security baseline metrics (always applied)
+  security_baseline:
+    pii_leakage: true
+    prompt_injection: true
+    hallucination_detection: true
+    misinformation_detection: true
+
+  # DeepEval specific settings
+  metrics:
+    # Built-in DeepEval metrics
+    answer_relevancy: true
+    faithfulness: true
+    contextual_precision: true
+    contextual_recall: true
+    bias: true
+    toxicity: true
+
+  # Custom metrics configuration
+  custom_metrics:
+    enabled: true
+    base_class: "BaseMetric"  # DeepEval's base metric class
+
+  # Quality thresholds
+  quality:
+    min_pass_rate: 0.8
+    max_failure_rate: 0.2
+
+    # TPR/TNR thresholds
+    min_true_positive_rate: 0.9
+    max_false_positive_rate: 0.1
+
+  # Test case format
+  test_case_format: "deepeval"  # Uses DeepEval's TestCase format
+
+# Validation Settings (evals.validate)
+validation:
+  # Goldset quality checks
+  goldset_quality:
+    min_examples_per_criterion: 5
+    max_examples_per_criterion: 50
+
+    # Coverage requirements
+    adversarial_coverage_required: true
+    holdout_coverage_required: true
+
+  # Statistical validation
+  statistical:
+    confidence_level: 0.95
+    effect_size_threshold: 0.1
+
+    # Sample size calculations
+    power_analysis: true
+    min_power: 0.8

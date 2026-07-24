@@ -51,20 +51,29 @@ If that read fails (file not found), walk up parent directories by reading
 `../.adlc/init-options.json`, then `../../.adlc/init-options.json`,
 and so on — up to 4 levels. Stop at the first successful read.
 
-From the JSON, extract the `team_ai_directive` field.
+From the JSON, extract the `team_ai_directives` field.
 
 - If present and the path exists: use it as the team AI directives root.
-- If not found or path doesn't exist: output empty results and exit.
+- If not found or path doesn't exist: output the following guidance message and exit:
+  ```text
+  Team AI directives not configured.
+  Run team-setup to:
+    1. Clone, point to, or scaffold a team AI directives repository
+    2. Write .adlc/init-options.json
+    3. Inject the AGENTS.md team-boot directive
+    4. Install domain skills from .skills.json
+    5. Install MCP servers from .mcp.json
+  ```
 
-In subsequent steps, `{TEAM_AI_DIRECTIVE}` refers to this value, resolved
+In subsequent steps, `{TEAM_AI_DIRECTIVES}` refers to this value, resolved
 as a path relative to the current working directory. Read files at this
 path directly — do NOT use glob, find, or any file-search tool to locate
 them.
 
 ### Step 2: Load Team Constitution
 
-Using the `team_ai_directive` value from Step 1, read
-`{TEAM_AI_DIRECTIVE}/context_modules/constitution.md` directly. Construct
+Using the `team_ai_directives` value from Step 1, read
+`{TEAM_AI_DIRECTIVES}/context_modules/constitution.md` directly. Construct
 the path from the value resolved in Step 1 and read the file — do NOT use
 glob, find, or any file-search tool to locate it.
 
@@ -188,9 +197,9 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 The bootstrap is complete when ALL of the following are true:
 
 1. `.adlc/init-options.json` was read directly (or walked up to, up to 4
-   levels) and the `team_ai_directive` field was extracted — or empty
+   levels) and the `team_ai_directives` field was extracted — or empty
    results were returned and the skill exited.
-2. The constitution at `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
+2. The constitution at `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
    was read in full.
 3. The PDR index was read if present (memory or legacy `PRD.md` heading
    skim), and the ADR index was read if present (memory only). Full PDR/ADR
@@ -208,8 +217,8 @@ The bootstrap is complete when ALL of the following are true:
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
-- `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
+- `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 
 ## 12-Factor Alignment

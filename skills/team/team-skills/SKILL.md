@@ -38,15 +38,15 @@ If that read fails (file not found), walk up parent directories by reading
 `../.adlc/init-options.json`, then `../../.adlc/init-options.json`,
 and so on — up to 4 levels. Stop at the first successful read.
 
-From the JSON, extract the `team_ai_directive` field:
+From the JSON, extract the `team_ai_directives` field:
 
 ```json
 {
-  "team_ai_directive": "/path/to/team-ai-directives"
+  "team_ai_directives": "/path/to/team-ai-directives"
 }
 ```
 
-If `team_ai_directive` is not set, STOP:
+If `team_ai_directives` is not set, STOP:
 
 ```
 Team AI directives not configured.
@@ -61,7 +61,7 @@ Helper scripts (relative to skill directory):
 ### Step 1: Read Skills Manifest
 
 Read `{REPO_ROOT}/.skills.json` (where `{REPO_ROOT}` denotes the project
-root — the directory where `.adlc/` lives) and `{TEAM_AI_DIRECTIVE}/.skills.json`
+root — the directory where `.adlc/` lives) and `{TEAM_AI_DIRECTIVES}/.skills.json`
 (team directives manifest). Merge both, with project-root entries taking
 precedence. Parse the manifest sections (schema v2.0.0):
 
@@ -82,7 +82,7 @@ Present skills grouped by section. For each skill show:
 Format:
 
 ```
-Team Skills from {TEAM_AI_DIRECTIVE}
+Team Skills from {TEAM_AI_DIRECTIVES}
 
 Default (local, installed by --all):
   [installed] dbt-template - DBT project templates and best practices
@@ -114,7 +114,7 @@ Install under the **original name** (no prefix), frontmatter `name` unchanged:
 
 For **local skills** (`default` list — names map to `skills/{name}/`):
 
-1. Locate `{TEAM_AI_DIRECTIVE}/skills/{name}/SKILL.md`
+1. Locate `{TEAM_AI_DIRECTIVES}/skills/{name}/SKILL.md`
 2. Copy `SKILL.md` to `{skills_dir}/{name}/SKILL.md`
 
 For **external skills** (`external` map — entries have a `url`):
@@ -158,13 +158,13 @@ Source: default (local:./skills/github-actions)
 - Renaming a skill or adding a `team-` prefix on install — install under the original name so it matches the manifest.
 - Installing a skill listed under the `blocked` section.
 - Writing skills to any directory other than the agent's configured skills folder.
-- Proceeding past an unset `team_ai_directive` field instead of stopping with the config message.
+- Proceeding past an unset `team_ai_directives` field instead of stopping with the config message.
 - Fetching an external skill over a non-HTTPS URL.
 
 ## Verification
 
-- `.adlc/init-options.json` was read directly (no search tool) and `team_ai_directive` resolved to a path.
-- Both `{REPO_ROOT}/.skills.json` and `{TEAM_AI_DIRECTIVE}/.skills.json` were merged; project-root entries won any conflicts.
+- `.adlc/init-options.json` was read directly (no search tool) and `team_ai_directives` resolved to a path.
+- Both `{REPO_ROOT}/.skills.json` and `{TEAM_AI_DIRECTIVES}/.skills.json` were merged; project-root entries won any conflicts.
 - Each installed skill lives at `{skills_dir}/{name}/SKILL.md` with its original `name` in frontmatter (no prefix).
 - No skill from the `blocked` section was installed.
 - `--all` installed every `default` and `external` skill (skipping `blocked` and already-installed).
@@ -172,8 +172,8 @@ Source: default (local:./skills/github-actions)
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
-- `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
+- `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 - `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for path resolution.
 

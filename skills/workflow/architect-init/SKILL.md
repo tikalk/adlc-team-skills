@@ -115,7 +115,7 @@ Even in brownfield discovery, the **Functional structure is foundational**:
 
 1. **Sub-System Detection** (Phase 0): Identify sub-systems from code structure (auto-detect)
 2. **Codebase Scan**: Analyze project structure and detect technologies (per sub-system if decomposed)
-3. **Documentation Deduplication**: Scan existing docs (README, AGENTS.md, {TEAM_AI_DIRECTIVE}/AGENTS.md if configured, etc.) to avoid repeating
+3. **Documentation Deduplication**: Scan existing docs (README, AGENTS.md, {TEAM_AI_DIRECTIVES}/AGENTS.md if configured, etc.) to avoid repeating
 4. **Pattern Detection**: Identify architectural patterns in use
 5. **ADR Generation**: Create ADRs for discovered decisions (marked "Discovered"), organized by sub-system
 6. **Gap Analysis**: Identify areas where decisions are unclear
@@ -349,7 +349,7 @@ After confirmation, output structured sub-system data:
 **Scan for**:
 
 - `AGENTS.md` - Project context, overview
-- `{TEAM_AI_DIRECTIVE}/AGENTS.md` - Team-wide agent usage instructions (if configured)
+- `{TEAM_AI_DIRECTIVES}/AGENTS.md` - Team-wide agent usage instructions (if configured)
 - `README.md` - Tech stack, project description
 - `CONTRIBUTING.md` - Development guidelines
 - `AD.md` or `docs/architecture.md` - Existing architecture

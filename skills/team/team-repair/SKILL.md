@@ -38,11 +38,11 @@ You are acting as an **Index Repair Specialist** ensuring team-ai-directives ind
 
 | Target | Location | Purpose |
 |--------|----------|---------|
-| **AGENTS.md** | `{TEAM_AI_DIRECTIVE}/AGENTS.md` | Main instruction file for AI agents |
-| **CDR.md** | `{TEAM_AI_DIRECTIVE}/CDR.md` | Index of approved context contributions |
-| **.skills.json** | `{TEAM_AI_DIRECTIVE}/.skills.json` | Skills manifest registry |
-| **OKF index.md** | `{TEAM_AI_DIRECTIVE}/context_modules/{type}/index.md` | Progressive disclosure per concept directory |
-| **OKF log.md** | `{TEAM_AI_DIRECTIVE}/context_modules/{type}/log.md` | Chronological change log per concept directory |
+| **AGENTS.md** | `{TEAM_AI_DIRECTIVES}/AGENTS.md` | Main instruction file for AI agents |
+| **CDR.md** | `{TEAM_AI_DIRECTIVES}/CDR.md` | Index of approved context contributions |
+| **.skills.json** | `{TEAM_AI_DIRECTIVES}/.skills.json` | Skills manifest registry |
+| **OKF index.md** | `{TEAM_AI_DIRECTIVES}/context_modules/{type}/index.md` | Progressive disclosure per concept directory |
+| **OKF log.md** | `{TEAM_AI_DIRECTIVES}/context_modules/{type}/log.md` | Chronological change log per concept directory |
 
 ## When to Use
 
@@ -72,6 +72,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 | `--validate` | Run conflict scan + freshness verification only (Phases 8-9) |
 | `--conflicts` | Scan for rule conflicts only |
 | `--freshness` | Verify directive freshness only |
+| `--build-to-delete` | Run evals without directives to identify candidates for removal (Factor XII) |
 | `--cdr-only` | Only repair CDR.md |
 | `--skills-only` | Only repair .skills.json |
 | `--agents-only` | Only repair AGENTS.md |
@@ -96,7 +97,7 @@ Output: `[OK]` or `[FAIL]` with reason
 #### Check 2: Team AI Directives Configured
 
 1. Read `.adlc/init-options.json`
-2. Verify `team_ai_directive` field exists and points to valid path
+2. Verify `team_ai_directives` field exists and points to valid path
 3. Check the team AI directives path exists
 
 Output: `[OK]` or `[FAIL]` with reason
@@ -105,28 +106,28 @@ Output: `[OK]` or `[FAIL]` with reason
 
 1. Read `.adlc/init-options.json` → get team AI directives path
 2. Verify:
-   - `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
-   - `{TEAM_AI_DIRECTIVE}/context_modules/personas/`
-   - `{TEAM_AI_DIRECTIVE}/context_modules/rules/`
-   - `{TEAM_AI_DIRECTIVE}/context_modules/examples/`
+   - `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
+   - `{TEAM_AI_DIRECTIVES}/context_modules/personas/`
+   - `{TEAM_AI_DIRECTIVES}/context_modules/rules/`
+   - `{TEAM_AI_DIRECTIVES}/context_modules/examples/`
 
 Output: `[OK]` or `[FAIL]` with reason
 
 #### Check 4: Skills Registry
 
-- `{TEAM_AI_DIRECTIVE}/.skills.json` exists and is valid JSON
+- `{TEAM_AI_DIRECTIVES}/.skills.json` exists and is valid JSON
 
 Output: `[OK]` or `[FAIL]` with reason
 
 #### Check 5: CDR Tracking
 
-- `{TEAM_AI_DIRECTIVE}/CDR.md` exists
+- `{TEAM_AI_DIRECTIVES}/CDR.md` exists
 
 Output: `[OK]` or `[FAIL]` with reason
 
 #### Check 6: Constitution Alignment
 
-1. Read team constitution from `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
+1. Read team constitution from `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
 2. Locate project constitution: the project root (where `.adlc/` lives) → `{REPO_ROOT}/.adlc/memory/constitution.md`
 3. If project constitution exists:
    - Check if it references team-ai-directives (e.g., "Based on team-ai-directives", "Inherits from")
@@ -153,7 +154,7 @@ Output: `[OK]` or `[FAIL]` with reason
 2. Check if it contains the `<!-- TEAM_AI_DIRECTIVES START -->` marker
 3. If the marker exists, verify the managed section includes:
    - The `team-boot` strict-compliance directive ("MUST invoke the `team-boot` skill")
-   - A reference to `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
+   - A reference to `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
 4. Output:
    - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
    - `[WARN]` — Project AGENTS.md exists but is missing the managed section (agents won't auto-invoke `team-boot`)
@@ -173,7 +174,7 @@ If any check is `[FAIL]`, print the report, set exit code 1, and **STOP**. Do no
 
 - **`[FAIL]` on Check 1 or Check 2**: the directives framework is effectively absent — agents have nothing to inherit from. Stop and reinstall before repairing.
 - **Team AI Directives path resolves outside the repo** or to a temp/scratch location: the project is pointing at a transient or shared team AI directives that may vanish or diverge.
-- **`{TEAM_AI_DIRECTIVE}/.skills.json` is missing or not valid JSON**: skill discovery is broken; agents cannot find team skills even if the files exist.
+- **`{TEAM_AI_DIRECTIVES}/.skills.json` is missing or not valid JSON**: skill discovery is broken; agents cannot find team skills even if the files exist.
 - **Project constitution exists but shows no team inheritance** (`[WARN]` on Check 6): the project was bootstrapped without the directives extension, or the constitution was hand-edited and the inheritance markers were removed.
 - **Multiple checks return `[WARN]` simultaneously**: systemic drift, usually from an extension upgrade or a moved `.adlc/` directory. Treat as a `[FAIL]`-equivalent and re-init.
 
@@ -188,7 +189,7 @@ Run `team-helpers.sh --json` from repository root and parse JSON output:
 ```json
 {
   "REPO_ROOT": "/path/to/project",
-  "TEAM_AI_DIRECTIVE": "/path/to/team-ai-directives",
+  "TEAM_AI_DIRECTIVES": "/path/to/team-ai-directives",
   "BRANCH": "current-branch"
 }
 ```
@@ -199,13 +200,13 @@ Run `team-helpers.sh --json` from repository root and parse JSON output:
 
 **Objective**: Ensure team-ai-directives is configured
 
-Check if TEAM_AI_DIRECTIVE has a value from script output.
+Check if TEAM_AI_DIRECTIVES has a value from script output.
 
 If empty, **STOP**:
 ```
 Team AI directives repository not configured.
 Run: /team-setup
-Or set: export TEAM_AI_DIRECTIVE=/path/to/team-ai-directives
+Or set: export TEAM_AI_DIRECTIVES=/path/to/team-ai-directives
 ```
 
 ### Phase 3: Repair AGENTS.md
@@ -217,7 +218,7 @@ Or set: export TEAM_AI_DIRECTIVE=/path/to/team-ai-directives
 #### Step 1: Check AGENTS.md Exists
 
 ```bash
-test -f "{TEAM_AI_DIRECTIVE}/AGENTS.md" && echo "EXISTS" || echo "MISSING"
+test -f "{TEAM_AI_DIRECTIVES}/AGENTS.md" && echo "EXISTS" || echo "MISSING"
 ```
 
 #### Step 2: Validate Structure (if exists)
@@ -232,12 +233,12 @@ Required sections:
 
 Check for each required section:
 ```bash
-grep -q "^# Agent Instructions" "{TEAM_AI_DIRECTIVE}/AGENTS.md"
-grep -q "^## Structure" "{TEAM_AI_DIRECTIVE}/AGENTS.md"
-grep -q "^## Loading Order" "{TEAM_AI_DIRECTIVE}/AGENTS.md"
-grep -q "^## Functional Categories" "{TEAM_AI_DIRECTIVE}/AGENTS.md"
-grep -q "^## Using Skills" "{TEAM_AI_DIRECTIVE}/AGENTS.md"
-grep -qiE "##.*CDR\.md" "{TEAM_AI_DIRECTIVE}/AGENTS.md"
+grep -q "^# Agent Instructions" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
+grep -q "^## Structure" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
+grep -q "^## Loading Order" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
+grep -q "^## Functional Categories" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
+grep -q "^## Using Skills" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
+grep -qiE "##.*CDR\.md" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
 ```
 
 #### Step 3: Auto-Repair
@@ -257,7 +258,7 @@ If `--dry-run`:
 
 Otherwise, execute repair:
 ```bash
-cp "templates/agents-template.md" "{TEAM_AI_DIRECTIVE}/AGENTS.md"
+cp "templates/agents-template.md" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
 ```
 
 #### Step 4: Track Results
@@ -311,9 +312,9 @@ Store for summary:
 #### Step 1: Find All Context Module Files
 
 ```bash
-find "{TEAM_AI_DIRECTIVE}/context_modules/rules" -name "*.md" -type f 2>/dev/null
-find "{TEAM_AI_DIRECTIVE}/context_modules/personas" -name "*.md" -type f 2>/dev/null
-find "{TEAM_AI_DIRECTIVE}/context_modules/examples" -name "*.md" -type f 2>/dev/null
+find "{TEAM_AI_DIRECTIVES}/context_modules/rules" -name "*.md" -type f 2>/dev/null
+find "{TEAM_AI_DIRECTIVES}/context_modules/personas" -name "*.md" -type f 2>/dev/null
+find "{TEAM_AI_DIRECTIVES}/context_modules/examples" -name "*.md" -type f 2>/dev/null
 ```
 
 Skip `constitution.md` (not indexed in CDR.md).
@@ -351,14 +352,14 @@ Parse the CDR.md index table to build a mapping of `{relative_file_path → cdr_
 ```bash
 # Read existing CDR.md and extract file path -> CDR reference mappings
 CDR_LOOKUP=()
-if [[ -f "{TEAM_AI_DIRECTIVE}/CDR.md" ]]; then
+if [[ -f "{TEAM_AI_DIRECTIVES}/CDR.md" ]]; then
     while IFS='|' read -r _ id module _ _ _ _ _; do
         id="${id// /}"
         module="${module// /}"
         if [[ -n "$id" && -n "$module" && "$id" =~ ^CDR- ]]; then
             CDR_LOOKUP["$module"]="$id"
         fi
-    done < <(grep "| CDR-" "{TEAM_AI_DIRECTIVE}/CDR.md")
+    done < <(grep "| CDR-" "{TEAM_AI_DIRECTIVES}/CDR.md")
 fi
 ```
 
@@ -381,7 +382,7 @@ For each orphan:
    - `rules/` → `Rule`
    - `personas/` → `Persona`
    - `examples/` → `Example`
-3. Compute the file's relative path from `TEAM_AI_DIRECTIVE` and look it up in `CDR_LOOKUP`:
+3. Compute the file's relative path from `TEAM_AI_DIRECTIVES` and look it up in `CDR_LOOKUP`:
    - If found, use the existing `cdr_ref`
    - If not found, set `cdr_ref: null`
 4. Generate `title` from filename (humanize the basename)
@@ -461,7 +462,7 @@ Generate OKF-compliant `index.md` (progressive disclosure) and `log.md` (chronol
 | [frontend/version-modal.md](frontend/version-modal.md) | Rule | Version modal display rules | frontend |
 ```
 
-Generate `{TEAM_AI_DIRECTIVE}/context_modules/rules/index.md`, `context_modules/personas/index.md`, `context_modules/examples/index.md`, and `context_modules/index.md` (toplevel index linking all sub-indexes).
+Generate `{TEAM_AI_DIRECTIVES}/context_modules/rules/index.md`, `context_modules/personas/index.md`, `context_modules/examples/index.md`, and `context_modules/index.md` (toplevel index linking all sub-indexes).
 
 **log.md** — chronological log of additions and changes:
 
@@ -474,7 +475,7 @@ Generate `{TEAM_AI_DIRECTIVE}/context_modules/rules/index.md`, `context_modules/
 | 2026-07-21 | Verified | frontend/version-modal.md | CDR-2026-002 |
 ```
 
-Generate `{TEAM_AI_DIRECTIVE}/context_modules/rules/log.md`, `context_modules/personas/log.md`, `context_modules/examples/log.md`.
+Generate `{TEAM_AI_DIRECTIVES}/context_modules/rules/log.md`, `context_modules/personas/log.md`, `context_modules/examples/log.md`.
 
 If `--dry-run`:
 ```markdown
@@ -498,7 +499,7 @@ Otherwise, write each file.
 #### Step 1: Find All Skill Directories
 
 ```bash
-find "{TEAM_AI_DIRECTIVE}/skills" -mindepth 1 -maxdepth 1 -type d
+find "{TEAM_AI_DIRECTIVES}/skills" -mindepth 1 -maxdepth 1 -type d
 ```
 
 #### Step 2: Check Each Skill
@@ -624,7 +625,7 @@ Would write {N} entries to CDR.md
 
 Otherwise:
 ```bash
-cat > "{TEAM_AI_DIRECTIVE}/CDR.md" << 'EOF'
+cat > "{TEAM_AI_DIRECTIVES}/CDR.md" << 'EOF'
 {generated content}
 EOF
 ```
@@ -661,7 +662,7 @@ Would write {N} skill entries
 
 Otherwise:
 ```bash
-cat > "{TEAM_AI_DIRECTIVE}/.skills.json" << 'EOF'
+cat > "{TEAM_AI_DIRECTIVES}/.skills.json" << 'EOF'
 {generated JSON}
 EOF
 ```
@@ -675,8 +676,8 @@ EOF
 #### Step 1: Load Rules and Constitution
 
 Load:
-- `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
-- `{TEAM_AI_DIRECTIVE}/context_modules/rules/**/*.md`
+- `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
+- `{TEAM_AI_DIRECTIVES}/context_modules/rules/**/*.md`
 
 #### Step 2: Detect Conflicts
 
@@ -693,7 +694,7 @@ Conflict levels:
 Use `levelup-helpers.sh` conflict detection or implement inline:
 
 ```bash
-skills/team/levelup-helpers.sh --conflicts "$TEAM_AI_DIRECTIVE/context_modules/rules"
+skills/workflow/levelup-helpers.sh --conflicts "$TEAM_AI_DIRECTIVES/context_modules/rules"
 ```
 
 #### Step 3: Create Conflict CDRs
@@ -776,7 +777,114 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 | rules/old-pattern.md | 45d | 2026-04-01 |
 ```
 
-### Phase 10: Summary Report
+### Phase 10: Build to Delete (Factor XII)
+
+**Objective**: Identify directives that are no longer needed because baseline models handle them natively. This is the "Harness Decay" mechanism — run evals without directives; if the model passes independently, the directive is a candidate for removal.
+
+**Skip if**: `--build-to-delete` flag is NOT provided.
+
+**This phase makes LLM calls** — it runs goldenset cases against the agent to test whether directives are still needed.
+
+#### Step 1: Load All Goldensets
+
+Read all goldenset directories from `{TEAM_AI_DIRECTIVES}/evals/`:
+
+```bash
+ls -1 "$TEAM_AI_DIRECTIVES/evals/" 2>/dev/null
+```
+
+For each `{directive-id}` directory, read:
+- `evals/{directive-id}/goldset.md` — human-readable cases
+- `evals/{directive-id}/goldset.json` — machine-readable cases
+
+If no goldensets exist, report: "No evals found — run /levelup-specify to create eval CDRs first." and skip this phase.
+
+#### Step 2: Identify Paired Directives
+
+For each goldenset, identify its paired directive:
+- Read `paired_directive` from the goldenset frontmatter
+- Read the directive file from `context_modules/` (e.g., `rules/security/sql_injection_prevention.md`)
+- If the directive file doesn't exist → skip (already deleted or orphaned eval)
+
+#### Step 3: Run Goldenset Without Directive
+
+For each directive+eval pair:
+
+1. **Temporarily remove the directive** from the context that would be loaded (simulate: the agent works without the rule)
+2. **Run the goldenset cases** against the agent via LLM calls:
+   - For each pass case: present the scenario and input context, ask the agent to produce output, check if it follows the (removed) directive
+   - For each fail case: present the scenario and input context, ask the agent to produce output, check if it still makes the mistake
+3. **Compute pass rate**: `cases_passed / total_cases`
+
+#### Step 4: Classify Results
+
+| Pass Rate | Verdict | Recommendation |
+|---|---|---|
+| 100% | **Delete candidate** | Model handles this natively — directive is obsolete |
+| 80-99% | **Review candidate** | Model mostly handles it — consider simplifying the directive |
+| < 80% | **Keep** | Model still needs the directive |
+
+#### Step 5: Generate Harness Decay Report
+
+```markdown
+## Build to Delete Report
+
+### Candidates for Removal (model passes 100% without directive)
+
+| Directive | Eval | Pass Rate | Recommendation |
+|---|---|---|---|
+| rules/security/sql_injection.md | evals/CDR-001/ | 100% (6/6) | Delete — model handles this natively now |
+
+### Review Candidates (80-99%)
+
+| Directive | Eval | Pass Rate | Recommendation |
+|---|---|---|---|
+| rules/devops/helm_packaging.md | evals/CDR-008/ | 83% (5/6) | Simplify — model mostly handles it, 1 case failed |
+
+### Still Needed (< 80%)
+
+| Directive | Eval | Pass Rate | Recommendation |
+|---|---|---|---|
+| rules/style/python_pep8.md | evals/CDR-015/ | 40% (2/5) | Keep — model still needs guidance |
+```
+
+#### Step 6: Create Deletion CDRs
+
+For each **Delete candidate** (100% pass rate), create a CDR in `{REPO_ROOT}/.adlc/drafts/cdr/CDR-{NNN}.md`:
+
+```markdown
+## CDR-{NNN}: Delete Directive: [Title]
+
+### Status: **Discovered**
+
+### Date: [YYYY-MM-DD]
+
+### Source: Build to Delete via /team-repair --build-to-delete
+
+### Target Module: `context_modules/rules/{domain}/{file}.md` + `evals/{directive-id}/`
+
+### Context Type: Constitution Amendment
+
+### Descriptor: Directive is obsolete — model handles natively without the rule.
+
+### Context
+The directive `{title}` was tested by running its goldenset cases without the directive loaded.
+The model passed 100% of cases (N/N), indicating the baseline model now handles this pattern natively.
+The directive is a candidate for Harness Decay removal.
+
+### Decision
+Delete both the directive file and its paired eval goldenset.
+
+### Evidence
+- Directive: context_modules/rules/{domain}/{file}.md
+- Eval: evals/{directive-id}/goldset.md
+- Pass rate: 100% (N/N cases passed without the directive)
+- Test date: [YYYY-MM-DD]
+```
+
+Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review deletion candidates.
+
+### Phase 11: Summary Report
 
 ```markdown
 ## Team Repair Summary
@@ -883,14 +991,14 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 - **Generating `cdr_ref: null` when an existing CDR_LOOKUP entry exists** — this silently severs the audit trail between a context module and its accepted CDR record.
 - **Skipping the dry run when the orphan count is high** — bulk auto-fix without review leads to fabricated IDs and metadata propagating into version control.
 - **Writing `.skills.json` entries without parsing the actual `SKILL.md`** — fabricated descriptions and categories make skills unsearchable and misrepresent capabilities.
-- **Proceeding past Phase 2 when `TEAM_AI_DIRECTIVE` is empty** — operating without a configured repository writes to undefined paths and corrupts the wrong workspace.
+- **Proceeding past Phase 2 when `TEAM_AI_DIRECTIVES` is empty** — operating without a configured repository writes to undefined paths and corrupts the wrong workspace.
 - **Skipping Phase 0 Health Check** — jumping straight into repairs without verifying the framework is installed risks writing to an absent or misconfigured workspace.
 - **Skipping Step 5 (project AGENTS.md injection)** — the team AI directives' own `AGENTS.md` describes its structure, but the **project-level** `AGENTS.md` is what tells agents to invoke `team-boot` at session start. Without it, agents have no session-start instruction and the team AI directives remains invisible until manually loaded.
 
 ## Verification
 
 - [ ] Phase 0 Health Check passes all 8 checks (no `[FAIL]`) before any repair is attempted.
-- [ ] AGENTS.md exists at `{TEAM_AI_DIRECTIVE}/AGENTS.md` and contains all six required sections.
+- [ ] AGENTS.md exists at `{TEAM_AI_DIRECTIVES}/AGENTS.md` and contains all six required sections.
 - [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the `team-boot` strict-compliance directive.
 - [ ] CDR.md entry count equals the number of scanned context module `.md` files (excluding `constitution.md`).
 - [ ] Every context module file under `context_modules/{rules,personas,examples}/` has YAML frontmatter with a non-empty `id` field.
@@ -905,8 +1013,8 @@ Flag directives with `age_days` > 30 or whose `verified` date is older than 30 d
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
-- `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
+- `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 - `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for path resolution.
 

@@ -1,0 +1,37 @@
+name: Test & Evaluate Skills
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-scripts:
+    name: Run Pytest (Scripts & E2E)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install pytest deepeval promptfoo
+      - name: Run Pytest
+        run: |
+          pytest tests/ -v
+
+  evaluate-skills:
+    name: Run PromptFoo (Skill Evals)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PromptFoo
+        run: npm install -g promptfoo
+      - name: Run Tier 1 Evals
+        run: |
+          promptfoo eval --config evals/promptfoo/config.js --no-cache
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

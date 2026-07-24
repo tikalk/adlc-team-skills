@@ -64,12 +64,12 @@ If that read fails (file not found), walk up parent directories by reading
 `../.adlc/init-options.json`, then `../../.adlc/init-options.json`,
 and so on — up to 4 levels. Stop at the first successful read.
 
-From the JSON, extract the `team_ai_directive` field.
+From the JSON, extract the `team_ai_directives` field.
 
 - If present and the path exists: use it as the team AI directives root.
 - If not found or path doesn't exist: output empty results and exit.
 
-In subsequent steps, `{TEAM_AI_DIRECTIVE}` refers to this value, resolved
+In subsequent steps, `{TEAM_AI_DIRECTIVES}` refers to this value, resolved
 as a path relative to the current working directory. Read files at this
 path directly — do NOT use glob, find, or any file-search tool to locate
 them.
@@ -91,7 +91,7 @@ Extract the feature's:
 
 ### Step 3: Load CDR Index (Primary Path)
 
-Read `{TEAM_AI_DIRECTIVE}/CDR.md` and parse the CDR Index table into candidate records.
+Read `{TEAM_AI_DIRECTIVES}/CDR.md` and parse the CDR Index table into candidate records.
 
 Extract each table row where `Status` is `Accepted`:
 ```json
@@ -103,9 +103,9 @@ Extract each table row where `Status` is `Accepted`:
 }
 ```
 
-Also read `{TEAM_AI_DIRECTIVE}/.skills.json` for the skill registry.
+Also read `{TEAM_AI_DIRECTIVES}/.skills.json` for the skill registry.
 
-**Fallback**: If `CDR.md` is missing, unparseable, or contains no Accepted rows, read all files from `{TEAM_AI_DIRECTIVE}/context_modules/` directly (constitution.md, personas/, rules/, examples/) and use each file's name and path as the matching surface. This ensures the command works with any valid team AI directives regardless of CDR maturity.
+**Fallback**: If `CDR.md` is missing, unparseable, or contains no Accepted rows, read all files from `{TEAM_AI_DIRECTIVES}/context_modules/` directly (constitution.md, personas/, rules/, examples/) and use each file's name and path as the matching surface. This ensures the command works with any valid team AI directives regardless of CDR maturity.
 
 ### Step 3b: Load Project Decision Indexes
 
@@ -188,7 +188,7 @@ Include matched skills in the discovery output table with Type "Skill".
 ### Step 4b: Load Selected Module Bodies
 
 For every module selected as relevant in Step 4, read the full file content from:
-`{TEAM_AI_DIRECTIVE}/{target_module}`
+`{TEAM_AI_DIRECTIVES}/{target_module}`
 
 For every **PDR/ADR** selected as relevant, read the full record content from its project-relative path:
 `{REPO_ROOT}/{file}` (e.g., `{REPO_ROOT}/.adlc/memory/pdr/PDR-001.md`)
@@ -315,7 +315,7 @@ If team-ai-directives is not configured or files cannot be read:
 - Writing `team-context.md` (or any file) when `$ARGUMENTS` contains `--no-write`, or when the session is in plan mode / read-only phase.
 - Dropping the metadata header (`feature`/`phase`/`generated`) — without it, stale-context reset between features is impossible.
 - Computing a delta against a different feature's file — reset instead of diffing across features.
-- Hardcoding the team AI directives path instead of resolving `team_ai_directive` from `.adlc/init-options.json`.
+- Hardcoding the team AI directives path instead of resolving `team_ai_directives` from `.adlc/init-options.json`.
 - Blocking on discovery failure — the process must exit 0 with empty results.
 
 ## Verification
@@ -332,8 +332,8 @@ If team-ai-directives is not configured or files cannot be read:
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
-- `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
+- `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 
 ## 12-Factor Alignment

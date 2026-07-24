@@ -17,26 +17,26 @@ $Branch = if ($env:BRANCH) { $env:BRANCH } else {
 if (-not $Branch) { $Branch = 'unknown' }
 
 # Resolve team directives: env var → init-options.json → default fallback
-$TeamAiDirective = $env:TEAM_AI_DIRECTIVE
-if (-not $TeamAiDirective) {
+$TeamAiDirectives = $env:TEAM_AI_DIRECTIVES
+if (-not $TeamAiDirectives) {
     $InitOptions = Join-Path $ProjectRoot ".adlc\init-options.json"
     if (Test-Path $InitOptions) {
         try {
             $Opts = Get-Content $InitOptions -Raw | ConvertFrom-Json
-            $TeamAiDirective = $Opts.team_ai_directive
+            $TeamAiDirectives = $Opts.team_ai_directives
         } catch {
-            $TeamAiDirective = ""
+            $TeamAiDirectives = ""
         }
     }
 }
-if (-not $TeamAiDirective) {
-    $TeamAiDirective = Join-Path $ProjectRoot "team-ai-directives"
+if (-not $TeamAiDirectives) {
+    $TeamAiDirectives = Join-Path $ProjectRoot "team-ai-directives"
 }
 
 if ($Json) {
-    @{ REPO_ROOT = $ProjectRoot; TEAM_AI_DIRECTIVE = $TeamAiDirective; BRANCH = $Branch } | ConvertTo-Json -Compress
+    @{ REPO_ROOT = $ProjectRoot; TEAM_AI_DIRECTIVES = $TeamAiDirectives; BRANCH = $Branch } | ConvertTo-Json -Compress
 } else {
     "REPO_ROOT=$ProjectRoot"
-    "TEAM_AI_DIRECTIVE=$TeamAiDirective"
+    "TEAM_AI_DIRECTIVES=$TeamAiDirectives"
     "BRANCH=$Branch"
 }

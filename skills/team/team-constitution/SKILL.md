@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## What this skill does
 
-Interactively **create or amend** the team constitution at `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`.
+Interactively **create or amend** the team constitution at `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`.
 
 The scaffold written by `team-setup` (Mode 3) contains only a placeholder ("No team-wide principles defined yet"). This skill turns that placeholder into a real constitution through guided elicitation:
 
@@ -78,26 +78,26 @@ Run the setup script from the skill's base directory:
 scripts/bash/setup-team-constitution.sh
 ```
 
-Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVE`, `CONSTITUTION_FILE`, `CONSTITUTION_STATE`, `TD_IS_GIT`, `TD_CLEAN`.
+Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `CONSTITUTION_FILE`, `CONSTITUTION_STATE`, `TD_IS_GIT`, `TD_CLEAN`.
 
 **If the setup script is unavailable or fails**, resolve manually:
 
 1. `REPO_ROOT` — walk up from cwd to find `.adlc/`, or `git rev-parse --show-toplevel`, or `pwd`.
-2. `TEAM_AI_DIRECTIVE` — `TEAM_AI_DIRECTIVE` env var, then `.adlc/init-options.json` → `team_ai_directive`, then `REPO_ROOT/team-ai-directives`.
-3. `CONSTITUTION_FILE` — `{TEAM_AI_DIRECTIVE}/context_modules/constitution.md`
+2. `TEAM_AI_DIRECTIVES` — `TEAM_AI_DIRECTIVES` env var, then `.adlc/init-options.json` → `team_ai_directives`, then `REPO_ROOT/team-ai-directives`.
+3. `CONSTITUTION_FILE` — `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
 4. `CONSTITUTION_STATE`:
    - `missing` — file does not exist
    - `placeholder` — file exists and contains "No team-wide principles defined yet"
    - `populated` — file exists with real content
-5. `TD_IS_GIT` — `git -C "$TEAM_AI_DIRECTIVE" rev-parse --is-inside-work-tree` (exit 0 = true)
-6. `TD_CLEAN` — `git -C "$TEAM_AI_DIRECTIVE" status --porcelain` (empty = clean)
+5. `TD_IS_GIT` — `git -C "$TEAM_AI_DIRECTIVES" rev-parse --is-inside-work-tree` (exit 0 = true)
+6. `TD_CLEAN` — `git -C "$TEAM_AI_DIRECTIVES" status --porcelain` (empty = clean)
 
-If `TEAM_AI_DIRECTIVE` is not configured:
+If `TEAM_AI_DIRECTIVES` is not configured:
 
 ```text
 Team AI directives repository not configured.
 Run: team-setup
-Or set: export TEAM_AI_DIRECTIVE=/path/to/team-ai-directives
+Or set: export TEAM_AI_DIRECTIVES=/path/to/team-ai-directives
 ```
 
 #### Phase 1: Load Team Context
@@ -105,9 +105,9 @@ Or set: export TEAM_AI_DIRECTIVE=/path/to/team-ai-directives
 Read the following to inform principle proposals:
 
 1. **Existing constitution** at `{CONSTITUTION_FILE}` (if `populated` — you will amend; if `placeholder`/`missing` — you will create)
-2. **Team rules index**: `{TEAM_AI_DIRECTIVE}/CDR.md` — accepted rule/persona/example descriptors reveal what the team already cares about
-3. **Existing rules**: skim `{TEAM_AI_DIRECTIVE}/context_modules/rules/` file names and headings
-4. **AGENTS.md** at `{TEAM_AI_DIRECTIVE}/AGENTS.md` — loading order and skill usage expectations
+2. **Team rules index**: `{TEAM_AI_DIRECTIVES}/CDR.md` — accepted rule/persona/example descriptors reveal what the team already cares about
+3. **Existing rules**: skim `{TEAM_AI_DIRECTIVES}/context_modules/rules/` file names and headings
+4. **AGENTS.md** at `{TEAM_AI_DIRECTIVES}/AGENTS.md` — loading order and skill usage expectations
 
 Principles must be **grounded in what you find** — e.g., if the rules directory is heavy on security modules, a "Security by Default" principle is evidence-based, not boilerplate. If the team AI directives is nearly empty, fall back to a small starter set and say so explicitly.
 
@@ -196,7 +196,7 @@ Rules for writing:
 - Preserve the existing OKF frontmatter fields when amending; update `timestamp` to today. If the file carries custom fields (`created`, `modified`, `verified`, `age_days`, `id`, `cdr_ref`, `evidence`), preserve them and set `modified` to today.
 - `title` and H1: keep the existing team name if present; otherwise derive from the team AI directives directory name or ask.
 - Numbered flat list (`1. **Name**`) — no `###` subsections per principle, no version/ratified date lines.
-- If `CONSTITUTION_STATE` was `missing`, create the parent directory first: `mkdir -p "{TEAM_AI_DIRECTIVE}/context_modules"`.
+- If `CONSTITUTION_STATE` was `missing`, create the parent directory first: `mkdir -p "{TEAM_AI_DIRECTIVES}/context_modules"`.
 
 #### Phase 5: Commit & Summary
 
@@ -204,8 +204,8 @@ If `TD_IS_GIT` is true and `TD_CLEAN` is true, offer a single commit on the curr
 
 ```text
 Commit the constitution update to team-ai-directives?
-  git -C "{TEAM_AI_DIRECTIVE}" add context_modules/constitution.md
-  git -C "{TEAM_AI_DIRECTIVE}" commit -m "docs: {create|amend} team constitution — {N} principles"
+  git -C "{TEAM_AI_DIRECTIVES}" add context_modules/constitution.md
+  git -C "{TEAM_AI_DIRECTIVES}" commit -m "docs: {create|amend} team constitution — {N} principles"
 [Y/n]
 ```
 
@@ -281,8 +281,8 @@ Ongoing amendments follow the CDR lifecycle (`/levelup-init` or `/levelup-specif
 
 ## Configuration
 
-- `TEAM_AI_DIRECTIVE` — Path to the team AI directives (overrides `.adlc/init-options.json`).
-- `.adlc/init-options.json` — Project-level config file with `team_ai_directive` field.
+- `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
 
 ## 12-Factor Alignment

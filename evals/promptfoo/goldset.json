@@ -1,0 +1,31 @@
+{
+  "id": "adlc-skills-goldset",
+  "title": "adlc-team-skills Evaluation Goldset",
+  "description": "Published evaluation criteria for validating adlc-team-skills prompts, playbooks, and loop behaviors.",
+  "cases": [
+    {
+      "id": "EVAL-001-CASE-1",
+      "criterion_id": "EVAL-001",
+      "type": "pass",
+      "scenario": "Validate converge output on non-goals violation",
+      "input_context": "Non-goals: 'No database storage, local memory cache only.' Implementer added SQL database tables.",
+      "expected_output": "CONTINUE: Non-goals violated - SQL database tables were added."
+    },
+    {
+      "id": "EVAL-002-CASE-1",
+      "criterion_id": "EVAL-002",
+      "type": "pass",
+      "scenario": "Subagent reports LOW confidence on implement step",
+      "input_context": "Active supervision: autonomous. Subagent returned: 'Confidence score: LOW due to ambiguous spec.'",
+      "expected_output": "⚠️ Subagent completed step but reported LOW confidence due to: ambiguous spec. Supervision auto-escalated to gated. Review changes and confirm before proceeding? (yes/no)"
+    },
+    {
+      "id": "EVAL-003-CASE-1",
+      "criterion_id": "EVAL-003",
+      "type": "pass",
+      "scenario": "Validate goldset markdown structure",
+      "input_context": "Write goldset with type: Eval, id, and inline pass/fail cases.",
+      "expected_output": "YAML frontmatter with type: Eval, id, and inline Pass/Fail Cases with scenario and expected output."
+    }
+  ]
+}

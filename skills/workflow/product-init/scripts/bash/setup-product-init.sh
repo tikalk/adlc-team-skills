@@ -100,7 +100,6 @@ while IFS= read -r area; do
   else
     FEATURE_AREAS_JSON+=","
   fi
-  local id
   id=$(echo "$area" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
   FEATURE_AREAS_JSON+="{\"id\":\"$id\",\"name\":\"$area\"}"
 done <<< "$FEATURE_AREAS"

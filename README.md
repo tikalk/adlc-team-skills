@@ -2,7 +2,7 @@
 
 Agent skills for the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/agentic-sdlc-12-factors) workflow — team directives management, product decision records, and architecture analysis.
 
-**Relationship to 12 factors:** This repo is referenced from [team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives) and together with the 12-factor methodology forms the Foundation layer of the ADLC stack. The skills implement Factors III, IV, IX, X, XI, and XII.
+**Relationship to 12 factors:** This repo is referenced from [team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives) and together with the 12-factor methodology forms the Foundation layer of the ADLC stack. The skills implement Factors III, IV, VII, VIII, IX, X, XI, and XII.
 
 ## Quickstart
 
@@ -46,10 +46,10 @@ Every agent session surfaces patterns, gotchas, and team knowledge. Without a st
 LevelUp skills capture session traces, extract reusable Context Directive Records (CDRs), and publish them back to the team AI directives repository as skills, rules, personas, or examples — creating a closed feedback loop where every session enriches the next.
 
 ```
-levelup-trace    → generate session execution trace
-levelup-specify  → extract CDRs from trace + evidence
-levelup-clarify  → review, accept, reject, or defer CDRs
-levelup-publish  → compile into team directives + draft PR
+levelup-init      → brownfield CDR discovery from codebase + paired evals
+levelup-specify    → extract CDRs + paired evals from current session
+levelup-clarify    → review, accept, reject, or defer CDRs (evals gate ON)
+levelup-publish    → compile into team directives + evals goldensets + draft PR
 ```
 
 ---
@@ -135,13 +135,12 @@ per-step model tiers, and a `mission-log.json` audit trail.
 
 ### LevelUp / CDR Lifecycle (5 skills)
 
-All user-invoked. Capture and publish reusable patterns to team-ai-directives.
+All user-invoked. Capture and publish reusable patterns to team-ai-directives, including paired directive compliance evals.
 
-- **`levelup-trace`** — Generate a session execution trace after completing work. Say "Generate a trace of this session."
-- **`levelup-init`** — Brownfield CDR discovery from an existing codebase. Say "Discover directives from this codebase."
-- **`levelup-specify`** — Extract CDRs from session trace and implementation evidence. Say "Extract lessons from this session."
-- **`levelup-clarify`** — Review, accept, reject, or defer pending CDRs. Say "Review pending CDRs."
-- **`levelup-publish`** — Compile accepted CDRs into team directives artifacts, session trace, and draft PR. Say "Publish accepted CDRs" or "Build one skill from a CDR" (`--skill CDR-NNN`).
+- **`levelup-init`** — Brownfield CDR discovery from existing codebase, including paired eval CDRs from code patterns. Say "Discover directives from this codebase."
+- **`levelup-specify`** — Extract CDRs and paired eval CDRs from the current session. Say "Extract lessons from this session."
+- **`levelup-clarify`** — Review, accept, reject, or defer pending CDRs. Evals regression gate runs by default. Say "Review pending CDRs."
+- **`levelup-publish`** — Compile accepted CDRs into team directives artifacts, evals goldensets, and draft PR. Say "Publish accepted CDRs" or "Build one skill from a CDR" (`--skill CDR-NNN`).
 
 ### Product / PDR Lifecycle (6 skills)
 
@@ -163,6 +162,17 @@ All user-invoked. Create and manage Architecture Decision Records using the Roza
 - **`architect-clarify`** — Refine and validate existing ADRs. Say "Refine and validate my ADRs."
 - **`architect-implement`** — Generate an Architecture Description (AD.md) from accepted ADRs. Say "Generate AD.md from my ADRs."
 - **`architect-analyze`** — Check ADR↔AD consistency and architecture quality. Say "Analyze architecture consistency."
+
+### Governance / Verification (6 skills)
+
+All user-invoked. Build and maintain application-level evaluation suites following EDD (Eval-Driven Development) principles (PromptFoo or DeepEval).
+
+- **`evals-init`** — Initialize evaluation directory structure (`evals/{system}/`) with security baseline. Say "Initialize my evaluation harness."
+- **`evals-specify`** — Extract eval criteria from specs and production failure traces (bottom-up open coding). Say "Specify evaluation criteria from this failure log."
+- **`evals-clarify`** — Cluster related patterns, refine criteria, isolate 20% holdout split, and publish goldset. Say "Clarify and accept my draft evaluations."
+- **`evals-implement`** — Generate executable graders and test configs, automatically running unit tests to verify evaluator correctness. Say "Generate graders from the goldset."
+- **`evals-validate`** — Run the evaluation pyramid (Tier 1 fast checks + Tier 2 LLM judges) and compute quality metrics (TPR/TNR, SLA headroom). Say "Validate my evaluation suite."
+- **`evals-analyze`** — Deep-analyze trajectory failure traces, routing spec-level failures to `levelup-specify` (rules) and generalization failures to backlog. Say "Analyze evaluation failures."
 
 ### Missions (1 skill)
 
@@ -188,12 +198,11 @@ All skills write to `.adlc/` (project root) and the team AI directives repo.
 - `context_modules/{type}/index.md` — progressive disclosure per concept type
 - `context_modules/{type}/log.md` — chronological change log per concept type
 - `skills/{name}/SKILL.md` + `.skills-entry.json` — published team skills
-- `traces/{branch}.md` — published session traces
+- `evals/{directive-id}/goldset.md` + `goldset.json` — directive compliance goldensets
 
 **LevelUp** (inside `.adlc/` of the target project):
 
-- `.adlc/drafts/trace.md` — session execution trace
-- `.adlc/drafts/cdr/CDR-{NNN}.md` — proposed/discovered CDRs (individual files)
+- `.adlc/drafts/cdr/CDR-{NNN}.md` — proposed/discovered CDRs (including eval CDRs)
 - `.adlc/drafts/cdr/cdr.md` — auto-generated CDR index
 - `.adlc/init-options.json` — team AI directives path config
 
@@ -222,6 +231,21 @@ All skills write to `.adlc/` (project root) and the team AI directives repo.
 - `.adlc/workflow/.mission-state.json` — step list, completed steps, brief, discovery results
 - `.adlc/workflow/runs/<feature>/mission-log.json` — final audit trail
 - `.adlc/workflow/runs/<feature>/iterations.md` — per-implement audit entries
+
+**Governance** (inside target project and repo root):
+
+- `.adlc/drafts/evals/EVAL-{NNN}.md` — proposed/discovered eval criteria drafts
+- `.adlc/drafts/evals/evals.md` — draft evals index
+- `.adlc/memory/evals/EVAL-{NNN}.md` — accepted/completed eval criteria
+- `.adlc/memory/evals/evals.md` — accepted evals index
+- `.adlc/memory/evals/holdout.json` — isolated/reserved holdout test dataset
+- `evals/{system}/goldset.md` — published goldset (human-readable)
+- `evals/{system}/goldset.json` — published goldset (machine-readable)
+- `evals/{system}/config.yml` — evaluation framework configuration
+- `evals/{system}/config.{js,py}` — framework test config
+- `evals/{system}/graders/check_*.py` — generated binary Python graders / metrics
+- `evals/{system}/tests/test_check_*.py` — generated unit tests verifying grader correctness
+- `evals/results/validation_report.md` — statistical validation results report
 
 </details>
 
@@ -269,7 +293,8 @@ Greenfield: architect-specify → architect-clarify → architect-implement → 
 **LevelUp / CDR lifecycle:**
 ```
 Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
-Session:    levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
+Session:    levelup-specify → levelup-clarify → levelup-publish → team-repair
+Build to Delete: team-repair --build-to-delete → levelup-clarify (review deletion CDRs)
 ```
 
 **Mission:**
@@ -277,11 +302,17 @@ Session:    levelup-trace → levelup-specify → levelup-clarify → levelup-pu
 mission-brief "feature" → review brief → execute steps → converge → mission-log.json
 ```
 
+**Application Evaluation lifecycle:**
+```
+Greenfield (Spec-Driven): evals-init → evals-specify (from spec) → evals-clarify → evals-implement → evals-validate
+Brownfield (Error-Driven): evals-init → evals-specify (from failures) → evals-clarify → evals-implement → evals-validate → evals-analyze
+```
+
 **Full product → architecture → team:**
 ```
 Product:     product-specify → product-clarify → product-implement → product-analyze
 Architecture: architect-specify → architect-clarify → architect-implement → architect-analyze
-Team:        levelup-trace → levelup-specify → levelup-clarify → levelup-publish → team-repair
+Team:        levelup-specify → levelup-clarify → levelup-publish → team-repair
 ```
 
 </details>
@@ -293,10 +324,12 @@ Team:        levelup-trace → levelup-specify → levelup-clarify → levelup-p
 |--------|--------|-----|
 | **III — Mission Definition** | Product skills | PRD/PDR lifecycle ensures product decisions are documented, reviewed, and traceable before execution |
 | **IV — Structured Planning** | Architecture skills | ADRs and AD.md provide structured planning artifacts using Rozanski & Woods viewpoints |
+| **VII — Verification-First Evals** | LevelUp skills | Eval CDRs with binary pass/fail cases test directive compliance; evals regression gate in levelup-clarify |
+| **VIII — Ratchet Effect** | LevelUp skills | Each session extracts eval CDRs alongside directive CDRs — quality strictly increases |
 | **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
 | **X — Context Engineering** | Team Directives | `team-boot` and `team-discover` load only relevant context per task, preventing bloat |
 | **XI — Directives as Code** | Team + LevelUp + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
-| **XII — Team Capability** | All 22 skills | Skills are packaged, installable, and reusable across projects and agents |
+| **XII — Build to Delete** | team-repair | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay) |
 
 </details>
 

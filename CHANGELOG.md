@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-24
+
+### Changed
+
+- **Skill family nesting**: Grouped individual skills into family directories under each pillar to keep the top-level pillar folders clean. `skills/workflow/architect-*` → `skills/workflow/architect/`, `skills/workflow/product-*` (+ `product-templates/`) → `skills/workflow/product/`, `skills/workflow/levelup-*` (+ `levelup-helpers.*`) → `skills/workflow/levelup/`, and `skills/governance/evals-*` (+ `evals-templates/`) → `skills/governance/evals/`. `mission-brief` remains flat as the core orchestrator.
+- **Team Capability pillar rename**: Renamed the top-level `skills/team/` pillar to `skills/capability/` (the "Team Capability" pillar from the 12-factor speaker notes), with the skill family nested as `skills/capability/team/`. This eliminates the redundant `team/team/` nesting while keeping naming parity with the other full-word pillars (`strategy`, `workflow`, `governance`).
+- **Path references updated**: `team-repair` levelup-helpers reference, `evals-init`/`evals-specify` template references, and `tests/unit/test_playbook_integrity.py` template globs all updated to the new nested paths.
+
+### Notes
+
+- **Install path unaffected**: `npx skills add tikalk/adlc-team-skills` recursively discovers `**/SKILL.md`, so nested families install identically. No `.skills.json` or manifest changes required.
+- **Tests**: recursive `**/setup-*.sh` and `**/SKILL.md` globs auto-discover the relocated skills; all 33 tests pass unchanged.
+
 ## [0.12.4] - 2026-07-24
 
 ### Fixed

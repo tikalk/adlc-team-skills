@@ -117,6 +117,28 @@ per-step model tiers, and a `mission-log.json` audit trail.
 
 ---
 
+## Repository Layout
+
+Skills are organized under the four pillars of the Twelve-Factor Agentic SDLC, with each skill family nested in its own directory:
+
+```
+skills/
+├── strategy/                  # Pillar 1: Strategy (reserved)
+├── workflow/                  # Pillar 2: Workflow
+│   ├── architect/             # architect-* (5 skills)
+│   ├── product/               # product-* (6 skills) + product-templates/
+│   ├── levelup/               # levelup-* (4 skills) + levelup-helpers.{sh,ps1}
+│   └── mission-brief/         # core SDD orchestrator
+├── governance/                # Pillar 3: Governance
+│   └── evals/                 # evals-* (6 skills) + evals-templates/
+└── capability/                # Pillar 4: Team Capability
+    └── team/                  # team-* (6 skills) + team-helpers.{sh,ps1}
+```
+
+`npx skills add tikalk/adlc-team-skills` recursively discovers every `SKILL.md`, so the nested layout installs identically to a flat one.
+
+---
+
 ## Reference
 
 ### Team Directives (6 skills)

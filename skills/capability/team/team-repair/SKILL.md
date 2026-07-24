@@ -694,7 +694,7 @@ Conflict levels:
 Use `levelup-helpers.sh` conflict detection or implement inline:
 
 ```bash
-skills/workflow/levelup-helpers.sh --conflicts "$TEAM_AI_DIRECTIVES/context_modules/rules"
+skills/workflow/levelup/levelup-helpers.sh --conflicts "$TEAM_AI_DIRECTIVES/context_modules/rules"
 ```
 
 #### Step 3: Create Conflict CDRs

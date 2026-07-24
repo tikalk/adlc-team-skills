@@ -36,8 +36,8 @@ def test_skill_frontmatter_and_directory_parity():
 
 def test_template_and_boilerplate_frontmatter():
     """Verify all markdown templates and boilerplates have structurally well-formed metadata."""
-    templates = list(ROOT.glob("skills/workflow/product-templates/*.md")) + \
-                list(ROOT.glob("skills/governance/evals-templates/*.md"))
+    templates = list(ROOT.glob("skills/workflow/product/product-templates/*.md")) + \
+                list(ROOT.glob("skills/governance/evals/evals-templates/*.md"))
     
     import re
     for template_file in templates:
@@ -65,7 +65,7 @@ def test_template_and_boilerplate_frontmatter():
 
 def test_active_config_template_integrity():
     """Verify that default evals-config-template.yml contains required EDD keys."""
-    config_file = ROOT / "skills/governance/evals-templates/evals-config-template.yml"
+    config_file = ROOT / "skills/governance/evals/evals-templates/evals-config-template.yml"
     assert config_file.exists()
     
     content = config_file.read_text(encoding="utf-8")

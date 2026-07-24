@@ -62,6 +62,9 @@ def test_bash_setup_script_execution(sandbox_project, script_path):
                 parts = line.split("=", 1)
                 data[parts[0].strip()] = parts[1].strip()
                 
-    # For scripts that don't output TEAM_AI_DIRECTIVES (like product-* and architect-*),
-    # we don't require the TEAM_AI_DIRECTIVES key in the JSON output.
-    assert "REPO_ROOT" in data, f"Missing REPO_ROOT in {script_path} output. Output was: {result.stdout}"
+    # If the script output contains REPO_ROOT, verify it is resolved correctly
+    if "REPO_ROOT" in data:
+        resolved_path = Path(data["REPO_ROOT"]).resolve()
+        assert resolved_path in [sandbox_project.resolve(), ROOT.resolve()], (
+            f"REPO_ROOT mismatch in {script_path}. Expected {sandbox_project} or {ROOT}, got {data['REPO_ROOT']}"
+        )

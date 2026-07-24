@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-07-24
+
+### Fixed
+
+- **PromptFoo Custom Python Grader File Parsing**: Fixed a critical configuration bug in `evals/promptfoo/config.js` where custom python grader scripts were passed as raw paths rather than using the required `file://` loader prefix. Adding `file://` prevents PromptFoo from trying to parse the file path as an inline python expression, eliminating syntax errors and enabling full execution of the evaluation suite.
+
 ## [0.12.2] - 2026-07-24
 
 ### Changed

@@ -23,7 +23,7 @@ module.exports = {
       assert: [
         {
           type: 'python',
-          value: './graders/check_mission_brief_state.py',
+          value: 'file://./graders/check_mission_brief_state.py',
         },
       ],
     },
@@ -35,7 +35,7 @@ module.exports = {
       assert: [
         {
           type: 'python',
-          value: './graders/check_confidence_escalation.py',
+          value: 'file://./graders/check_confidence_escalation.py',
         },
       ],
     },
@@ -47,7 +47,7 @@ module.exports = {
       assert: [
         {
           type: 'python',
-          value: './graders/check_goldset_format.py',
+          value: 'file://./graders/check_goldset_format.py',
         },
       ],
     },

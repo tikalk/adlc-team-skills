@@ -1,9 +1,49 @@
 import os
+import sys
 import json
 import shutil
 import subprocess
 from pathlib import Path
 import pytest
+
+def _has_working_bash() -> bool:
+    """Check whether a functional native MSYS/MINGW Bash (or Linux bash) is available.
+    On Windows, skips WSL bash since it cannot handle native paths used by fixtures."""
+    if shutil.which("bash") is None:
+        return False
+    try:
+        r = subprocess.run(
+            ["bash", "-c", "echo ok"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0 or "ok" not in r.stdout:
+            return False
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if sys.platform == "win32":
+        try:
+            u = subprocess.run(
+                ["bash", "-c", "uname -s"],
+                capture_output=True, text=True, timeout=5,
+            )
+            kernel = u.stdout.strip().upper()
+            if not any(k in kernel for k in ("MSYS", "MINGW", "CYGWIN")):
+                return False
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+    return True
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "requires_bash: skip if native bash not available")
+
+def pytest_runtest_setup(item):
+    if "requires_bash" in item.keywords and not _has_working_bash():
+        pytest.skip("working native bash not available")
+
+@pytest.fixture(autouse=True)
+def _strip_team_directives_env(monkeypatch):
+    """Ensure no test reads inherited local or CI TEAM_AI_DIRECTIVES environment variables."""
+    monkeypatch.delenv("TEAM_AI_DIRECTIVES", raising=False)
 
 @pytest.fixture
 def sandbox_project(tmp_path):

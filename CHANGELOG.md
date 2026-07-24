@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.12.1] - 2026-07-24
+
+### Added
+
+- **Advanced Skill Testing Upgrades**: Borrowed high-performance testing concepts from `agentic-sdlc-spec-kit` to significantly harden the repository's verification suite:
+  - **Environment Isolation (Clean Room)**: Added an autouse fixture in `tests/conftest.py` that strips any inherited `TEAM_AI_DIRECTIVES` variables from the test environment, guaranteeing 100% deterministic local/CI test runs.
+  - **Cross-Platform Bash Probing**: Added robust bash-detection and WSL-skipping logic to `tests/conftest.py` with a custom `@pytest.mark.requires_bash` register, dynamically bypassing shell scripts on systems lacking native MSYS/MINGW Bash to prevent path translation crashes.
+  - **Playbook & Manifest Static Integrity Validation**: Created `tests/unit/test_playbook_integrity.py` to statically parse every single skill playbook (`SKILL.md`), verifying valid YAML frontmatter, strict directory name/skill name parity, template structure correctness, and config template key parity.
+- **Automated Workflow Tests**: `test_setup_scripts.py` now supports multiline JSON outputs and legacy `KEY=VALUE` diagnostic lines, and handles expected precondition failures gracefully.
+
+### Fixed
+
+- **`setup-product-init.sh` top-level variable declaration**: Fixed bash syntax error on line 103 where a `local` variable declaration was used at the script's top-level (replaced with standard `id` variable).
+- **`setup-product-clarify.sh` pip-fail robustness**: Fixed command substitution pipe bug where `set -o pipefail` caused the script to exit with code `2` on empty directories due to empty grep results. Added a guard check on `PDR_COUNT > 0` to prevent the crash and keep it 100% robust.
+
 ## [0.12.0] - 2026-07-24
 
 ### Added

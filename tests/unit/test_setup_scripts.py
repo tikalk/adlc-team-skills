@@ -12,6 +12,7 @@ BASH_SCRIPTS = [
     for p in ROOT.glob("skills/**/setup-*.sh")
 ]
 
+@pytest.mark.requires_bash
 @pytest.mark.parametrize("script_path", BASH_SCRIPTS)
 def test_bash_setup_script_execution(sandbox_project, script_path):
     """Verify that every bash setup script runs cleanly in the sandbox and outputs valid metadata."""

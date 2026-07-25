@@ -39,6 +39,14 @@ implementation:
   tier: {{TIER}} # 1 | 2 | hybrid
   complexity: {{COMPLEXITY}} # low | medium | high
   automation_feasible: {{AUTOMATION_FEASIBLE}} # true | false
+  synthesis_inputs:
+    - pass_condition
+    - fail_condition
+    - examples.pass
+    - examples.fail
+  synthesis_tuning:
+    max_iterations: 3
+    holdout_locked: true
 ---
 
 # {{CRITERION_NAME}}

@@ -32,6 +32,14 @@ evaluation:
   binary_pass_fail: true
   likert_scales_disabled: true
 
+# Grader Tuning & Automated Synthesis Settings (Automated Eval Engineering)
+grader_tuning:
+  enabled: true
+  max_iterations: 3
+  target_train_accuracy: 1.0
+  holdout_locked: true
+  fallback_action: "surface_and_fail" # surface_and_fail | degrade_gracefully
+
 # EDD Principle III: Error Analysis & Pattern Discovery
 error_analysis:
   # Open coding → axial coding → theoretical saturation

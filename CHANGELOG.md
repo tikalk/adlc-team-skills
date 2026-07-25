@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-25
+
+### Added
+
+- **Automated Eval Engineering Synthesis & Calibration**:
+  - Implemented **Trace-to-Grader Synthesis** in `evals-implement` to automatically compile highly specialized, isolated LLM-judge rubrics and regex checks directly from goldset evidence fields (such as pass/fail anchor cases, root-cause analyses, and axial-coding observations), eliminating manual evaluator writing.
+  - Implemented **Closed-Loop Grader Self-Tuning** in `evals-implement` to automatically run generated unit tests against the training goldset, parse failure cases, and tune the grader's prompts/regex patterns up to a hard **3-iteration cap** to achieve 100% calibration before validation.
+  - Added strict **Holdout Locked Safeguards** to prevent validation/holdout dataset leakage into the self-tuning calibration loop.
+  - Added explicit **Failure Escalation** so any non-converged grader is surfaced as an error rather than silently succeeding.
+  - Added `grader_tuning` parameters to `evals-config-template.yml` for configurable calibration bounds.
+  - Added `synthesis_inputs` and `synthesis_tuning` metadata schemas to `eval-criterion-template.md` and `goldset-record-template.md`.
+
 ## [0.13.0] - 2026-07-24
 
 ### Changed

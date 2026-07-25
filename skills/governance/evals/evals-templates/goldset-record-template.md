@@ -216,6 +216,14 @@ implementation:
   tier: {{TIER}}
   grader_file: {{GRADER_FILENAME}}
   performance_sla: {{PERFORMANCE_SLA}}
+  synthesis_inputs:
+    - pass_condition
+    - fail_condition
+    - examples.pass
+    - examples.fail
+  synthesis_tuning:
+    max_iterations: 3
+    holdout_locked: true
 
 # Quality metrics
 quality_metrics:

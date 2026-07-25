@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-07-25
+
+### Fixed
+
+- **Skills Directory Flattening**: Removed 3-pillar folders (`capability`, `governance`, `workflow`) and flattened family subfolders directly under `skills/` (e.g., `skills/team/`, `skills/evals/`, `skills/architect/`, `skills/levelup/`, `skills/product/`, `skills/mission-brief/`). This places every single skill exactly 2 levels deep, fully resolving the default depth limit of the `skills` CLI and ensuring all skills install out of the box without requiring the `--full-depth` flag.
+- **Path and test references**: Updated all internal and template path references in `evals-specify`, `evals-init`, `team-repair`, and `tests/` to align with the new 2-level structure. All 33 unit and integration tests pass perfectly.
+
 ## [0.14.0] - 2026-07-25
 
 ### Added

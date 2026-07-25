@@ -57,7 +57,7 @@ Group patterns into draft criteria. For each:
 - Document real pass/fail examples directly from traces
 
 #### Phase 3: Create Draft Files
-- Copy `skills/governance/evals/evals-templates/eval-criterion-template.md` to `.adlc/drafts/evals/EVAL-{NNN}.md`.
+- Copy `skills/evals/evals-templates/eval-criterion-template.md` to `.adlc/drafts/evals/EVAL-{NNN}.md`.
 - Populate metadata and error analysis notes.
 - Regenerate index at `.adlc/drafts/evals/evals.md`.
 

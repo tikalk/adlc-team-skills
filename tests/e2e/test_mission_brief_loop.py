@@ -12,7 +12,7 @@ def test_mission_brief_state_initialization(sandbox_project):
     
     # Simulate first-run config copying
     config_file.parent.mkdir(parents=True, exist_ok=True)
-    template_config = Path(__file__).parent.parent.parent / "skills" / "workflow" / "mission-brief" / "config-template.yml"
+    template_config = Path(__file__).parent.parent.parent / "skills" / "mission-brief" / "config-template.yml"
     assert template_config.exists()
     
     import shutil

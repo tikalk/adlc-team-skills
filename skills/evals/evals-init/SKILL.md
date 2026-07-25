@@ -70,7 +70,7 @@ evals/
 
 #### Phase 3: Configuration Copy
 - Create `.adlc/evals/` if missing.
-- Copy `skills/governance/evals/evals-templates/evals-config-template.yml` to `.adlc/evals/evals-config.yml`.
+- Copy `skills/evals/evals-templates/evals-config-template.yml` to `.adlc/evals/evals-config.yml`.
 
 #### Phase 4: Auto-Handoff
 Trigger `/evals-specify` to begin error analysis.

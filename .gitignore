@@ -24,3 +24,7 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 .adlc/
+
+# Python
+__pycache__/
+*.py[cod]

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-07-26
+
+### Added
+
+- **EVAL-004: team-boot first-tool-call gate regression test**: New goldset criterion and Python grader (`check_team_boot_first_call.py`) that asserts the agent's first tool call in a session is `skill({name: "team-boot"})` and fails on rationalization patterns (plan-mode conflict, efficiency, task-matters). Catches the failure mode where an agent in plan mode skips `team-boot` by fabricating a plan-mode/skill conflict.
+
+### Fixed
+
+- **team-boot directive strengthening**: Added First-Tool-Call Gate and Plan-Mode Compatibility bullets to the `AGENTS.md` managed section, plus three anti-pattern rows covering rationalizations observed in a real session trace (plan-mode conflict, efficiency, task-matters-more-than-check). Updated `team-boot/SKILL.md` with matching rationalization rows and red flags. Propagated to `team-helpers.sh`/`team-helpers.ps1` heredocs (source of truth) so `team-repair` picks up the stronger directive on any project.
+
 ## [0.14.1] - 2026-07-25
 
 ### Fixed

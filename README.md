@@ -54,7 +54,26 @@ levelup-publish    → compile into team directives + evals goldensets + draft P
 
 ---
 
-## #3: Product Decisions Are Invisible
+## #3: Agent Behavior Can't Be Verified
+
+**Factor VII — Verification-First Evals. Factor VIII — Ratchet Effect. Factor XII — Build to Delete.**
+
+Prompt changes, model upgrades, and context edits silently degrade agent quality. Without executable evaluation suites, regressions go unnoticed, directive compliance is unmeasurable, and "it works" is a guess — not a fact. Production failures surface patterns that never feed back into rules.
+
+Evals skills build application-level evaluation suites (PromptFoo or DeepEval) following Eval-Driven Development principles — extract criteria from specs and production failure traces, refine into a published goldset with isolated holdout splits, generate executable binary graders, run the evaluation pyramid (Tier 1 fast checks + Tier 2 LLM judges), and analyze trajectory failures back into directive rules or evaluator backlog.
+
+```
+evals-init      → initialize evals/{system}/ with security baseline
+evals-specify   → extract criteria from specs / production failures (bottom-up)
+evals-clarify   → cluster, refine, isolate 20% holdout, publish goldset
+evals-implement → generate executable graders + configs, self-tune on goldset
+evals-validate  → run evaluation pyramid, compute TPR/TNR + SLA headroom
+evals-analyze   → route spec failures → levelup-specify, generalization → backlog
+```
+
+---
+
+## #4: Product Decisions Are Invisible
 
 **Factor III — Mission Definition.**
 
@@ -73,7 +92,7 @@ product-roadmap   → track milestone progress (decisions + issues + code + gate
 
 ---
 
-## #4: Architecture Decisions Are Invisible
+## #5: Architecture Decisions Are Invisible
 
 **Factor IV — Structured Planning.**
 
@@ -91,7 +110,7 @@ architect-analyze   → check ADR↔AD consistency and quality
 
 ---
 
-## #5: End-to-End Feature Work Spans Many Skills
+## #6: End-to-End Feature Work Spans Many Skills
 
 **Factor III — Mission Definition. Factor XIII — Loop Engineering.**
 
@@ -342,12 +361,12 @@ Team:        levelup-specify → levelup-clarify → levelup-publish → team-re
 |--------|--------|-----|
 | **III — Mission Definition** | Product skills | PRD/PDR lifecycle ensures product decisions are documented, reviewed, and traceable before execution |
 | **IV — Structured Planning** | Architecture skills | ADRs and AD.md provide structured planning artifacts using Rozanski & Woods viewpoints |
-| **VII — Verification-First Evals** | LevelUp skills | Eval CDRs with binary pass/fail cases test directive compliance; evals regression gate in levelup-clarify |
-| **VIII — Ratchet Effect** | LevelUp skills | Each session extracts eval CDRs alongside directive CDRs — quality strictly increases |
+| **VII — Verification-First Evals** | LevelUp + Evals skills | LevelUp creates directive-compliance eval CDRs; evals skills build and run application-level evaluation suites (PromptFoo/DeepEval) with binary graders, holdout splits, and statistical validation |
+| **VIII — Ratchet Effect** | LevelUp + Evals skills | Each session extracts eval CDRs alongside directive CDRs; each goldset publication adds criteria that monotonically increase quality — `evals-clarify` publishes, `evals-validate` enforces |
 | **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
 | **X — Context Engineering** | Team Directives | `team-boot` and `team-discover` load only relevant context per task, preventing bloat |
 | **XI — Directives as Code** | Team + LevelUp + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
-| **XII — Build to Delete** | team-repair | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay) |
+| **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `evals-analyze` routes spec failures to `levelup-specify` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
 
 </details>
 

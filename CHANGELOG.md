@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-07-26
+
+### Fixed
+
+- **README: Add #3 "Agent Behavior Can't Be Verified" section for Evals skills**: The evals skills (`evals-*`) had no narrative `#N` section explaining their need (unlike team, levelup, product, architect, mission). Added a new `#3` section with the Factor VII/VIII/XII mapping, problem statement, and 6-skill overview. Renumbered the subsequent sections (#3→#4 Product, #4→#5 Architecture, #5→#6 End-to-End).
+- **README: 12-Factor Alignment table under-mapped Evals skills**: Factors VII, VIII, and XII listed only `LevelUp skills` or `team-repair` but omitted the `Evals` skills, which are the primary implementation of Factor VII (verification) and the ratchet mechanism (VIII). Updated three rows to include `Evals skills` / `evals-analyze` with expanded descriptions.
+
 ## [0.14.3] - 2026-07-26
 
 ### Fixed

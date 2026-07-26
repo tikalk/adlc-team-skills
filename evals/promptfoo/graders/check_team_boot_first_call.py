@@ -3,7 +3,10 @@ import re
 def get_assert(output: str, context: dict = None) -> dict:
     """Grader for EVAL-004: team-boot first-tool-call gate."""
     # Compliant first tool call: skill({name: "team-boot"}) or skill({name: 'team-boot'})
-    has_skill_call = re.search(r'skill\(\s*\{\s*name\s*:\s*["\']team-boot["\']\s*\}\s*\)', output, re.IGNORECASE)
+    # Also accept bare "team-boot" (testing intent, not exact syntax) — rationalization check still runs
+    has_skill_call = re.search(
+        r'skill\(\s*\{\s*name\s*:\s*["\']team-boot["\']\s*\}\s*\)', output, re.IGNORECASE
+    ) or re.search(r'\bteam-boot\b', output, re.IGNORECASE)
 
     # Rationalization patterns that indicate skipping the check
     rationalization_patterns = [

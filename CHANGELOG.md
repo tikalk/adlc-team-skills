@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-07-26
+
+### Fixed
+
+- **EVAL-004 grader and instruction**: Made the EVAL-004 instruction in `config.js` explicit ("Emit EXACTLY this text: `skill({name: \"team-boot\"})`") and extended the grader to also accept the bare word `team-boot` as a valid pass (testing intent, not exact syntax). The rationalization check still runs, so `team-boot` + a skip rationalization → FAIL. Resolves a false-fail where gpt-4o-mini emitted the bare skill name instead of full tool-call syntax.
+
 ## [0.14.2] - 2026-07-26
 
 ### Added

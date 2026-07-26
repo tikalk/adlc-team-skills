@@ -392,7 +392,9 @@ pwsh "$(Split-Path $PSCommandPath -Parent)/team-helpers.ps1" -InjectAgents "{PRO
 This creates or updates the project's `AGENTS.md` with a managed section (between `<!-- TEAM_AI_DIRECTIVES START -->` and `<!-- TEAM_AI_DIRECTIVES END -->` markers) containing:
 
 - **Strict Compliance** directive: "You MUST invoke the `team-boot` skill BEFORE responding to any task or question"
-- **Anti-pattern counter-rationalizations**
+- **First-Tool-Call Gate**: "Your FIRST tool call in any session MUST be `skill({name: "team-boot"})`" — mechanically verifiable in any trace
+- **Plan-Mode Compatibility**: "Loading a skill is read-only; plan mode never forbids the `skill` tool" — prevents fabricated plan-mode conflicts
+- **Anti-pattern counter-rationalizations** (including plan-mode, efficiency, and "task matters more" variants)
 - **Team Constitution** reference path
 - **team-discover** invocation guidance
 

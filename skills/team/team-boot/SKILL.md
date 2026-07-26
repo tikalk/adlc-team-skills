@@ -175,10 +175,15 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 | "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
 | "This doesn't need a formal skill" | If a skill exists, use it. |
 | "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "Plan mode / read-only phase forbids modifications" | The `skill` tool is read-only; it never conflicts with plan mode. |
+| "I need to be efficient / focus on the task" | Efficiency is not a skip reason. The check is the first step. |
+| "The task matters more than the check" | The check IS part of the task. |
 
 ## Red Flags
 
 - Responding to a user task without having read the team constitution first.
+- First tool call in a session being anything other than `skill({name: "team-boot"})`. Mechanically verifiable in any trace.
+- Fabricating a conflict between plan mode / read-only phase and the skill check. The `skill` tool is read-only and never forbidden by plan mode.
 - Using glob/find or any file-search tool to locate `.adlc/init-options.json`
   instead of reading the exact relative path directly.
 - Reading full `PRD.md`, `AD.md`, or individual PDR/ADR bodies during boot

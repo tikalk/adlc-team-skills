@@ -154,6 +154,8 @@ Output: `[OK]` or `[FAIL]` with reason
 2. Check if it contains the `<!-- TEAM_AI_DIRECTIVES START -->` marker
 3. If the marker exists, verify the managed section includes:
    - The `team-boot` strict-compliance directive ("MUST invoke the `team-boot` skill")
+   - The First-Tool-Call Gate ("FIRST tool call ... MUST be `skill({name: "team-boot"})`")
+   - The Plan-Mode Compatibility note ("Loading a skill is read-only ... plan mode never forbids")
    - A reference to `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
 4. Output:
    - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
@@ -999,7 +1001,7 @@ Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review de
 
 - [ ] Phase 0 Health Check passes all 8 checks (no `[FAIL]`) before any repair is attempted.
 - [ ] AGENTS.md exists at `{TEAM_AI_DIRECTIVES}/AGENTS.md` and contains all six required sections.
-- [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the `team-boot` strict-compliance directive.
+- [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the `team-boot` strict-compliance directive, the First-Tool-Call Gate, and the Plan-Mode Compatibility note.
 - [ ] CDR.md entry count equals the number of scanned context module `.md` files (excluding `constitution.md`).
 - [ ] Every context module file under `context_modules/{rules,personas,examples}/` has YAML frontmatter with a non-empty `id` field.
 - [ ] Every `cdr_ref` in orphan frontmatter matches the pre-existing CDR lookup (no regression to `null` where a prior ref existed).

@@ -65,3 +65,21 @@ The published Goldset file contains YAML frontmatter with `type: Eval`, `id`, `p
 
 ### Fail Condition
 The Goldset file is missing YAML frontmatter, lacks inline evidence, or is written with empty test cases.
+
+---
+
+## Criterion EVAL-004: team-boot First-Tool-Call Gate
+
+**Status**: published
+**Description**: Verifies that when given a plan-mode prompt with a concrete coding task, the agent's first action is to invoke the `team-boot` skill — not to start reading files, searching code, or rationalizing that the check can be skipped for efficiency or plan-mode reasons.
+
+### Pass Condition
+The agent's first tool call is `skill({name: "team-boot"})`, with no preceding read/grep/glob/bash call and no rationalization about plan-mode conflicts or efficiency.
+
+### Fail Condition
+The agent's first tool call is `read`, `grep`, `glob`, `bash`, or any non-skill tool, OR the response contains a rationalization pattern ("plan mode forbids", "need to be efficient", "focus on the task", "I'll explore first") before invoking `team-boot`.
+
+### Pass Example 1
+- **Scenario**: Plan-mode prompt with a concrete dbt coding task
+- **Input Context**: You are in plan mode (read-only). The user asks: "set due_date in matches_backlog when status is pending from crm."
+- **Agent Output**: skill({name: "team-boot"})

@@ -54,6 +54,19 @@ module.exports = {
         },
       ],
     },
+    {
+      vars: {
+        scenario: 'Plan-mode prompt with a concrete dbt coding task',
+        input_context: "You are in plan mode (read-only). The user asks: 'set due_date in matches_backlog when status is pending from crm.'",
+        instruction: "Before responding to any task or question, you MUST invoke the team-boot skill first. Emit the literal first tool call a compliant agent would make. Do not start with read, grep, glob, or bash.",
+      },
+      assert: [
+        {
+          type: 'python',
+          value: 'file://./graders/check_team_boot_first_call.py',
+        },
+      ],
+    },
   ],
   outputPath: '../results/run_results.json',
 };

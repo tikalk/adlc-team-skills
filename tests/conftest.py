@@ -62,6 +62,7 @@ def sandbox_project(tmp_path):
     subprocess.run(["git", "init"], cwd=project_root, capture_output=True, check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=project_root, capture_output=True, check=True)
     subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=project_root, capture_output=True, check=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=project_root, capture_output=True, check=True)
     
     # Create initial commit to establish HEAD and main branch
     (project_root / "README.md").write_text("# Sandbox Project\n")

@@ -1,191 +1,163 @@
-# ADLC Team Skills
+# ADLC Team Skills — Agentic SDLC for Engineering Teams
 
-Agent skills for the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/agentic-sdlc-12-factors) workflow — team directives management, product decision records, and architecture analysis.
+> **Stop Vibe Coding in Silos. Build a Shared Cognitive Layer for Your Engineering Team.**
 
-**Relationship to 12 factors:** This repo is referenced from [team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives) and together with the 12-factor methodology forms the Foundation layer of the ADLC stack. The skills implement Factors III, IV, VII, VIII, IX, X, XI, and XII.
+Individual prompt hacks create quick wins for solo developers, but when scaled across a team, "vibe coding" leads to chaotic technical debt, context rot, unreviewable PRs, and lost code ownership. **Speed is solved; Trust and Verification is the new bottleneck in AI engineering.**
+
+**ADLC Team Skills** (`tikalk/adlc-team-skills`) is the open-source **Team Layer** of the **Twelve-Factor Agentic SDLC**. It turns AI agents from isolated guessers into compliant, accountable team members that share your team's constitution, product strategy, architectural standards, and evaluation benchmarks.
+
+---
 
 ## Quickstart
 
 ```bash
-# Install skills globally
+# Install team skills globally
 npx skills add tikalk/adlc-team-skills -a claude -g
 
-# Or for a specific project
+# Or for a specific team project
 npx skills add tikalk/adlc-team-skills -a claude
 ```
 
-Works with any agent that supports the [Agent Skills standard](https://agentskills.io) — Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, and others.
+Works out of the box with any agent supporting the [Agent Skills standard](https://agentskills.io) — Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, and others.
 
-**Universal orchestration:** `mission-brief` auto-discovers skills from *any*
-source (mattpocock/skills, addy osmani/agent-skills, superpowers, or your own)
-and dynamically wires them into the mission pipeline. Install multiple skill
-repos side by side — `mission-brief` routes each step to the best available
-tool. No vendor lock-in.
+**Universal orchestration:** `mission-brief` auto-discovers skills from *any* source (mattpocock/skills, addy osmani/agent-skills, superpowers, spec-kit, or your own) and dynamically wires them into the mission pipeline. No vendor lock-in.
 
-**Before anything else:** Run `team-setup` once to configure the team AI directives path, or ensure `.adlc/init-options.json` is present.
+**Before anything else:** Run `team-setup` once per project to link your team's central `team-ai-directives` repository.
 
 ---
 
-## #1: The Agent Doesn't Know How Your Team Works
-
-**Factor X — Context Engineering. Factor XI — Directives as Code. Factor XII — Team Capability.**
-
-An agent assigned to your repo has no idea about your team's coding conventions, review standards, architectural principles, or product strategy. Without structured context injection, every session starts from zero — and every session drifts.
-
-`team-boot` loads the team constitution, PDR and ADR indexes, and relevant context modules automatically on session start. `team-discover` retrieves the specific personas, rules, and examples relevant to the current task. No prompt walls, no manual context dumping.
+## Directives as Code: The Four Team Pillars
 
 ```
-team-boot      → auto-loads constitution + PDR/ADR indexes + discover
-team-discover  → fetches rules/personas/examples for the current task
+                             [ THE GREAT FILTER ]
+                      (Human Team Lead Macro-Review)
+                                     ▲
+                                     │
+                  ┌──────────────────┴──────────────────┐
+                  │   Pillar 4: Governance & Evals      │
+                  │   (Tier 1 Fast Checks + LLM Judges) │
+                  └──────────────────▲──────────────────┘
+                                     │
+                  ┌──────────────────┴──────────────────┐
+                  │   Pillar 3: Spec-Driven Workflow    │
+                  │   (Contract-First Mission Pipeline) │
+                  └──────────────────▲──────────────────┘
+                                     │
+                  ┌──────────────────┴──────────────────┐
+                  │   Pillar 2: Product & Architecture  │
+                  │   (Product PDRs + Architecture ADRs)│
+                  └──────────────────▲──────────────────┘
+                                     │
+                 ┌───────────────────┴───────────────────┐
+                 │   Pillar 1: Strategy & Team Directives│
+                 │   (team-boot / levelup / CDR repository) │
+                 └───────────────────────────────────────┘
+```
+
+### 🏛️ Pillar 1: Strategy & Team Directives (Team-First Alignment)
+
+**Factor I — Developer as Orchestrator. Factor X — Context Engineering. Factor XI — Directives as Code.**
+
+Put the **team** at the center of your AI strategy. Instead of individual developers hoarding prompt shortcuts on local machines, team standards live in a version-controlled Git repository (`team-ai-directives`).
+
+*   **`team-boot`**: Auto-bootstraps agent sessions on start, injecting your version-controlled Team Constitution so every agent behaves as an aligned team member.
+*   **`team-discover`**: Dynamically fetches *only* the specific personas, architectural rules, PDRs, and ADRs relevant to the current task — zero prompt-wall bloat.
+*   **`team-constitution`**: Interactively define, review, or amend your engineering team's core principles.
+*   **`team-repair`**: Re-index CDR.md, scan for rule conflicts, and verify directive freshness.
+
+```
+team-boot        → auto-loads constitution + PDR/ADR indexes + discover
+team-discover    → fetches rules/personas/examples for the current task
 team-constitution → create or amend the team constitution interactively
-team-repair    → re-index CDR.md, scan for conflicts, verify freshness
+team-repair      → re-index CDR.md, scan for conflicts, verify freshness
 ```
 
 ---
 
-## #2: Lessons From Sessions Evaporate
+### 🎯 Pillar 2: Product Strategy & Architectural Governance (PDRs & ADRs)
 
-**Factor IX — Traceability. Factor XI — Directives as Code. Factor XII — Team Capability.**
+**Factor III — Mission Definition. Factor IV — Structured Planning. Factor IX — Traceability.**
 
-Every agent session surfaces patterns, gotchas, and team knowledge. Without a structured capture mechanism, that knowledge is lost when the session ends.
+Without documented decisions, every implementation session re-derives (or misinterprets) product intent and architectural rules.
 
-LevelUp skills capture session traces, extract reusable Context Directive Records (CDRs), and publish them back to the team AI directives repository as skills, rules, personas, or examples — creating a closed feedback loop where every session enriches the next.
-
-```
-levelup-init      → brownfield CDR discovery from codebase + paired evals
-levelup-specify    → extract CDRs + paired evals from current session
-levelup-clarify    → review, accept, reject, or defer CDRs (evals gate ON)
-levelup-publish    → compile into team directives + evals goldensets + draft PR
-```
-
----
-
-## #3: Agent Behavior Can't Be Verified
-
-**Factor VII — Verification-First Evals. Factor VIII — Ratchet Effect. Factor XII — Build to Delete.**
-
-Prompt changes, model upgrades, and context edits silently degrade agent quality. Without executable evaluation suites, regressions go unnoticed, directive compliance is unmeasurable, and "it works" is a guess — not a fact. Production failures surface patterns that never feed back into rules.
-
-Evals skills build application-level evaluation suites (PromptFoo or DeepEval) following Eval-Driven Development principles — extract criteria from specs and production failure traces, refine into a published goldset with isolated holdout splits, generate executable binary graders, run the evaluation pyramid (Tier 1 fast checks + Tier 2 LLM judges), and analyze trajectory failures back into directive rules or evaluator backlog.
+*   **Product Decision Records (`product-*`)**: Capture product decisions as individual PDR files, resolve ambiguities through an interactive clarification workflow, and compile them into a self-contained `PRD.md`.
+*   **Architectural Decision Records (`architect-*`)**: Reverse-engineer or define architectural decisions using Rozanski & Woods viewpoints (Functional, Security, Deployment, Performance) and compose them into a unified `AD.md`.
+*   **`product-roadmap`**: Track milestone progress across four layers of truth — decisions (PDRs), execution (live issues via MCP), code evidence, and milestone gates.
 
 ```
-evals-init      → initialize evals/{system}/ with security baseline
-evals-specify   → extract criteria from specs / production failures (bottom-up)
-evals-clarify   → cluster, refine, isolate 20% holdout, publish goldset
-evals-implement → generate executable graders + configs, self-tune on goldset
-evals-validate  → run evaluation pyramid, compute TPR/TNR + SLA headroom
-evals-analyze   → route spec failures → levelup-specify, generalization → backlog
+Product:      product-init → product-clarify → product-implement → product-analyze
+Architecture: architect-init → architect-clarify → architect-implement → architect-analyze
+Roadmap:      product-roadmap (tracks PDRs + issues + code + gates)
 ```
 
 ---
 
-## #4: Product Decisions Are Invisible
+### 📐 Pillar 3: Spec-Driven Workflow ("Debug the Spec, Not the Code")
 
-**Factor III — Mission Definition.**
+**Factor III — Mission Definition. Factor IV — Structured Planning. Factor V — Triage & Execution. Factor XIII — Loop Engineering.**
 
-Without documented product decisions, every implementation session re-derives (or misinterprets) the product's intent. Feature scope, target audience, business constraints, and trade-offs are locked in someone's head or buried in a Slack thread.
+AI is an obsessive guesser — when faced with ambiguity, it invents solutions instead of asking questions. Move from a *Conversational* model to a *Contract* model.
 
-Product skills capture product decisions as individual PDR files, refine them through a clarification workflow, and compile them into a self-contained PRD.md. The `product-roadmap` skill tracks milestone progress from decisions through execution, evidence, and gates — with live issue counting via MCP.
-
-```
-product-init      → discover PDRs from existing codebase/docs (brownfield)
-product-specify   → create PDRs interactively (greenfield)
-product-clarify   → refine, validate, and approve PDRs
-product-implement → generate PRD.md from accepted PDRs
-product-analyze   → check PDR↔PRD consistency
-product-roadmap   → track milestone progress (decisions + issues + code + gates)
-```
-
----
-
-## #5: Architecture Decisions Are Invisible
-
-**Factor IV — Structured Planning.**
-
-Unrecorded architecture decisions produce inconsistent implementations, duplicated effort, and systems that are harder to maintain or evolve. The adage "the architecture is in the code" is only true if you're willing to reverse-engineer every decision from the source.
-
-Architecture skills capture Architectural Decision Records (ADRs) and compose them into a unified Architecture Description (AD) using the Rozanski & Woods viewpoints methodology.
+*   **`mission-brief`**: The team's autonomous pipeline runner. Takes a feature prompt, derives a formal contract (Goal, Constraints, Non-Goals, Success Criteria), generates an ordered step list, and walks a `specify → plan → tasks → implement ↺ converge` loop to completion.
+*   **Mantra: "Debug the Spec, Not the Code"**: When an agent makes a mistake, don't just patch the code — add the missing constraint to the specification so the mistake is never repeated.
 
 ```
-architect-init      → reverse-engineer ADRs from codebase (brownfield)
-architect-specify   → create ADRs from PRD or feature description (greenfield)
-architect-clarify   → refine and validate ADRs
-architect-implement → generate AD.md from accepted ADRs
-architect-analyze   → check ADR↔AD consistency and quality
+mission-brief "add user profile API with JWT"
+  ├── Phase 2: Brief (Goal, Constraints, Non-Goals, Success Criteria)
+  ├── Phase 3: Route Classification (spec | change | quick)
+  ├── Phase 4: Discovery (auto-wires local installed skills & SDD frameworks)
+  └── Phase 5: Execute (specify → plan → tasks → implement ↺ converge)
 ```
 
 ---
 
-## #6: End-to-End Feature Work Spans Many Skills
+### 🛡️ Pillar 4: Team Governance, Verification-First Evals & "Build to Delete"
 
-**Factor III — Mission Definition. Factor XIII — Loop Engineering.**
+**Factor VII — Verification-First Evals. Factor VIII — Ratchet Effect. Factor IX — Traceability. Factor XII — Build to Delete.**
 
-A real feature isn't one skill — it's specify → plan → tasks → implement ↔
-converge, with gates, a circuit breaker, resume across sessions, and an audit
-trail. Orchestrating that by hand is error-prone and loses state on every
-compaction. `mission-brief` structures the description into a Mission Brief
-(goal, constraints, success criteria), generates an ordered step list with
-prompts that trigger installed SDD skills via model invocation or command-file
-discovery, and walks those steps to converged implementation. No YAML workflow
-files, no per-framework profiles — the step prompts use canonical SDD
-terminology that works with any installed skill set. Supports 30+ agents via
-externalized command discovery (`references/agent-integrations.md`).
+Never let the agent that wrote the code decide if the code is good. "Separate the Maker from the Checker."
+
+*   **`evals` skills**: Build application-level evaluation suites (PromptFoo or DeepEval) using Eval-Driven Development (EDD). Runs Tier 1 fast checks + Tier 2 LLM judge subagents to test code against defined business risks *before* human macro-review in **The Great Filter**.
+*   **`levelup`**: Capture session wins into permanent team memory. `levelup-specify` extracts session execution traces and commits them to Git as reusable rules (Context Directive Records — CDRs).
+*   **"Build to Delete"**: Prune outdated rules and prompt scaffolding as underlying foundation models improve using `team-repair --build-to-delete`.
 
 ```
-mission-brief            → brief → generate steps → run end-to-end (sync default, --async across sessions)
-mission-brief --resume   → continue an interrupted mission from the persisted checkpoint
+LevelUp: levelup-init → levelup-specify → levelup-clarify → levelup-publish
+Evals:   evals-init → evals-specify → evals-clarify → evals-implement → evals-validate → evals-analyze
 ```
-
-Runs sync (interactive, gated) or async (ungated, checkpoint across sessions),
-with a converge loop, circuit breaker, spec-correction routing (config-gated),
-per-step model tiers, and a `mission-log.json` audit trail.
 
 ---
 
-## #7: Universal Skill Orchestration — Zero Lock-In
+## 🌐 Universal Skill & SDD Framework Orchestration — Zero Lock-In
 
 **Factor XII — Build to Delete. Factor XIII — Loop Engineering.**
 
-`mission-brief` doesn't force you into a proprietary ecosystem. It acts as a
-**universal orchestrator** that dynamically discovers any installed agent
-skills in your workspace and wires them into the mission pipeline — no
-hard-coded mappings, no vendor lock-in.
+`mission-brief` acts as an open, vendor-agnostic orchestrator across all popular agent skill repositories and Spec-Driven Development (SDD) frameworks:
+
+| SDD Framework / Skill Source | Supported Workflows |
+| :--- | :--- |
+| **Agentic SDLC Spec-Kit** (`tikalk/agentic-sdlc-spec-kit`) | Twelve-Factor SDD pipeline, native specify CLI discovery, contract verification |
+| **Spec-Kit** (`specify_cli`) | Native command discovery and specification templates |
+| **OpenSpec** | Structured edge-case contracts and verification schemas |
+| **[mattpocock/skills](https://github.com/mattpocock/skills)** | `/tdd`, `/grill-me`, `/grill-with-docs`, `/code-review`, `/prototype` |
+| **[addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)** | Exit criteria checklists, quality gate skills |
+| **[superpowers](https://github.com/obra/superpowers)** | Developer tooling & workflow skills |
+| **ADLC Team Skills** (this repo) | `product-specify`, `architect-specify`, `evals-validate`, `levelup-specify` |
+| **Your Custom Skills** | Any skill following the `SKILL.md` standard |
 
 ### How it works
 
-1. **Discovery** — At mission start, `mission-brief` scans all skills
-   directories (`.claude/skills`, `.agents/skills`, etc.) and reads every
-   `SKILL.md` frontmatter to build a vendor-agnostic inventory of installed
-   skills with their names and descriptions.
-2. **LLM-decided routing** — Each step's delegation prompt includes the full
-   skills inventory. The subagent decides which skill (if any) fits the
-   current phase — the LLM matches, not a brittle lookup table.
-3. **Graceful fallback** — If no skill matches, the subagent executes
-   directly. If a skill matches, it's invoked. Either way, the mission
-   pipeline continues.
-
-### Works with any Agent-Skills-standard repository
-
-| Skill source | Example skills auto-wired |
-|---|---|
-| [mattpocock/skills](https://github.com/mattpocock/skills) | `tdd`, `grill-me`, `grill-with-docs`, `code-review`, `prototype`, `handoff` |
-| [addy osmani/agent-skills](https://github.com/addyosmani/agent-skills) | Checklists, exit-criteria skills |
-| [superpowers](https://github.com/obra/superpowers) | Workflow and tooling skills |
-| ADLC team skills (this repo) | `product-specify`, `architect-specify`, `evals-validate`, `levelup-specify` |
-| Your custom skills | Any skill following the `SKILL.md` standard |
-
-Install skills from any source, run `mission-brief`, and the orchestrator
-automatically routes each pipeline step to the best available tool — while
-maintaining the converge loop, circuit breaker, audit trail, and resume
-across sessions.
+1. **Discovery** — At mission start, `mission-brief` scans all skills directories (`.claude/skills`, `.agents/skills`, etc.) and reads every `SKILL.md` frontmatter to build a vendor-agnostic inventory of installed skills with their names and descriptions.
+2. **LLM-decided routing** — Each step's delegation prompt includes the full skills inventory. The subagent decides which skill (if any) fits the current phase — the LLM matches, not a brittle lookup table.
+3. **Graceful fallback** — If no skill matches, the subagent executes directly. If a skill matches, it's invoked. Either way, the mission pipeline continues.
 
 ```bash
-# Install skills from multiple sources
+# Install skills from multiple team or community sources
 npx skills add mattpocock/skills
 npx skills add tikalk/adlc-team-skills
 
-# mission-brief discovers and wires them automatically
-mission-brief "add a new dashboard with telemetry"
+# mission-brief discovers and routes them automatically
+mission-brief "add user profile API with JWT"
 ```
 
 ---

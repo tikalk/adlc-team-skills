@@ -16,6 +16,12 @@ npx skills add tikalk/adlc-team-skills -a claude
 
 Works with any agent that supports the [Agent Skills standard](https://agentskills.io) — Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, and others.
 
+**Universal orchestration:** `mission-brief` auto-discovers skills from *any*
+source (mattpocock/skills, addy osmani/agent-skills, superpowers, or your own)
+and dynamically wires them into the mission pipeline. Install multiple skill
+repos side by side — `mission-brief` routes each step to the best available
+tool. No vendor lock-in.
+
 **Before anything else:** Run `team-setup` once to configure the team AI directives path, or ensure `.adlc/init-options.json` is present.
 
 ---
@@ -133,6 +139,54 @@ mission-brief --resume   → continue an interrupted mission from the persisted 
 Runs sync (interactive, gated) or async (ungated, checkpoint across sessions),
 with a converge loop, circuit breaker, spec-correction routing (config-gated),
 per-step model tiers, and a `mission-log.json` audit trail.
+
+---
+
+## #7: Universal Skill Orchestration — Zero Lock-In
+
+**Factor XII — Build to Delete. Factor XIII — Loop Engineering.**
+
+`mission-brief` doesn't force you into a proprietary ecosystem. It acts as a
+**universal orchestrator** that dynamically discovers any installed agent
+skills in your workspace and wires them into the mission pipeline — no
+hard-coded mappings, no vendor lock-in.
+
+### How it works
+
+1. **Discovery** — At mission start, `mission-brief` scans all skills
+   directories (`.claude/skills`, `.agents/skills`, etc.) and reads every
+   `SKILL.md` frontmatter to build a vendor-agnostic inventory of installed
+   skills with their names and descriptions.
+2. **LLM-decided routing** — Each step's delegation prompt includes the full
+   skills inventory. The subagent decides which skill (if any) fits the
+   current phase — the LLM matches, not a brittle lookup table.
+3. **Graceful fallback** — If no skill matches, the subagent executes
+   directly. If a skill matches, it's invoked. Either way, the mission
+   pipeline continues.
+
+### Works with any Agent-Skills-standard repository
+
+| Skill source | Example skills auto-wired |
+|---|---|
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `tdd`, `grill-me`, `grill-with-docs`, `code-review`, `prototype`, `handoff` |
+| [addy osmani/agent-skills](https://github.com/addyosmani/agent-skills) | Checklists, exit-criteria skills |
+| [superpowers](https://github.com/obra/superpowers) | Workflow and tooling skills |
+| ADLC team skills (this repo) | `product-specify`, `architect-specify`, `evals-validate`, `levelup-specify` |
+| Your custom skills | Any skill following the `SKILL.md` standard |
+
+Install skills from any source, run `mission-brief`, and the orchestrator
+automatically routes each pipeline step to the best available tool — while
+maintaining the converge loop, circuit breaker, audit trail, and resume
+across sessions.
+
+```bash
+# Install skills from multiple sources
+npx skills add mattpocock/skills
+npx skills add tikalk/adlc-team-skills
+
+# mission-brief discovers and wires them automatically
+mission-brief "add a new dashboard with telemetry"
+```
 
 ---
 

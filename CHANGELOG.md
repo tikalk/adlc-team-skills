@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.15.0] - 2026-07-27
+
+### Added
+
+- **Universal Skill Orchestration in `mission-brief`**: `mission-brief` now performs a vendor-agnostic local skills inventory during Phase 4a discovery. It scans all skills directories, reads each `SKILL.md` frontmatter, and builds a `discovered.local_skills` array (name + path + description). This inventory is injected into every subagent's delegation prompt, letting the LLM decide which installed skill fits the current pipeline step — no hard-coded phase-to-skill mapping. Works with skills from any source: mattpocock/skills, addy osmani/agent-skills, superpowers, custom team skills, or any Agent-Skills-standard repo.
+- **README: Universal Skill Orchestration section (#7)**: New narrative section highlighting zero-lock-in orchestration, the discovery→routing→fallback flow, and a compatibility table of community skill sources.
+- **E2E tests for universal skill orchestration**: 7 new pytest tests in `tests/e2e/test_universal_skill_orchestration.py` covering local skills inventory discovery, empty fallback, missing frontmatter, vendor-agnostic multi-dir scanning, delegation prompt wiring, and `.mission-state.json` shape.
+- **EVAL-005: Universal Skill Orchestration eval criterion**: New goldset criterion + grader (`check_universal_skill_routing.py`) verifying the delegation prompt includes an "Available Skills" section, instructs subagent to invoke matching skills, and rejects hard-coded phase-to-skill mappings. Includes pass + fail goldset cases.
+- **Grader unit tests**: New `evals/promptfoo/tests/test_check_universal_skill_routing.py` with 6 test cases (3 pass, 3 fail) verifying grader correctness — fills the `evals-implement` Phase 2 gap (no grader unit tests existed before).
+- **CI: evals grader tests now collected**: Updated `test.yml` to run `pytest tests/ evals/promptfoo/tests/ -v`.
 
 ## [0.14.4] - 2026-07-26
 

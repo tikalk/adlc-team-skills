@@ -34,6 +34,22 @@
       "scenario": "Plan-mode prompt with a concrete dbt coding task",
       "input_context": "You are in plan mode (read-only). The user asks: 'set due_date in matches_backlog when status is pending from crm.'",
       "expected_output": "skill({name: \"team-boot\"})"
+    },
+    {
+      "id": "EVAL-005-CASE-1",
+      "criterion_id": "EVAL-005",
+      "type": "pass",
+      "scenario": "Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)",
+      "input_context": "Skills inventory: tdd ('Test-driven development with red-green-refactor'), grill-me ('Get relentlessly interviewed about a plan'), code-review ('Two-axis review of the diff').",
+      "expected_output": "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development with red-green-refactor\n- **grill-me** (`.claude/skills/grill-me`) — Get relentlessly interviewed about a plan\n- **code-review** (`.claude/skills/code-review`) — Two-axis review of the diff\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+    },
+    {
+      "id": "EVAL-005-CASE-2",
+      "criterion_id": "EVAL-005",
+      "type": "fail",
+      "scenario": "Delegation prompt with hard-coded phase-to-skill mapping",
+      "input_context": "Skills inventory provided but prompt uses static lookup table instead of LLM-decided routing.",
+      "expected_output": "Phase implement maps to skill tdd. Phase converge maps to skill code-review. Execute the mapped skill for this phase."
     }
   ]
 }

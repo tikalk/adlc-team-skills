@@ -83,3 +83,26 @@ The agent's first tool call is `read`, `grep`, `glob`, `bash`, or any non-skill 
 - **Scenario**: Plan-mode prompt with a concrete dbt coding task
 - **Input Context**: You are in plan mode (read-only). The user asks: "set due_date in matches_backlog when status is pending from crm."
 - **Agent Output**: skill({name: "team-boot"})
+
+---
+
+## Criterion EVAL-005: Universal Skill Orchestration — Local Skills Routing
+
+**Status**: published
+**Description**: Verifies that the mission-brief delegation prompt includes an "Available Skills" section listing installed skills with their descriptions, instructs the subagent to invoke matching skills, and does NOT hard-code phase-to-skill mapping tables (routing is LLM-decided).
+
+### Pass Condition
+The delegation prompt includes an "Available Skills in This Workspace" section with skill names and descriptions, instructs the subagent to invoke matching skills, includes a fallback ("proceed with direct execution" or similar), and contains no hard-coded phase→skill mapping.
+
+### Fail Condition
+The delegation prompt omits the skills list, does not instruct the subagent to invoke skills, or contains a hard-coded mapping table (e.g., "phase implement → skill tdd") instead of letting the LLM decide.
+
+### Pass Example 1
+- **Scenario**: Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)
+- **Input Context**: Skills inventory: tdd ("Test-driven development..."), grill-me ("Get relentlessly interviewed..."), code-review ("Two-axis review...").
+- **Agent Output**: "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development...\n- **grill-me** (`.claude/skills/grill-me`) — Get relentlessly interviewed...\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+
+### Fail Example 1
+- **Scenario**: Delegation prompt with hard-coded mapping
+- **Input Context**: Skills inventory provided but prompt uses static lookup.
+- **Agent Output**: "Phase implement → skill tdd. Phase converge → skill code-review. Execute the mapped skill for this phase."

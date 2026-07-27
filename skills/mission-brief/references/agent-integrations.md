@@ -72,14 +72,27 @@ conventions change.
    If yes, add `dir` + its extension to `discovered.commands_dirs`.
 4. For **home-level** dirs (e.g. `~/.hermes/skills`), expand `~` and check
    existence.
-5. Record results in `.mission-state.json.discovered`:
+5. **Local skills inventory** — for each `skills_dir` discovered in step 2,
+   scan every `<skills_dir>/<skill-name>/` subdirectory that contains a
+   `SKILL.md`. Read the YAML frontmatter and extract `name` and
+   `description` (fall back to directory name if frontmatter is missing).
+   Append each entry to `discovered.local_skills` as
+   `{"name": "...", "path": "<skills_dir>/<skill-name>", "description": "..."}`.
+   This inventory is vendor-agnostic: it captures skills from any source
+   (mattpocock/skills, addy osmani/agent-skills, superpowers, custom team
+   skills, or any Agent-Skills-standard repo).
+6. Record results in `.mission-state.json.discovered`:
    ```json
    "discovered": {
      "skills_dirs": [".claude/skills"],
-     "commands_dirs": [{"dir": ".opencode/commands", "ext": ".md"}]
+     "commands_dirs": [{"dir": ".opencode/commands", "ext": ".md"}],
+     "local_skills": [
+       {"name": "tdd", "path": ".claude/skills/tdd", "description": "Test-driven development..."},
+       {"name": "grill-me", "path": ".claude/skills/grill-me", "description": "Get relentlessly interviewed..."}
+     ]
    }
    ```
-6. If `discovered` is empty, the delegation prompt falls back to instructing
+7. If `discovered` is empty, the delegation prompt falls back to instructing
    the subagent to consult this reference file, or to proceed with direct
    execution (path 3 of the three-path delegation prompt).
 

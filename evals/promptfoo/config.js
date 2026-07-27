@@ -67,6 +67,19 @@ module.exports = {
         },
       ],
     },
+    {
+      vars: {
+        scenario: 'Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)',
+        input_context: "Skills inventory: tdd ('Test-driven development with red-green-refactor'), grill-me ('Get relentlessly interviewed about a plan'), code-review ('Two-axis review of the diff').",
+        instruction: "Emit a delegation prompt section titled 'Available Skills in This Workspace' that lists each skill with its name, path, and description. Then instruct: 'Review each skill. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution.' Do NOT use a hard-coded phase-to-skill mapping table.",
+      },
+      assert: [
+        {
+          type: 'python',
+          value: 'file://./graders/check_universal_skill_routing.py',
+        },
+      ],
+    },
   ],
   outputPath: '../results/run_results.json',
 };

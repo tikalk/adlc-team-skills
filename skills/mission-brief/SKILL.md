@@ -202,6 +202,35 @@ Record discovered directories in state:
 This discovery is done once at generation time and reused on `--resume`. See
 the reference file for the full algorithm.
 
+#### 4a.1 Local skills inventory (universal skill routing)
+
+After discovering skills directories (4a), build an inventory of every
+installed skill across all `skills_dirs`. For each `<skills_dir>/<skill-name>/`
+subdirectory that contains a `SKILL.md`:
+
+1. Read the `SKILL.md` frontmatter (YAML between `---` fences).
+2. Extract `name` and `description` (fall back to the directory name if
+   frontmatter is missing or unparseable).
+3. Record an entry in `discovered.local_skills`:
+
+```json
+"discovered": {
+  "skills_dirs": [".claude/skills"],
+  "commands_dirs": [{"dir": ".opencode/commands", "ext": ".md"}],
+  "local_skills": [
+    {"name": "tdd", "path": ".claude/skills/tdd", "description": "Test-driven development with red-green-refactor..."},
+    {"name": "grill-me", "path": ".claude/skills/grill-me", "description": "Get relentlessly interviewed about a plan..."},
+    {"name": "code-review", "path": ".claude/skills/code-review", "description": "Two-axis review of the diff..."}
+  ]
+}
+```
+
+This inventory is **vendor-agnostic** — it captures skills from any source
+(mattpocock/skills, addy osmani/agent-skills, superpowers, custom team
+skills, or any Agent-Skills-standard repository). The inventory is passed
+to every subagent at dispatch time (Phase 5) so the LLM decides which
+skill fits the current step — no hard-coded phase-to-skill mapping tables.
+
 #### 4b. Generate the step list
 
 Generate an ordered list of steps based on the route and optional-phase
@@ -260,6 +289,8 @@ Each step's `prompt` is built from three parts:
 from Phase 2 are appended to every prompt.
 
 **3. Delegation wrapper** — added by the executor at dispatch time (Phase 5).
+The wrapper includes `discovered.local_skills` so the subagent can decide
+which installed skill (if any) to invoke for the current step.
 
 ### Phase 5 — Execute the step list
 
@@ -302,6 +333,18 @@ For each step with `status: pending`:
    **Constraints**: <constraints>
    **Non-Goals**: <non-goals>
    **Success Criteria**: <success criteria>
+
+   ## Available Skills in This Workspace
+
+   <LOCAL_SKILLS_LIST>
+
+   The list above shows skills installed in this workspace from any source
+   (ADLC team skills, mattpocock/skills, addy osmani/agent-skills,
+   superpowers, or custom). Review each skill's name and description.
+   If one matches the goal of your current task, **invoke it** (via the
+   skill tool or by reading its SKILL.md inline) and use it to execute
+   this step. If multiple skills could apply, pick the best fit. If none
+   apply, proceed with direct execution.
 
    ## How to execute
 
@@ -346,6 +389,19 @@ For each step with `status: pending`:
    7. (optional) Confidence score: HIGH | MEDIUM | LOW. Self-estimated confidence in the correctness of your work.
    8. (optional) Unresolved details: <brief description of what is uncertain or missing context>.
    ```
+
+   `<LOCAL_SKILLS_LIST>` is replaced with a formatted list built from
+   `discovered.local_skills`. Each entry shows the skill name, path, and
+   description:
+
+   ```markdown
+   - **tdd** (`.claude/skills/tdd`) — Test-driven development with red-green-refactor...
+   - **grill-me** (`.claude/skills/grill-me`) — Get relentlessly interviewed about a plan...
+   - **code-review** (`.claude/skills/code-review`) — Two-axis review of the diff...
+   ```
+
+   If `discovered.local_skills` is empty, `<LOCAL_SKILLS_LIST>` is replaced
+   with: `"No custom skills detected in this workspace."`
 
    `<DISCOVERED_PATHS>` is replaced with the discovered directories from
    `state.discovered`:
@@ -543,13 +599,15 @@ When all steps complete (or a signal forces a return), act on the signal:
   absent).
 - `.mission-state.json` contains: `brief` (goal/constraints/success criteria),
   `steps` (ordered list with phase/tier/prompt/status), `discovered`
-  (skills_dirs + commands_dirs), `completed_steps` (grows monotonically).
+  (skills_dirs + commands_dirs + local_skills), `completed_steps` (grows monotonically).
 - `iterations.md` gains an entry per implement step.
 - On completion, `mission-log.json` exists under
   `.adlc/workflow/runs/<feature>/`.
 - A `--resume` with no state reports "No interrupted mission found" and stops.
 - A `--resume` with `mission-log.json` present reports "already completed".
 - The delegation prompt includes discovered paths (not a hardcoded list).
+- The delegation prompt includes `<LOCAL_SKILLS_LIST>` built from
+  `discovered.local_skills` (empty list → "No custom skills detected").
 - Gate steps appear only in sync + gated/hybrid runs, never in `--async`.
 - `SPEC_CORRECTION_NEEDED` signals from converge are routed to Phase 6
   (not treated as DONE or CONTINUE).

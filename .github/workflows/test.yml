@@ -21,7 +21,7 @@ jobs:
           pip install pytest deepeval promptfoo
       - name: Run Pytest
         run: |
-          pytest tests/ -v
+          pytest tests/ evals/promptfoo/tests/ -v
 
   evaluate-skills:
     name: Run PromptFoo (Skill Evals)

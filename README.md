@@ -11,14 +11,16 @@ Individual prompt hacks create quick wins for solo developers, but when scaled a
 ## Quickstart
 
 ```bash
-# Install team skills globally
-npx skills add tikalk/adlc-team-skills -a claude -g
+# Install skills + generate slash commands + wire session_start/user_prompt_submit events
+npx adlc-agents-cli add tikalk/adlc-team-skills -a opencode
 
-# Or for a specific team project
-npx skills add tikalk/adlc-team-skills -a claude
+# Or with npx skills only (skills without commands/events)
+npx skills add tikalk/adlc-team-skills -a claude -g
 ```
 
 Works out of the box with any agent supporting the [Agent Skills standard](https://agentskills.io) — Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, and others.
+
+**Slash commands + events:** [`adlc-agents-cli`](https://github.com/tikalk/adlc-agents-cli) wraps `npx skills add` and additionally generates `/name` slash commands and wires `session_start`/`user_prompt_submit` event hooks (via `.events.json`) for 9 coding agents. Skills repos without `.events.json` get commands only.
 
 **Universal orchestration:** `mission-brief` auto-discovers skills from *any* source (mattpocock/skills, addy osmani/agent-skills, superpowers, spec-kit, or your own) and dynamically wires them into the mission pipeline. No vendor lock-in.
 

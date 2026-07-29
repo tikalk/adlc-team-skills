@@ -25,6 +25,20 @@ yarn.lock
 pnpm-lock.yaml
 .adlc/
 
+# adlc-agents-cli generated artifacts
+# Users generate these via: npx adlc-agents-cli add tikalk/adlc-team-skills -a <agent>
+.agents/
+.opencode/
+.claude/commands/
+.cursor/commands/
+.github/prompts/
+.codex/
+.gemini/
+.qwen/
+.devin/
+.tabnine/
+skills-lock.json
+
 # Python
 __pycache__/
 *.py[cod]

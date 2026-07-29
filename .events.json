@@ -1,0 +1,18 @@
+{
+  "events": {
+    "session_start": [
+      {
+        "skill": "team-boot",
+        "description": "Bootstrap session with team constitution and PDR/ADR context",
+        "timeout": 60
+      }
+    ],
+    "user_prompt_submit": [
+      {
+        "skill": "team-discover",
+        "description": "Fetch relevant personas, rules, PDRs, and ADRs for the current prompt",
+        "timeout": 30
+      }
+    ]
+  }
+}

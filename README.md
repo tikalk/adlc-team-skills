@@ -24,7 +24,30 @@ Works out of the box with any agent supporting the [Agent Skills standard](https
 
 **Universal orchestration:** `mission-brief` auto-discovers skills from *any* source (mattpocock/skills, addy osmani/agent-skills, superpowers, spec-kit, or your own) and dynamically wires them into the mission pipeline. No vendor lock-in.
 
-**Before anything else:** Run `team-setup` once per project to link your team's central `team-ai-directives` repository.
+### Golden path — bootstrap a new team-ai-directives
+
+**Before anything else**, run `team-setup` once per project to create (or link) your team's central `team-ai-directives` repository:
+
+```bash
+npx adlc-agents-cli add tikalk/adlc-team-skills -a opencode   # install skills + commands + events
+```
+
+Then in your agent, prompt `team-setup` and choose **Mode 3 — Scaffold new empty team-ai-directives**:
+
+```
+team-setup            → pick destination (default ./team-ai-directives) + team name
+                      → scaffolds README / AGENTS.md / CDR.md / .skills.json /
+                        constitution placeholder / OKF index files + git init
+
+team-constitution     → interactively replace the placeholder with your real principles
+
+team-boot (auto)      → loads constitution + runs team-discover on every prompt
+```
+
+Already have a directives repo? `team-setup` offers three other modes:
+- **Mode 1 — Clone from GitHub** (e.g. fork `tikalk/agentic-sdlc-team-ai-directives`)
+- **Mode 2 — Point to existing local path** (wire a repo you already have)
+- **Mode 4 — Already configured** (verify an existing setup)
 
 ---
 

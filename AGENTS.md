@@ -15,6 +15,7 @@ This project is bound by the team AI directives repository at `/home/lior/dev/ag
   - "The task matters more than the check" -> The check IS part of the task; skipping it is a violation.
 - **Team Constitution**: Read and strictly adhere to the principles in `/home/lior/dev/agentic-sdlc/agentic-sdlc-team-ai-directives/context_modules/constitution.md`. When creating or updating the project's constitution, you MUST inherit and align with these principles.
 - **Rules, Personas & Examples**: Use the `team-discover` skill to find and load relevant rules, personas, or examples before making changes.
+- **Tech Radar Guidance**: Use the `tech-radar-context` skill whenever evaluating or choosing technologies, frameworks, databases, libraries, or cloud infrastructure.
 <!-- TEAM_AI_DIRECTIVES END -->
 
 

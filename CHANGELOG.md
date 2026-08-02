@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-08-01
+
+### Added
+
+- **Tikal Tech Radar Skill (`tech-radar-context`)**: New model-invoked skill (alias `trc`/`ttr`) that discovers candidate technologies from prompt context, queries Tikal's Israeli Tech Radar dataset (`radar.json`), parses Tikal's opinion from the `<p>Why?</p>` blip block, and injects a Tech Radar Context table (`Keep`/`Start`/`Try`/`Stop` rings) plus Tikal-aligned alternatives for `Stop` items.
+- **Tikal Tech Radar Dataset Snapshot**: Bundled full 424-blip radar dataset at `skills/tech-radar/tech-radar-context/resources/radar.json`.
+- **Project Directive Injection**: Updated `AGENTS.md` and `skills/team/team-helpers.{sh,ps1}` so `team-setup` and `team-repair` auto-inject Tech Radar Guidance into project instructions.
+
 ## [0.15.0] - 2026-07-27
 
 ### Added

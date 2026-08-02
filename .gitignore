@@ -38,6 +38,7 @@ pnpm-lock.yaml
 .devin/
 .tabnine/
 skills-lock.json
+.skills.json
 
 # Python
 __pycache__/

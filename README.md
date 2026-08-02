@@ -198,6 +198,7 @@ skills/
 ├── levelup/               # levelup-* (4 skills) + levelup-helpers.{sh,ps1}
 ├── mission-brief/         # core SDD orchestrator (1 skill)
 ├── evals/                 # evals-* (6 skills) + evals-templates/
+├── tech-radar/            # tech-radar-* (1 skill) + resources/radar.json
 └── team/                  # team-* (6 skills) + team-helpers.{sh,ps1}
 ```
 
@@ -267,6 +268,12 @@ All user-invoked. Build and maintain application-level evaluation suites followi
 User-invoked. Structure a feature description into a Mission Brief and run it end-to-end with any installed SDD skill set.
 
 - **`mission-brief`** — Takes a description, structures it into a Mission Brief (goal, constraints, success criteria), generates an ordered step list with prompts that trigger installed SDD skills, and walks those steps to converged implementation. Sync (gated) or `--async` (ungated, checkpoint across sessions). Say "Build this feature end to end" or `mission-brief "add dark mode"`. Resume with `mission-brief --resume`.
+
+### Tech Radar (1 skill)
+
+Model-invoked. Grounds tech stack choices in Tikal's Israeli Tech Radar.
+
+- **`tech-radar-context`** — Discovers technologies implied by the prompt, matches them against the Tikal Tech Radar (`radar.json`), and injects a context table with each technology's adoption ring (`Keep`/`Start`/`Try`/`Stop`), quadrant, and Tikal's "Why?" opinion — plus Tikal-aligned alternatives for anything on `Stop`. Auto-triggered whenever a technology, framework, database, library, or cloud tool is being chosen or evaluated. Fetches the live radar best-effort and falls back to a bundled snapshot at `resources/radar.json`.
 
 ---
 

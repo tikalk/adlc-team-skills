@@ -64,7 +64,9 @@ From the JSON, extract the `team_ai_directives` field.
   Skip the CDR search (Steps 3 and 4 CDR/skill matching) and output empty
   CDR results, but continue to Step 3b to load project PDR/ADR indexes —
   they are project-level and do not depend on team-ai-directives. Surface
-  the `/team-setup` handover note (see Failure Handling).
+  the `/team-setup` handover note (see Failure Handling); when invoked by
+  `team-boot`, that skill has already been invoked on the unconfigured
+  project.
 
 In subsequent steps, `{TEAM_AI_DIRECTIVES}` refers to this value, resolved
 as a path relative to the current working directory. Read files at this
@@ -290,7 +292,7 @@ own feature — the next run for a named feature resets it.
 ### Failure Handling
 
 If `.adlc/init-options.json` or team-ai-directives is not configured, or files cannot be read:
-1. Output the `Team AI directives not configured` note and hand over to `/team-setup` — the interactive command that clones, points to, or scaffolds a team AI directives repository and writes `.adlc/init-options.json`.
+1. Output the `Team AI directives not configured` note and the `/team-setup` handover — the interactive command that clones, points to, or scaffolds a team AI directives repository and writes `.adlc/init-options.json`. When invoked by `team-boot`, `team-setup` has already been invoked on the unconfigured project (build mode) or deferred with this note (plan/read-only).
 2. Output empty CDR results. Project PDR/ADR indexes (Step 3b) may still be surfaced when present — they are project-level and do not depend on team-ai-directives.
 3. Include `search_metadata` showing 0 CDR entries searched (e.g. `_Searched 0 CDR entries, N PDR entries, M ADR entries, J matches found._`).
 4. Exit successfully (code 0) - don't block the calling prompt or command.
@@ -314,7 +316,7 @@ If `.adlc/init-options.json` or team-ai-directives is not configured, or files c
 - Dropping the metadata header (`feature`/`phase`/`generated`) — without it, stale-context reset between features is impossible.
 - Computing a delta against a different feature's file — reset instead of diffing across features.
 - Hardcoding the team AI directives path instead of resolving `team_ai_directives` from `.adlc/init-options.json`.
-- Blocking on discovery failure — the process must exit 0 with empty CDR results and hand over to `/team-setup` when unconfigured.
+- Blocking on discovery failure — the process must exit 0 with empty CDR results and surface the `/team-setup` handover when unconfigured.
 - Invoking CDR/skill matching when `.adlc/init-options.json` is missing — only project PDR/ADR indexes (Step 3b) load in that case; surface the `/team-setup` handover note.
 
 ## Verification

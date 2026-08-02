@@ -26,13 +26,13 @@ Works out of the box with any agent supporting the [Agent Skills standard](https
 
 ### Golden path — bootstrap a new team-ai-directives
 
-**Before anything else**, run `team-setup` once per project to create (or link) your team's central `team-ai-directives` repository:
+`team-boot` auto-runs at session start. On an unconfigured project it self-installs by invoking `team-setup` (or, in plan mode, prints the `/team-setup` handover); opting out writes `team_ai_directives: null` to `.adlc/init-options.json` so setup is skipped silently on every prompt. `team-setup` is also available on demand:
 
 ```bash
 npx adlc-skills-cli add tikalk/adlc-team-skills -a opencode   # install skills + commands + events
 ```
 
-Then in your agent, prompt `team-setup` and choose **Mode 3 — Scaffold new empty team-ai-directives**:
+Then choose **Mode 3 — Scaffold new empty team-ai-directives**:
 
 ```
 team-setup            → pick destination (default ./team-ai-directives) + team name
@@ -212,15 +212,15 @@ This places every single skill exactly 2 levels deep, fully resolving the defaul
 
 #### Model-invoked
 
-- **`team-boot`** — Bootstrap session: load constitution, PDR/ADR indexes, discover context. Auto-triggered on session start.
+- **`team-boot`** — Bootstrap session: load constitution, PDR/ADR indexes, discover context. Auto-triggered on session start. Self-installs by invoking `team-setup` on unconfigured projects.
 - **`team-discover`** — Fetch relevant personas, rules, examples, PDRs, and ADRs for the current task. Auto-triggered.
+- **`team-setup`** — Clone, scaffold, or configure a team AI directives repository. Model-invoked by `team-boot` (self-install) and available on demand. Say "Set up team directives for this project."
 
 #### User-invoked
 
 - **`team-constitution`** — Create or amend the team constitution interactively. Say "Create our team constitution" or "Amend our team principles."
 - **`team-repair`** — Re-index CDR.md, .skills.json, AGENTS.md; health check; conflict scan; freshness verification. Say "Check our team directives health" (`--health-only`), "Repair our CDR index," or "Scan for rule conflicts" (`--conflicts`).
 - **`team-skills`** — Browse and install team skills from the team AI directives. Say "Show me available team skills."
-- **`team-setup`** — Clone, scaffold, or configure a team AI directives repository. Say "Set up team directives for this project."
 
 ### LevelUp / CDR Lifecycle (5 skills)
 

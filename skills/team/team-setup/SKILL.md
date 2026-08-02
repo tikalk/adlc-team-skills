@@ -1,14 +1,17 @@
 ---
 name: team-setup
-description: Interactive setup of team AI directives. Use when bootstrapping a team directives repository from scratch, cloning an existing one, pointing to a local path, or checking an existing configuration.
-disable-model-invocation: true
+description: Interactive setup of team AI directives. Use when bootstrapping a team directives repository from scratch, cloning an existing one, pointing to a local path, or checking an existing configuration. Auto-invoked by team-boot when a project has no configured team AI directives (self-install), and available on demand via /team-setup.
 ---
 
 # team-setup
 
 ## Overview
 
-`team-setup` is a user-invoked interactive skill that guides you through setting up the team AI directives. It presents four modes, explains each option, confirms your choice, and executes the setup.
+`team-setup` is an interactive skill that guides you through setting up the team AI directives. It presents four modes, explains each option, confirms your choice, and executes the setup.
+
+It is invoked in two ways:
+- **User-invoked** (`/team-setup`) — anytime, to configure or check a project.
+- **Model-invoked by `team-boot`** — automatically at session start when a project has no `.adlc/init-options.json` configuration (self-install), so an unconfigured project wires itself without the user knowing the command.
 
 The skill is non-destructive: it never overwrites existing files or directories. If the target path already contains a configured team AI directives, it detects this and offers the "Already configured" mode instead.
 
@@ -19,6 +22,26 @@ The skill is non-destructive: it never overwrites existing files or directories.
 - You have a local team AI directives directory already (e.g., from a previous project) and want to wire it up.
 - You're unsure whether the team AI directives is already configured and want a quick check.
 - When the project isn't yet wired to a team AI directives (no `.adlc/init-options.json` `team_ai_directives` field).
+- Automatically via `team-boot` when it detects an unconfigured project at session start (self-install).
+
+## Decline Handling (when model-invoked by team-boot)
+
+When `team-boot` invokes this skill because the project is unconfigured, the
+user may choose not to set up team AI directives right now. Handle decline
+explicitly to avoid a re-prompt loop:
+
+- If the user declines at mode selection, do **not** run any mode. Exit
+  cleanly and tell `team-boot` the user declined.
+- Offer a persistent opt-out: *"Don't ask again for this project?"* On yes
+  (build mode only), write `.adlc/init-options.json` with
+  `team_ai_directives: null`:
+  ```bash
+  python3 -c "import json; print(json.dumps({'team_ai_directives': None}, indent=2))" > ".adlc/init-options.json"
+  ```
+  This marker makes `team-boot` skip setup silently on every future prompt.
+- In plan/read-only mode, a persistent opt-out cannot be written — the
+  decline is session-scoped only; tell `team-boot` to defer.
+- Never force a mode; the setup is user-consented at every step.
 
 ## Core Process
 
@@ -434,6 +457,8 @@ Without this section, the agent has no session-start instruction to invoke `team
 - **Cloning a non-`https://` URL in Mode 1** — reject `file://`/`ssh://`/other schemes; cloned content is read by agents later, so only clone trusted repos.
 - **Skipping the skills-install offer** — default skills declared in `.skills.json` stay uninstalled; the spec-kit auto-install path no longer covers `team-setup` flows, so the offer is the onboarding step.
 - **Accepting shell metacharacters in paths or team names** — validate before interpolating into `mkdir`/`git commit`/heredocs (see Input Validation).
+- **Treating user decline as an error** — declining setup is a valid outcome; exit cleanly, tell `team-boot` the user declined, and offer the `team_ai_directives: null` opt-out marker (build mode only).
+- **Writing the opt-out marker in plan/read-only mode** — a persistent opt-out requires a write; in plan mode the decline is session-scoped and setup defers instead.
 
 ## Verification
 
@@ -452,6 +477,7 @@ Without this section, the agent has no session-start instruction to invoke `team
 - [ ] Mode 2 wrote `team_ai_directives` via the environment (no `$ABSOLUTE_PATH` interpolation into Python source).
 - [ ] The skills-install offer was presented (or skipped due to empty manifest / `auto_install_default: false`); on accept, `/team-skills --all` was invoked.
 - [ ] If `{TEAM_AI_DIRECTIVES}/.mcp.json` exists, any declared `mcpServers` were successfully merged into the project's config, and unresolved env vars were highlighted.
+- [ ] (Model-invoked by `team-boot`) a user decline exited cleanly without running any mode; the persistent opt-out was offered, and `team_ai_directives: null` was written only in build mode.
 
 ## Configuration
 

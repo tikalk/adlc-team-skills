@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-08-02
+
+### Changed
+
+- **`team-boot` Self-Installs via `team-setup`**: Reverses the v0.16.5 handover-only design. When `.adlc/init-options.json` or `team_ai_directives` is unconfigured, `team-boot` Step 1 now invokes the `team-setup` skill so the project wires itself (build mode). In plan/read-only mode it defers instead — printing the `/team-setup` guidance and remembering the deferral for the session.
+- **Persistent Opt-Out Marker**: A user decline during model-invoked setup may write `team_ai_directives: null` (or `"team_setup": "declined"`) to `.adlc/init-options.json` (build mode only). `team-boot` treats this as a silent skip on every prompt — no setup offer, no guidance. Session declines are remembered for the session; plan-mode declines cannot be persisted.
+- **`team-setup` Is Now Model-Invoked**: Removed `disable-model-invocation: true` from the `team-setup` frontmatter — it becomes the sole model-invocable interactive skill. Added a Decline Handling section (session-scoped skip + persistent opt-out). Still available on demand via `/team-setup`.
+- **`team-discover` Handover Aligned**: Wording updated to reflect that `team-boot` invokes `team-setup` (build) or defers with the handover note (plan) when unconfigured. The Step 4 guard (never invoke `team-discover` when unconfigured) is unchanged.
+
+### Added
+
+- Unit tests `tests/unit/test_team_boot_setup_flow.py` (renamed from `test_team_boot_handover.py`) asserting the 3-state Step 1, plan-mode deferral, opt-out marker, `team-setup` model-invocation frontmatter, and decline handling.
+
 ## [0.16.5] - 2026-08-02
 
 ### Fixed

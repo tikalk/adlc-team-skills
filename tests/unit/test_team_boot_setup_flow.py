@@ -9,7 +9,7 @@ SETUP = (ROOT / "skills/team/team-setup/SKILL.md").read_text(encoding="utf-8")
 def test_team_boot_unconfigured_self_installs_team_setup():
     """Step 1 must invoke the team-setup skill when unconfigured (self-install)."""
     assert "team-setup" in BOOT
-    assert "**Self-install**" in BOOT
+    assert "Self-install" in BOOT
     assert "invoke the `team-setup` skill" in BOOT
     assert "Team AI directives not configured." in BOOT
 
@@ -73,3 +73,11 @@ def test_team_discover_unconfigured_handover():
     assert "/team-setup" in failure_section
     assert "0 CDR entries searched" in failure_section
     assert "PDR/ADR indexes" in failure_section
+
+
+def test_team_boot_anti_second_guessing_rationalizations():
+    """team-boot must explicitly forbid second-guessing team-setup self-install on questions or meta repos."""
+    assert "MANDATORY in build mode" in BOOT
+    assert "Do NOT second-guess this invocation" in BOOT
+    assert "meta repo" in BOOT
+    assert "intrusive" in BOOT

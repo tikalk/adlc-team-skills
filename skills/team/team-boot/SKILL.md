@@ -63,8 +63,12 @@ three-way branch:
   `team-setup`, do NOT output guidance. Answer the user's task using only
   `AGENTS.md` and project-level context.
 - **Unconfigured** (file missing, field missing, or path doesn't exist):
-  team AI directives are unconfigured. **Self-install**: invoke the
-  `team-setup` skill so the project can wire itself (build mode only). In
+  team AI directives are unconfigured. **Self-install (MANDATORY in build mode)**:
+  invoke the `team-setup` skill immediately (`skill({ name: "team-setup" })`)
+  so the project can wire itself. Do NOT second-guess this invocation because
+  the user's prompt is a question, because you think `team-setup` is noisy or
+  intrusive, or because you believe the working directory is a "meta repo" or
+  "skills repo" — self-install is non-negotiable in build mode. In
   plan/read-only mode, do NOT invoke `team-setup` (its writes would be
   blocked) — instead output the following guidance message, defer setup to
   a build-mode prompt, and proceed with the user's task using only
@@ -205,6 +209,9 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 | "I need to be efficient / focus on the task" | Efficiency is not a skip reason. The check is the first step. |
 | "The task matters more than the check" | The check IS part of the task. |
 | "The user can run /team-setup themselves" | When unconfigured, team-boot invokes `team-setup` so the project self-installs; deferring manual setup leaves directives invisible. |
+| "The user asked a question/consultation, so invoking `team-setup` is intrusive" | Self-install is mandatory in build mode regardless of prompt type. Invoke `team-setup` first, then answer the question. |
+| "This repository is a skills/meta repo so `team-setup` doesn't apply" | `team-setup` applies to ALL unconfigured repositories without exception. |
+| "I should be pragmatic and output guidance instead of invoking `team-setup`" | Skipping `team-setup` in build mode is a rule violation, not pragmatism. |
 
 ## Red Flags
 
@@ -224,6 +231,8 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 - Invoking `team-discover` when `.adlc/init-options.json` is missing / team AI directives is unconfigured — Step 1 invoked `team-setup` (or deferred); discovery has no directives to search.
 - Re-invoking `team-setup` on subsequent prompts when the user already declined this session, or when the `team_ai_directives: null` opt-out marker is present — respect the session-scoped decline and the persistent marker; proceed with project context instead.
 - Invoking `team-setup` in plan mode / read-only phase — its writes would be blocked; output the `/team-setup` guidance and defer instead.
+- Second-guessing or skipping the `team-setup` invocation in build mode because the user's prompt is a question, conversation, or consultation.
+- Rationalizing that a working directory is a "meta repo", "skills repo", or "special case" where `team-setup` self-install should be skipped in build mode.
 - Producing a Step 5 acknowledgment that references no discovery table / `search_metadata` — that means `team-discover` was loaded but not executed.
 - Persisting `team-context.md` in plan mode / read-only phase — `team-discover` must run inline (no-write) there.
 

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1] - 2026-08-02
+
+### Fixed
+
+- **Strict Enforcement of  Self-Install in **: Added explicit anti-second-guessing directives to  Step 1, Common Rationalizations, and Red Flags. Forbids LLMs from talking themselves out of invoking  in build mode when the user's prompt is a question/consultation or when the working directory is perceived as a "skills repo" or "meta repo".
+
 ## [0.17.0] - 2026-08-02
 
 ### Changed

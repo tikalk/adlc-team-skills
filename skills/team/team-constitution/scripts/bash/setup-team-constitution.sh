@@ -8,7 +8,7 @@ set -euo pipefail
 
 resolve_project_root() {
   local dir
-  dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  dir="$(pwd)"
   while [[ "$dir" != "/" ]]; do
     if [[ -d "${dir}/.adlc" ]]; then
       echo "$dir"

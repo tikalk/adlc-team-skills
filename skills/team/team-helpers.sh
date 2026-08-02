@@ -14,7 +14,7 @@ set -euo pipefail
 ###############################################################################
 
 resolve_paths() {
-  PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+  PROJECT_ROOT="${PROJECT_ROOT:-$([[ -d ".adlc" ]] && pwd || git rev-parse --show-toplevel 2>/dev/null || pwd)}"
   BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
   TEAM_AI_DIRECTIVES=""
 

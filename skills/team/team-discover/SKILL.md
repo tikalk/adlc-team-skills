@@ -55,14 +55,7 @@ Manual invocation:
 
 ### Step 1: Locate Team AI Directives
 
-Read the file `.adlc/init-options.json` directly. Do NOT use glob, find,
-or any file-search tool to locate it — search tools may silently skip
-dotfile-prefixed path segments. Read the file at the exact relative path
-`.adlc/init-options.json` from the current working directory.
-
-If that read fails (file not found), walk up parent directories by reading
-`../.adlc/init-options.json`, then `../../.adlc/init-options.json`,
-and so on — up to 4 levels. Stop at the first successful read.
+Read the file `.adlc/init-options.json` directly from the current working directory. Do NOT walk up parent directories. Do NOT use glob, find, or any file-search tool to locate it — search tools may silently skip dotfile-prefixed path segments. Read the file at the exact relative path `.adlc/init-options.json` from the current working directory.
 
 From the JSON, extract the `team_ai_directives` field.
 

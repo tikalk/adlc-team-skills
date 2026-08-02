@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.3] - 2026-08-01
+
+### Fixed
+
+- **Current Working Directory Strictness for `team-boot` & `team-discover`**: Restricted `.adlc/init-options.json` lookup in `team-boot` and `team-discover` to the current working directory, removing the 4-level parent walk-up. Setup scripts now resolve `PROJECT_ROOT` starting from `pwd`.
+
 ## [0.16.2] - 2026-08-01
 
 ### Fixed

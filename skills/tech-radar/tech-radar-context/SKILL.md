@@ -63,25 +63,24 @@ If the prompt implies a category without naming a product (e.g. "we need a
 vector database", "pick a Python web framework"), treat the category as a query
 and surface the radar's recommended options in that space.
 
-### Step 2: Load the Radar Dataset
+### Step 2: Load and Query the Radar Dataset
 
-Resolve `radar.json` in this order:
+Execute the deterministic search helper script (relative to this skill directory):
 
-1. **Live fetch (best-effort)**: attempt to retrieve the latest radar dataset
-   from Tikal's Israeli Tech Radar at `https://www.tikalk.com/radar/`. The
-   site renders the interactive radar from a build-time-generated dataset and
-   does not expose a stable public JSON endpoint, so this fetch may fail or
-   return HTML — that is expected. Only use a fetched result if it parses as
-   JSON with the schema below (`quadrants`, `rings`, `blips`).
-2. **Local fallback (default)**: read `resources/radar.json` alongside this
-   SKILL.md. This is a bundled snapshot of the full radar dataset and is the
-   reliable source. Use it whenever the live fetch fails, is unreachable, or
-   does not parse.
+```bash
+python3 scripts/radar-search.py <tech1> [tech2 ...]
+```
 
-Do not block on the live fetch — if it does not immediately yield valid JSON,
-fall straight through to the local fallback.
+Or for JSON output:
+```bash
+python3 scripts/radar-search.py --json <tech1> [tech2 ...]
+```
 
-**Schema**:
+The script handles alias mapping (`k8s` → `Kubernetes`, `postgres` → `PostgreSQL`, `gh actions` → `GitHub Actions`, etc.), matches against `resources/radar.json` (or live dataset), extracts Tikal's `<p>Why?</p>` opinion, and formats the markdown table automatically.
+
+If a technology appears in multiple quadrants with conflicting rings (e.g., `Node.js` in `DevOps: Stop` and `DevOps: Keep`), the script detects and flags it with a **Conflicting Guidance** note.
+
+**Schema of `resources/radar.json`**:
 ```json
 {
   "title": "Explore the Tech Radar",

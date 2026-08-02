@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.4] - 2026-08-01
+
+### Added
+
+- **Deterministic Search Script (`radar-search.py`)**: Added `skills/tech-radar/tech-radar-context/scripts/radar-search.py` for alias normalization (`k8s`→`Kubernetes`, `postgres`→`PostgreSQL`, `gh actions`→`GitHub Actions`, etc.), relevance-scored matching, and structured Markdown/JSON table output.
+- **Data Quality Fixes**: Corrected corrupted description blocks in `radar.json` for `Chaos Toolkit`, `k6`, `kube-score`, and `Swarm`.
+- **Unit Testing**: Added `tests/unit/test_tech_radar.py` validating dataset integrity, `<p>Why?</p>` extraction, fixed description accuracy, and `radar-search.py` CLI output.
+
 ## [0.16.3] - 2026-08-01
 
 ### Fixed

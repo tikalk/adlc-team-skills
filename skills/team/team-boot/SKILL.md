@@ -159,10 +159,10 @@ failed Step 4, not a completed one.
 
 ### Failure Handling
 
-If team-ai-directives is not configured or files cannot be read:
-1. Skip silently — do not block the user's request
-2. Proceed with the task using only AGENTS.md and project-level context
-3. Exit successfully (the bootstrap is best-effort)
+If `.adlc/init-options.json` or team-ai-directives is not configured, or files cannot be read:
+1. Output the `Team AI directives not configured` guidance message instructing the user to run `/team-setup`.
+2. Proceed with the task using only AGENTS.md and project-level context.
+3. Exit successfully (the bootstrap is best-effort).
 
 ## Common Rationalizations
 

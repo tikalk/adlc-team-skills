@@ -292,8 +292,8 @@ own feature — the next run for a named feature resets it.
 
 ### Failure Handling
 
-If team-ai-directives is not configured or files cannot be read:
-1. Output empty results with all arrays empty
+If `.adlc/init-options.json` or team-ai-directives is not configured, or files cannot be read:
+1. Output empty results with all arrays empty and instruct the user to run `/team-setup` to configure team AI directives.
 2. Include search_metadata showing 0 files searched
 3. Exit successfully (code 0) - don't block the preset command
 

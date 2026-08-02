@@ -37,6 +37,9 @@ Re-invocation per prompt:
   PDR/ADR indexes (Steps 1–3) if already loaded this session, but ALWAYS
   perform Step 4 (Run Discovery) so the agent works with context matched to
   the current prompt, then briefly acknowledge (Step 5).
+- **Unconfigured team AI directives**: Step 1 outputs the `/team-setup`
+  guidance and exits early on every prompt — Steps 2-5 (constitution,
+  indexes, discovery, acknowledgment) are skipped.
 
 ## Core Process
 
@@ -46,11 +49,15 @@ Read the file `.adlc/init-options.json` directly from the current working direct
 
 From the JSON, extract the `team_ai_directives` field.
 
-- If present and the path exists: use it as the team AI directives root.
-- If not found or path doesn't exist: output the following guidance message and exit:
+- If present and the path exists: use it as the team AI directives root and
+  proceed to Steps 2-5.
+- If not found or path doesn't exist: team AI directives are unconfigured.
+  Output the following guidance message and **exit the bootstrap early** —
+  do NOT proceed to Steps 2-5 and do NOT invoke `team-discover`. Answer the
+  user's task using only `AGENTS.md` and project-level context.
   ```text
   Team AI directives not configured.
-  Run team-setup to:
+  Run /team-setup to:
     1. Clone, point to, or scaffold a team AI directives repository
     2. Write .adlc/init-options.json
     3. Inject the AGENTS.md team-boot directive
@@ -107,6 +114,8 @@ or ADR lifecycle in place simply produce less context here — that is fine.
 
 ### Step 4: Run Discovery
 
+**Guard**: This step runs only when Step 1 resolved a valid `team_ai_directives`. If team AI directives is unconfigured, Step 1 exited early — do NOT invoke `team-discover`; hand the user over to `/team-setup` instead.
+
 Invoke the `team-discover` skill on **every prompt** — specify, plan,
 implement, question, debugging, or chat. Discovery re-matches team context to
 the current message. In build mode it persists results to
@@ -153,9 +162,10 @@ failed Step 4, not a completed one.
 ### Failure Handling
 
 If `.adlc/init-options.json` or team-ai-directives is not configured, or files cannot be read:
-1. Output the `Team AI directives not configured` guidance message instructing the user to run `/team-setup`.
-2. Proceed with the task using only AGENTS.md and project-level context.
-3. Exit successfully (the bootstrap is best-effort).
+1. Output the `Team AI directives not configured` guidance message and hand over to `/team-setup`.
+2. Stop the bootstrap here — do NOT invoke `team-discover` (Step 4 is guarded on configuration).
+3. Proceed with the task using only `AGENTS.md` and project-level context.
+4. Exit successfully (the bootstrap is best-effort).
 
 ## Common Rationalizations
 
@@ -187,6 +197,7 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 - Skipping discovery on any prompt — there is no continuation exemption and no spec/plan gate; every prompt re-runs `team-discover` so context matches the current message.
 - Treating a follow-up like "fix the help message" as a continuation and skipping discovery — it is a new task surface and may surface different rules.
 - Re-reading the constitution and PDR/ADR indexes on every follow-up prompt — once loaded in the session, skip Steps 1–3 and go straight to Step 4.
+- Invoking `team-discover` when `.adlc/init-options.json` is missing / team AI directives is unconfigured — Step 1 already exited early and handed over to `/team-setup`; discovery has no directives to search.
 - Producing a Step 5 acknowledgment that references no discovery table / `search_metadata` — that means `team-discover` was loaded but not executed.
 - Persisting `team-context.md` in plan mode / read-only phase — `team-discover` must run inline (no-write) there.
 
@@ -194,30 +205,35 @@ Do NOT rationalize skipping the skill check. Every thought below is wrong:
 
 The bootstrap is complete when ALL of the following are true:
 
-1. `.adlc/init-options.json` was read directly (or walked up to, up to 4
-   levels) and the `team_ai_directives` field was extracted — or empty
-   results were returned and the skill exited.
+1. `.adlc/init-options.json` was read directly from the current working
+   directory (no parent-directory walk-up) and the `team_ai_directives` field
+   was extracted — or, when unconfigured, the `/team-setup` guidance was
+   output and the bootstrap exited early before Steps 2-5.
 2. The constitution at `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
-   was read in full.
+   was read in full (skipped when unconfigured).
 3. The PDR index was read if present (memory or legacy `PRD.md` heading
    skim), and the ADR index was read if present (memory only). Full PDR/ADR
    bodies and full `PRD.md`/`AD.md` were NOT loaded.
-4. Step 4 was performed on every prompt: `team-discover` was invoked **and
-   executed** (Discovered Team Context table + `search_metadata` produced) with
-   domain, technology, patterns, and actions extracted from the user's request.
-   On follow-up prompts in the same session, Steps 1–3 re-reads were skipped
-   but Step 4 still ran — no continuation exemption.
+4. When team AI directives are configured, Step 4 was performed on every
+   prompt: `team-discover` was invoked **and executed** (Discovered Team
+   Context table + `search_metadata` produced) with domain, technology,
+   patterns, and actions extracted from the user's request. On follow-up
+   prompts in the same session, Steps 1–3 re-reads were skipped but Step 4
+   still ran — no continuation exemption. When unconfigured, discovery was
+   correctly NOT run (Step 1 exited early and handed over to `/team-setup`).
 5. The loaded team context (constitution, indexes, discovery matches) was
    surfaced in the **visible response** before the task response — including
    the `team-discover` table and `search_metadata` line (the output contract).
+   When unconfigured, the `/team-setup` guidance message is the visible
+   handover instead.
 6. The skill exited successfully (best-effort) even if team-ai-directives is
-   unconfigured or files cannot be read.
+   unconfigured or files cannot be read — answering the user's task from
+   `AGENTS.md` and project-level context only.
 
 ## Configuration
 
 - `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
-- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
-- Default fallback: `team-ai-directives/` relative to project root.
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field, read directly from the current working directory.
 
 ## 12-Factor Alignment
 

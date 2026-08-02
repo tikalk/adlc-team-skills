@@ -60,7 +60,11 @@ Read the file `.adlc/init-options.json` directly from the current working direct
 From the JSON, extract the `team_ai_directives` field.
 
 - If present and the path exists: use it as the team AI directives root.
-- If not found or path doesn't exist: output empty results and exit.
+- If not found or path doesn't exist: team AI directives are unconfigured.
+  Skip the CDR search (Steps 3 and 4 CDR/skill matching) and output empty
+  CDR results, but continue to Step 3b to load project PDR/ADR indexes —
+  they are project-level and do not depend on team-ai-directives. Surface
+  the `/team-setup` handover note (see Failure Handling).
 
 In subsequent steps, `{TEAM_AI_DIRECTIVES}` refers to this value, resolved
 as a path relative to the current working directory. Read files at this
@@ -286,9 +290,10 @@ own feature — the next run for a named feature resets it.
 ### Failure Handling
 
 If `.adlc/init-options.json` or team-ai-directives is not configured, or files cannot be read:
-1. Output empty results with all arrays empty and instruct the user to run `/team-setup` to configure team AI directives.
-2. Include search_metadata showing 0 files searched
-3. Exit successfully (code 0) - don't block the preset command
+1. Output the `Team AI directives not configured` note and hand over to `/team-setup` — the interactive command that clones, points to, or scaffolds a team AI directives repository and writes `.adlc/init-options.json`.
+2. Output empty CDR results. Project PDR/ADR indexes (Step 3b) may still be surfaced when present — they are project-level and do not depend on team-ai-directives.
+3. Include `search_metadata` showing 0 CDR entries searched (e.g. `_Searched 0 CDR entries, N PDR entries, M ADR entries, J matches found._`).
+4. Exit successfully (code 0) - don't block the calling prompt or command.
 
 ## Common Rationalizations
 
@@ -309,7 +314,8 @@ If `.adlc/init-options.json` or team-ai-directives is not configured, or files c
 - Dropping the metadata header (`feature`/`phase`/`generated`) — without it, stale-context reset between features is impossible.
 - Computing a delta against a different feature's file — reset instead of diffing across features.
 - Hardcoding the team AI directives path instead of resolving `team_ai_directives` from `.adlc/init-options.json`.
-- Blocking on discovery failure — the process must exit 0 with empty results.
+- Blocking on discovery failure — the process must exit 0 with empty CDR results and hand over to `/team-setup` when unconfigured.
+- Invoking CDR/skill matching when `.adlc/init-options.json` is missing — only project PDR/ADR indexes (Step 3b) load in that case; surface the `/team-setup` handover note.
 
 ## Verification
 
@@ -321,13 +327,12 @@ If `.adlc/init-options.json` or team-ai-directives is not configured, or files c
 - Same-feature re-runs include a delta section; different-feature (or missing/unknown header) re-runs reset with a discard line and no delta.
 - In no-write mode (`--no-write` or plan / read-only phase), **no files are created or modified** — output is inline only.
 - Discovery runs on every prompt (auto-invoked by `team-boot`); in build mode it persists each run, in plan / read-only mode it outputs inline only. There is no spec/plan gate and no continuation exemption.
-- On misconfiguration or unreadable files, results are empty, `search_metadata` shows `0 files searched`, and the process exits successfully (code 0).
+- On misconfiguration or unreadable files, CDR results are empty, `search_metadata` shows 0 CDR entries searched (project PDR/ADR indexes may still be surfaced), the `/team-setup` handover note is included, and the process exits successfully (code 0).
 
 ## Configuration
 
 - `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
-- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
-- Default fallback: `team-ai-directives/` relative to project root.
+- `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field, read directly from the current working directory.
 
 ## 12-Factor Alignment
 

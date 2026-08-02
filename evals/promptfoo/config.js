@@ -8,7 +8,7 @@ module.exports = {
       id: 'openai:chat:gpt-4o-mini',
       config: {
         // Point to GitHub Models OpenAI-compatible endpoint in CI
-        apiBaseUrl: process.env.GITHUB_TOKEN ? 'https://models.inference.ai.azure.com' : undefined,
+        apiBaseUrl: process.env.GITHUB_TOKEN ? 'https://models.inference.ai.azure.com/v1' : undefined,
         // Authenticate using GITHUB_TOKEN (CI) or fall back to OPENAI_API_KEY (local)
         apiKey: process.env.GITHUB_TOKEN || process.env.OPENAI_API_KEY,
       }

@@ -27,6 +27,9 @@ pnpm-lock.yaml
 
 # adlc-skills-cli generated artifacts
 # Users generate these via: npx adlc-skills-cli add tikalk/adlc-team-skills -a <agent>
+# AGENTS.md is machine-injected via /team-setup (contains a local absolute path), so it is
+# not versioned here; each contributor runs team-setup to generate it.
+AGENTS.md
 .agents/
 .opencode/
 .claude/commands/

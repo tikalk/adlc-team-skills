@@ -7,7 +7,9 @@ SETUP = (ROOT / "skills/team/team-setup/SKILL.md").read_text(encoding="utf-8")
 BOOT_SH = (ROOT / "skills/team/team-boot/scripts/boot.sh").read_text(encoding="utf-8")
 BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/boot.ps1").read_text(encoding="utf-8")
 EVENTS = (ROOT / ".events.json").read_text(encoding="utf-8")
-AGENTS = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+# AGENTS.md is gitignored (machine-injected with local paths) — may not exist in CI.
+_AGENTS_PATH = ROOT / "AGENTS.md"
+AGENTS = _AGENTS_PATH.read_text(encoding="utf-8") if _AGENTS_PATH.exists() else ""
 
 
 def test_team_boot_has_scripts_frontmatter():
@@ -153,6 +155,8 @@ def test_events_json_only_team_boot():
 
 def test_agents_md_simplified():
     """AGENTS.md must not have anti-rationalization table or per-prompt discovery."""
+    if not AGENTS:
+        return  # AGENTS.md is gitignored — skip in CI
     assert "team-boot" in AGENTS
     assert "CDR" in AGENTS
     assert "Common Rationalizations" not in AGENTS

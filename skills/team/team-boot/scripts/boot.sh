@@ -18,6 +18,7 @@ if [ ! -f "$INIT_FILE" ]; then
   echo "- 'This is a skills/meta repo' → team-setup applies to ALL repos."
   echo "- 'The user didn't ask for setup' → Unconfigured = setup needed."
   echo "- 'I can help without it' → No. Invoke team-setup first, then help."
+  echo "- 'I invoked the skill, that's enough' → Loading is not executing. Run the setup flow to completion."
   exit 0
 fi
 

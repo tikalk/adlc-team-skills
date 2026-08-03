@@ -44,6 +44,7 @@ def test_team_boot_sh_has_anti_rationalization():
     assert "simple question" in BOOT_SH
     assert "meta repo" in BOOT_SH
     assert "Setup IS part of the task" in BOOT_SH
+    assert "Loading is not executing" in BOOT_SH
 
 
 def test_team_boot_ps1_has_anti_rationalization():
@@ -51,6 +52,7 @@ def test_team_boot_ps1_has_anti_rationalization():
     assert "Do NOT rationalize" in BOOT_PS1
     assert "simple question" in BOOT_PS1
     assert "meta repo" in BOOT_PS1
+    assert "Loading is not executing" in BOOT_PS1
 
 
 def test_team_boot_sh_extracts_init_options():

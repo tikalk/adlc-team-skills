@@ -17,6 +17,7 @@ if (-not (Test-Path $INIT_FILE)) {
     Write-Output "- 'This is a skills/meta repo' → team-setup applies to ALL repos."
     Write-Output "- 'The user didn't ask for setup' → Unconfigured = setup needed."
     Write-Output "- 'I can help without it' → No. Invoke team-setup first, then help."
+    Write-Output "- 'I invoked the skill, that's enough' → Loading is not executing. Run the setup flow to completion."
     exit 0
 }
 

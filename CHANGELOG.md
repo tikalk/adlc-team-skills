@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2] - 2026-08-03
+
+### Fixed
+
+- **Block "I invoked the skill, that's enough" rationalization** (`skills/team/team-boot/scripts/boot.sh`, `scripts/boot.ps1`): v0.18.1 blocked 5 rationalizations but the LLM found a 6th — it invoked `skill({name: "team-setup"})` (which only loads the skill content), then rationalized skipping the actual setup flow ("I invoked team-setup as required... full interactive setup isn't applicable here"). Added a 6th blocked rationalization: "Loading is not executing. Run the setup flow to completion."
+
 ## [0.18.1] - 2026-08-03
 
 ### Fixed

@@ -6,19 +6,8 @@ set -euo pipefail
 INIT_FILE=".adlc/init-options.json"
 
 if [ ! -f "$INIT_FILE" ]; then
-  echo "Team AI directives not configured."
-  echo ""
-  echo "MANDATORY: Invoke the team-setup skill now (skill({name: \"team-setup\"}))."
-  echo "Do not proceed with any task until team-setup has been invoked."
-  echo ""
-  echo "This is not optional and applies to EVERY task — questions, code changes,"
-  echo "skill improvements, consultations. Do NOT rationalize skipping team-setup:"
-  echo "- 'This is just a simple question' → Questions are tasks. Setup first."
-  echo "- 'I need to be efficient' → Setup IS part of the task."
-  echo "- 'This is a skills/meta repo' → team-setup applies to ALL repos."
-  echo "- 'The user didn't ask for setup' → Unconfigured = setup needed."
-  echo "- 'I can help without it' → No. Invoke team-setup first, then help."
-  echo "- 'I invoked the skill, that's enough' → Loading is not executing. Run the setup flow to completion."
+  echo "Team AI directives not configured for this project."
+  echo "Run /team-setup to wire in team context modules (constitution, CDR index, PDR/ADR indexes)."
   exit 0
 fi
 

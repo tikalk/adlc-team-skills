@@ -38,21 +38,21 @@ def test_team_boot_sh_uses_no_node_or_python():
     assert "python" not in BOOT_SH
 
 
-def test_team_boot_sh_has_anti_rationalization():
-    """boot.sh unconfigured output must include anti-rationalization hardening."""
-    assert "Do NOT rationalize" in BOOT_SH
-    assert "simple question" in BOOT_SH
-    assert "meta repo" in BOOT_SH
-    assert "Setup IS part of the task" in BOOT_SH
-    assert "Loading is not executing" in BOOT_SH
+def test_team_boot_sh_unconfigured_is_informational():
+    """boot.sh unconfigured output must be informational, not mandatory."""
+    assert "Team AI directives not configured for this project" in BOOT_SH
+    assert "/team-setup" in BOOT_SH
+    assert "MANDATORY" not in BOOT_SH
+    assert "Do NOT rationalize" not in BOOT_SH
+    assert "Do not proceed" not in BOOT_SH
 
 
-def test_team_boot_ps1_has_anti_rationalization():
-    """boot.ps1 unconfigured output must include anti-rationalization hardening."""
-    assert "Do NOT rationalize" in BOOT_PS1
-    assert "simple question" in BOOT_PS1
-    assert "meta repo" in BOOT_PS1
-    assert "Loading is not executing" in BOOT_PS1
+def test_team_boot_ps1_unconfigured_is_informational():
+    """boot.ps1 unconfigured output must be informational, not mandatory."""
+    assert "Team AI directives not configured for this project" in BOOT_PS1
+    assert "/team-setup" in BOOT_PS1
+    assert "MANDATORY" not in BOOT_PS1
+    assert "Do NOT rationalize" not in BOOT_PS1
 
 
 def test_team_boot_sh_extracts_init_options():

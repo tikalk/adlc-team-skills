@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-08-03
+
+### Changed
+
+- **team-setup mandate replaced with informational note** (`skills/team/team-boot/scripts/boot.sh`, `scripts/boot.ps1`): v0.18.x tried to enforce team-setup via MANDATORY language + anti-rationalization table in the boot script output. Four consecutive session reviews showed the LLM finds a new rationalization every time — the adversarial dynamic (mandate → evaluate whether it applies → rationalize skip) is unwinnable via text hardening. The unconfigured output is now informational: "Team AI directives not configured for this project. Run /team-setup to wire in team context modules." No MANDATORY, no rationalization table, no adversarial trigger.
+
+### Removed
+
+- Anti-rationalization table from boot.sh/boot.ps1 unconfigured output (6 blocked rationalizations — all obsolete)
+
 ## [0.18.2] - 2026-08-03
 
 ### Fixed

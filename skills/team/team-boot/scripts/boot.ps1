@@ -5,19 +5,8 @@ $ErrorActionPreference = "Stop"
 $INIT_FILE = ".adlc/init-options.json"
 
 if (-not (Test-Path $INIT_FILE)) {
-    Write-Output "Team AI directives not configured."
-    Write-Output ""
-    Write-Output "MANDATORY: Invoke the team-setup skill now."
-    Write-Output "Do not proceed with any task until team-setup has been invoked."
-    Write-Output ""
-    Write-Output "This is not optional and applies to EVERY task — questions, code changes,"
-    Write-Output "skill improvements, consultations. Do NOT rationalize skipping team-setup:"
-    Write-Output "- 'This is just a simple question' → Questions are tasks. Setup first."
-    Write-Output "- 'I need to be efficient' → Setup IS part of the task."
-    Write-Output "- 'This is a skills/meta repo' → team-setup applies to ALL repos."
-    Write-Output "- 'The user didn't ask for setup' → Unconfigured = setup needed."
-    Write-Output "- 'I can help without it' → No. Invoke team-setup first, then help."
-    Write-Output "- 'I invoked the skill, that's enough' → Loading is not executing. Run the setup flow to completion."
+    Write-Output "Team AI directives not configured for this project."
+    Write-Output "Run /team-setup to wire in team context modules (constitution, CDR index, PDR/ADR indexes)."
     exit 0
 }
 

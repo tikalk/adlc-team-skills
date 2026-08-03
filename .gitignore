@@ -46,3 +46,6 @@ skills-lock.json
 # Python
 __pycache__/
 *.py[cod]
+
+# PromptFoo eval results (generated)
+evals/results/

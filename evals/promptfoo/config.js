@@ -5,12 +5,15 @@ module.exports = {
   ],
   providers: [
     {
-      id: 'openai:chat:gpt-4o-mini',
+      id: `openai:chat:${process.env.EVAL_MODEL || 'gpt-4o-mini'}`,
       config: {
-        // Point to GitHub Models OpenAI-compatible endpoint in CI
-        apiBaseUrl: process.env.GITHUB_TOKEN ? 'https://models.inference.ai.azure.com/v1' : undefined,
-        // Authenticate using GITHUB_TOKEN (CI) or fall back to OPENAI_API_KEY (local)
-        apiKey: process.env.GITHUB_TOKEN || process.env.OPENAI_API_KEY,
+        // GitHub Models (models.inference.ai.azure.com) was retired 2026-07-30,
+        // so we now call the standard OpenAI API. Set OPENAI_BASE_URL to route
+        // through an OpenAI-compatible proxy if needed (e.g. OpenCode Zen:
+        // https://opencode.ai/zen/v1 with EVAL_MODEL=deepseek-v4-flash-free).
+        apiBaseUrl: process.env.OPENAI_BASE_URL || undefined,
+        // Authenticate using OPENAI_API_KEY (CI secret and local dev).
+        apiKey: process.env.OPENAI_API_KEY,
       }
     }
   ],
@@ -81,5 +84,5 @@ module.exports = {
       ],
     },
   ],
-  outputPath: '../results/run_results.json',
+  outputPath: 'evals/results/run_results.json',
 };

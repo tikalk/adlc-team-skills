@@ -31,8 +31,11 @@ jobs:
       - name: Install PromptFoo
         run: npm install -g promptfoo
       - name: Run Tier 1 Evals
+        # GitHub Models was retired 2026-07-30, so the eval provider now uses
+        # the OpenAI API. Skip the eval when the secret isn't configured
+        # (e.g. forks/PRs) so the rest of CI still passes.
+        if: ${{ secrets.OPENAI_API_KEY != '' }}
         run: |
           promptfoo eval --config evals/promptfoo/config.js --no-cache
         env:
-          # Automatically provided by GitHub Actions - no credential setup needed!
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

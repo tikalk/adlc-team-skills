@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2] - 2026-08-02
+
+### Fixed
+
+- **PromptFoo evals no longer target retired GitHub Models** (`evals/promptfoo/config.js`, `.github/workflows/test.yml`): GitHub Models (`models.inference.ai.azure.com`) was retired on 2026-07-30, so CI eval runs returned `HTTP 404` / `410` on every test case. The provider now uses the standard OpenAI API keyed by `OPENAI_API_KEY` (with an optional `OPENAI_BASE_URL` override for OpenAI-compatible proxies). The `evaluate-skills` workflow job passes `OPENAI_API_KEY` instead of `GITHUB_TOKEN` and is skipped when the secret is unset (e.g. forks/PRs) so the rest of CI still passes.
+
+### Added
+
+- **`EVAL_MODEL` environment variable** (`evals/promptfoo/config.js`): the eval provider model can now be selected at runtime via `EVAL_MODEL` (defaults to `gpt-4o-mini`). This enables running the suite through any OpenAI-compatible provider, e.g. OpenCode Zen (`OPENAI_BASE_URL=https://opencode.ai/zen/v1`, `EVAL_MODEL=deepseek-v4-flash-free`).
+
+### Changed
+
+- **Eval results path** (`evals/promptfoo/config.js`): `outputPath` now resolves inside the repository at `evals/results/run_results.json` instead of escaping one directory level up via a CWD-relative `../results/run_results.json`.
+
 ## [0.17.1] - 2026-08-02
 
 ### Fixed

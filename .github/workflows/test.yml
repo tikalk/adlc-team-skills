@@ -26,6 +26,10 @@ jobs:
   evaluate-skills:
     name: Run PromptFoo (Skill Evals)
     runs-on: ubuntu-latest
+    env:
+      # secrets context is not allowed in step-level `if` conditions, so we
+      # expose it via job-level env and gate on that instead.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Install PromptFoo
@@ -34,8 +38,6 @@ jobs:
         # GitHub Models was retired 2026-07-30, so the eval provider now uses
         # the OpenAI API. Skip the eval when the secret isn't configured
         # (e.g. forks/PRs) so the rest of CI still passes.
-        if: ${{ secrets.OPENAI_API_KEY != '' }}
+        if: ${{ env.OPENAI_API_KEY != '' }}
         run: |
           promptfoo eval --config evals/promptfoo/config.js --no-cache
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

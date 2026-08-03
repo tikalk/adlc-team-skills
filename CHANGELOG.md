@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-08-03
+
+### Changed
+
+- **team-boot rewritten to script-path session-start injection** (`skills/team/team-boot/SKILL.md`, `scripts/boot.sh`, `scripts/boot.ps1`): team-boot now uses a shell script (POSIX + PowerShell variants) that assembles team AI directives context (constitution, CDR index table, PDR/ADR indexes, skill registry) and injects it into the system prompt at session start. The CDR index lists all available context modules with descriptors — the LLM natively matches descriptors against the current task and reads full module bodies on demand via the `read` tool. This replaces the previous body-path injection (279-line SKILL.md interpreted by the LLM every session) with deterministic script execution (~50 lines). The opencode plugin caches the script output at module level so `system.transform` re-fires are free.
+
+- **team-discover no longer auto-invoked per prompt** (`skills/team/team-discover/SKILL.md`): with the CDR index in the system prompt, the LLM natively matches descriptors — no per-prompt discovery scan needed. team-discover is now a manual re-scan tool available via `/team-discover` for explicit structured discovery tables. Body reduced from 341 to ~35 lines. The `user_prompt_submit` event is removed from `.events.json`. The `team-context.md` persistence artifact, delta computation, and dedup logic are all eliminated.
+
+- **AGENTS.md simplified** (`AGENTS.md`): the anti-rationalization table, first-tool-call gate, and per-prompt discovery directive are removed — the event hook makes bootstrap automatic, so LLM compliance enforcement is obsolete. Reduced from 35 to ~12 lines.
+
+### Added
+
+- **boot.sh** (`skills/team/team-boot/scripts/boot.sh`): POSIX shell script (pure grep/sed, no node/python) that reads `.adlc/init-options.json`, extracts the CDR index table via `awk`, and assembles the full context block. Handles unconfigured, null opt-out, and missing-path cases.
+- **boot.ps1** (`skills/team/team-boot/scripts/boot.ps1`): PowerShell variant using native `ConvertFrom-Json`.
+
+### Removed
+
+- Per-prompt `team-discover` invocation and `user_prompt_submit` event (`.events.json`)
+- `team-context.md` persistence and delta computation
+- Anti-rationalization table and Red Flags (obsolete with event hook)
+- v0.17.1 anti-second-guessing hardening (event hook = automatic, no LLM choice)
+- Empty `scripts/bash/` and `scripts/powershell/` placeholder directories
+
 ## [0.17.2] - 2026-08-02
 
 ### Fixed

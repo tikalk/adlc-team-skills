@@ -4,44 +4,119 @@ ROOT = Path(__file__).parent.parent.parent
 BOOT = (ROOT / "skills/team/team-boot/SKILL.md").read_text(encoding="utf-8")
 DISCOVER = (ROOT / "skills/team/team-discover/SKILL.md").read_text(encoding="utf-8")
 SETUP = (ROOT / "skills/team/team-setup/SKILL.md").read_text(encoding="utf-8")
+BOOT_SH = (ROOT / "skills/team/team-boot/scripts/boot.sh").read_text(encoding="utf-8")
+BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/boot.ps1").read_text(encoding="utf-8")
+EVENTS = (ROOT / ".events.json").read_text(encoding="utf-8")
+AGENTS = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
 
 
-def test_team_boot_unconfigured_self_installs_team_setup():
-    """Step 1 must invoke the team-setup skill when unconfigured (self-install)."""
+def test_team_boot_has_scripts_frontmatter():
+    """team-boot must declare scripts: so the dispatcher runs the script path."""
+    assert "scripts:" in BOOT
+    assert "sh: scripts/boot.sh" in BOOT
+    assert "ps: scripts/boot.ps1" in BOOT
+
+
+def test_team_boot_script_files_exist():
+    """Both boot.sh and boot.ps1 must exist."""
+    assert (ROOT / "skills/team/team-boot/scripts/boot.sh").exists()
+    assert (ROOT / "skills/team/team-boot/scripts/boot.ps1").exists()
+
+
+def test_team_boot_sh_is_executable():
+    """boot.sh must have execute permission."""
+    import os
+    assert os.access(ROOT / "skills/team/team-boot/scripts/boot.sh", os.X_OK)
+
+
+def test_team_boot_sh_uses_no_node_or_python():
+    """boot.sh must be pure shell — no node -e or python3 calls."""
+    assert "node -e" not in BOOT_SH
+    assert "python3" not in BOOT_SH
+    assert "python" not in BOOT_SH
+
+
+def test_team_boot_sh_extracts_init_options():
+    """boot.sh must read .adlc/init-options.json and extract team_ai_directives."""
+    assert ".adlc/init-options.json" in BOOT_SH
+    assert "team_ai_directives" in BOOT_SH
+    assert "grep" in BOOT_SH
+
+
+def test_team_boot_sh_handles_unconfigured():
+    """boot.sh must output guidance when init-options.json is missing."""
+    assert "Team AI directives not configured" in BOOT_SH
+    assert "team-setup" in BOOT_SH
+
+
+def test_team_boot_sh_handles_null_optout():
+    """boot.sh must silently exit on null marker (user opted out)."""
+    assert "null" in BOOT_SH
+
+
+def test_team_boot_sh_assembles_context():
+    """boot.sh must assemble constitution, CDR index, PDR/ADR, and skills."""
+    assert "constitution" in BOOT_SH
+    assert "CDR" in BOOT_SH
+    assert "pdr" in BOOT_SH
+    assert "adr" in BOOT_SH
+    assert "skills.json" in BOOT_SH
+
+
+def test_team_boot_sh_extracts_cdr_index_only():
+    """boot.sh must extract only the CDR index table (awk up to --- separator)."""
+    assert "awk" in BOOT_SH
+    assert "/^---/{exit}" in BOOT_SH
+
+
+def test_team_boot_ps1_uses_convertfrom_json():
+    """boot.ps1 must use native PowerShell JSON parsing."""
+    assert "ConvertFrom-Json" in BOOT_PS1
+    assert "node" not in BOOT_PS1
+
+
+def test_team_boot_body_mentions_team_setup():
+    """team-boot body must mention team-setup for unconfigured projects."""
     assert "team-setup" in BOOT
-    assert "Self-install" in BOOT
-    assert "invoke the `team-setup` skill" in BOOT
-    assert "Team AI directives not configured." in BOOT
 
 
-def test_team_boot_plan_mode_defers_with_guidance():
-    """In plan/read-only mode, team-boot must defer setup and print guidance, not invoke team-setup."""
-    assert "plan/read-only mode" in BOOT
-    assert "do NOT invoke `team-setup`" in BOOT
-    assert "Run /team-setup to:" in BOOT
+def test_team_boot_body_mentions_cdr_index():
+    """team-boot body must mention CDR index."""
+    assert "CDR index" in BOOT
 
 
-def test_team_boot_declined_optout_marker():
-    """A team_ai_directives: null marker must skip setup silently on every prompt."""
-    assert "team_ai_directives` is `null`" in BOOT
-    assert "team_setup`: `declined`" in BOOT or '"team_setup": "declined"' in BOOT
-    assert "Skip setup silently on every prompt" in BOOT
+def test_team_boot_body_no_anti_rationalization():
+    """Anti-rationalization table is obsolete with event hook — must be removed."""
+    assert "Common Rationalizations" not in BOOT
+    assert "Red Flags" not in BOOT
+    assert "MANDATORY in build mode" not in BOOT
+    assert "Do NOT second-guess" not in BOOT
 
 
-def test_team_boot_step4_guard_on_configuration():
-    """Step 4 (Run Discovery) must be guarded on a resolved team_ai_directives."""
-    assert "**Guard**" in BOOT
-    assert "only when Step 1 resolved a valid `team_ai_directives`" in BOOT
-    assert "do NOT invoke `team-discover`" in BOOT
+def test_team_boot_body_no_per_prompt_discovery():
+    """Per-prompt discovery directive must be removed."""
+    assert "every prompt" not in BOOT.lower()
+    assert "no continuation exemption" not in BOOT.lower()
+    assert "Step 4" not in BOOT
 
 
-def test_team_boot_failure_handling_invokes_setup_not_discover():
-    """Failure handling must invoke team-setup (build) or defer (plan) and stop before discovery."""
-    failure_section = BOOT.split("### Failure Handling")[1]
-    failure_section = failure_section.split("## Common Rationalizations")[0]
-    assert "invoke the `team-setup` skill" in failure_section
-    assert "do NOT invoke `team-discover`" in failure_section
-    assert "Team AI directives not configured" in failure_section
+def test_team_discover_is_manual_only():
+    """team-discover must be described as manual re-scan, not auto-invoked."""
+    assert "manually" in DISCOVER.lower() or "manual" in DISCOVER.lower()
+    assert "/team-discover" in DISCOVER
+
+
+def test_team_discover_no_persistence_logic():
+    """team-discover must not have persistence/delta/modes logic."""
+    assert "team-context.md" not in DISCOVER
+    assert "Persist" not in DISCOVER
+    assert "delta" not in DISCOVER.lower()
+    assert "no-write" not in DISCOVER
+
+
+def test_team_discover_no_scripts_frontmatter():
+    """team-discover must not have scripts: — it's body-path only."""
+    assert "scripts:" not in DISCOVER
 
 
 def test_team_setup_is_model_invocable():
@@ -59,25 +134,28 @@ def test_team_setup_decline_handling_documented():
 
 def test_no_stale_parent_walk_remnants():
     """v0.16.3 removed the parent-directory walk-up; only the explicit 'Do NOT walk up' prohibition may remain."""
-    for skill in (BOOT, DISCOVER):
-        assert "Do NOT walk up parent directories" in skill
-        assert "up to 4" not in skill
-        assert "Default fallback" not in skill
+    assert "Do NOT walk up parent directories" in BOOT
+    assert "up to 4" not in BOOT
+    assert "Default fallback" not in BOOT
 
 
-def test_team_discover_unconfigured_handover():
-    """team-discover must hand over to /team-setup when unconfigured, but may still load project indexes."""
-    assert "/team-setup" in DISCOVER
-    failure_section = DISCOVER.split("### Failure Handling")[1]
-    failure_section = failure_section.split("## Common Rationalizations")[0]
-    assert "/team-setup" in failure_section
-    assert "0 CDR entries searched" in failure_section
-    assert "PDR/ADR indexes" in failure_section
+def test_events_json_no_user_prompt_submit():
+    """events.json must not have user_prompt_submit — only session_start."""
+    assert "session_start" in EVENTS
+    assert "user_prompt_submit" not in EVENTS
 
 
-def test_team_boot_anti_second_guessing_rationalizations():
-    """team-boot must explicitly forbid second-guessing team-setup self-install on questions or meta repos."""
-    assert "MANDATORY in build mode" in BOOT
-    assert "Do NOT second-guess this invocation" in BOOT
-    assert "meta repo" in BOOT
-    assert "intrusive" in BOOT
+def test_events_json_only_team_boot():
+    """events.json must only have team-boot on session_start."""
+    assert "team-boot" in EVENTS
+    assert "team-discover" not in EVENTS
+
+
+def test_agents_md_simplified():
+    """AGENTS.md must not have anti-rationalization table or per-prompt discovery."""
+    assert "team-boot" in AGENTS
+    assert "CDR" in AGENTS
+    assert "Common Rationalizations" not in AGENTS
+    assert "Anti-pattern" not in AGENTS
+    assert "every message" not in AGENTS
+    assert "First-Tool-Call Gate" not in AGENTS

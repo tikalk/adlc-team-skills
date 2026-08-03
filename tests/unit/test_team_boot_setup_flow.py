@@ -38,21 +38,21 @@ def test_team_boot_sh_uses_no_node_or_python():
     assert "python" not in BOOT_SH
 
 
-def test_team_boot_sh_unconfigured_instructs_setup():
-    """boot.sh unconfigured output must instruct team-setup invocation."""
-    assert "team-setup" in BOOT_SH
+def test_team_boot_sh_unconfigured_warns_user():
+    """boot.sh unconfigured output must warn the user, not instruct the LLM."""
     assert "not configured" in BOOT_SH
-    assert "Invoke the team-setup skill" in BOOT_SH
+    assert "/team-setup" in BOOT_SH
+    assert "Invoke the team-setup skill" not in BOOT_SH
     assert "MANDATORY" not in BOOT_SH
     assert "Do NOT rationalize" not in BOOT_SH
     assert "Do not proceed" not in BOOT_SH
 
 
-def test_team_boot_ps1_unconfigured_instructs_setup():
-    """boot.ps1 unconfigured output must instruct team-setup invocation."""
-    assert "team-setup" in BOOT_PS1
+def test_team_boot_ps1_unconfigured_warns_user():
+    """boot.ps1 unconfigured output must warn the user, not instruct the LLM."""
     assert "not configured" in BOOT_PS1
-    assert "Invoke the team-setup skill" in BOOT_PS1
+    assert "/team-setup" in BOOT_PS1
+    assert "Invoke the team-setup skill" not in BOOT_PS1
     assert "MANDATORY" not in BOOT_PS1
     assert "Do NOT rationalize" not in BOOT_PS1
 

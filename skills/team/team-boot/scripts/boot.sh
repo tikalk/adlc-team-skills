@@ -6,11 +6,8 @@ set -euo pipefail
 INIT_FILE=".adlc/init-options.json"
 
 if [ ! -f "$INIT_FILE" ]; then
-  echo "Team AI directives not configured for this project."
-  echo ""
-  echo "Invoke the team-setup skill to configure it: skill({name: \"team-setup\"})"
-  echo "This wires in the team constitution, CDR index, PDR/ADR indexes, and skill registry."
-  echo "This applies to ALL repos — skills repos, consumer projects, and dev repos alike."
+  echo "⚠️  Team AI directives not configured for this project."
+  echo "Run /team-setup to wire in the team constitution, CDR index, PDR/ADR indexes, and skill registry."
   exit 0
 fi
 

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] - 2026-08-03
+
+### Changed
+
+- **Unconfigured boot.sh output changed to user-facing warning** (`skills/team/team-boot/scripts/boot.sh`, `scripts/boot.ps1`): v0.20.0 tried imperative instructions to the LLM ("Invoke the team-setup skill"), but session reviews showed the LLM ignores system prompt instructions — it's passive context, not an active skill load. Changed to a simple user-facing warning: "⚠️ Team AI directives not configured. Run /team-setup to wire in team context modules." No LLM enforcement, no rationalization cycle. The user sees the warning and decides whether to run `/team-setup`.
+
 ## [0.20.0] - 2026-08-03
 
 ### Changed

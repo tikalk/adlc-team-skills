@@ -28,8 +28,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # secrets context is not allowed in step-level `if` conditions, so we
-      # expose it via job-level env and gate on that instead.
+      # expose them via job-level env and gate on that instead.
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Optional routing for OpenAI-compatible providers (e.g. OpenCode Zen).
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+      EVAL_MODEL: ${{ secrets.EVAL_MODEL }}
     steps:
       - uses: actions/checkout@v4
       - name: Install PromptFoo

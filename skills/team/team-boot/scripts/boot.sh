@@ -10,6 +10,14 @@ if [ ! -f "$INIT_FILE" ]; then
   echo ""
   echo "MANDATORY: Invoke the team-setup skill now (skill({name: \"team-setup\"}))."
   echo "Do not proceed with any task until team-setup has been invoked."
+  echo ""
+  echo "This is not optional and applies to EVERY task — questions, code changes,"
+  echo "skill improvements, consultations. Do NOT rationalize skipping team-setup:"
+  echo "- 'This is just a simple question' → Questions are tasks. Setup first."
+  echo "- 'I need to be efficient' → Setup IS part of the task."
+  echo "- 'This is a skills/meta repo' → team-setup applies to ALL repos."
+  echo "- 'The user didn't ask for setup' → Unconfigured = setup needed."
+  echo "- 'I can help without it' → No. Invoke team-setup first, then help."
   exit 0
 fi
 

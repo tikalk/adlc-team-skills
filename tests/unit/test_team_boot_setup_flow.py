@@ -38,6 +38,21 @@ def test_team_boot_sh_uses_no_node_or_python():
     assert "python" not in BOOT_SH
 
 
+def test_team_boot_sh_has_anti_rationalization():
+    """boot.sh unconfigured output must include anti-rationalization hardening."""
+    assert "Do NOT rationalize" in BOOT_SH
+    assert "simple question" in BOOT_SH
+    assert "meta repo" in BOOT_SH
+    assert "Setup IS part of the task" in BOOT_SH
+
+
+def test_team_boot_ps1_has_anti_rationalization():
+    """boot.ps1 unconfigured output must include anti-rationalization hardening."""
+    assert "Do NOT rationalize" in BOOT_PS1
+    assert "simple question" in BOOT_PS1
+    assert "meta repo" in BOOT_PS1
+
+
 def test_team_boot_sh_extracts_init_options():
     """boot.sh must read .adlc/init-options.json and extract team_ai_directives."""
     assert ".adlc/init-options.json" in BOOT_SH

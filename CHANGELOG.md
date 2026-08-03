@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2026-08-03
+
+### Fixed
+
+- **Anti-rationalization hardening restored in boot.sh/boot.ps1** (`skills/team/team-boot/scripts/boot.sh`, `scripts/boot.ps1`): v0.18.0 removed the anti-rationalization table from team-boot's SKILL.md on the assumption that the event hook makes LLM compliance enforcement obsolete. But the event hook only automates **boot** — it does NOT automate **setup**. When unconfigured, boot.sh outputs a mandate to invoke team-setup, but the LLM can still rationalize skipping it (confirmed in session review: LLM spent 31.5s thinking, then skipped team-setup to "be helpful"). The fix adds condensed anti-rationalization language to boot.sh's unconfigured output — the same 5 rationalizations v0.17.1 blocked, now in the script output that lands in the system prompt.
+
 ## [0.18.0] - 2026-08-03
 
 ### Changed

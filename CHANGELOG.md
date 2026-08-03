@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-08-03
+
+### Changed
+
+- **team-boot unconfigured output changed from informational to imperative** (`skills/team/team-boot/scripts/boot.sh`, `scripts/boot.ps1`): v0.19.0 made the unconfigured output informational ("Run /team-setup to wire in team context modules"), but session review showed the LLM ignored it entirely and proceeded without invoking team-setup. The output is now imperative: "Invoke the team-setup skill to configure it: skill({name: \"team-setup\"})". This is imperative (direct command) without being adversarial (no MANDATORY, no anti-rationalization table). Includes the one rationalization that kept appearing across 4 sessions ("this is a dev repo") blocked inline: "This applies to ALL repos — skills repos, consumer projects, and dev repos alike."
+
 ## [0.19.0] - 2026-08-03
 
 ### Changed

@@ -6,7 +6,10 @@ $INIT_FILE = ".adlc/init-options.json"
 
 if (-not (Test-Path $INIT_FILE)) {
     Write-Output "Team AI directives not configured for this project."
-    Write-Output "Run /team-setup to wire in team context modules (constitution, CDR index, PDR/ADR indexes)."
+    Write-Output ""
+    Write-Output "Invoke the team-setup skill to configure it."
+    Write-Output "This wires in the team constitution, CDR index, PDR/ADR indexes, and skill registry."
+    Write-Output "This applies to ALL repos — skills repos, consumer projects, and dev repos alike."
     exit 0
 }
 

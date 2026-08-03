@@ -38,19 +38,21 @@ def test_team_boot_sh_uses_no_node_or_python():
     assert "python" not in BOOT_SH
 
 
-def test_team_boot_sh_unconfigured_is_informational():
-    """boot.sh unconfigured output must be informational, not mandatory."""
-    assert "Team AI directives not configured for this project" in BOOT_SH
-    assert "/team-setup" in BOOT_SH
+def test_team_boot_sh_unconfigured_instructs_setup():
+    """boot.sh unconfigured output must instruct team-setup invocation."""
+    assert "team-setup" in BOOT_SH
+    assert "not configured" in BOOT_SH
+    assert "Invoke the team-setup skill" in BOOT_SH
     assert "MANDATORY" not in BOOT_SH
     assert "Do NOT rationalize" not in BOOT_SH
     assert "Do not proceed" not in BOOT_SH
 
 
-def test_team_boot_ps1_unconfigured_is_informational():
-    """boot.ps1 unconfigured output must be informational, not mandatory."""
-    assert "Team AI directives not configured for this project" in BOOT_PS1
-    assert "/team-setup" in BOOT_PS1
+def test_team_boot_ps1_unconfigured_instructs_setup():
+    """boot.ps1 unconfigured output must instruct team-setup invocation."""
+    assert "team-setup" in BOOT_PS1
+    assert "not configured" in BOOT_PS1
+    assert "Invoke the team-setup skill" in BOOT_PS1
     assert "MANDATORY" not in BOOT_PS1
     assert "Do NOT rationalize" not in BOOT_PS1
 

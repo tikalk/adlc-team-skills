@@ -7,7 +7,10 @@ INIT_FILE=".adlc/init-options.json"
 
 if [ ! -f "$INIT_FILE" ]; then
   echo "Team AI directives not configured for this project."
-  echo "Run /team-setup to wire in team context modules (constitution, CDR index, PDR/ADR indexes)."
+  echo ""
+  echo "Invoke the team-setup skill to configure it: skill({name: \"team-setup\"})"
+  echo "This wires in the team constitution, CDR index, PDR/ADR indexes, and skill registry."
+  echo "This applies to ALL repos — skills repos, consumer projects, and dev repos alike."
   exit 0
 fi
 

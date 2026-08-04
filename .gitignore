@@ -32,7 +32,7 @@ pnpm-lock.yaml
 AGENTS.md
 .agents/
 .opencode/
-.claude/commands/
+.claude/
 .cursor/commands/
 .github/prompts/
 .codex/

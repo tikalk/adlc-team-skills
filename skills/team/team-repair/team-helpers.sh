@@ -327,11 +327,13 @@ If team AI directives are unconfigured, invoke the \`team-setup\` skill.
 
 **Every response MUST include** a Team Context in Use section before the task answer:
 
+## Team Context in Use
+
 | ID | Name | Type | Relevance |
 |----|------|------|-----------|
 | CDR-YYYY-NNN | <name> | <type> | <relevance> |
 
-Plus: \`_Searched N CDR entries, M skills, J matched._\`
+Plus: \`_Searched N CDR entries, M skills, J matched._\` — **J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**
 ${marker_end}
 SECTION
 )

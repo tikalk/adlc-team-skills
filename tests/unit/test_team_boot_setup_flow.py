@@ -77,10 +77,27 @@ def test_boot_sh_example_row_is_placeholder():
     assert "CDR-YYYY-NNN" in BOOT_SH
 
 
+def test_boot_sh_context_contract_integrity():
+    """boot.sh must enforce counts-line integrity, canonical heading, and exploration guidance."""
+    # J must equal row count (prevents "1 matched" copy-paste with a 2-row table)
+    assert "J MUST equal the number of rows" in BOOT_SH
+    # Canonical heading standardizes the section across models
+    assert "## Team Context in Use" in BOOT_SH
+    # Exploration efficiency guidance
+    assert "targeted file searches" in BOOT_SH
+
+
 def test_boot_ps1_example_row_is_placeholder():
     """boot.ps1 Team Context example row must be a placeholder, not a real CDR ID."""
     assert "CDR-2026-003 | Cloud-Native Platform Architect" not in BOOT_PS1
     assert "CDR-YYYY-NNN" in BOOT_PS1
+
+
+def test_boot_ps1_context_contract_integrity():
+    """boot.ps1 must enforce counts-line integrity, canonical heading, and exploration guidance."""
+    assert "J MUST equal the number of rows" in BOOT_PS1
+    assert "## Team Context in Use" in BOOT_PS1
+    assert "targeted file searches" in BOOT_PS1
 
 
 def test_team_boot_sh_unconfigured_warns_user():
@@ -239,6 +256,8 @@ def test_agents_md_simplified():
     assert "First-Tool-Call Gate" not in AGENTS
     assert "CDR-2026-003 | Cloud-Native Platform Architect" not in AGENTS
     assert "CDR-YYYY-NNN" in AGENTS
+    assert "## Team Context in Use" in AGENTS
+    assert "J MUST equal the number of rows" in AGENTS
 
 
 def test_radar_search_sh_uses_jq():

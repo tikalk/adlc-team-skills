@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.4] - 2026-08-04
+
+### Fixed
+
+- **Team Context in Use counts-line integrity** (`skills/team/team-boot/scripts/boot.sh`, `boot.ps1`, `team-helpers.sh`, `team-helpers.ps1` across `team-setup`/`team-repair`/`team-skills`): the output contract now explicitly states "J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched." A session review caught the model rendering a 2-row table while the metadata line still read "1 matched" — the model was copy-pasting the count from a prior turn instead of counting its own rows. v0.22.3 anchored the row content; this fixes the count.
+
+- **Canonical "Team Context in Use" heading** (same files): the template now shows `## Team Context in Use` as the exact heading. Previously the section had no specified heading, so different models (gemini-3.6-flash vs kimi-k3) improvised — some used `## Team Context in Use`, some omitted it — producing inconsistent traces.
+
+### Added
+
+- **Context-efficiency guidance in boot orientation** (`boot.sh`, `boot.ps1`): one line — "Prefer targeted file searches over broad directory listings to conserve context." A session review found three 100+ entry directory globs (including `__pycache__` noise) for a task that needed only four targeted file reads.
+
+- **Regression tests for the contract integrity** (`tests/unit/test_team_boot_setup_flow.py`): `test_boot_{sh,ps1}_context_contract_integrity` assert the J-must-equal instruction, canonical heading, and exploration guidance are present; extended `test_agents_md_simplified` with the heading and J instruction assertions.
+
 ## [0.22.3] - 2026-08-04
 
 ### Fixed

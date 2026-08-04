@@ -315,7 +315,9 @@ $MarkerStart
 
 This project is bound by the team AI directives repository at ``$TeamDirective``.
 
-team-boot runs automatically at session start via the event hook, injecting the team constitution, CDR index, PDR/ADR indexes, skill registry, and MCP servers into the system prompt. Read full CDR module files on demand when a task matches a descriptor.
+team-boot runs automatically at session start via the event hook, injecting the team constitution, CDR index, PDR/ADR indexes, skill registry, and MCP servers into the system prompt.
+
+BEFORE exploring the codebase, read the CDR index and skills registry in your system prompt. The CDR index lists all available team context modules with descriptors — read full module files on demand when a task matches a descriptor. The skills registry lists all available team skills with descriptions — read full SKILL.md files on demand when a task matches.
 
 If team AI directives context is not in your system prompt (agent without event support), invoke the ``team-boot`` skill before responding to any task or question.
 

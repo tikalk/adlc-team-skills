@@ -192,6 +192,8 @@ def test_agents_md_simplified():
         return  # AGENTS.md is gitignored — skip in CI
     assert "team-boot" in AGENTS
     assert "CDR" in AGENTS
+    assert "BEFORE exploring" in AGENTS
+    assert "skills registry" in AGENTS
     assert "Common Rationalizations" not in AGENTS
     assert "Anti-pattern" not in AGENTS
     assert "every message" not in AGENTS

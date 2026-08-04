@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.2] - 2026-08-04
+
+### Fixed
+
+- **AGENTS.md now directs LLM to read injected context before exploring** (`skills/team/team-{setup,repair,skills}/team-helpers.sh`, `team-helpers.ps1`): session review showed the LLM ignores the injected CDR index and skills registry in the system prompt, exploring the workspace manually instead. Added explicit directive: "BEFORE exploring the codebase, read the CDR index and skills registry in your system prompt." This tells the LLM to use the injected context first, not explore blindly.
+
 ## [0.21.1] - 2026-08-04
 
 ### Fixed

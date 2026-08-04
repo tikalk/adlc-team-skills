@@ -44,8 +44,11 @@ Write-Output ""
 # CDR Index — compact: ID + Type + Descriptor only
 Write-Output "## CDR Index"
 $cdrPath = Join-Path $TEAM_AI_DIRECTIVES "CDR.md"
+$CdrCount = 0
 if (Test-Path $cdrPath) {
-    Get-Content $cdrPath | Where-Object { $_ -match '^\| CDR|^\| skill|^\| example' } | ForEach-Object {
+    $cdrLines = Get-Content $cdrPath | Where-Object { $_ -match '^\| CDR|^\| skill|^\| example' }
+    $CdrCount = $cdrLines.Count
+    $cdrLines | ForEach-Object {
         $cols = $_ -split '\|'
         if ($cols.Count -ge 10) {
             $id = $cols[1].Trim()
@@ -56,17 +59,23 @@ if (Test-Path $cdrPath) {
     }
 } else { Write-Output "(not found)" }
 Write-Output ""
+Write-Output "_Total: $CdrCount CDR entries available._"
+Write-Output ""
 
 # Skills — names + descriptions only (lean)
 Write-Output "## Available Skills"
 $skillsPath = Join-Path $TEAM_AI_DIRECTIVES ".skills.json"
+$SkillTotal = 0
 if (Test-Path $skillsPath) {
     $skills = Get-Content $skillsPath -Raw | ConvertFrom-Json
+    $SkillTotal = $skills.default.Count + $skills.external.PSObject.Properties.Count
     foreach ($name in $skills.default) { Write-Output "- $name" }
     foreach ($entry in $skills.external.PSObject.Properties) {
         Write-Output "- $($entry.Name): $($entry.Value.description)"
     }
 } else { Write-Output "(none)" }
+Write-Output ""
+Write-Output "_Total: $SkillTotal skills available._"
 Write-Output ""
 
 # MCP Servers — names only (lean)
@@ -81,10 +90,11 @@ Write-Output ""
 Write-Output "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
 Write-Output ""
 Write-Output "**Every response MUST include** a Team Context in Use section before the task answer:"
+Write-Output "Match CDR entries and skills from the lists above to the current task."
 Write-Output ""
 Write-Output "| ID | Type | Relevance |"
 Write-Output "|----|------|-----------|"
 Write-Output "| CDR-2026-003 | Persona | High |"
 Write-Output ""
-Write-Output "Plus: _Searched N CDR entries, M skills, J matched._"
+Write-Output "Plus: _Searched $CdrCount CDR entries, $SkillTotal skills, J matched._"
 Write-Output "</EXTREMELY_IMPORTANT>"

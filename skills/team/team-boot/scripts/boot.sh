@@ -45,15 +45,23 @@ echo ""
 
 # CDR Index — compact: ID + Type + Descriptor only
 echo "## CDR Index"
+CDR_COUNT=$(awk '/^\| CDR|^\| skill|^\| example/ {count++} END {print count+0}' "$TEAM_AI_DIRECTIVES/CDR.md" 2>/dev/null || echo "0")
 awk -F'|' '/^\| CDR|^\| skill|^\| example/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$4); gsub(/^ +| +$/,"",$9); print "| " $2 " | " $4 " | " $9 " |"}' "$TEAM_AI_DIRECTIVES/CDR.md" 2>/dev/null || echo "(not found)"
+echo ""
+echo "_Total: $CDR_COUNT CDR entries available._"
 echo ""
 
 # Skills — names + descriptions only (lean)
 echo "## Available Skills"
+SKILL_DEFAULT_COUNT=$(jq -r '.default | length' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || echo "0")
+SKILL_EXTERNAL_COUNT=$(jq -r '.external | length' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || echo "0")
+SKILL_TOTAL=$((SKILL_DEFAULT_COUNT + SKILL_EXTERNAL_COUNT))
 jq -r '.default[]' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null | while read -r name; do
   echo "- $name"
 done
 jq -r '.external | to_entries[] | "- \(.key): \(.value.description)"' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || true
+echo ""
+echo "_Total: $SKILL_TOTAL skills available._"
 echo ""
 
 # MCP Servers — names only (lean)
@@ -66,10 +74,11 @@ echo ""
 echo "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
 echo ""
 echo "**Every response MUST include** a Team Context in Use section before the task answer:"
+echo "Match CDR entries and skills from the lists above to the current task."
 echo ""
 echo "| ID | Type | Relevance |"
 echo "|----|------|-----------|"
 echo "| CDR-2026-003 | Persona | High |"
 echo ""
-echo "Plus: _Searched N CDR entries, M skills, J matched._"
+echo "Plus: _Searched $CDR_COUNT CDR entries, $SKILL_TOTAL skills, J matched._"
 echo "</EXTREMELY_IMPORTANT>"

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.1] - 2026-08-04
+
+### Fixed
+
+- **boot.sh/boot.ps1 now output actual CDR and skill counts** (`skills/team/team-boot/scripts/`): the lean orientation now computes and displays `_Total: N CDR entries available._` and `_Total: M skills available._` so the LLM doesn't have to guess counts for the Team Context in Use metadata line. The output contract template now shows `Plus: _Searched $CDR_COUNT CDR entries, $SKILL_TOTAL skills, J matched._` with actual counts filled in. Also added "Match CDR entries and skills from the lists above to the current task." to guide the LLM's matching.
+
 ## [0.22.0] - 2026-08-04
 
 ### Changed

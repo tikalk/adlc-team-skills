@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-08-04
+
+### Changed
+
+- **Switched from system.prompt to first user message injection** (`adlc-skills-cli/src/registry.mjs`, `src/events.mjs`): opencode `session_start` now maps to `experimental.chat.messages.transform` instead of `experimental.chat.system.transform`. LLMs treat first user message content as active instructions (like superpowers), not passive system prompt context. Guard checks for `EXTREMELY_IMPORTANT` marker to prevent double-injection on step re-fires.
+
+- **boot.sh/boot.ps1 output lean orientation wrapped in EXTREMELY_IMPORTANT** (`skills/team/team-boot/scripts/`): replaced full context injection (~200 lines) with lean orientation (~90 lines): constitution principle titles, compact CDR index table (ID + Type + Descriptor), skill names + descriptions, MCP server names. Full content read on demand. Wrapped in `<EXTREMELY_IMPORTANT>` tags.
+
+- **AGENTS.md simplified to fallback for non-event agents** (`skills/team/team-{setup,repair,skills}/team-helpers.sh`, `team-helpers.ps1`): AGENTS.md now serves as fallback for agents without event support. For agents WITH event support, the event hook injects the lean orientation into the first user message automatically.
+
+### Added
+
+- **`.events.json` installed to target project** (`adlc-skills-cli/src/cli.mjs`): `add` now copies `.events.json` from source to target project. `upgrade` re-reads it to regenerate events. `remove` cleans it up. This enables `upgrade` to re-generate event configs without re-running `add`.
+
+### Fixed
+
+- **Boot cache invalidation on config change** (carried from v0.21.0): `_sessionStartCache` tracks `.adlc/init-options.json` mtime via `statSync`. Cache invalidates when team-setup creates/modifies/deletes the config.
+
 ## [0.21.3] - 2026-08-04
 
 ### Added

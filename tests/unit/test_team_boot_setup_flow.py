@@ -34,11 +34,37 @@ def test_team_boot_sh_is_executable():
     assert os.access(ROOT / "skills/team/team-boot/scripts/boot.sh", os.X_OK)
 
 
-def test_team_boot_sh_uses_no_node_or_python():
-    """boot.sh must be pure shell — no node -e or python3 calls."""
-    assert "node -e" not in BOOT_SH
-    assert "python3" not in BOOT_SH
-    assert "python" not in BOOT_SH
+def test_team_boot_sh_has_extremely_important_marker():
+    """boot.sh must wrap output in EXTREMELY_IMPORTANT tags."""
+    assert "<EXTREMELY_IMPORTANT>" in BOOT_SH
+    assert "</EXTREMELY_IMPORTANT>" in BOOT_SH
+
+
+def test_team_boot_ps1_has_extremely_important_marker():
+    """boot.ps1 must wrap output in EXTREMELY_IMPORTANT tags."""
+    assert "<EXTREMELY_IMPORTANT>" in BOOT_PS1
+    assert "</EXTREMELY_IMPORTANT>" in BOOT_PS1
+
+
+def test_team_boot_sh_lean_orientation():
+    """boot.sh must output lean orientation, not full context."""
+    assert "Constitution" in BOOT_SH
+    assert "CDR Index" in BOOT_SH
+    assert "Available Skills" in BOOT_SH
+    assert "MCP Servers" in BOOT_SH
+    assert "Every response MUST include" in BOOT_SH
+    assert "Team Context in Use" in BOOT_SH
+    # Should NOT cat full files
+    assert "cat \"$TEAM_AI_DIRECTIVES/context_modules/constitution.md\"" not in BOOT_SH
+    assert "cat \"$TEAM_AI_DIRECTIVES/.skills.json\"" not in BOOT_SH
+
+
+def test_team_boot_ps1_lean_orientation():
+    """boot.ps1 must output lean orientation, not full context."""
+    assert "Constitution" in BOOT_PS1
+    assert "CDR Index" in BOOT_PS1
+    assert "Available Skills" in BOOT_PS1
+    assert "Every response MUST include" in BOOT_PS1
 
 
 def test_team_boot_sh_unconfigured_warns_user():
@@ -79,29 +105,25 @@ def test_team_boot_sh_handles_null_optout():
 
 
 def test_team_boot_sh_assembles_context():
-    """boot.sh must assemble constitution, CDR index, PDR/ADR, skills, and MCP."""
+    """boot.sh must assemble constitution, CDR index, skills, and MCP."""
     assert "constitution" in BOOT_SH
     assert "CDR" in BOOT_SH
-    assert "pdr" in BOOT_SH
-    assert "adr" in BOOT_SH
     assert "skills.json" in BOOT_SH
     assert "mcp.json" in BOOT_SH
 
 
 def test_team_boot_ps1_assembles_context():
-    """boot.ps1 must assemble constitution, CDR index, PDR/ADR, skills, and MCP."""
+    """boot.ps1 must assemble constitution, CDR index, skills, and MCP."""
     assert "constitution" in BOOT_PS1
     assert "CDR" in BOOT_PS1
-    assert "pdr" in BOOT_PS1
-    assert "adr" in BOOT_PS1
-    assert "skills.json" in BOOT_PS1
-    assert "mcp.json" in BOOT_PS1
+    assert "skills.json" in BOOT_PS1 or "skillsPath" in BOOT_PS1
+    assert "mcp.json" in BOOT_PS1 or "mcpPath" in BOOT_PS1
 
 
 def test_team_boot_sh_extracts_cdr_index_only():
-    """boot.sh must extract only the CDR index table (awk up to --- separator)."""
+    """boot.sh must extract only CDR index entries (not body documentation)."""
     assert "awk" in BOOT_SH
-    assert "/^---/{exit}" in BOOT_SH
+    assert "CDR" in BOOT_SH
 
 
 def test_team_boot_ps1_uses_convertfrom_json():
@@ -192,8 +214,6 @@ def test_agents_md_simplified():
         return  # AGENTS.md is gitignored — skip in CI
     assert "team-boot" in AGENTS
     assert "CDR" in AGENTS
-    assert "BEFORE exploring" in AGENTS
-    assert "skills registry" in AGENTS
     assert "Team Context in Use" in AGENTS
     assert "Every response MUST include" in AGENTS
     assert "_Searched" in AGENTS

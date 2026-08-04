@@ -1,12 +1,14 @@
-# team-boot session_start script — assembles team AI directives context.
+# team-boot session_start script — lean orientation for first user message injection.
 # PowerShell native (ConvertFrom-Json).
 $ErrorActionPreference = "Stop"
 
 $INIT_FILE = ".adlc/init-options.json"
 
 if (-not (Test-Path $INIT_FILE)) {
-    Write-Output "⚠️  Team AI directives not configured for this project."
+    Write-Output "<EXTREMELY_IMPORTANT>"
+    Write-Output "Team AI directives not configured for this project."
     Write-Output "Run /team-setup to wire in the team constitution, CDR index, PDR/ADR indexes, and skill registry."
+    Write-Output "</EXTREMELY_IMPORTANT>"
     exit 0
 }
 
@@ -18,39 +20,71 @@ if (-not $TEAM_AI_DIRECTIVES -or $TEAM_AI_DIRECTIVES -eq "null") {
 }
 
 if (-not (Test-Path $TEAM_AI_DIRECTIVES)) {
+    Write-Output "<EXTREMELY_IMPORTANT>"
     Write-Output "Team AI directives path not found: $TEAM_AI_DIRECTIVES"
+    Write-Output "Run /team-setup to reconfigure."
+    Write-Output "</EXTREMELY_IMPORTANT>"
     exit 0
 }
 
-Write-Output "# Team AI Directives Context"
+Write-Output "<EXTREMELY_IMPORTANT>"
+Write-Output "# Team AI Directives"
 Write-Output ""
+Write-Output "Path: $TEAM_AI_DIRECTIVES"
+Write-Output ""
+
+# Constitution — principle titles only (lean)
 Write-Output "## Constitution"
 $constPath = Join-Path $TEAM_AI_DIRECTIVES "context_modules/constitution.md"
-if (Test-Path $constPath) { Get-Content $constPath -Raw } else { Write-Output "(not found)" }
+if (Test-Path $constPath) {
+    Get-Content $constPath | Where-Object { $_ -match '^\d+\.' } | Select-Object -First 20
+} else { Write-Output "(not found)" }
 Write-Output ""
+
+# CDR Index — compact: ID + Type + Descriptor only
 Write-Output "## CDR Index"
 $cdrPath = Join-Path $TEAM_AI_DIRECTIVES "CDR.md"
 if (Test-Path $cdrPath) {
-    $content = Get-Content $cdrPath -Raw
-    $sections = $content -split "^---", 2
-    Write-Output $sections[0]
+    Get-Content $cdrPath | Where-Object { $_ -match '^\| CDR|^\| skill|^\| example' } | ForEach-Object {
+        $cols = $_ -split '\|'
+        if ($cols.Count -ge 10) {
+            $id = $cols[1].Trim()
+            $type = $cols[3].Trim()
+            $desc = $cols[8].Trim()
+            Write-Output "| $id | $type | $desc |"
+        }
+    }
 } else { Write-Output "(not found)" }
 Write-Output ""
-Write-Output "## PDR Index"
-if (Test-Path ".adlc/memory/pdr/pdr.md") { Get-Content ".adlc/memory/pdr/pdr.md" -Raw } else { Write-Output "(none)" }
-Write-Output ""
-Write-Output "## ADR Index"
-if (Test-Path ".adlc/memory/adr/adr.md") { Get-Content ".adlc/memory/adr/adr.md" -Raw } else { Write-Output "(none)" }
-Write-Output ""
+
+# Skills — names + descriptions only (lean)
 Write-Output "## Available Skills"
 $skillsPath = Join-Path $TEAM_AI_DIRECTIVES ".skills.json"
-if (Test-Path $skillsPath) { Get-Content $skillsPath -Raw } else { Write-Output "(none)" }
+if (Test-Path $skillsPath) {
+    $skills = Get-Content $skillsPath -Raw | ConvertFrom-Json
+    foreach ($name in $skills.default) { Write-Output "- $name" }
+    foreach ($entry in $skills.external.PSObject.Properties) {
+        Write-Output "- $($entry.Name): $($entry.Value.description)"
+    }
+} else { Write-Output "(none)" }
 Write-Output ""
+
+# MCP Servers — names only (lean)
 Write-Output "## MCP Servers"
 $mcpPath = Join-Path $TEAM_AI_DIRECTIVES ".mcp.json"
-if (Test-Path $mcpPath) { Get-Content $mcpPath -Raw } else { Write-Output "(none)" }
+if (Test-Path $mcpPath) {
+    $mcp = Get-Content $mcpPath -Raw | ConvertFrom-Json
+    foreach ($name in $mcp.mcpServers.PSObject.Properties.Name) { Write-Output "- $name" }
+} else { Write-Output "(none)" }
 Write-Output ""
-Write-Output "---"
-Write-Output "The CDR index lists all available team context modules. When a task"
-Write-Output "matches a CDR descriptor, read the full module file at the Target"
-Write-Output "Module path for the complete directive text."
+
+Write-Output "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
+Write-Output ""
+Write-Output "**Every response MUST include** a Team Context in Use section before the task answer:"
+Write-Output ""
+Write-Output "| ID | Type | Relevance |"
+Write-Output "|----|------|-----------|"
+Write-Output "| CDR-2026-003 | Persona | High |"
+Write-Output ""
+Write-Output "Plus: _Searched N CDR entries, M skills, J matched._"
+Write-Output "</EXTREMELY_IMPORTANT>"

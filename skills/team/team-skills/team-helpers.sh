@@ -319,24 +319,19 @@ ${marker_start}
 
 This project is bound by the team AI directives repository at \`${team_directive}\`.
 
-team-boot runs automatically at session start via the event hook, injecting the team constitution, CDR index, PDR/ADR indexes, skill registry, and MCP servers into the system prompt.
+team-boot runs automatically at session start via the event hook (for agents with event support), injecting a lean orientation into the first user message with the team constitution, CDR index, skills registry, and MCP servers.
 
-BEFORE exploring the codebase, read the CDR index and skills registry in your system prompt. The CDR index lists all available team context modules with descriptors — read full module files on demand when a task matches a descriptor. The skills registry lists all available team skills with descriptions — read full SKILL.md files on demand when a task matches.
+If the team AI directives context is NOT in your system prompt or first user message (agent without event support), invoke the \`team-boot\` skill before responding to any task or question.
+
+If team AI directives are unconfigured, invoke the \`team-setup\` skill.
 
 **Every response MUST include** a Team Context in Use section before the task answer:
 
 | ID | Type | Relevance |
 |----|------|-----------|
 | CDR-2026-003 | Persona | High |
-| skill-dbt-template | Skill | High |
 
-Plus a metadata line: \`_Searched N CDR entries, M skills, J matched._\`
-
-If no entries match the task, show an empty table with \`0 matched\`.
-
-If team AI directives context is not in your system prompt (agent without event support), invoke the \`team-boot\` skill before responding to any task or question.
-
-If team AI directives are unconfigured, invoke the \`team-setup\` skill.
+Plus: \`_Searched N CDR entries, M skills, J matched._\`
 ${marker_end}
 SECTION
 )

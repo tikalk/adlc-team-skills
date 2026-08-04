@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# team-boot session_start script — assembles team AI directives context.
+# team-boot session_start script — lean orientation for first user message injection.
 # Pure shell (grep/sed), no runtime dependencies.
 set -euo pipefail
 
 INIT_FILE=".adlc/init-options.json"
 
 if [ ! -f "$INIT_FILE" ]; then
-  echo "⚠️  Team AI directives not configured for this project."
+  echo "<EXTREMELY_IMPORTANT>"
+  echo "Team AI directives not configured for this project."
   echo "Run /team-setup to wire in the team constitution, CDR index, PDR/ADR indexes, and skill registry."
+  echo "</EXTREMELY_IMPORTANT>"
   exit 0
 fi
 
@@ -23,32 +25,51 @@ fi
 
 # Verify path exists.
 if [ ! -d "$TEAM_AI_DIRECTIVES" ]; then
+  echo "<EXTREMELY_IMPORTANT>"
   echo "Team AI directives path not found: $TEAM_AI_DIRECTIVES"
+  echo "Run /team-setup to reconfigure."
+  echo "</EXTREMELY_IMPORTANT>"
   exit 0
 fi
 
-echo "# Team AI Directives Context"
+echo "<EXTREMELY_IMPORTANT>"
+echo "# Team AI Directives"
 echo ""
+echo "Path: $TEAM_AI_DIRECTIVES"
+echo ""
+
+# Constitution — principle titles only (lean)
 echo "## Constitution"
-cat "$TEAM_AI_DIRECTIVES/context_modules/constitution.md" 2>/dev/null || echo "(not found)"
+grep '^[0-9]\+\.' "$TEAM_AI_DIRECTIVES/context_modules/constitution.md" 2>/dev/null | head -20 || echo "(not found)"
 echo ""
+
+# CDR Index — compact: ID + Type + Descriptor only
 echo "## CDR Index"
-# Extract only the index table (up to first --- separator).
-awk '/^---/{exit} {print}' "$TEAM_AI_DIRECTIVES/CDR.md" 2>/dev/null || echo "(not found)"
+awk -F'|' '/^\| CDR|^\| skill|^\| example/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$4); gsub(/^ +| +$/,"",$9); print "| " $2 " | " $4 " | " $9 " |"}' "$TEAM_AI_DIRECTIVES/CDR.md" 2>/dev/null || echo "(not found)"
 echo ""
-echo "## PDR Index"
-cat ".adlc/memory/pdr/pdr.md" 2>/dev/null || echo "(none)"
-echo ""
-echo "## ADR Index"
-cat ".adlc/memory/adr/adr.md" 2>/dev/null || echo "(none)"
-echo ""
+
+# Skills — names + descriptions only (lean)
 echo "## Available Skills"
-cat "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || echo "(none)"
+jq -r '.default[]' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null | while read -r name; do
+  echo "- $name"
+done
+jq -r '.external | to_entries[] | "- \(.key): \(.value.description)"' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || true
 echo ""
+
+# MCP Servers — names only (lean)
 echo "## MCP Servers"
-cat "$TEAM_AI_DIRECTIVES/.mcp.json" 2>/dev/null || echo "(none)"
+jq -r '.mcpServers | keys[]' "$TEAM_AI_DIRECTIVES/.mcp.json" 2>/dev/null | while read -r name; do
+  echo "- $name"
+done || echo "(none)"
 echo ""
-echo "---"
-echo "The CDR index lists all available team context modules. When a task"
-echo "matches a CDR descriptor, read the full module file at the Target"
-echo "Module path for the complete directive text. Apply relevant directives."
+
+echo "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
+echo ""
+echo "**Every response MUST include** a Team Context in Use section before the task answer:"
+echo ""
+echo "| ID | Type | Relevance |"
+echo "|----|------|-----------|"
+echo "| CDR-2026-003 | Persona | High |"
+echo ""
+echo "Plus: _Searched N CDR entries, M skills, J matched._"
+echo "</EXTREMELY_IMPORTANT>"

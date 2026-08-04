@@ -31,9 +31,9 @@
       "id": "EVAL-004-CASE-1",
       "criterion_id": "EVAL-004",
       "type": "pass",
-      "scenario": "Plan-mode prompt with a concrete dbt coding task",
-      "input_context": "You are in plan mode (read-only). The user asks: 'set due_date in matches_backlog when status is pending from crm.'",
-      "expected_output": "skill({name: \"team-boot\"})"
+      "scenario": "Task involving Helm chart authoring",
+      "input_context": "Team directives has 40 CDR entries and 14 skills; CDR-2026-013 (Helm Chart Library) is relevant.",
+      "expected_output": "## Team Context in Use\n\n| ID | Name | Type | Relevance |\n|----|------|------|-----------|\n| CDR-2026-013 | Helm Chart Library | Rule | High |\n\n_Searched 40 CDR entries, 14 skills, 1 matched._"
     },
     {
       "id": "EVAL-005-CASE-1",

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.3] - 2026-08-04
+
+### Fixed
+
+- **De-anchored the Team Context in Use example row** (`skills/team/team-boot/scripts/boot.sh`, `boot.ps1`, `team-helpers.sh`, `team-helpers.ps1` across `team-setup`/`team-repair`/`team-skills`): the template's example table row was a real CDR (`CDR-2026-003 | Cloud-Native Platform Architect | Persona | High`), which anchored models to cargo-cult that specific CDR into every response instead of searching for a genuine match. Replaced with a placeholder `| CDR-YYYY-NNN | <name> | <type> | <relevance> |` that signals "fill me in." A session review caught the model emitting CDR-2026-003 for unrelated tasks (team-setup, git-skill design) where it was not genuinely relevant.
+
+- **Resolved doc drift between team-setup/team-repair SKILL.md and the injected AGENTS.md template** (`skills/team/team-setup/SKILL.md`, `skills/team/team-repair/SKILL.md`): the skills still documented the pre-v0.19 hard-mandate AGENTS.md template ("Strict Compliance," "First-Tool-Call Gate," "Plan-Mode Compatibility," "Anti-pattern counter-rationalizations"), contradicting the actual v0.22.x lean template (event-hook awareness, fallback invocation, unconfigured handling, Team Context in Use contract) and the regression test at `test_team_boot_setup_flow.py:223` which asserts the gate is absent. Rewrote the managed-section description, Red Flags bullet, and verification checklist items to match the shipped template.
+
+- **Replaced stale EVAL-004 criterion** (`evals/promptfoo/goldset.md`, `goldset.json`, `config.js`, `graders/`): the old "team-boot First-Tool-Call Gate" criterion graded for a behavior v0.19 deliberately removed (manual `team-boot` invocation on every session), contradicting the unit test that asserts the gate is absent. Replaced with "Team Context in Use Table Compliance" — a criterion that tests the actual current behavior and specifically catches the anchoring bug (fails when the model copies the placeholder example row or a hard-coded CDR instead of reporting a genuine match). Deleted `graders/check_team_boot_first_call.py`; added `graders/check_team_context_table.py`.
+
+### Added
+
+- **Regression tests for the placeholder example row** (`tests/unit/test_team_boot_setup_flow.py`): `test_boot_{sh,ps1}_example_row_is_placeholder` assert the real CDR row is absent and the placeholder is present; extended `test_agents_md_simplified` with the same assertions for the generated AGENTS.md.
+
 ## [0.22.2] - 2026-08-04
 
 ### Fixed

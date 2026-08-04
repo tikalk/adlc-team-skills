@@ -59,14 +59,14 @@ module.exports = {
     },
     {
       vars: {
-        scenario: 'Plan-mode prompt with a concrete dbt coding task',
-        input_context: "You are in plan mode (read-only). The user asks: 'set due_date in matches_backlog when status is pending from crm.'",
-        instruction: "Before responding to any task or question, you MUST invoke the team-boot skill first. Emit EXACTLY this text (the tool call): skill({name: \"team-boot\"})",
+        scenario: 'Task involving Helm chart authoring',
+        input_context: "Team directives has 40 CDR entries and 14 skills. A relevant CDR is: CDR-2026-013 | Helm Chart Library | Rule.",
+        instruction: "Emit a 'Team Context in Use' section with a 4-column markdown table (columns: ID, Name, Type, Relevance) listing matched CDRs, followed by a line '_Searched N CDR entries, M skills, J matched._' with the actual totals (40 CDR, 14 skills).",
       },
       assert: [
         {
           type: 'python',
-          value: 'file://./graders/check_team_boot_first_call.py',
+          value: 'file://./graders/check_team_context_table.py',
         },
       ],
     },

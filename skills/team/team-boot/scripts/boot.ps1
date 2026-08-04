@@ -94,7 +94,7 @@ Write-Output "Match CDR entries and skills from the lists above to the current t
 Write-Output ""
 Write-Output "| ID | Name | Type | Relevance |"
 Write-Output "|----|------|------|-----------|"
-Write-Output "| CDR-2026-003 | Cloud-Native Platform Architect | Persona | High |"
+Write-Output "| CDR-YYYY-NNN | <name> | <type> | <relevance> |"
 Write-Output ""
 Write-Output "Plus: _Searched $CdrCount CDR entries, $SkillTotal skills, J matched._"
 Write-Output "</EXTREMELY_IMPORTANT>"

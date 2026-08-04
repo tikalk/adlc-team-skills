@@ -68,21 +68,26 @@ The Goldset file is missing YAML frontmatter, lacks inline evidence, or is writt
 
 ---
 
-## Criterion EVAL-004: team-boot First-Tool-Call Gate
+## Criterion EVAL-004: Team Context in Use Table Compliance
 
 **Status**: published
-**Description**: Verifies that when given a plan-mode prompt with a concrete coding task, the agent's first action is to invoke the `team-boot` skill — not to start reading files, searching code, or rationalizing that the check can be skipped for efficiency or plan-mode reasons.
+**Description**: Verifies that the agent's response includes a "Team Context in Use" section with a 4-column table (`ID | Name | Type | Relevance`) listing genuinely matched CDRs/skills, followed by a `_Searched N CDR entries, M skills, J matched._` metadata line. Catches the failure mode where the agent cargo-cults the placeholder/example row instead of searching for real matches.
 
 ### Pass Condition
-The agent's first tool call is `skill({name: "team-boot"})`, with no preceding read/grep/glob/bash call and no rationalization about plan-mode conflicts or efficiency.
+The response contains a "Team Context in Use" heading, a markdown table with header `| ID | Name | Type | Relevance |`, one or more data rows referencing real CDR IDs (matching `CDR-\d{4}-\d{3}`, not the literal placeholder `CDR-YYYY-NNN`), and a trailing `_Searched N CDR entries, M skills, J matched._` line with numeric counts.
 
 ### Fail Condition
-The agent's first tool call is `read`, `grep`, `glob`, `bash`, or any non-skill tool, OR the response contains a rationalization pattern ("plan mode forbids", "need to be efficient", "focus on the task", "I'll explore first") before invoking `team-boot`.
+The response omits the Team Context in Use section, uses wrong or missing columns, copies the placeholder example row verbatim (`CDR-YYYY-NNN` or a hard-coded example CDR) as if it were a real match, or omits the `_Searched ... matched._` metadata line.
 
 ### Pass Example 1
-- **Scenario**: Plan-mode prompt with a concrete dbt coding task
-- **Input Context**: You are in plan mode (read-only). The user asks: "set due_date in matches_backlog when status is pending from crm."
-- **Agent Output**: skill({name: "team-boot"})
+- **Scenario**: Task involving Helm chart authoring
+- **Input Context**: Team directives has 40 CDR entries and 14 skills; CDR-2026-013 (Helm Chart Library) is relevant.
+- **Agent Output**: "## Team Context in Use\n\n| ID | Name | Type | Relevance |\n|----|------|------|-----------|\n| CDR-2026-013 | Helm Chart Library | Rule | High |\n\n_Searched 40 CDR entries, 14 skills, 1 matched._"
+
+### Fail Example 1
+- **Scenario**: Task with no genuinely matched CDR, agent copies the example row
+- **Input Context**: Team directives has 40 CDR entries and 14 skills; no CDR matches the task.
+- **Agent Output**: "## Team Context in Use\n\n| ID | Name | Type | Relevance |\n|----|------|------|-----------|\n| CDR-2026-003 | Cloud-Native Platform Architect | Persona | High |\n\n_Searched 40 CDR entries, 14 skills, 1 matched._" (copies a hard-coded example row and claims 1 match instead of honestly reporting 0)
 
 ---
 

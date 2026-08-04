@@ -403,14 +403,12 @@ pwsh "$(Split-Path $PSCommandPath -Parent)/team-helpers.ps1" -InjectAgents "{PRO
 
 This creates or updates the project's `AGENTS.md` with a managed section (between `<!-- TEAM_AI_DIRECTIVES START -->` and `<!-- TEAM_AI_DIRECTIVES END -->` markers) containing:
 
-- **Strict Compliance** directive: "You MUST invoke the `team-boot` skill BEFORE responding to any task or question"
-- **First-Tool-Call Gate**: "Your FIRST tool call in any session MUST be `skill({name: "team-boot"})`" — mechanically verifiable in any trace
-- **Plan-Mode Compatibility**: "Loading a skill is read-only; plan mode never forbids the `skill` tool" — prevents fabricated plan-mode conflicts
-- **Anti-pattern counter-rationalizations** (including plan-mode, efficiency, and "task matters more" variants)
-- **Team Constitution** reference path
-- **team-discover** invocation guidance
+- **Event-hook awareness**: notes that `team-boot` runs automatically at session start via the event hook (for agents with event support), injecting a lean orientation into the first user message.
+- **Fallback invocation**: "If the team AI directives context is NOT in your system prompt or first user message (agent without event support), invoke the `team-boot` skill before responding to any task or question."
+- **Unconfigured handling**: "If team AI directives are unconfigured, invoke the `team-setup` skill."
+- **Team Context in Use contract**: "Every response MUST include a Team Context in Use section before the task answer" — a 4-column table (`ID | Name | Type | Relevance`) listing genuinely matched CDRs/skills, followed by `_Searched N CDR entries, M skills, J matched._`
 
-Without this section, the agent has no session-start instruction to invoke `team-boot`, and the team AI directives repository remains invisible until manually loaded. The section is idempotent: re-running `team-setup` or `team-repair` updates the section in place without duplicating content.
+Without this section, an agent without event support has no session-start instruction to load team context, and the team AI directives repository remains invisible until manually loaded. The section is idempotent: re-running `team-setup` or `team-repair` updates the section in place without duplicating content.
 
 4. **Install MCP config**: Read `{TEAM_AI_DIRECTIVES}/.mcp.json` if it exists, and merge its `mcpServers` configuration into the project's own `.mcp.json` or `.opencode/mcp.json` config. Report which servers were merged, and highlight any unresolved environment variables needed by the servers.
 
@@ -432,7 +430,7 @@ Without this section, the agent has no session-start instruction to invoke `team
 - **Skipping the `team_ai_directives` config write** — without this field in `init-options.json`, agents cannot discover the team AI directives.
 - **Using a relative path in `init-options.json`** — always resolve to an absolute path so the config is portable across working directories.
 - **Skipping `git init` in Mode 3** — a scaffolded team AI directives without git cannot be used by `/levelup-publish` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/levelup-publish`.
-- **Skipping the project-level AGENTS.md injection** — without the `<!-- TEAM_AI_DIRECTIVES START -->` managed section in the project's `AGENTS.md`, agents have no session-start instruction to invoke `team-boot`. The `.adlc/init-options.json` config alone is insufficient — it tells skills where the team AI directives is, but nothing tells the agent to check skills before responding.
+- **Skipping the project-level AGENTS.md injection** — without the `<!-- TEAM_AI_DIRECTIVES START -->` managed section in the project's `AGENTS.md`, agents without event support have no session-start instruction to load team context. The `.adlc/init-options.json` config alone is insufficient — it tells skills where the team AI directives is, but nothing tells the agent to check. (For agents with event support, the session-start hook injects the orientation regardless, but AGENTS.md remains the fallback and the source of the Team Context in Use output contract.)
 - **Interpolating user input into Python/shell source strings** — pass paths through the environment (`os.environ`) instead; string interpolation of `$ABSOLUTE_PATH` into a Python one-liner is a command-injection vector.
 - **Cloning a non-`https://` URL in Mode 1** — reject `file://`/`ssh://`/other schemes; cloned content is read by agents later, so only clone trusted repos.
 - **Skipping the MCP config install** — `.mcp.json` servers stay unconfigured; the project won't have access to team-declared MCP servers.
@@ -450,7 +448,7 @@ Without this section, the agent has no session-start instruction to invoke `team
 - [ ] `{TEAM_AI_DIRECTIVES}/CDR.md` exists.
 - [ ] `{TEAM_AI_DIRECTIVES}/.skills.json` exists and is valid JSON.
 - [ ] `.adlc/init-options.json` contains a `team_ai_directives` field with the absolute path.
-- [ ] Project-level `AGENTS.md` exists and contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the `team-boot` strict-compliance directive.
+- [ ] Project-level `AGENTS.md` exists and contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the event-hook awareness note, fallback `team-boot` invocation, and the Team Context in Use output contract.
 - [ ] (Mode 3 only) `git rev-parse --is-inside-work-tree` succeeds inside `{TEAM_AI_DIRECTIVES}`.
 - [ ] Running `team-verify` (Phase 0 of team-repair) passes all 7 checks.
 - [ ] All user-supplied paths/URLs/team names passed Input Validation (no shell metacharacters; clone URL is `https://`).

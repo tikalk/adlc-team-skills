@@ -329,7 +329,7 @@ If team AI directives are unconfigured, invoke the \`team-setup\` skill.
 
 | ID | Name | Type | Relevance |
 |----|------|------|-----------|
-| CDR-2026-003 | Cloud-Native Platform Architect | Persona | High |
+| CDR-YYYY-NNN | <name> | <type> | <relevance> |
 
 Plus: \`_Searched N CDR entries, M skills, J matched._\`
 ${marker_end}

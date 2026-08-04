@@ -67,6 +67,22 @@ def test_team_boot_ps1_lean_orientation():
     assert "Every response MUST include" in BOOT_PS1
 
 
+def test_boot_sh_example_row_is_placeholder():
+    """boot.sh Team Context example row must be a placeholder, not a real CDR ID.
+
+    A real example row (e.g. CDR-2026-003) anchors the model to cargo-cult that
+    specific CDR into every response instead of searching for a genuine match.
+    """
+    assert "CDR-2026-003 | Cloud-Native Platform Architect" not in BOOT_SH
+    assert "CDR-YYYY-NNN" in BOOT_SH
+
+
+def test_boot_ps1_example_row_is_placeholder():
+    """boot.ps1 Team Context example row must be a placeholder, not a real CDR ID."""
+    assert "CDR-2026-003 | Cloud-Native Platform Architect" not in BOOT_PS1
+    assert "CDR-YYYY-NNN" in BOOT_PS1
+
+
 def test_team_boot_sh_unconfigured_warns_user():
     """boot.sh unconfigured output must warn the user, not instruct the LLM."""
     assert "not configured" in BOOT_SH
@@ -221,6 +237,8 @@ def test_agents_md_simplified():
     assert "Anti-pattern" not in AGENTS
     assert "every message" not in AGENTS
     assert "First-Tool-Call Gate" not in AGENTS
+    assert "CDR-2026-003 | Cloud-Native Platform Architect" not in AGENTS
+    assert "CDR-YYYY-NNN" in AGENTS
 
 
 def test_radar_search_sh_uses_jq():

@@ -21,6 +21,18 @@ evals/promptfoo/graders/check_*.py        # binary Python graders
 evals/promptfoo/tests/test_check_*.py     # grader unit tests
 ```
 
+## What we accept
+
+- **Skill improvements, fixes, tests, and docs** — always welcome as PRs.
+- **New skills** — only after an issue is opened and the scope is agreed. We
+  intentionally keep the skill count small; every skill must earn its place.
+- **Cross-agent compatibility is required.** Skills must follow the
+  [Agent Skills standard](https://agentskills.io) and must not depend on a
+  single harness (e.g. don't hardcode `.claude/` paths — use the discovered
+  paths pattern from `mission-brief`'s `references/agent-integrations.md`).
+- **Skill behavior must be testable.** A new skill ships with eval coverage
+  (a goldset criterion + grader) or a clear reason it can't be graded.
+
 ## Prerequisites
 
 1. Install [Python 3.11+](https://www.python.org/downloads/) and [pytest](https://docs.pytest.org/)
@@ -78,6 +90,27 @@ These are enforced by `tests/unit/test_playbook_integrity.py`:
   it. Models pick skills by description — vague descriptions mean the skill
   never fires.
 
+### Writing a new skill
+
+Follow the patterns in existing skills before inventing new ones. A skill
+that doesn't match these conventions won't be merged:
+
+- **Structure**: `## Overview` (what + when to use) → `## Core Process`
+  (numbered steps) → `## Red Flags` / `## Common Rationalizations` (failure
+  modes to refuse) → `## Verification` (checkable outcomes) →
+  `## Configuration`.
+- **Progressive disclosure**: the skill body should be lean; load full
+  context on demand (read an index first, fetch bodies only for matches).
+  Don't design prompt walls.
+- **Model-invoked vs user-invoked**: model-invoked skills auto-trigger from
+  the task (their description is the trigger surface); user-invoked skills
+  are explicit commands. Pick one — a skill is not both.
+- **Verification over vibes**: every process ends with checkable criteria.
+  If a claim can be checked by code (file exists, test passes, grep matches),
+  write it as a check, not prose.
+- **Graceful degradation**: unreadable files or missing config → skip
+  silently or exit 0 with a clear note. Never block the user's task.
+
 ## Automated checks
 
 Run the full suite before pushing:
@@ -93,8 +126,9 @@ pytest tests/ evals/promptfoo/tests/ -v
 | `tests/e2e/` | Workflow state machines (mission-brief, team-repair, universal skill routing) |
 | `evals/promptfoo/tests/` | Every grader produces correct pass/fail on goldset examples |
 
-Run the live evaluation suite (requires `OPENAI_API_KEY`, or `GITHUB_TOKEN`
-in CI):
+**Skill-behavior tests** use the PromptFoo harness in `evals/promptfoo/` —
+goldset criteria with binary Python graders. Run the live evaluation suite
+(requires `OPENAI_API_KEY`, or `GITHUB_TOKEN` in CI):
 
 ```bash
 npx promptfoo eval --config evals/promptfoo/config.js --no-cache

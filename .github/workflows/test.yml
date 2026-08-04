@@ -23,13 +23,14 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install dependencies
-        # Pinned exact versions (no floating latest). "promptfoo" is
-        # intentionally NOT installed here: it's a Node/npm CLI tool, not
-        # a PyPI package - the entry that used to be here resolved to an
-        # unrelated/unverified PyPI project of the same name (dependency
-        # confusion). The real promptfoo is installed via npm below.
+        # Pinned exact versions (no floating latest). The PyPI "promptfoo"
+        # package (the official Python wrapper, not the npm CLI installed
+        # below) is dropped here: nothing in tests/ or evals/ imports it -
+        # it was only present as an indirect way to pull in `pyyaml`, which
+        # test_playbook_integrity.py needs directly. Depend on pyyaml
+        # explicitly instead of relying on that as a side effect.
         run: |
-          pip install pytest==9.1.1 deepeval==4.1.5
+          pip install pytest==9.1.1 deepeval==4.1.5 pyyaml==6.0.3
       - name: Run Pytest
         run: |
           pytest tests/ evals/promptfoo/tests/ -v

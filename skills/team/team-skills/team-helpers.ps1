@@ -323,9 +323,9 @@ If team AI directives are unconfigured, invoke the ``team-setup`` skill.
 
 **Every response MUST include** a Team Context in Use section before the task answer:
 
-| ID | Type | Relevance |
-|----|------|-----------|
-| CDR-2026-003 | Persona | High |
+| ID | Name | Type | Relevance |
+|----|------|------|-----------|
+| CDR-2026-003 | Cloud-Native Platform Architect | Persona | High |
 
 Plus: ``_Searched N CDR entries, M skills, J matched._``
 $MarkerEnd

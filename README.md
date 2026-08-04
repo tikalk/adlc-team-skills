@@ -195,7 +195,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 <details>
 <summary><strong>Repository layout</strong></summary>
 
-Skills are organized flattened directly under the `skills/` directory:
+Skills are organized into category subdirectories under `skills/`:
 
 ```
 skills/

@@ -1,0 +1,5 @@
+# Default reviewers for all paths
+*                       @kanfil @itaior
+
+# CI/CD workflow changes require maintainer review (supply-chain protection)
+/.github/workflows/     @kanfil @itaior

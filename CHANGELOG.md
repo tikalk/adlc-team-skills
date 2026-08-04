@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.3] - 2026-08-04
+
+### Added
+
+- **Team Context in Use table in every response** (`skills/team/team-{setup,repair,skills}/team-helpers.sh`, `team-helpers.ps1`): AGENTS.md now requires the LLM to display a simplified CDR usage table before every task answer. The table shows matched CDR entries and skills from the registry (ID, Type, Relevance), plus a `_Searched N CDR entries, M skills, J matched._` metadata line. This makes the invisible system-prompt context visible and verifiable — the user can see which team context the LLM is using. Works on every prompt, with both event-hook (passive context) and manual fallback (team-boot skill invocation) paths.
+
 ## [0.21.2] - 2026-08-04
 
 ### Fixed

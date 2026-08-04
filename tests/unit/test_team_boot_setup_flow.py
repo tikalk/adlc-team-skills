@@ -194,6 +194,9 @@ def test_agents_md_simplified():
     assert "CDR" in AGENTS
     assert "BEFORE exploring" in AGENTS
     assert "skills registry" in AGENTS
+    assert "Team Context in Use" in AGENTS
+    assert "Every response MUST include" in AGENTS
+    assert "_Searched" in AGENTS
     assert "Common Rationalizations" not in AGENTS
     assert "Anti-pattern" not in AGENTS
     assert "every message" not in AGENTS

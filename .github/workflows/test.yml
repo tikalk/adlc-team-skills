@@ -1,5 +1,11 @@
 name: Test & Evaluate Skills
 
+# Default token to read-only. A malicious dependency's install script
+# (see incident 2026-08-04, commit 74f317d) can only do as much damage
+# as the token it's handed; neither job here needs to write to the repo.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main ]
@@ -17,8 +23,14 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install dependencies
+        # Pinned exact versions (no floating latest). The PyPI "promptfoo"
+        # package (the official Python wrapper, not the npm CLI installed
+        # below) is dropped here: nothing in tests/ or evals/ imports it -
+        # it was only present as an indirect way to pull in `pyyaml`, which
+        # test_playbook_integrity.py needs directly. Depend on pyyaml
+        # explicitly instead of relying on that as a side effect.
         run: |
-          pip install pytest deepeval promptfoo
+          pip install pytest==9.1.1 deepeval==4.1.5 pyyaml==6.0.3
       - name: Run Pytest
         run: |
           pytest tests/ evals/promptfoo/tests/ -v
@@ -35,8 +47,11 @@ jobs:
       EVAL_MODEL: ${{ secrets.EVAL_MODEL }}
     steps:
       - uses: actions/checkout@v4
+      # Pinned exact version + --ignore-scripts: blocks pre/postinstall
+      # scripts from any of promptfoo's transitive dependencies from
+      # executing during install (the vector used in the 2026-08-04 incident).
       - name: Install PromptFoo
-        run: npm install -g promptfoo
+        run: npm install -g --ignore-scripts promptfoo@0.121.20
       - name: Run Tier 1 Evals
         # GitHub Models was retired 2026-07-30, so the eval provider now uses
         # the OpenAI API. Skip the eval when the secret isn't configured

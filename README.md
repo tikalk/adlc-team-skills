@@ -54,6 +54,18 @@ Already have a directives repo? `team-setup` offers three other modes:
 
 ---
 
+## How It Works: Before vs. After ADLC
+
+| Without ADLC (Vibe Coding) | With ADLC Team Skills |
+| :--- | :--- |
+| **Session starts from zero**: Agent knows nothing about your architecture, team rules, or deprecated patterns. | **Auto-bootstrapped context**: `team-boot` auto-loads your Team Constitution & active decisions on session start. |
+| **Prompt wall bloat**: Dumping a 10,000-token prompt wall wastes tokens and causes model instruction drift. | **Progressive disclosure**: `team-boot` injects a ~100-token index; `team-discover` fetches only the 1–2 rules relevant to the task. |
+| **Ambiguity leads to guessing**: Agent invents functions or database schema instead of asking questions. | **Contract-first specs**: `mission-brief` defines Goal, Constraints, Non-Goals, and Success Criteria *before* writing code. |
+| **Learnings evaporate**: Debugging fixes and newly discovered edge cases disappear when the chat ends. | **Closed feedback loop**: `levelup-specify` extracts session execution traces and commits new rules directly to Git. |
+| **Silent regressions**: Prompt edits or base model updates silently degrade agent output. | **Verification-first evals**: Automated LLM judges and binary graders test code against business risks before human review. |
+
+---
+
 ## Directives as Code: The Four Team Pillars
 
 ```
@@ -84,12 +96,10 @@ Already have a directives repo? `team-setup` offers three other modes:
 
 ### 🏛️ Pillar 1: Strategy & Team Directives (Team-First Alignment)
 
-**Factor I — Developer as Orchestrator. Factor X — Context Engineering. Factor XI — Directives as Code.**
-
 Put the **team** at the center of your AI strategy. Instead of individual developers hoarding prompt shortcuts on local machines, team standards live in a version-controlled Git repository ([`team-ai-directives`](https://github.com/tikalk/agentic-sdlc-team-ai-directives)).
 
 *   **`team-boot`**: Auto-runs at session start via the event hook, assembling the team constitution, CDR index, PDR/ADR indexes, and skill registry into the system prompt.
-*   **`team-discover`**: Manually re-scan team context modules for explicit structured discovery tables. Available via `/team-discover`.
+*   **Progressive Disclosure (No Token Waste)**: Instead of dumping massive prompt walls into every session, `team-boot` injects a compact ~100-token index. `team-discover` loads full rule bodies *only* when relevant to the active task.
 *   **`team-constitution`**: Interactively define, review, or amend your engineering team's core principles.
 *   **`team-repair`**: Re-index CDR.md, scan for rule conflicts, and verify directive freshness.
 
@@ -103,8 +113,6 @@ team-repair      → re-index CDR.md, scan for conflicts, verify freshness
 ---
 
 ### 🎯 Pillar 2: Product Strategy & Architectural Governance (PDRs & ADRs)
-
-**Factor III — Mission Definition. Factor IV — Structured Planning. Factor IX — Traceability.**
 
 Without documented decisions, every implementation session re-derives (or misinterprets) product intent and architectural rules.
 
@@ -122,8 +130,6 @@ Roadmap:      product-roadmap (tracks PDRs + issues + code + gates)
 
 ### 📐 Pillar 3: Spec-Driven Workflow ("Debug the Spec, Not the Code")
 
-**Factor III — Mission Definition. Factor IV — Structured Planning. Factor V — Triage & Execution. Factor XIII — Loop Engineering.**
-
 AI is an obsessive guesser — when faced with ambiguity, it invents solutions instead of asking questions. Move from a *Conversational* model to a *Contract* model.
 
 *   **`mission-brief`**: The team's autonomous pipeline runner. Takes a feature prompt, derives a formal contract (Goal, Constraints, Non-Goals, Success Criteria), generates an ordered step list, and walks a `specify → plan → tasks → implement ↺ converge` loop to completion.
@@ -140,8 +146,6 @@ mission-brief "add user profile API with JWT"
 ---
 
 ### 🛡️ Pillar 4: Team Governance, Verification-First Evals & "Build to Delete"
-
-**Factor VII — Verification-First Evals. Factor VIII — Ratchet Effect. Factor IX — Traceability. Factor XII — Build to Delete.**
 
 Never let the agent that wrote the code decide if the code is good. "Separate the Maker from the Checker."
 

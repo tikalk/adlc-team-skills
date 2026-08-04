@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.1] - 2026-08-04
+
+### Fixed
+
+- **Simplify injected AGENTS.md template** (`skills/team/team-helpers.sh`, `skills/team/team-helpers.ps1`): Updated the `team-helpers` `--inject-agents` task to inject the simplified, non-bloated, and event-compatible `AGENTS.md` managed section. Removes legacy v0.17.x "First-Tool-Call Gate" and "Strict Compliance" text which erroneously instructed models to always invoke `team-boot` manually on every session, even though in v0.18+ / v0.21.0 `team-boot` runs automatically via the session-start event hook.
+
 ## [0.21.0] - 2026-08-03
 
 ### Changed

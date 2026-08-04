@@ -55,8 +55,8 @@ Run: /team-setup
 
 Helper scripts (relative to skill directory):
 
-- `team-helpers.sh --json`
-- `team-helpers.ps1 -Json`
+- `$(dirname "$0")/team-helpers.sh --json`
+- `$(Split-Path $PSCommandPath -Parent)/team-helpers.ps1 -Json`
 
 ### Step 1: Read Skills Manifest
 

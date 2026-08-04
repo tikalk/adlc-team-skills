@@ -172,7 +172,7 @@ If any check is `[FAIL]`, print the report, set exit code 1, and **STOP**. Do no
 
 **Objective**: Resolve paths and validate infrastructure
 
-Run `team-helpers.sh --json` from repository root and parse JSON output:
+Run `$(dirname "$0")/team-helpers.sh --json` (or the PowerShell equivalent) to resolve paths and parse JSON output:
 
 ```json
 {
@@ -268,8 +268,8 @@ After repairing the team AI directives' own `AGENTS.md`, also ensure the **proje
 If Check 8 returned `[WARN]` or `[INFO]`, run the injection:
 
 ```bash
-bash "team-helpers.sh" --inject-agents "{REPO_ROOT}"
-# or: pwsh team-helpers.ps1 -InjectAgents "{REPO_ROOT}"
+bash "$(dirname "$0")/team-helpers.sh" --inject-agents "{REPO_ROOT}"
+# or: pwsh "$(Split-Path $PSCommandPath -Parent)/team-helpers.ps1" -InjectAgents "{REPO_ROOT}"
 ```
 
 If `--dry-run`:

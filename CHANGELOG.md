@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-08-04
+
+### Added
+
+- **New `workspace` skill** (`skills/workspace/SKILL.md`, `skills/workspace/scripts/bash/workspace.sh`): multi-repo workspace coordinator for shared team context. Discovers child repos at depth 1, links them as Git submodules, and audits workspace health (branch, dirty state, unpushed commits, SHA drift, `.adlc` presence). Designed for the VS Code `.code-workspace` analogy: a parent coordination repo holds shared PDRs, ADRs, and CDRs under `.adlc/` (created by `product-specify`, `architect-specify`, `levelup-specify`), while child implementation repos are linked as submodules for unified context. No `workspace.yml` — pure auto-discovery by convention.
+
+  Commands: `/workspace` (discover), `/workspace --link` (register submodules), `/workspace --status` (audit), `--dry-run`, `--force`, `--json`.
+
+  Safety: read-only by default; `--link` requires clean parent tree; idempotent (skips already-registered submodules); `.specify` is intentionally NOT excluded from discovery (may be a legit child repo).
+
+### Changed
+
+- **`.gitignore` now excludes `.mcp.json`**: local MCP server config may contain tokens or absolute paths; each contributor runs `team-setup` to merge MCP servers. Matches the existing pattern for `AGENTS.md` and `.adlc/`.
+
 ## [0.22.4] - 2026-08-04
 
 ### Fixed

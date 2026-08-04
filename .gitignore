@@ -42,6 +42,7 @@ AGENTS.md
 .tabnine/
 skills-lock.json
 .skills.json
+.mcp.json
 
 # Python
 __pycache__/

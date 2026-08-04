@@ -67,14 +67,17 @@ and surface the radar's recommended options in that space.
 
 Execute the deterministic search helper script (relative to this skill directory):
 
+POSIX (bash + jq):
 ```bash
-python3 scripts/radar-search.py <tech1> [tech2 ...]
+bash scripts/radar-search.sh <tech1> [tech2 ...]
 ```
 
-Or for JSON output:
-```bash
-python3 scripts/radar-search.py --json <tech1> [tech2 ...]
+Windows (PowerShell):
+```powershell
+pwsh scripts/radar-search.ps1 <tech1> [tech2 ...]
 ```
+
+Or for JSON output (add `--json` for bash, `-Json` for PowerShell).
 
 The script handles alias mapping (`k8s` → `Kubernetes`, `postgres` → `PostgreSQL`, `gh actions` → `GitHub Actions`, etc.), matches against `resources/radar.json` (or live dataset), extracts Tikal's `<p>Why?</p>` opinion, and formats the markdown table automatically.
 

@@ -36,7 +36,7 @@ explicitly to avoid a re-prompt loop:
   (build mode only), write `.adlc/init-options.json` with
   `team_ai_directives: null`:
   ```bash
-  python3 -c "import json; print(json.dumps({'team_ai_directives': None}, indent=2))" > ".adlc/init-options.json"
+  echo '{"team_ai_directives": null}' > ".adlc/init-options.json"
   ```
   This marker makes `team-boot` skip setup silently on every future prompt.
 - In plan/read-only mode, a persistent opt-out cannot be written — the
@@ -125,28 +125,18 @@ Use existing team-ai-directives at {ABSOLUTE_PATH}?
 ```
 
 **Write/Execute**:
-Update the project's `.adlc/init-options.json` to set the `team_ai_directives` field to the resolved path.
-
-The path is passed to Python via the environment (`TEAM_AI_DIRECTIVES_PATH`) — never interpolate user input into Python source, as that is a command-injection vector.
+Update the project's `.adlc/init-options.json` to set the `team_ai_directives` field to the resolved path. Uses `jq` for safe JSON manipulation — never interpolate user input into shell source.
 
 ```bash
 # Resolve to an absolute path and validate (see Input Validation)
 ABSOLUTE_PATH="$(realpath "$USER_PATH")"
 
-# Read existing or create new
-if [[ -f ".adlc/init-options.json" ]]; then
-  CONFIG=$(cat ".adlc/init-options.json")
+# Write config using jq (merge into existing or create new)
+if [ -f ".adlc/init-options.json" ]; then
+  jq --arg p "$ABSOLUTE_PATH" '. + {team_ai_directives: $p}' ".adlc/init-options.json" > ".adlc/init-options.json.tmp" && mv ".adlc/init-options.json.tmp" ".adlc/init-options.json"
 else
-  CONFIG="{}"
+  jq -n --arg p "$ABSOLUTE_PATH" '{team_ai_directives: $p}' > ".adlc/init-options.json"
 fi
-
-# Pass the path through the environment, NOT via string interpolation
-TEAM_AI_DIRECTIVES_PATH="$ABSOLUTE_PATH" python3 -c "
-import json, os, sys
-config = json.load(sys.stdin)
-config['team_ai_directives'] = os.environ['TEAM_AI_DIRECTIVES_PATH']
-print(json.dumps(config, indent=2))
-" <<< "$CONFIG" > ".adlc/init-options.json"
 ```
 
 ### Mode 3: Scaffold New Empty team AI directives
@@ -372,9 +362,8 @@ Show the user the resolved team AI directives path and validation results.
 
 **Write/Execute**:
 No writes needed — the team AI directives is already configured. Then run the
-**team skills installation check** (see Post-Setup Configuration step 4): report
-which `default`/`external` skills from `.skills.json` are already installed vs
-missing, and offer to install the missing ones via `/team-skills --all`.
+**MCP config install** (see Post-Setup Configuration step 4): merge
+`.mcp.json` servers into the project's config if not already present.
 
 ### Mode Selection Flow
 
@@ -423,16 +412,7 @@ This creates or updates the project's `AGENTS.md` with a managed section (betwee
 
 Without this section, the agent has no session-start instruction to invoke `team-boot`, and the team AI directives repository remains invisible until manually loaded. The section is idempotent: re-running `team-setup` or `team-repair` updates the section in place without duplicating content.
 
-4. **Offer team skills installation**: Read `{TEAM_AI_DIRECTIVES}/.skills.json`. If the `default` and/or `external` lists are non-empty and `policy.auto_install_default` is not `false`:
-
-   - Present the skills that would be installed (name + description), grouped by `default` (local) and `external` (remote).
-   - Confirm: `Install {N} team skills (default + external) via /team-skills --all? [Y/n]`
-   - On yes: invoke `/team-skills --all` (it installs every `default` + `external` skill, skipping `blocked` and already-installed, under original names).
-    - On no: note that `/team-skills` is available on demand later.
-
-   Skip silently when the manifest is empty (fresh Mode 3 scaffold) or `policy.auto_install_default` is `false`.
-
-5. **Install MCP config**: Read `{TEAM_AI_DIRECTIVES}/.mcp.json` if it exists, and merge its `mcpServers` configuration into the project's own `.mcp.json` or `.opencode/mcp.json` config. Report which servers were merged, and highlight any unresolved environment variables needed by the servers.
+4. **Install MCP config**: Read `{TEAM_AI_DIRECTIVES}/.mcp.json` if it exists, and merge its `mcpServers` configuration into the project's own `.mcp.json` or `.opencode/mcp.json` config. Report which servers were merged, and highlight any unresolved environment variables needed by the servers.
 
 ## Common Rationalizations
 
@@ -455,7 +435,7 @@ Without this section, the agent has no session-start instruction to invoke `team
 - **Skipping the project-level AGENTS.md injection** — without the `<!-- TEAM_AI_DIRECTIVES START -->` managed section in the project's `AGENTS.md`, agents have no session-start instruction to invoke `team-boot`. The `.adlc/init-options.json` config alone is insufficient — it tells skills where the team AI directives is, but nothing tells the agent to check skills before responding.
 - **Interpolating user input into Python/shell source strings** — pass paths through the environment (`os.environ`) instead; string interpolation of `$ABSOLUTE_PATH` into a Python one-liner is a command-injection vector.
 - **Cloning a non-`https://` URL in Mode 1** — reject `file://`/`ssh://`/other schemes; cloned content is read by agents later, so only clone trusted repos.
-- **Skipping the skills-install offer** — default skills declared in `.skills.json` stay uninstalled; the spec-kit auto-install path no longer covers `team-setup` flows, so the offer is the onboarding step.
+- **Skipping the MCP config install** — `.mcp.json` servers stay unconfigured; the project won't have access to team-declared MCP servers.
 - **Accepting shell metacharacters in paths or team names** — validate before interpolating into `mkdir`/`git commit`/heredocs (see Input Validation).
 - **Treating user decline as an error** — declining setup is a valid outcome; exit cleanly, tell `team-boot` the user declined, and offer the `team_ai_directives: null` opt-out marker (build mode only).
 - **Writing the opt-out marker in plan/read-only mode** — a persistent opt-out requires a write; in plan mode the decline is session-scoped and setup defers instead.
@@ -475,7 +455,6 @@ Without this section, the agent has no session-start instruction to invoke `team
 - [ ] Running `team-verify` (Phase 0 of team-repair) passes all 7 checks.
 - [ ] All user-supplied paths/URLs/team names passed Input Validation (no shell metacharacters; clone URL is `https://`).
 - [ ] Mode 2 wrote `team_ai_directives` via the environment (no `$ABSOLUTE_PATH` interpolation into Python source).
-- [ ] The skills-install offer was presented (or skipped due to empty manifest / `auto_install_default: false`); on accept, `/team-skills --all` was invoked.
 - [ ] If `{TEAM_AI_DIRECTIVES}/.mcp.json` exists, any declared `mcpServers` were successfully merged into the project's config, and unresolved env vars were highlighted.
 - [ ] (Model-invoked by `team-boot`) a user decline exited cleanly without running any mode; the persistent opt-out was offered, and `team_ai_directives: null` was written only in build mode.
 

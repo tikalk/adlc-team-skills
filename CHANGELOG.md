@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-08-03
+
+### Changed
+
+- **boot.sh/boot.ps1 assemble .skills.json + .mcp.json into system prompt** (`skills/team/team-boot/scripts/`): the session-start context now includes both the skills catalog (`.skills.json`) and MCP server config (`.mcp.json`) from team-ai-directives, giving the LLM full visibility into available team skills and MCP servers.
+
+- **team-setup no longer installs team skills** (`skills/team/team-setup/SKILL.md`): removed the "Offer team skills installation" step (step 4 in Post-Setup Configuration). The `.skills.json` catalog is injected into the system prompt by boot.sh, and the LLM reads SKILL.md files directly from the team-ai-directives path. MCP config install (`.mcp.json` → project config) is kept — it has user preferences per project. Replaced `python3` calls with `jq` for JSON manipulation.
+
+- **team-repair removed extension phase + OKF index.md/log.md generation** (`skills/team/team-repair/SKILL.md`): removed Check 1 (Extension Installed) referencing the obsolete `.adlc/extensions/.registry` system (7 checks now, down from 8). Removed Step 5 (Generate OKF index.md/log.md) — CDR.md is the sole authoritative index. Removed OKF index.md/log.md from repair targets, output list, and summary report.
+
+- **README.md updated** (`README.md`): added links to [`tikalk/agentic-sdlc-team-ai-directives`](https://github.com/tikalk/agentic-sdlc-team-ai-directives), updated team-boot/team-discover descriptions to match the v0.18+ architecture (session-start event hook, system prompt injection, manual-only team-discover), removed `user_prompt_submit` references.
+
+### Added
+
+- **radar-search.sh** (`skills/tech-radar/tech-radar-context/scripts/`): bash + jq replacement for radar-search.py. Deterministic search, alias normalization, Why? extraction, markdown table output. No Python dependency.
+- **radar-search.ps1** (`skills/tech-radar/tech-radar-context/scripts/`): PowerShell variant using native ConvertFrom-Json.
+
+### Removed
+
+- **radar-search.py** (`skills/tech-radar/tech-radar-context/scripts/`): replaced by radar-search.sh (bash + jq) and radar-search.ps1 (PowerShell). Eliminates Python dependency from skill scripts.
+- **Skills installation step in team-setup**: team skills are now read directly from team-ai-directives via the .skills.json catalog in the system prompt.
+- **OKF index.md/log.md generation in team-repair**: CDR.md is the sole authoritative index.
+
+### Fixed
+
+- **Boot cache invalidation on config change** (`adlc-skills-cli/src/events.mjs`): the opencode plugin's `_sessionStartCache` now tracks `.adlc/init-options.json` state (existence + mtime) via `statSync`. When team-setup creates/modifies/deletes the config, the cache is invalidated and boot.sh re-runs with the new state. Fixes "after team-setup, session still thinks team-ai-directives isn't configured."
+
 ## [0.20.1] - 2026-08-03
 
 ### Changed

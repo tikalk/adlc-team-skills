@@ -46,6 +46,10 @@ Write-Output "## Available Skills"
 $skillsPath = Join-Path $TEAM_AI_DIRECTIVES ".skills.json"
 if (Test-Path $skillsPath) { Get-Content $skillsPath -Raw } else { Write-Output "(none)" }
 Write-Output ""
+Write-Output "## MCP Servers"
+$mcpPath = Join-Path $TEAM_AI_DIRECTIVES ".mcp.json"
+if (Test-Path $mcpPath) { Get-Content $mcpPath -Raw } else { Write-Output "(none)" }
+Write-Output ""
 Write-Output "---"
 Write-Output "The CDR index lists all available team context modules. When a task"
 Write-Output "matches a CDR descriptor, read the full module file at the Target"

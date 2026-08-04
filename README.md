@@ -6,12 +6,14 @@ Individual prompt hacks create quick wins for solo developers, but when scaled a
 
 **ADLC Team Skills** (`tikalk/adlc-team-skills`) is the open-source **Team Layer** of the **Twelve-Factor Agentic SDLC**. It turns AI agents from isolated guessers into compliant, accountable team members that share your team's constitution, product strategy, architectural standards, and evaluation benchmarks.
 
+**Team AI Directives** ([`tikalk/agentic-sdlc-team-ai-directives`](https://github.com/tikalk/agentic-sdlc-team-ai-directives)) is the companion repository that holds your team's version-controlled context modules (constitution, rules, personas, examples), CDR index, and skills manifest.
+
 ---
 
 ## Quickstart
 
 ```bash
-# Install skills + generate slash commands + wire session_start/user_prompt_submit events
+# Install skills + generate slash commands + wire session_start events
 npx adlc-skills-cli add tikalk/adlc-team-skills -a opencode
 
 # Or with npx skills only (skills without commands/events)
@@ -20,19 +22,19 @@ npx skills add tikalk/adlc-team-skills -a claude -g
 
 Works out of the box with any agent supporting the [Agent Skills standard](https://agentskills.io) — Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, and others.
 
-**Slash commands + events:** [`adlc-skills-cli`](https://github.com/tikalk/adlc-skills-cli) wraps `npx skills add` and additionally generates `/name` slash commands and wires `session_start`/`user_prompt_submit` event hooks (via `.events.json`) for 9 coding agents. Skills repos without `.events.json` get commands only.
+**Slash commands + events:** [`adlc-skills-cli`](https://github.com/tikalk/adlc-skills-cli) wraps `npx skills add` and additionally generates `/name` slash commands and wires `session_start` event hooks (via `.events.json`) for 9 coding agents. Skills repos without `.events.json` get commands only.
 
 **Universal orchestration:** `mission-brief` auto-discovers skills from *any* source (mattpocock/skills, addy osmani/agent-skills, superpowers, spec-kit, or your own) and dynamically wires them into the mission pipeline. No vendor lock-in.
 
 ### Golden path — bootstrap a new team-ai-directives
 
-`team-boot` auto-runs at session start. On an unconfigured project it self-installs by invoking `team-setup` (or, in plan mode, prints the `/team-setup` handover); opting out writes `team_ai_directives: null` to `.adlc/init-options.json` so setup is skipped silently on every prompt. `team-setup` is also available on demand:
+`team-boot` auto-runs at session start via the event hook. On an unconfigured project it outputs a warning telling the user to run `/team-setup`. `team-setup` is also available on demand:
 
 ```bash
 npx adlc-skills-cli add tikalk/adlc-team-skills -a opencode   # install skills + commands + events
 ```
 
-Then choose **Mode 3 — Scaffold new empty team-ai-directives**:
+Then choose **Mode 3 — Scaffold new empty team-ai-directives**, or **Mode 1 — Clone from GitHub** to fork [`tikalk/agentic-sdlc-team-ai-directives`](https://github.com/tikalk/agentic-sdlc-team-ai-directives):
 
 ```
 team-setup            → pick destination (default ./team-ai-directives) + team name
@@ -41,11 +43,12 @@ team-setup            → pick destination (default ./team-ai-directives) + team
 
 team-constitution     → interactively replace the placeholder with your real principles
 
-team-boot (auto)      → loads constitution + runs team-discover on every prompt
+team-boot (auto)      → assembles constitution + CDR index + PDR/ADR indexes + skills registry
+                        into the system prompt at session start
 ```
 
 Already have a directives repo? `team-setup` offers three other modes:
-- **Mode 1 — Clone from GitHub** (e.g. fork `tikalk/agentic-sdlc-team-ai-directives`)
+- **Mode 1 — Clone from GitHub** (e.g. fork [`tikalk/agentic-sdlc-team-ai-directives`](https://github.com/tikalk/agentic-sdlc-team-ai-directives))
 - **Mode 2 — Point to existing local path** (wire a repo you already have)
 - **Mode 4 — Already configured** (verify an existing setup)
 
@@ -83,16 +86,16 @@ Already have a directives repo? `team-setup` offers three other modes:
 
 **Factor I — Developer as Orchestrator. Factor X — Context Engineering. Factor XI — Directives as Code.**
 
-Put the **team** at the center of your AI strategy. Instead of individual developers hoarding prompt shortcuts on local machines, team standards live in a version-controlled Git repository (`team-ai-directives`).
+Put the **team** at the center of your AI strategy. Instead of individual developers hoarding prompt shortcuts on local machines, team standards live in a version-controlled Git repository ([`team-ai-directives`](https://github.com/tikalk/agentic-sdlc-team-ai-directives)).
 
-*   **`team-boot`**: Auto-bootstraps agent sessions on start, injecting your version-controlled Team Constitution so every agent behaves as an aligned team member.
-*   **`team-discover`**: Dynamically fetches *only* the specific personas, architectural rules, PDRs, and ADRs relevant to the current task — zero prompt-wall bloat.
+*   **`team-boot`**: Auto-runs at session start via the event hook, assembling the team constitution, CDR index, PDR/ADR indexes, and skill registry into the system prompt.
+*   **`team-discover`**: Manually re-scan team context modules for explicit structured discovery tables. Available via `/team-discover`.
 *   **`team-constitution`**: Interactively define, review, or amend your engineering team's core principles.
 *   **`team-repair`**: Re-index CDR.md, scan for rule conflicts, and verify directive freshness.
 
 ```
-team-boot        → auto-loads constitution + PDR/ADR indexes + discover
-team-discover    → fetches rules/personas/examples for the current task
+team-boot        → assembles constitution + CDR index + PDR/ADR + skills into system prompt
+team-discover    → manual re-scan for structured discovery tables (/team-discover)
 team-constitution → create or amend the team constitution interactively
 team-repair      → re-index CDR.md, scan for conflicts, verify freshness
 ```
@@ -212,8 +215,8 @@ This places every single skill exactly 2 levels deep, fully resolving the defaul
 
 #### Model-invoked
 
-- **`team-boot`** — Bootstrap session: load constitution, PDR/ADR indexes, discover context. Auto-triggered on session start. Self-installs by invoking `team-setup` on unconfigured projects.
-- **`team-discover`** — Fetch relevant personas, rules, examples, PDRs, and ADRs for the current task. Auto-triggered.
+- **`team-boot`** — Bootstrap session: assembles constitution, CDR index, PDR/ADR indexes, and skill registry into the system prompt at session start. Outputs a warning to run `/team-setup` on unconfigured projects.
+- **`team-discover`** — Manually re-scan team context modules and produce a structured discovery table. Available via `/team-discover`.
 - **`team-setup`** — Clone, scaffold, or configure a team AI directives repository. Model-invoked by `team-boot` (self-install) and available on demand. Say "Set up team directives for this project."
 
 #### User-invoked
@@ -369,7 +372,7 @@ Directory structure: `context_modules/{type}/index.md` (progressive disclosure),
 
 **Team Directives setup:**
 ```
-team-setup → team-constitution → team-boot (auto on every session)
+team-setup → team-constitution → team-boot (auto at session start)
 ```
 
 **Product lifecycle:**
@@ -422,7 +425,7 @@ Team:        levelup-specify → levelup-clarify → levelup-publish → team-re
 | **VII — Verification-First Evals** | LevelUp + Evals skills | LevelUp creates directive-compliance eval CDRs; evals skills build and run application-level evaluation suites (PromptFoo/DeepEval) with binary graders, holdout splits, and statistical validation |
 | **VIII — Ratchet Effect** | LevelUp + Evals skills | Each session extracts eval CDRs alongside directive CDRs; each goldset publication adds criteria that monotonically increase quality — `evals-clarify` publishes, `evals-validate` enforces |
 | **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
-| **X — Context Engineering** | Team Directives | `team-boot` and `team-discover` load only relevant context per task, preventing bloat |
+| **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR index, and PDR/ADR indexes into the system prompt at session start; `team-discover` provides manual re-scan |
 | **XI — Directives as Code** | Team + LevelUp + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
 | **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `evals-analyze` routes spec failures to `levelup-specify` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
 

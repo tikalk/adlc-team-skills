@@ -23,7 +23,7 @@ RADAR_SEARCH_SCRIPT = (
     / "tech-radar"
     / "tech-radar-context"
     / "scripts"
-    / "radar-search.py"
+    / "radar-search.sh"
 )
 
 
@@ -85,12 +85,12 @@ def test_fixed_blip_descriptions_are_accurate():
 
 
 def test_radar_search_script_alias_mapping_and_markdown_output():
-  """Verify radar-search.py normalizes aliases and outputs markdown table."""
+  """Verify radar-search.sh normalizes aliases and outputs markdown table."""
   assert RADAR_SEARCH_SCRIPT.exists()
 
   # Test alias k8s -> Kubernetes
   result = subprocess.run(
-      [sys.executable, str(RADAR_SEARCH_SCRIPT), "k8s", "postgres"],
+      ["bash", str(RADAR_SEARCH_SCRIPT), "k8s", "postgres"],
       capture_output=True,
       text=True,
       cwd=ROOT,
@@ -106,9 +106,9 @@ def test_radar_search_script_alias_mapping_and_markdown_output():
 
 
 def test_radar_search_script_json_mode():
-  """Verify radar-search.py --json outputs structured JSON."""
+  """Verify radar-search.sh --json outputs structured JSON."""
   result = subprocess.run(
-      [sys.executable, str(RADAR_SEARCH_SCRIPT), "--json", "fastapi"],
+      ["bash", str(RADAR_SEARCH_SCRIPT), "--json", "fastapi"],
       capture_output=True,
       text=True,
       cwd=ROOT,

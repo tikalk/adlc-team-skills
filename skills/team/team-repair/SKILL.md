@@ -13,17 +13,15 @@ Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives to fix incons
 **Input**: team-ai-directives repository
 
 **Output**:
-0. Health check report (8 checks: extension installed, team AI directives configured, context modules exist, skills registry, CDR tracking, constitution alignment, type field presence, project AGENTS.md directive)
+0. Health check report (7 checks: team AI directives configured, context modules exist, skills registry, CDR tracking, constitution alignment, type field presence, project AGENTS.md directive)
 1. Repaired AGENTS.md (if missing or corrupted)
 2. Rebuilt CDR.md index from context_modules/
 3. Rebuilt .skills.json manifest from skills/
 4. Auto-added YAML frontmatter to orphan context modules (including OKF fields: `resource`, `tags`, `timestamp`)
 5. Auto-generated .skills.json entries for orphan skills
-6. Generated OKF-compliant `index.md` (progressive disclosure) per context module directory
-7. Generated OKF-compliant `log.md` (chronological change history) per context module directory
-8. Conflict scan across rules (creates conflict CDRs if issues found)
-9. Freshness verification (updates `verified` timestamps, flags stale directives)
-10. Summary report of all repairs
+6. Conflict scan across rules (creates conflict CDRs if issues found)
+7. Freshness verification (updates `verified` timestamps, flags stale directives)
+8. Summary report of all repairs
 
 You are acting as an **Index Repair Specialist** ensuring team-ai-directives indexes are consistent and complete. Your role involves:
 
@@ -41,8 +39,6 @@ You are acting as an **Index Repair Specialist** ensuring team-ai-directives ind
 | **AGENTS.md** | `{TEAM_AI_DIRECTIVES}/AGENTS.md` | Main instruction file for AI agents |
 | **CDR.md** | `{TEAM_AI_DIRECTIVES}/CDR.md` | Index of approved context contributions |
 | **.skills.json** | `{TEAM_AI_DIRECTIVES}/.skills.json` | Skills manifest registry |
-| **OKF index.md** | `{TEAM_AI_DIRECTIVES}/context_modules/{type}/index.md` | Progressive disclosure per concept directory |
-| **OKF log.md** | `{TEAM_AI_DIRECTIVES}/context_modules/{type}/log.md` | Chronological change log per concept directory |
 
 ## When to Use
 
@@ -84,17 +80,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 **Objective**: Run a non-destructive health check against the team directives framework before proceeding with repairs. If any check returns `[FAIL]`, present the report and stop — the framework is not healthy enough to repair safely.
 
-Execute all eight checks below. Each check prints a status line. If any check is `[FAIL]`, abort repair.
+Execute all seven checks below. Each check prints a status line. If any check is `[FAIL]`, abort repair.
 
-#### Check 1: Extension Installed
-
-1. Check `.adlc/extensions/.registry` for `team-ai-directives` entry
-2. Verify `.adlc/extensions/team-ai-directives/extension.yml` exists
-3. Extract version from `extension.yml`
-
-Output: `[OK]` or `[FAIL]` with reason
-
-#### Check 2: Team AI Directives Configured
+#### Check 1: Team AI Directives Configured
 
 1. Read `.adlc/init-options.json`
 2. Verify `team_ai_directives` field exists and points to valid path
@@ -102,7 +90,7 @@ Output: `[OK]` or `[FAIL]` with reason
 
 Output: `[OK]` or `[FAIL]` with reason
 
-#### Check 3: Context Modules Exist
+#### Check 2: Context Modules Exist
 
 1. Read `.adlc/init-options.json` → get team AI directives path
 2. Verify:
@@ -113,19 +101,19 @@ Output: `[OK]` or `[FAIL]` with reason
 
 Output: `[OK]` or `[FAIL]` with reason
 
-#### Check 4: Skills Registry
+#### Check 3: Skills Registry
 
 - `{TEAM_AI_DIRECTIVES}/.skills.json` exists and is valid JSON
 
 Output: `[OK]` or `[FAIL]` with reason
 
-#### Check 5: CDR Tracking
+#### Check 4: CDR Tracking
 
 - `{TEAM_AI_DIRECTIVES}/CDR.md` exists
 
 Output: `[OK]` or `[FAIL]` with reason
 
-#### Check 6: Constitution Alignment
+#### Check 5: Constitution Alignment
 
 1. Read team constitution from `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
 2. Locate project constitution: the project root (where `.adlc/` lives) → `{REPO_ROOT}/.adlc/memory/constitution.md`
@@ -138,7 +126,7 @@ Output: `[OK]` or `[FAIL]` with reason
 4. If project constitution doesn't exist:
    - `[INFO]` — Project constitution doesn't exist yet (first-time setup)
 
-#### Check 7: OKF Type Field Presence
+#### Check 6: OKF Type Field Presence
 
 1. Scan all `.md` files in `context_modules/` (excluding `index.md`, `log.md`)
 2. Parse YAML frontmatter from each file
@@ -148,15 +136,13 @@ Output: `[OK]` or `[FAIL]` with reason
    - `[OK]` — All concept files have valid `type` fields
    - `[WARN]` — Some files missing `type` field (list files)
 
-#### Check 8: Project AGENTS.md Directive
+#### Check 7: Project AGENTS.md Directive
 
 1. Read `{REPO_ROOT}/AGENTS.md` (the project-level agent instructions file)
 2. Check if it contains the `<!-- TEAM_AI_DIRECTIVES START -->` marker
 3. If the marker exists, verify the managed section includes:
-   - The `team-boot` strict-compliance directive ("MUST invoke the `team-boot` skill")
-   - The First-Tool-Call Gate ("FIRST tool call ... MUST be `skill({name: "team-boot"})`")
-   - The Plan-Mode Compatibility note ("Loading a skill is read-only ... plan mode never forbids")
-   - A reference to `{TEAM_AI_DIRECTIVES}/context_modules/constitution.md`
+   - A `team-boot` invocation directive
+   - A reference to team AI directives context (constitution, CDR index)
 4. Output:
    - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
    - `[WARN]` — Project AGENTS.md exists but is missing the managed section (agents won't auto-invoke `team-boot`)
@@ -177,8 +163,8 @@ If any check is `[FAIL]`, print the report, set exit code 1, and **STOP**. Do no
 - **`[FAIL]` on Check 1 or Check 2**: the directives framework is effectively absent — agents have nothing to inherit from. Stop and reinstall before repairing.
 - **Team AI Directives path resolves outside the repo** or to a temp/scratch location: the project is pointing at a transient or shared team AI directives that may vanish or diverge.
 - **`{TEAM_AI_DIRECTIVES}/.skills.json` is missing or not valid JSON**: skill discovery is broken; agents cannot find team skills even if the files exist.
-- **Project constitution exists but shows no team inheritance** (`[WARN]` on Check 6): the project was bootstrapped without the directives extension, or the constitution was hand-edited and the inheritance markers were removed.
-- **Multiple checks return `[WARN]` simultaneously**: systemic drift, usually from an extension upgrade or a moved `.adlc/` directory. Treat as a `[FAIL]`-equivalent and re-init.
+- **Project constitution exists but shows no team inheritance** (`[WARN]` on Check 5): the project was bootstrapped without the team AI directives, or the constitution was hand-edited and the inheritance markers were removed.
+- **Multiple checks return `[WARN]` simultaneously**: systemic drift, usually from a moved `.adlc/` directory or a reconfigured team AI directives path. Treat as a `[FAIL]`-equivalent and re-init.
 
 ---
 
@@ -448,49 +434,6 @@ Create index structure:
   ]
 }
 ```
-
-#### Step 5: Generate index.md and log.md Per Directory
-
-Generate OKF-compliant `index.md` (progressive disclosure) and `log.md` (chronological history) for each context module directory that has entries.
-
-**index.md** — lists all files in the directory with type/title/description:
-
-```markdown
-# Rules
-
-| File | Type | Description | Tags |
-|------|------|-------------|------|
-| [python/error-handling.md](python/error-handling.md) | Rule | Python error handling patterns and best practices | python |
-| [frontend/version-modal.md](frontend/version-modal.md) | Rule | Version modal display rules | frontend |
-```
-
-Generate `{TEAM_AI_DIRECTIVES}/context_modules/rules/index.md`, `context_modules/personas/index.md`, `context_modules/examples/index.md`, and `context_modules/index.md` (toplevel index linking all sub-indexes).
-
-**log.md** — chronological log of additions and changes:
-
-```markdown
-# Rules Log
-
-| Date | Action | File | CDR |
-|------|--------|------|-----|
-| 2026-07-21 | Added | python/error-handling.md | CDR-2026-001 |
-| 2026-07-21 | Verified | frontend/version-modal.md | CDR-2026-002 |
-```
-
-Generate `{TEAM_AI_DIRECTIVES}/context_modules/rules/log.md`, `context_modules/personas/log.md`, `context_modules/examples/log.md`.
-
-If `--dry-run`:
-```markdown
-### index.md / log.md Preview
-
-| Directory | index.md | log.md |
-|-----------|----------|--------|
-| rules/ | Would generate ({N} entries) | Would generate ({N} entries) |
-| personas/ | Would generate ({N} entries) | Would generate ({N} entries) |
-| examples/ | Would generate ({N} entries) | Would generate ({N} entries) |
-```
-
-Otherwise, write each file.
 
 ### Phase 5: Scan Skills for .skills.json Reindex
 
@@ -937,15 +880,6 @@ Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review de
 | Directives updated | {n} |
 | Stale directives (>30d) | {n} |
 | Skipped (has conflicts) | {n} |
-
-### OKF index.md / log.md
-
-| Directory | index.md | log.md |
-|-----------|----------|--------|
-| context_modules/ | {written|skipped} | {written|skipped} |
-| rules/ | {written|skipped} ({n} entries) | {written|skipped} ({n} entries) |
-| personas/ | {written|skipped} ({n} entries) | {written|skipped} ({n} entries) |
-| examples/ | {written|skipped} ({n} entries) | {written|skipped} ({n} entries) |
 
 ### Files Modified
 

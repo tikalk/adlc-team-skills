@@ -7,6 +7,9 @@ SETUP = (ROOT / "skills/team/team-setup/SKILL.md").read_text(encoding="utf-8")
 BOOT_SH = (ROOT / "skills/team/team-boot/scripts/boot.sh").read_text(encoding="utf-8")
 BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/boot.ps1").read_text(encoding="utf-8")
 EVENTS = (ROOT / ".events.json").read_text(encoding="utf-8")
+RADAR_SH = (ROOT / "skills/tech-radar/tech-radar-context/scripts/radar-search.sh").read_text(encoding="utf-8")
+RADAR_PS1 = (ROOT / "skills/tech-radar/tech-radar-context/scripts/radar-search.ps1").read_text(encoding="utf-8")
+TECH_RADAR = (ROOT / "skills/tech-radar/tech-radar-context/SKILL.md").read_text(encoding="utf-8")
 # AGENTS.md is gitignored (machine-injected with local paths) — may not exist in CI.
 _AGENTS_PATH = ROOT / "AGENTS.md"
 AGENTS = _AGENTS_PATH.read_text(encoding="utf-8") if _AGENTS_PATH.exists() else ""
@@ -76,12 +79,23 @@ def test_team_boot_sh_handles_null_optout():
 
 
 def test_team_boot_sh_assembles_context():
-    """boot.sh must assemble constitution, CDR index, PDR/ADR, and skills."""
+    """boot.sh must assemble constitution, CDR index, PDR/ADR, skills, and MCP."""
     assert "constitution" in BOOT_SH
     assert "CDR" in BOOT_SH
     assert "pdr" in BOOT_SH
     assert "adr" in BOOT_SH
     assert "skills.json" in BOOT_SH
+    assert "mcp.json" in BOOT_SH
+
+
+def test_team_boot_ps1_assembles_context():
+    """boot.ps1 must assemble constitution, CDR index, PDR/ADR, skills, and MCP."""
+    assert "constitution" in BOOT_PS1
+    assert "CDR" in BOOT_PS1
+    assert "pdr" in BOOT_PS1
+    assert "adr" in BOOT_PS1
+    assert "skills.json" in BOOT_PS1
+    assert "mcp.json" in BOOT_PS1
 
 
 def test_team_boot_sh_extracts_cdr_index_only():
@@ -182,3 +196,32 @@ def test_agents_md_simplified():
     assert "Anti-pattern" not in AGENTS
     assert "every message" not in AGENTS
     assert "First-Tool-Call Gate" not in AGENTS
+
+
+def test_radar_search_sh_uses_jq():
+    """radar-search.sh must use jq for JSON parsing, no Python."""
+    assert "jq" in RADAR_SH
+    assert "python3" not in RADAR_SH
+    assert "python" not in RADAR_SH
+
+
+def test_radar_search_ps1_uses_convertfrom_json():
+    """radar-search.ps1 must use native PowerShell JSON parsing."""
+    assert "ConvertFrom-Json" in RADAR_PS1
+
+
+def test_radar_search_py_deleted():
+    """radar-search.py must not exist (replaced by .sh/.ps1)."""
+    assert not (ROOT / "skills/tech-radar/tech-radar-context/scripts/radar-search.py").exists()
+
+
+def test_tech_radar_skill_references_sh_and_ps1():
+    """tech-radar SKILL.md must reference .sh and .ps1, not .py."""
+    assert "radar-search.sh" in TECH_RADAR
+    assert "radar-search.ps1" in TECH_RADAR
+    assert "radar-search.py" not in TECH_RADAR
+
+
+def test_team_setup_no_python():
+    """team-setup must not reference python3."""
+    assert "python3" not in SETUP

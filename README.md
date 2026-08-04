@@ -202,6 +202,7 @@ skills/
 ├── mission-brief/         # core SDD orchestrator (1 skill)
 ├── evals/                 # evals-* (6 skills) + evals-templates/
 ├── tech-radar/            # tech-radar-* (1 skill) + resources/radar.json
+├── workspace/             # workspace (1 skill) — multi-repo coordination
 └── team/                  # team-* (6 skills) + team-helpers.{sh,ps1}
 ```
 
@@ -278,6 +279,12 @@ Model-invoked. Grounds tech stack choices in Tikal's Israeli Tech Radar.
 
 - **`tech-radar-context`** — Discovers technologies implied by the prompt, matches them against the Tikal Tech Radar (`radar.json`), and injects a context table with each technology's adoption ring (`Keep`/`Start`/`Try`/`Stop`), quadrant, and Tikal's "Why?" opinion — plus Tikal-aligned alternatives for anything on `Stop`. Auto-triggered whenever a technology, framework, database, library, or cloud tool is being chosen or evaluated. Fetches the live radar best-effort and falls back to a bundled snapshot at `resources/radar.json`.
 
+### Workspace (1 skill)
+
+User-invoked. Multi-repo workspace coordination for shared team context.
+
+- **`workspace`** — Discover child repos at depth 1 and optionally link them as Git submodules, creating a multi-repo workspace analogous to VS Code's `.code-workspace`. The parent repo holds shared PDRs, ADRs, and CDRs under `.adlc/` (created by `product-specify`, `architect-specify`, `levelup-specify`); child implementation repos are linked for unified context. Commands: `/workspace` (discover), `/workspace --link` (register submodules), `/workspace --status` (audit: branch, dirty, unpushed, SHA drift). No `workspace.yml` — pure auto-discovery by convention. Say "Set up multi-repo workspace" or `/workspace --link`.
+
 ---
 
 <details>
@@ -345,6 +352,12 @@ All skills write to `.adlc/` (project root) and the team AI directives repo.
 - `evals/{system}/tests/test_check_*.py` — generated unit tests verifying grader correctness
 - `evals/results/validation_report.md` — statistical validation results report
 
+**Workspace** (inside parent repo root):
+
+- `.gitmodules` — Git submodule registrations for child repos (created by `--link`)
+- `.adlc/` — shared team context (PDRs, ADRs, CDRs); parent is the single source of truth
+- Child repos discovered at depth 1; each child's `.adlc/` presence is reported (informational)
+
 </details>
 
 <details>
@@ -398,6 +411,13 @@ Build to Delete: team-repair --build-to-delete → levelup-clarify (review delet
 **Mission:**
 ```
 mission-brief "feature" → review brief → execute steps → converge → mission-log.json
+```
+
+**Multi-repo workspace:**
+```
+product-specify / architect-specify → create shared PDRs/ADRs in parent .adlc/
+workspace --link → register child repos as submodules
+workspace --status → audit branch, dirty, unpushed, SHA drift
 ```
 
 **Application Evaluation lifecycle:**

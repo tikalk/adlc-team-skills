@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.1] - 2026-08-04
+
+### Fixed
+
+- **README.md aligned with `workspace` skill** (`README.md`): v0.23.0 shipped the new `workspace` skill but the README was not updated. Added: `skills/workspace/` to Repository Layout, new "Workspace (1 skill)" section in Reference with full description, workspace outputs (`.gitmodules`, parent `.adlc/` as single source of truth) to Output File Layout, and multi-repo workspace workflow example to Workflows section.
+
 ## [0.23.0] - 2026-08-04
 
 ### Added

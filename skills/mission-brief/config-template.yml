@@ -1,6 +1,6 @@
 # mission-brief — workflow configuration
 #
-# Copy to .adlc/workflow/workflow-config.yml in your project and edit.
+# Copy to $SDD_ROOT/.adlc/workflow/workflow-config.yml in your project and edit (project root by default, or the external `sdd_docs_location` subfolder if configured).
 # Every field is optional; defaults are shown below.
 
 workflow:

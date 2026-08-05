@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# setup-evals-init.sh — Setup for evals-init (self-contained)
+# setup-sdd-docs-publish.sh — Setup for sdd-docs-publish (self-contained)
 set -euo pipefail
+
+JSON_MODE=false
+for arg in "$@"; do
+  case "$arg" in --json) JSON_MODE=true ;; esac
+done
 
 resolve_project_root() {
   local dir
@@ -13,24 +18,6 @@ resolve_project_root() {
     dir="$(dirname "$dir")"
   done
   git rev-parse --show-toplevel 2>/dev/null || pwd
-}
-
-resolve_team_ai_directives() {
-  local project_root="$1"
-  local td="${TEAM_AI_DIRECTIVES:-}"
-  [[ -n "$td" ]] && { echo "$td"; return; }
-  if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
-    td=$(python3 -c "
-import json
-try:
-    with open('${project_root}/.adlc/init-options.json') as f:
-        print(json.load(f).get('team_ai_directives', ''))
-except Exception:
-    print('')
-" 2>/dev/null || true)
-    [[ -n "$td" ]] && { echo "$td"; return; }
-  fi
-  echo "${project_root}/team-ai-directives"
 }
 
 resolve_sdd_docs_location() {
@@ -61,28 +48,37 @@ sdd_project_subfolder_name() {
   fi
 }
 
-resolve_branch() {
-  git branch --show-current 2>/dev/null || echo "unknown"
-}
-
 PROJECT_ROOT=$(resolve_project_root)
-TEAM_AI_DIRECTIVES=$(resolve_team_ai_directives "$PROJECT_ROOT")
 SDD_DOCS_LOCATION=$(resolve_sdd_docs_location "$PROJECT_ROOT")
+PROJECT_SUBFOLDER=$(sdd_project_subfolder_name "$PROJECT_ROOT")
+
 if [[ -n "$SDD_DOCS_LOCATION" ]]; then
   SDD_DOCS_LOCATION="${SDD_DOCS_LOCATION/#\~/$HOME}"
-  SDD_ROOT="${SDD_DOCS_LOCATION%/}/$(sdd_project_subfolder_name "$PROJECT_ROOT")"
+  SDD_ROOT="${SDD_DOCS_LOCATION%/}/${PROJECT_SUBFOLDER}"
+  SDD_CONFIGURED="true"
 else
   SDD_ROOT="$PROJECT_ROOT"
+  SDD_CONFIGURED="false"
 fi
-BRANCH=$(resolve_branch)
 
-python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$BRANCH" "$SDD_DOCS_LOCATION" "$SDD_ROOT" << 'PY'
+SDD_IS_GIT="false"
+SDD_CLEAN="false"
+if [[ "$SDD_CONFIGURED" == "true" ]]; then
+  if git -C "$SDD_DOCS_LOCATION" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    SDD_IS_GIT="true"
+    SDD_CLEAN=$([[ -z "$(git -C "$SDD_DOCS_LOCATION" status --porcelain 2>/dev/null)" ]] && echo "true" || echo "false")
+  fi
+fi
+
+python3 - "$PROJECT_ROOT" "$SDD_DOCS_LOCATION" "$SDD_ROOT" "$PROJECT_SUBFOLDER" "$SDD_CONFIGURED" "$SDD_IS_GIT" "$SDD_CLEAN" <<'PY'
 import json, sys
 print(json.dumps({
   "REPO_ROOT": sys.argv[1],
-  "TEAM_AI_DIRECTIVES": sys.argv[2],
-  "BRANCH": sys.argv[3],
-  "SDD_DOCS_LOCATION": sys.argv[4],
-  "SDD_ROOT": sys.argv[5]
+  "SDD_DOCS_LOCATION": sys.argv[2],
+  "SDD_ROOT": sys.argv[3],
+  "PROJECT_SUBFOLDER": sys.argv[4],
+  "SDD_CONFIGURED": sys.argv[5] == "true",
+  "SDD_IS_GIT": sys.argv[6] == "true",
+  "SDD_CLEAN": sys.argv[7] == "true"
 }))
 PY

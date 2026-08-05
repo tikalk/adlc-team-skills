@@ -123,7 +123,7 @@ done
 
 # Default action if not specified
 if [[ -z "$ACTION" ]]; then
-    if [[ -f "$REPO_ROOT/AD.md" ]]; then
+    if [[ -f "$SDD_ROOT/AD.md" ]]; then
         ACTION="update"
     else
         ACTION="init"
@@ -131,11 +131,11 @@ if [[ -z "$ACTION" ]]; then
 fi
 
 # Ensure directories exist
-mkdir -p "$REPO_ROOT/.adlc/memory"
-mkdir -p "$REPO_ROOT/.adlc/drafts"
+mkdir -p "$SDD_ROOT/.adlc/memory"
+mkdir -p "$SDD_ROOT/.adlc/drafts"
 
 # Architecture files (ADR Lifecycle)
-AD_FILE="$REPO_ROOT/AD.md"
+AD_FILE="$SDD_ROOT/AD.md"
 TEMPLATE_FILE="$REPO_ROOT/.adlc/templates/architecture-template.md"
 AD_TEMPLATE_FILE="$REPO_ROOT/.adlc/templates/AD-template.md"
 
@@ -599,7 +599,7 @@ parse_fm_title() {
 # Generate adr.md index from individual ADR files
 generate_adr_index() {
     local scope="${1:-drafts}"
-    local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
+    local adr_dir="$SDD_ROOT/.adlc/$scope/adr"
     local index_file="$adr_dir/adr.md"
 
     if [[ ! -d "$adr_dir" ]]; then
@@ -655,7 +655,7 @@ generate_adr_index() {
 get_adr_by_id() {
     local adr_id="$1"
     local scope="${2:-drafts}"
-    local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
+    local adr_dir="$SDD_ROOT/.adlc/$scope/adr"
 
     # Normalize ID
     local numeric_id
@@ -675,7 +675,7 @@ get_adr_by_id() {
 # List all ADR IDs
 list_adrs() {
     local scope="${1:-drafts}"
-    local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
+    local adr_dir="$SDD_ROOT/.adlc/$scope/adr"
 
     if [[ -d "$adr_dir" ]]; then
         ls -1 "$adr_dir"/ADR-*.md 2>/dev/null | sed -E 's/.*ADR-([0-9]+)\.md/\1/' | sort -n
@@ -685,7 +685,7 @@ list_adrs() {
 # Get ADR count
 get_adr_count() {
     local scope="${1:-drafts}"
-    local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
+    local adr_dir="$SDD_ROOT/.adlc/$scope/adr"
 
     if [[ -d "$adr_dir" ]]; then
         ls -1 "$adr_dir"/ADR-*.md 2>/dev/null | wc -l
@@ -699,7 +699,7 @@ write_adr() {
     local adr_id="$1"
     local adr_content="$2"
     local scope="${3:-drafts}"
-    local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
+    local adr_dir="$SDD_ROOT/.adlc/$scope/adr"
 
     mkdir -p "$adr_dir"
 
@@ -720,8 +720,8 @@ move_adr() {
     local from_scope="${2:-drafts}"
     local to_scope="${3:-memory}"
 
-    local from_dir="$REPO_ROOT/.adlc/$from_scope/adr"
-    local to_dir="$REPO_ROOT/.adlc/$to_scope/adr"
+    local from_dir="$SDD_ROOT/.adlc/$from_scope/adr"
+    local to_dir="$SDD_ROOT/.adlc/$to_scope/adr"
 
     local numeric_id
     numeric_id=$(echo "$adr_id" | sed -E 's/[^0-9]//g')
@@ -811,14 +811,14 @@ $diagram_code
 
 # Action: Specify (greenfield - interactive PRD exploration to create ADRs)
 action_specify() {
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
     local adr_template="$REPO_ROOT/.adlc/templates/adr-template.md"
 
     echo "📐 Setting up for interactive ADR creation..." >&2
 
     # Ensure drafts directory exists
-    mkdir -p "$REPO_ROOT/.adlc/drafts"
+    mkdir -p "$SDD_ROOT/.adlc/drafts"
 
 
     # Show decomposition status
@@ -869,7 +869,7 @@ action_specify() {
     echo "After completion, run '/architect.implement' to generate full AD.md" >&2
 
     if $JSON_MODE; then
-        echo "{\"status\":\"success\",\"action\":\"specify\",\"adr_dir\":\"$adr_dir\",\"context\":\"${ARGS[*]}\",\"decomposition\":\"$DECOMPOSE\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"specify\",\"adr_dir\":\"$adr_dir\",\"context\":\"${ARGS[*]}\",\"decomposition\":\"$DECOMPOSE\"}"
     fi
 }
 
@@ -879,10 +879,10 @@ action_clarify() {
 
 
     # Check drafts first (primary working location), fall back to memory if drafts is empty
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
-    local fallback_adr_dir="$REPO_ROOT/.adlc/memory/adr"
-    local fallback_adr_dir="$REPO_ROOT/.adlc/memory/adr"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
+    local fallback_adr_dir="$SDD_ROOT/.adlc/memory/adr"
+    local fallback_adr_dir="$SDD_ROOT/.adlc/memory/adr"
 
     local active_dir="$adr_dir"
     local active_dir="$adr_dir"
@@ -924,14 +924,14 @@ action_clarify() {
     echo "  5. Flag any inconsistencies or gaps" >&2
 
     if $JSON_MODE; then
-        echo "{\"status\":\"success\",\"action\":\"clarify\",\"adr_dir\":\"$adr_dir\",\"adr_count\":$adr_count,\"format\":\"$format\",\"context\":\"${ARGS[*]}\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"clarify\",\"adr_dir\":\"$adr_dir\",\"adr_count\":$adr_count,\"format\":\"$format\",\"context\":\"${ARGS[*]}\"}"
     fi
 }
 
 # Action: Implement (generate full AD.md from ADRs)
 action_implement() {
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
-    local ad_file="$REPO_ROOT/AD.md"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
+    local ad_file="$SDD_ROOT/AD.md"
     local ad_template="$REPO_ROOT/.adlc/templates/AD-template.md"
     
     # Auto-migrate before checking
@@ -974,20 +974,20 @@ action_implement() {
     echo "  8. Clean up drafts if all ADRs are Accepted" >&2
 
     if $JSON_MODE; then
-        echo "{\"status\":\"success\",\"action\":\"implement\",\"adr_dir\":\"$adr_dir\",\"ad_file\":\"$ad_file\",\"adr_count\":$adr_count,\"context\":\"${ARGS[*]}\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"implement\",\"adr_dir\":\"$adr_dir\",\"ad_file\":\"$ad_file\",\"adr_count\":$adr_count,\"context\":\"${ARGS[*]}\"}"
     fi
 }
 
 # Action: Initialize (brownfield - reverse-engineer from codebase, ADRs only)
 action_init() {
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
     local adr_template="$REPO_ROOT/.adlc/templates/adr-template.md"
 
     echo "🔍 Initializing brownfield architecture discovery..." >&2
 
     # Ensure drafts directory exists
-    mkdir -p "$REPO_ROOT/.adlc/drafts"
+    mkdir -p "$SDD_ROOT/.adlc/drafts"
 
 
     # Scan existing docs for deduplication
@@ -1070,7 +1070,7 @@ action_init() {
     echo "      After clarification, run /architect.implement to generate AD.md" >&2
 
     if $JSON_MODE; then
-        echo "{\"status\":\"success\",\"action\":\"init\",\"adr_dir\":\"$adr_dir\",\"tech_stack\":\"$tech_stack\",\"existing_docs\":\"$existing_docs\",\"source\":\"brownfield\",\"decomposition\":\"$decompose_status\",\"subsystems\":$subsystems_json}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"init\",\"adr_dir\":\"$adr_dir\",\"tech_stack\":\"$tech_stack\",\"existing_docs\":\"$existing_docs\",\"source\":\"brownfield\",\"decomposition\":\"$decompose_status\",\"subsystems\":$subsystems_json}"
     fi
 }
 
@@ -1100,7 +1100,7 @@ action_map() {
     
     # Output structured data for AI agent to populate AD.md
     if $JSON_MODE; then
-        echo "{\"status\":\"success\",\"action\":\"map\",\"tech_stack\":\"$tech_stack\",\"directory_structure\":\"$dir_structure\",\"existing_docs\":\"$existing_docs\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"map\",\"tech_stack\":\"$tech_stack\",\"directory_structure\":\"$dir_structure\",\"existing_docs\":\"$existing_docs\"}"
     else
         echo "" >&2
         echo "📋 Mapping complete. Use this information to populate AD.md:" >&2
@@ -1158,7 +1158,7 @@ action_update() {
     echo "  - Add ADR if significant decision was made" >&2
     
     if $JSON_MODE; then
-        echo "{\"status\":\"success\",\"action\":\"update\",\"ad_file\":\"$AD_FILE\",\"adr_dir\":\"$adr_dir\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"update\",\"ad_file\":\"$AD_FILE\",\"adr_dir\":\"$adr_dir\"}"
     fi
 }
 
@@ -1224,7 +1224,7 @@ action_review() {
     fi
     
     # Check constitution alignment if it exists
-    local constitution_file="$REPO_ROOT/.adlc/memory/constitution.md"
+    local constitution_file="$SDD_ROOT/.adlc/memory/constitution.md"
     if [[ -f "$constitution_file" ]]; then
         echo "" >&2
         echo "📜 Checking constitution alignment..." >&2
@@ -1233,7 +1233,7 @@ action_review() {
     fi
     
     # Check for ADRs
-    local adr_mem_dir="$REPO_ROOT/.adlc/memory/adr"
+    local adr_mem_dir="$SDD_ROOT/.adlc/memory/adr"
     if [[ -d "$adr_mem_dir" ]]; then
         echo "" >&2
         echo "📋 ADR directory found: $adr_mem_dir" >&2
@@ -1244,11 +1244,11 @@ action_review() {
     
     if $JSON_MODE; then
         if [[ ${#issues[@]} -eq 0 ]]; then
-            echo "{\"status\":\"success\",\"action\":\"review\",\"ad_file\":\"$AD_FILE\",\"adr_dir\":\"$adr_mem_dir\",\"issues\":[]}"
+            echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"review\",\"ad_file\":\"$AD_FILE\",\"adr_dir\":\"$adr_mem_dir\",\"issues\":[]}"
         else
             # Format issues as JSON array
             issues_json=$(printf '%s\n' "${issues[@]}" | jq -R . | jq -s .)
-            echo "{\"status\":\"warning\",\"action\":\"review\",\"ad_file\":\"$AD_FILE\",\"adr_dir\":\"$adr_mem_dir\",\"issues\":$issues_json}"
+            echo "{\"status\":\"warning\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"review\",\"ad_file\":\"$AD_FILE\",\"adr_dir\":\"$adr_mem_dir\",\"issues\":$issues_json}"
         fi
     fi
 }
@@ -1261,10 +1261,10 @@ action_analyze() {
     # Auto-migrate before analysis
 
 
-    local ad_file="$REPO_ROOT/AD.md"
-    local adr_dir="$REPO_ROOT/.adlc/memory/adr"
-    local adr_dir="$REPO_ROOT/.adlc/memory/adr"
-    local constitution_file="$REPO_ROOT/.adlc/memory/constitution.md"
+    local ad_file="$SDD_ROOT/AD.md"
+    local adr_dir="$SDD_ROOT/.adlc/memory/adr"
+    local adr_dir="$SDD_ROOT/.adlc/memory/adr"
+    local constitution_file="$SDD_ROOT/.adlc/memory/constitution.md"
 
     local ad_exists=false
     local adr_exists=false
@@ -1332,16 +1332,16 @@ action_analyze() {
             feature_adrs_json=$(printf '%s\n' "${feature_adrs[@]}" | jq -R . | jq -s .)
         fi
 
-        echo "{\"status\":\"success\",\"action\":\"analyze\",\"ad_file\":\"$ad_file\",\"ad_exists\":$ad_exists,\"adr_dir\":\"$adr_dir\",\"adr_exists\":$adr_exists,\"constitution_file\":\"$constitution_file\",\"constitution_exists\":$constitution_exists,\"feature_ads\":$feature_ads_json,\"feature_adrs\":$feature_adrs_json,\"context\":\"${ARGS[*]}\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"analyze\",\"ad_file\":\"$ad_file\",\"ad_exists\":$ad_exists,\"adr_dir\":\"$adr_dir\",\"adr_exists\":$adr_exists,\"constitution_file\":\"$constitution_file\",\"constitution_exists\":$constitution_exists,\"feature_ads\":$feature_ads_json,\"feature_adrs\":$feature_adrs_json,\"context\":\"${ARGS[*]}\"}"
     fi
 }
 
 # Action: Plan DAG (Phase 1 of implement - generate execution plan)
 action_plan_dag() {
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
-    local state_file="$REPO_ROOT/.adlc/architect/state.json"
-    local views_dir="$REPO_ROOT/.adlc/architect/views"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
+    local state_file="$SDD_ROOT/.adlc/architect/state.json"
+    local views_dir="$SDD_ROOT/.adlc/architect/views"
 
     echo "📐 DAG Planning Phase" >&2
     echo "" >&2
@@ -1358,7 +1358,7 @@ action_plan_dag() {
     fi
 
     # Ensure directories exist
-    mkdir -p "$REPO_ROOT/.adlc/architect"
+    mkdir -p "$SDD_ROOT/.adlc/architect"
     mkdir -p "$views_dir"
 
     # Extract unique sub-systems from ADR files
@@ -1432,14 +1432,14 @@ action_plan_dag() {
         done
         subsystems_json+="]"
 
-        echo "{\"status\":\"success\",\"action\":\"plan-dag\",\"adr_dir\":\"$adr_dir\",\"state_file\":\"$state_file\",\"views_dir\":\"$views_dir\",\"adr_count\":$adr_count,\"subsystems\":$subsystems_json,\"context\":\"${ARGS[*]}\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"plan-dag\",\"adr_dir\":\"$adr_dir\",\"state_file\":\"$state_file\",\"views_dir\":\"$views_dir\",\"adr_count\":$adr_count,\"subsystems\":$subsystems_json,\"context\":\"${ARGS[*]}\"}"
     fi
 }
 
 # Action: Execute DAG (Phase 2 of implement - generate views based on state)
 action_execute_dag() {
-    local state_file="$REPO_ROOT/.adlc/architect/state.json"
-    local views_dir="$REPO_ROOT/.adlc/architect/views"
+    local state_file="$SDD_ROOT/.adlc/architect/state.json"
+    local views_dir="$SDD_ROOT/.adlc/architect/views"
     
     echo "🔧 DAG Execution Phase" >&2
     echo "" >&2
@@ -1470,19 +1470,19 @@ action_execute_dag() {
         if [[ -f "$state_file" ]]; then
             local state_content
             state_content=$(cat "$state_file")
-            echo "{\"status\":\"success\",\"action\":\"execute-dag\",\"state_file\":\"$state_file\",\"views_dir\":\"$views_dir\",\"state\":$state_content}"
+            echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"execute-dag\",\"state_file\":\"$state_file\",\"views_dir\":\"$views_dir\",\"state\":$state_content}"
         else
-            echo "{\"status\":\"error\",\"action\":\"execute-dag\",\"error\":\"state_file_not_found\"}"
+            echo "{\"status\":\"error\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"execute-dag\",\"error\":\"state_file_not_found\"}"
         fi
     fi
 }
 
 # Action: Summarize (Phase 3 of implement - aggregate views into AD.md)
 action_summarize() {
-    local state_file="$REPO_ROOT/.adlc/architect/state.json"
-    local views_dir="$REPO_ROOT/.adlc/architect/views"
-    local ad_file="$REPO_ROOT/AD.md"
-    local adr_dir="$REPO_ROOT/.adlc/drafts/adr"
+    local state_file="$SDD_ROOT/.adlc/architect/state.json"
+    local views_dir="$SDD_ROOT/.adlc/architect/views"
+    local ad_file="$SDD_ROOT/AD.md"
+    local adr_dir="$SDD_ROOT/.adlc/drafts/adr"
     
     echo "📝 Summarization Phase" >&2
     echo "" >&2
@@ -1536,14 +1536,14 @@ action_summarize() {
         done < <(find "$views_dir" -name "*.md" -type f 2>/dev/null)
         views_json+="]"
         
-        echo "{\"status\":\"success\",\"action\":\"summarize\",\"state_file\":\"$state_file\",\"views_dir\":\"$views_dir\",\"ad_file\":\"$ad_file\",\"adr_dir\":\"$adr_dir\",\"view_count\":$view_count,\"views\":$views_json}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"summarize\",\"state_file\":\"$state_file\",\"views_dir\":\"$views_dir\",\"ad_file\":\"$ad_file\",\"adr_dir\":\"$adr_dir\",\"view_count\":$view_count,\"views\":$views_json}"
     fi
 }
 
 # Action: Validate (READ-ONLY architecture validation for plan alignment)
 action_validate() {
-    local adr_dir="$REPO_ROOT/.adlc/memory/adr"
-    local adr_dir="$REPO_ROOT/.adlc/memory/adr"
+    local adr_dir="$SDD_ROOT/.adlc/memory/adr"
+    local adr_dir="$SDD_ROOT/.adlc/memory/adr"
 
     echo "🔍 Architecture Validation Mode (READ-ONLY)" >&2
     echo ""
@@ -1558,7 +1558,7 @@ action_validate() {
         echo "⏭️  Architecture not found: $adr_dir" >&2
         echo "     Skipping validation gracefully" >&2
         if $JSON_MODE; then
-            echo "{\"status\":\"skipped\",\"action\":\"validate\",\"reason\":\"architecture_not_found\"}"
+            echo "{\"status\":\"skipped\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"validate\",\"reason\":\"architecture_not_found\"}"
         fi
         exit 0
     fi
@@ -1574,7 +1574,7 @@ action_validate() {
     echo "  4. Report findings (READ-ONLY, no modifications)" >&2
 
     if $JSON_MODE; then
-        echo "{\"status\":\"success\",\"action\":\"validate\",\"adr_dir\":\"$adr_dir\",\"adr_count\":$adr_count,\"context\":\"${ARGS[*]}\"}"
+        echo "{\"status\":\"success\",\"sdd_docs_location\":\"$SDD_DOCS_LOCATION\",\"sdd_root\":\"$SDD_ROOT\",\"action\":\"validate\",\"adr_dir\":\"$adr_dir\",\"adr_count\":$adr_count,\"context\":\"${ARGS[*]}\"}"
     fi
 }
 

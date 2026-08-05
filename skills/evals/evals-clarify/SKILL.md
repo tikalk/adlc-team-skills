@@ -13,9 +13,9 @@ Conducts **axial coding** following **EDD Principles III & IX** to cluster relat
 **Output**:
 1. **Clustered Criteria** - Related patterns grouped into coherent evaluation themes
 2. **Adversarial Examples** - Generated attack scenarios and edge cases for robustness
-3. **Published Goldset** - Accepted criteria in `evals/{system}/goldset.md` with full documentation
+3. **Published Goldset** - Accepted criteria in `$SDD_ROOT/evals/{system}/goldset.md` with full documentation
 4. **Holdout Dataset** - Reserved test set (20%) for unbiased evaluation validation
-5. **JSON Configuration** - Auto-generated `goldset.json` for system consumption
+5. **JSON Configuration** - Auto-generated `$SDD_ROOT/evals/{system}/goldset.json` for system consumption
 6. **Auto-handoff** to `/evals-implement` for grader generation
 
 **Key EDD Principles Applied**:
@@ -57,19 +57,19 @@ $ARGUMENTS
 - Balance pass/fail examples (~50/50 ratio).
 
 #### Phase 3: Holdout Isolation
-- Isolate exactly 20% of examples as a reserved holdout set (saved to `.adlc/memory/evals/holdout.json`).
+- Isolate exactly 20% of examples as a reserved holdout set (saved to `$SDD_ROOT/.adlc/memory/evals/holdout.json`).
 - Ensure holdout set is never used in implementation or training.
 
 #### Phase 4: Publish Goldset
-- Copy accepted drafts to `.adlc/memory/evals/` and update status to `accepted`.
-- Compile published goldset to `evals/{system}/goldset.md` (human-readable) and `evals/{system}/goldset.json` (machine-readable).
+- Copy accepted drafts to `$SDD_ROOT/.adlc/memory/evals/` and update status to `accepted`.
+- Compile published goldset to `$SDD_ROOT/evals/{system}/goldset.md` (human-readable) and `$SDD_ROOT/evals/{system}/goldset.json` (machine-readable).
 
 #### Phase 5: Auto-Handoff
 Trigger `/evals-implement` to generate code.
 
 ## Verification
-- Accepted drafts stored in `.adlc/memory/evals/EVAL-*.md`
-- `evals/{system}/goldset.md` and `goldset.json` exist
-- Holdout set `.adlc/memory/evals/holdout.json` isolated and populated
+- Accepted drafts stored in `$SDD_ROOT/.adlc/memory/evals/EVAL-*.md`
+- `$SDD_ROOT/evals/{system}/goldset.md` and `$SDD_ROOT/evals/{system}/goldset.json` exist
+- Holdout set `$SDD_ROOT/.adlc/memory/evals/holdout.json` isolated and populated
 - All criteria are strictly binary (no confidence scores or Likert scales)
 - Handover summary lists accepted criteria and adversarial counts

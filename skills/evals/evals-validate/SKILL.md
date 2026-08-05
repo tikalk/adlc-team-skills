@@ -48,11 +48,11 @@ $ARGUMENTS
 
 #### Phase 1: Execute Evaluations
 Runs the underlying framework CLI directly:
-- PromptFoo: `npx promptfoo eval --config evals/promptfoo/config.js`
-- DeepEval: `pytest evals/deepeval/ -v` or `python evals/deepeval/config.py`
+- PromptFoo: `npx promptfoo eval --config $SDD_ROOT/evals/promptfoo/config.js`
+- DeepEval: `pytest $SDD_ROOT/evals/deepeval/ -v` or `python $SDD_ROOT/evals/deepeval/config.py`
 
 #### Phase 2: Compute Statistical Validation
-- Parse generated results JSON from `evals/results/`.
+- Parse generated results JSON from `$SDD_ROOT/evals/results/`.
 - Calculate True Positive Rate (TPR) and True Negative Rate (TNR).
 - Calculate overall accuracy with 95% confidence intervals.
 - Ensure no Likert scales or numerical scores leak into results.
@@ -64,15 +64,15 @@ Runs the underlying framework CLI directly:
 - Check headroom analysis (SLA budget consumed).
 
 #### Phase 4: Write Validation Report
-- Write validation results to `evals/results/validation_report.md`.
+- Write validation results to `$SDD_ROOT/evals/results/validation_report.md`.
 - Include pass/fail counts, TPR/TNR table, SLA timings, and holdout set results.
 
 #### Phase 5: Auto-Handoff
 Trigger `/evals-analyze` to close the loop.
 
 ## Verification
-- Evaluation execution successfully completed with results JSON written to `evals/results/`
-- `evals/results/validation_report.md` created with TPR/TNR and SLA metrics
+- Evaluation execution successfully completed with results JSON written to `$SDD_ROOT/evals/results/`
+- `$SDD_ROOT/evals/results/validation_report.md` created with TPR/TNR and SLA metrics
 - Statistical metrics calculated with confidence intervals
 - Headroom and SLA compliance verified
 - Handover summary lists results and validation report path

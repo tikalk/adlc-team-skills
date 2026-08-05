@@ -52,6 +52,26 @@ Already have a directives repo? `team-setup` offers three other modes:
 - **Mode 2 — Point to existing local path** (wire a repo you already have)
 - **Mode 4 — Already configured** (verify an existing setup)
 
+### External SDD Docs Storage (optional)
+
+By default, all SDD artifacts (PDRs, ADRs, eval criteria, mission state, etc.) live under `.adlc/` in the project root. You can optionally keep them in a separate location — for example, a private specs repo, a compliance share, or a multi-repo consolidation directory — by setting `sdd_docs_location` in `.adlc/init-options.json`.
+
+Resolution order (highest to lowest precedence):
+1. `SDD_DOCS_LOCATION` environment variable
+2. `sdd_docs_location` field in `.adlc/init-options.json`
+3. Empty string (default to project root)
+
+Example `.adlc/init-options.json` with both team directives and external SDD docs:
+
+```json
+{
+  "team_ai_directives": "./team-ai-directives",
+  "sdd_docs_location": "~/sdd-docs"
+}
+```
+
+With the config above, a project named `my-service` writes its SDD artifacts to `~/sdd-docs/my-service/.adlc/...` and `~/sdd-docs/my-service/PRD.md`/`AD.md`, while the team AI directives repo remains at `./team-ai-directives`. **Important asymmetry**: `sdd_docs_location` uses a **per-project subfolder** (`{sdd_docs_location}/{project-name}/...`), but `team_ai_directives` is a **single shared top-level path** used as-is by every project that points to it. Do not conflate the two — one is a docs *storage root* with project isolation, the other is a shared *directives repository*.
+
 ---
 
 ## How It Works: Before vs. After ADLC
@@ -205,6 +225,7 @@ skills/
 ├── levelup/               # levelup-* (4 skills) + levelup-helpers.{sh,ps1}
 ├── mission-brief/         # core SDD orchestrator (1 skill)
 ├── evals/                 # evals-* (6 skills) + evals-templates/
+├── sdd-docs/              # sdd-docs-* (1 skill)
 ├── tech-radar/            # tech-radar-* (1 skill) + resources/radar.json
 ├── workspace/             # workspace (1 skill) — multi-repo coordination
 └── team/                  # team-* (6 skills) + team-helpers.{sh,ps1}
@@ -289,12 +310,28 @@ User-invoked. Multi-repo workspace coordination for shared team context.
 
 - **`workspace`** — Discover child repos at depth 1 and optionally link them as Git submodules, creating a multi-repo workspace analogous to VS Code's `.code-workspace`. The parent repo holds shared PDRs, ADRs, and CDRs under `.adlc/` (created by `product-specify`, `architect-specify`, `levelup-specify`); child implementation repos are linked for unified context. Commands: `/workspace` (discover), `/workspace --link` (register submodules), `/workspace --status` (audit: branch, dirty, unpushed, SHA drift). No `workspace.yml` — pure auto-discovery by convention. Say "Set up multi-repo workspace" or `/workspace --link`.
 
+### SDD Docs (1 skill)
+
+User-invoked. Publish SDD artifacts from their working location to the configured `sdd_docs_location` (or project root if unconfigured).
+
+- **`sdd-docs-publish`** — Compiles and publishes accepted PDRs, ADRs, eval criteria, PRD.md, AD.md, and mission audit trails to `sdd_docs_location`. Use `--ready` to create a PR instead of a draft. Say "Publish SDD docs."
+
+### Publishing SDD Docs
+
+`sdd-docs-publish` is the manual publishing step for external SDD docs storage. It follows the same git decision-tree pattern as `levelup-publish` (draft PR → push-only → local-only → git-init offer) and accepts a `--ready` flag to open a ready-for-review PR instead of a draft.
+
+**Publishing is not automatic — `product-implement`, `architect-implement`, `evals-implement`, and `mission-brief` never invoke git operations against `sdd_docs_location`.**
+
 ---
 
 <details>
 <summary><strong>Output File Layout</strong></summary>
 
-All skills write to `.adlc/` (project root) and the team AI directives repo.
+All skills write to `$SDD_ROOT/.adlc/` and `$SDD_ROOT/` (repo root), where `$SDD_ROOT` defaults to the project root and resolves to `{sdd_docs_location}/{project-name}/` when `sdd_docs_location` is configured. The paths below are shown relative to `$SDD_ROOT`.
+
+**Carve-outs (always project-local, unaffected by `sdd_docs_location`):**
+- The **Team Directives** bullets below (inside the `team_ai_directives` repository).
+- The `.adlc/init-options.json` bullet under **LevelUp**.
 
 **Team Directives** (inside the team AI directives repository):
 

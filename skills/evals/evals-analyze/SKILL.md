@@ -13,7 +13,7 @@ Provides **cross-functional team elevation** and **closed-loop feedback** follow
 **Output**:
 1. **Trajectory Analysis** - Full multi-turn trace analysis with tool calls and context preservation (EDD Principle V)
 2. **Failure Routing**:
-   - **Specification Failures** (agent logic missing/ambiguous) → Automatically triggers a local call to `levelup-specify` to propose new context rules in `.adlc/drafts/cdr/` to fix agent behavior.
+   - **Specification Failures** (agent logic missing/ambiguous) → Automatically triggers a local call to `levelup-specify` to propose new context rules in `$SDD_ROOT/.adlc/drafts/cdr/` to fix agent behavior.
    - **Generalization Failures** (grader flawed or lacks edge-case coverage) → Appends evaluator backlog items to the project backlog for ongoing monitoring.
 3. **Cross-Functional PR** - Creates a team-ai-directives PR with insights and rule updates (EDD Principle X)
 
@@ -30,7 +30,7 @@ Provides **cross-functional team elevation** and **closed-loop feedback** follow
 
 ## When NOT to use
 
-- **Evals not yet executed**: Run `/evals-validate` first to generate results in `evals/results/`
+- **Evals not yet executed**: Run `/evals-validate` first to generate results in `$SDD_ROOT/evals/results/`
 - **Trivial tasks**: Closed-loop analysis is overhead for simple features
 
 ## Process
@@ -45,7 +45,7 @@ $ARGUMENTS
 ### Execution Steps
 
 #### Phase 1: Load Evaluation Results
-- Reads results JSON from `evals/results/`.
+- Reads results JSON from `$SDD_ROOT/evals/results/`.
 - Extracts failure cases and full multi-turn conversation traces (including tool calls).
 
 #### Phase 2: Failure Classification
@@ -54,17 +54,17 @@ Categorizes each failure trace:
 - **Generalization Failure**: The rule was correct, but the agent made a mistake anyway (hallucinated, missed a constraint, or grader lacked edge-case coverage).
 
 #### Phase 3: Action Routing (Close the Loop)
-- **For Specification Failures**: Automatically triggers local skill `/levelup-specify` with the failure trace as input. This creates new rule/persona/example CDRs in `.adlc/drafts/cdr/` to fix the agent's behavior.
-- **For Generalization Failures**: Appends an evaluator backlog item to `evals/results/evaluator_backlog.md` detailing the needed grader edge-case updates.
+- **For Specification Failures**: Automatically triggers local skill `/levelup-specify` with the failure trace as input. This creates new rule/persona/example CDRs in `$SDD_ROOT/.adlc/drafts/cdr/` to fix the agent's behavior.
+- **For Generalization Failures**: Appends an evaluator backlog item to `$SDD_ROOT/evals/results/evaluator_backlog.md` detailing the needed grader edge-case updates.
 
 #### Phase 4: Cross-Functional Insights & PR
-- Generates a stakeholder-specific report in `evals/results/team_insights.md` (tailored for PMs, domain experts, and AI engineers).
+- Generates a stakeholder-specific report in `$SDD_ROOT/evals/results/team_insights.md` (tailored for PMs, domain experts, and AI engineers).
 - If git remote and gh CLI are available, commits rule/eval changes in `team-ai-directives` and opens a draft PR (uses `levelup-publish` logic under the hood).
 
 ## Verification
 - Trajectory failure traces analyzed and classified
-- Specification failures successfully routed to `/levelup-specify` (proposes CDRs in `.adlc/drafts/cdr/`)
-- Generalization failures written to `evals/results/evaluator_backlog.md`
-- Stakeholder report `evals/results/team_insights.md` generated
+- Specification failures successfully routed to `/levelup-specify` (proposes CDRs in `$SDD_ROOT/.adlc/drafts/cdr/`)
+- Generalization failures written to `$SDD_ROOT/evals/results/evaluator_backlog.md`
+- Stakeholder report `$SDD_ROOT/evals/results/team_insights.md` generated
 - Draft PR created in team-ai-directives (if applicable)
 - Final report summary presented with PR link and backlog details

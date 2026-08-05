@@ -1,6 +1,6 @@
 ---
 name: evals-specify
-description: Extract eval criteria from product specs and production failure traces (bottom-up error analysis). Writes proposed criteria to .adlc/drafts/evals/.
+description: Extract eval criteria from product specs and production failure traces (bottom-up error analysis). Writes proposed criteria to $SDD_ROOT/.adlc/drafts/evals/.
 disable-model-invocation: true
 ---
 
@@ -11,7 +11,7 @@ disable-model-invocation: true
 Conducts **bottom-up error analysis** following **EDD Principles III & IX** (Error Analysis & Test Data as Code) to discover and document draft evaluation criteria from human observation of system failures.
 
 **Output**:
-1. **Draft Eval Records** - Individual `EVAL-*.md` files in `.adlc/drafts/evals/` with open coding notes
+1. **Draft Eval Records** - Individual `EVAL-*.md` files in `$SDD_ROOT/.adlc/drafts/evals/` with open coding notes
 2. **Error Pattern Documentation** - Bottom-up failure taxonomy from actual traces
 3. **Pass/Fail Examples** - Real examples that should pass/fail each criterion
 4. **Auto-handoff** to `/evals-clarify` for axial coding and clustering
@@ -57,15 +57,15 @@ Group patterns into draft criteria. For each:
 - Document real pass/fail examples directly from traces
 
 #### Phase 3: Create Draft Files
-- Copy `skills/evals/evals-templates/eval-criterion-template.md` to `.adlc/drafts/evals/EVAL-{NNN}.md`.
+- Copy `skills/evals/evals-templates/eval-criterion-template.md` to `$SDD_ROOT/.adlc/drafts/evals/EVAL-{NNN}.md`.
 - Populate metadata and error analysis notes.
-- Regenerate index at `.adlc/drafts/evals/evals.md`.
+- Regenerate index at `$SDD_ROOT/.adlc/drafts/evals/evals.md`.
 
 #### Phase 4: Auto-Handoff
 Trigger `/evals-clarify` for axial coding and clustering.
 
 ## Verification
-- Draft files created at `.adlc/drafts/evals/EVAL-*.md`
-- Index file `.adlc/drafts/evals/evals.md` updated with draft summaries
+- Draft files created at `$SDD_ROOT/.adlc/drafts/evals/EVAL-*.md`
+- Index file `$SDD_ROOT/.adlc/drafts/evals/evals.md` updated with draft summaries
 - Each draft contains: status "draft", pass/fail conditions, trace sources, and concrete examples
 - Auto-handoff context produced with list of created drafts

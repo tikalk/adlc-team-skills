@@ -438,20 +438,26 @@ If `AGENTS.md` is missing, create it from a template.
 
 #### Phase 10: Commit and PR
 
-Verify files created, then follow the git decision tree:
+Verify files created, then publish using the shared git workflow.
 
-**Case A: team-ai-directives IS a git repo (`TD_IS_GIT=true`)**
+**Source shared helpers** (resolves to the helpers file from either the source repo or an installed flat layout):
 
-1. Create branch (use `main` if it exists, otherwise `HEAD`):
 ```bash
-cd "$TEAM_AI_DIRECTIVES"
-git checkout -b "levelup/$(basename "$REPO_ROOT")" main 2>/dev/null || git checkout -b "levelup/$(basename "$REPO_ROOT")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEAM_HELPERS=""
+for candidate in \
+  "${SCRIPT_DIR}/../../team/team-helpers.sh" \
+  "${SCRIPT_DIR}/../team-helpers.sh" \
+  "${SCRIPT_DIR}/team-helpers.sh"; do
+  [[ -f "$candidate" ]] && { TEAM_HELPERS="$candidate"; break; }
+done
+[[ -n "$TEAM_HELPERS" ]] && source "$TEAM_HELPERS"
 ```
 
-2. Commit:
+**Construct the commit message**:
+
 ```bash
-git add -A
-git commit -m "Add context modules from $(basename "$REPO_ROOT")
+COMMIT_MSG="Add context modules from $(basename "$REPO_ROOT")
 
 CDRs implemented:
 - CDR-001: ...
@@ -459,42 +465,44 @@ CDRs implemented:
 "
 ```
 
-3. Check for a remote:
+**Invoke the shared publish workflow**:
+
 ```bash
-git remote get-url origin 2>/dev/null
+READY_FLAG=""  # set to "--ready" if user passed --ready
+git_publish_workflow "$TEAM_AI_DIRECTIVES" "levelup" "$COMMIT_MSG" "$READY_FLAG"
 ```
 
-4a. **If remote "origin" exists AND `gh` CLI is available** — push and create draft PR:
-```bash
-git push -u origin "levelup/$(basename "$REPO_ROOT")"
-gh pr create --draft --title "Add context modules from $(basename "$REPO_ROOT")" --body "..."
+PowerShell equivalent:
+
+```powershell
+$ProjectRoot = $env:PROJECT_ROOT -or (git rev-parse --show-toplevel 2>$null) -or (Get-Location).Path
+$CommitMsg = @"
+Add context modules from $(Split-Path $ProjectRoot -Leaf)
+
+CDRs implemented:
+- CDR-001: ...
+- CDR-002: ...
+"@
+Invoke-GitPublishWorkflow -TargetDir "$env:TEAM_AI_DIRECTIVES" -BranchPrefix "levelup" -CommitMsg $CommitMsg
 ```
 
-4b. **If remote "origin" exists but `gh` is NOT available** — push only, tell user to open PR manually:
-```bash
-git push -u origin "levelup/$(basename "$REPO_ROOT")"
-```
-Report: "Pushed to `origin/levelup/{project-name}`. Open a PR manually at your Git host."
+The workflow follows the same decision tree for any target directory:
 
-4c. **If no remote exists** — commit locally only. Report: "Committed to local branch `levelup/{project-name}`. Add a remote (`git remote add origin <url>`) and push when ready."
+**Case A: target directory IS a git repo and has a remote**
 
-**Case B: team-ai-directives is NOT a git repo (`TD_IS_GIT=false`)**
+- With `gh` CLI available: push branch and create a draft PR (or ready PR if `--ready` was passed).
+- Without `gh`: push branch and report manual-PR instructions.
 
-Offer the user two options:
+**Case B: target directory IS a git repo but has no remote**
 
-1. **`git init` + commit** — initialize git, create an initial commit with the scaffold, then commit the new context modules:
-```bash
-cd "$TEAM_AI_DIRECTIVES"
-git init
-git add -A
-git commit -m "Initial team-ai-directives scaffold"
-git checkout -b "levelup/$(basename "$REPO_ROOT")"
-git add -A
-git commit -m "Add context modules from $(basename "$REPO_ROOT")"
-```
-Then follow steps 3–4 above (remote check).
+Commit locally and report: "Committed to local branch `levelup/{project-name}`. Add a remote (`git remote add origin <url>`) and push when ready."
 
-2. **Write files only** — skip all git operations. Files are written directly to the working tree. Report: "Files written to `{TEAM_AI_DIRECTIVES}`. Initialize git and commit when ready."
+**Case C: target directory is NOT a git repo**
+
+Offer two options:
+
+1. **`git init` + commit** — initialize git, create an initial scaffold commit, then run the workflow again.
+2. **Write files only** — skip all git operations. Report: "Files written to `{TEAM_AI_DIRECTIVES}`. Initialize git and commit when ready."
 
 #### Phase 11: Summary
 

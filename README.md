@@ -192,6 +192,27 @@ npx skills add tikalk/adlc-team-skills
 mission-brief "add user profile API with JWT"
 ```
 
+### Coexistence with superpowers
+
+[superpowers](https://github.com/obra/superpowers) and ADLC Team Skills compose
+without conflict because they own different concerns:
+
+| Concern | Owner |
+| :--- | :--- |
+| Team context (constitution, CDRs, PDR/ADR) + Team Context in Use output contract | `team-boot` (session_start event hook → `boot.sh` lean orientation) |
+| Per-prompt discovery matching | Native — the LLM matches the injected CDR index against the current task; no skill call required |
+| Explicit structured re-discovery | `/team-discover` (user-invoked only) |
+| Generic process skills (brainstorming, writing-plans, TDD, debugging, code-review, worktrees) | superpowers |
+| Session-start skill-check enforcement ("1% rule") | superpowers' `using-superpowers` bootstrap |
+| SDD lifecycle orchestration (specify → clarify → implement ↔ converge) | `mission-brief` + the product/architect/levelup/evals skill families |
+
+Precedence when both could apply: `mission-brief` wins for spec-driven feature
+work; superpowers' `executing-plans` / `subagent-driven-development` serve
+ad-hoc coding tasks. The two session-start injections (team-boot's lean
+orientation and superpowers' `using-superpowers`) apply simultaneously —
+team-boot governs team-context surfacing, superpowers governs process-skill
+invocation.
+
 ---
 
 ## Repository Layout

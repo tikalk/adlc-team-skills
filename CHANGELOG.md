@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.2] - 2026-08-05
+
+### Changed
+
+- **`team-boot` clarifies native discovery and `/team-discover` scope** (`skills/team/team-boot/SKILL.md`): the Overview now states explicitly that discovery is native — the injected CDR index is matched by the LLM per prompt with no skill invocation — and that `/team-discover` is a user-invoked command, not part of the bootstrap loop. Added a "Coexistence with other bootstraps" section documenting that team-boot composes with superpowers' `using-superpowers` session-start injection (team-boot governs team-context surfacing; superpowers governs process-skill invocation; both apply simultaneously).
+
+- **`team-discover` documents its relationship to `team-boot`** (`skills/team/team-discover/SKILL.md`): added a "Relationship to team-boot" section making explicit that team-boot does not invoke this skill in its bootstrap loop (discovery is native) and that `/team-discover` is user-invoked for explicit structured re-discovery. Kills the drift between the two skill docs.
+
+- **README documents superpowers coexistence** (`README.md`): added a "Coexistence with superpowers" subsection under Universal Skill & SDD Framework Orchestration, with a concern-ownership table (team context / per-prompt discovery / process skills / skill-check enforcement / SDD lifecycle orchestration) and precedence guidance (`mission-brief` for spec-driven features; superpowers' `executing-plans` / `subagent-driven-development` for ad-hoc coding).
+
 ## [0.23.1] - 2026-08-04
 
 ### Fixed

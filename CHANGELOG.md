@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.3] - 2026-08-05
+
+### Fixed
+
+- **`radar-search.sh` / `radar-search.ps1` — short-query false positives** (`skills/tech-radar/tech-radar-context/scripts/`): the raw-query `contains($q)` match clause caused short queries like `ts` to return 17 rows of noise ("A2A Agents", "Argo Rollouts", "EKS Blueprints", "Cert-manager"…). Removed the raw-query clause; matching now uses the canonical alias only (`exact | startswith | contains`), which eliminates the noise while preserving legitimate substring matches. Verified: `ts` → 3 rows (TypeScript + Node.js + Typescript ×2).
+
+- **Misleading alias mappings removed** (`radar-search.sh`, `radar-search.ps1`): dropped `mongo|mongodb → Beanie (mongo ORM)` (user asking about the MongoDB database got a Python ODM), `pydantic → PydanticAI` (validation library vs agent framework), `airflow → Airflow 3` (narrowed — radar has Airflow / Airflow 2 / Airflow 3), and `spark → Apache Spark 4.0` (narrowed — radar has 3.0 + 4.0). Honest substring matching now surfaces all relevant placements.
+
+### Changed
+
+- **Canonical Tikal ring definitions** (`skills/tech-radar/tech-radar-context/SKILL.md`): the ring table now uses the authoritative definitions instead of inaccurate paraphrases. `Try` = "New stuff that on the surface seems good (good press, new solution)" (was "Emerging / promising → low-risk trials or POCs" — overstated). `Start` = "A good solution more companies should use; if in beta, active progress and contribution" (beta nuance added). `Keep` = "Stable release (non-beta) with major supporter acceptance" (non-beta distinction added). `Stop` = "Items we recommend companies stop using — better alternatives exist". Table reordered to match the dataset's ring order (`Try, Start, Keep, Stop`).
+
+- **Script guidance text aligned with canonical rings** (`radar-search.sh`, `radar-search.ps1`): the `Try` label changed from "Promising technology; suitable for low-risk trials or POCs" to "Seems promising on the surface; evaluate before broader adoption." The `Stop` label now includes "better alternatives exist".
+
+- **`SKILL.md` doc consistency** (`skills/tech-radar/tech-radar-context/SKILL.md`): fixed the Node.js conflict example (same-quadrant `DevOps: Stop` + `DevOps: Keep`, not "multiple quadrants"). Trimmed live-fetch overpromise — the script never fetches live, so Step 2, Failure Handling, Configuration, Step 6 `_Source_`, and Verification now describe local-snapshot-only operation.
+
+- **`radar-search.sh` robustness**: removed dead code (`declare -A TECH_RINGS`, unused `RESULT_COUNT=0`); replaced `grep "^${tech}|"` (regex-fragile for names with parens/dots like "JCasC (Jenkins Configuration as Code)") with `awk -F'|' -v t="$tech" '$1==t'` exact-field match; truncation now cuts at word boundary instead of mid-word.
+
+### Added
+
+- **Behavior tests for tech-radar search** (`tests/unit/test_tech_radar.py`): `test_radar_search_ts_no_false_positives` (regression guard for the `contains($q)` fix), `test_radar_search_airflow_returns_all_placements` (proves alias-narrowing fixed), `test_radar_search_jenkins_conflict_detection` (conflict flag + JCasC parens handling), `test_radar_skill_canonical_ring_definitions` (locks the canonical ring text so it can't drift back to paraphrases).
+
 ## [0.23.1] - 2026-08-04
 
 ### Fixed

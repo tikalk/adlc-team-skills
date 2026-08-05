@@ -51,8 +51,6 @@ normalize_alias() {
     vue|vuejs) echo "Vue.js" ;;
     node|nodejs) echo "Node.js" ;;
     ts|typescript) echo "TypeScript" ;;
-    mongo|mongodb) echo "Beanie (mongo ORM)" ;;
-    pydantic) echo "PydanticAI" ;;
     iac) echo "Infrastructure as Code (IaC)" ;;
     mcp) echo "Model Context Protocol (MCP)" ;;
     rsc) echo "React Server Components" ;;
@@ -60,8 +58,6 @@ normalize_alias() {
     idp) echo "Internal Developer Portals (IDPs) (e.g., Port.io. Backstage)" ;;
     eso) echo "External Secrets Operator" ;;
     gke) echo "GKE Workload Identity" ;;
-    airflow) echo "Airflow 3" ;;
-    spark) echo "Apache Spark 4.0" ;;
     *) echo "$q" ;;
   esac
 }
@@ -74,14 +70,15 @@ search_blips() {
   local ql="${query,,}"
   local cl="${canonical,,}"
 
-  # Use jq to extract matching blips + extract Why? text + strip HTML
-  jq -r --arg q "$ql" --arg c "$cl" '
+  # Use jq to extract matching blips + extract Why? text + strip HTML.
+  # Match by canonical alias only (no raw-query contains) to avoid short-query
+  # false positives (e.g. "ts" matching "A2A Agents", "Argo Rollouts").
+  jq -r --arg c "$cl" '
     .blips[] |
     select(
       (.name | ascii_downcase) == $c or
       (.name | ascii_downcase | startswith($c)) or
-      ((.name | ascii_downcase) | contains($c)) or
-      ((.name | ascii_downcase) | contains($q))
+      ((.name | ascii_downcase) | contains($c))
     ) |
     .description as $desc |
     (
@@ -92,7 +89,11 @@ search_blips() {
       end
     ) as $why_raw |
     ($why_raw | gsub("<[^>]*>"; " ") | gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ")) as $why |
-    (if ($why | length) > 160 then ($why[0:157] + "...") else $why end) as $why_trunc |
+    (if ($why | length) > 160 then
+       ($why | .[0:157] | sub(" [^ ]*$"; "") + "...")
+     else
+       $why
+     end) as $why_trunc |
     "\(.name)\t\(.quadrant)\t\(.ring)\t\($why_trunc)"
   ' "$RADAR_JSON" 2>/dev/null
 }
@@ -140,10 +141,6 @@ echo ""
 echo "| Technology | Quadrant | Ring | Tikal's Opinion (Why?) |"
 echo "|------------|----------|------|------------------------|"
 
-# Track rings per tech for guidance
-declare -A TECH_RINGS
-RESULT_COUNT=0
-
 echo "$ALL_RESULTS" | while IFS='|' read -r name quadrant ring why; do
   [ -z "$name" ] && continue
   echo "| $name | $quadrant | $ring | $why |"
@@ -152,21 +149,22 @@ done
 echo ""
 echo "**Radar Guidance**"
 
-# Build guidance per unique tech name (deduplicated)
+# Build guidance per unique tech name (deduplicated).
+# Use awk for exact first-field match (robust against regex-special blip names
+# like "JCasC (Jenkins Configuration as Code)" or "Node.js").
 echo "$ALL_RESULTS" | cut -d'|' -f1 | sort -u | while IFS= read -r tech; do
   [ -z "$tech" ] && continue
-  # Collect all rings for this tech
-  rings=$(echo "$ALL_RESULTS" | grep "^${tech}|" | cut -d'|' -f3 | sort -u | tr '\n' ',')
+  rings=$(echo "$ALL_RESULTS" | awk -F'|' -v t="$tech" '$1==t {print $3}' | sort -u | tr '\n' ',')
   rings="${rings%,}"
-  placements=$(echo "$ALL_RESULTS" | grep "^${tech}|" | cut -d'|' -f2,3 | sed 's/|/: /' | tr '\n' ',' | sed 's/,$//')
+  placements=$(echo "$ALL_RESULTS" | awk -F'|' -v t="$tech" '$1==t {print $2": "$3}' | tr '\n' ',' | sed 's/,$//')
   if echo "$rings" | grep -q "Stop" && echo "$rings" | grep -qE "Keep|Start"; then
     echo "- ⚡ **Conflicting Placements**: \`$tech\` has multiple placements across categories ($placements). Check specific quadrant context."
   elif echo "$rings" | grep -q "Stop"; then
-    echo "- ⚠️ **Stop**: \`$tech\` — Tikal advises against usage; seek Keep/Start alternatives in the same quadrant."
+    echo "- ⚠️ **Stop**: \`$tech\` — Tikal advises against usage; better alternatives exist. Seek Keep/Start alternatives in the same quadrant."
   elif echo "$rings" | grep -qE "Keep|Start"; then
     echo "- ✅ **Adopt**: \`$tech\` — Recommended standard ($placements)."
   elif echo "$rings" | grep -q "Try"; then
-    echo "- 🧪 **Try**: \`$tech\` — Promising technology; suitable for low-risk trials or POCs."
+    echo "- 🧪 **Try**: \`$tech\` — Seems promising on the surface; evaluate before broader adoption."
   fi
 done
 

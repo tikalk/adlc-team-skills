@@ -14,6 +14,12 @@ Assembles team AI directives context and injects it into the system prompt
 at session start. The CDR index lists all available team context modules
 with descriptors — read full module files on demand when a task matches.
 
+Discovery is **native**: the injected CDR index is matched by the LLM
+against the current task on its own, per prompt, with no skill invocation.
+`/team-discover` is a separate, **user-invoked** command for explicit
+structured re-discovery (e.g., starting a complex feature) and is not part
+of the bootstrap loop.
+
 ## Event hook (automatic)
 
 The `session_start` event hook runs `scripts/boot.sh` (POSIX) or

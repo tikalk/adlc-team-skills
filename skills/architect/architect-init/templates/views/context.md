@@ -40,26 +40,26 @@ graph TD
     %% Stakeholders (human actors)
     Users["Users/Clients"]
     Admins["Administrators"]
-    
+
     %% THE SYSTEM - Single blackbox
     System["System<br/>(This Application)"]
-    
+
     %% External Systems (third-party, outside your control)
     ExtPayment["Payment Provider<br/>(External)"]
     ExtAuth["Identity Provider<br/>(External)"]
-    
+
     %% Stakeholder interactions
     Users -->|"Uses"| System
     Admins -->|"Manages"| System
-    
+
     %% External system integrations
     System -->|"Processes payments"| ExtPayment
     System -->|"Authenticates via"| ExtAuth
-    
+
     classDef systemNode fill:#f47721,stroke:#333,stroke-width:3px,color:#fff
     classDef stakeholderNode fill:#4a9eff,stroke:#333,stroke-width:1px,color:#fff
     classDef externalNode fill:#e0e0e0,stroke:#333,stroke-width:1px
-    
+
     class System systemNode
     class Users,Admins stakeholderNode
     class ExtPayment,ExtAuth externalNode

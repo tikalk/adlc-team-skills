@@ -36,8 +36,6 @@ $aliases = @{
     "vue" = "Vue.js"; "vuejs" = "Vue.js"
     "node" = "Node.js"; "nodejs" = "Node.js"
     "ts" = "TypeScript"; "typescript" = "TypeScript"
-    "mongo" = "Beanie (mongo ORM)"; "mongodb" = "Beanie (mongo ORM)"
-    "pydantic" = "PydanticAI"
     "iac" = "Infrastructure as Code (IaC)"
     "mcp" = "Model Context Protocol (MCP)"
     "rsc" = "React Server Components"
@@ -45,8 +43,6 @@ $aliases = @{
     "idp" = "Internal Developer Portals (IDPs) (e.g., Port.io. Backstage)"
     "eso" = "External Secrets Operator"
     "gke" = "GKE Workload Identity"
-    "airflow" = "Airflow 3"
-    "spark" = "Apache Spark 4.0"
 }
 
 function Normalize-Alias([string]$q) {
@@ -84,13 +80,20 @@ foreach ($rawQ in $Queries) {
     foreach ($blip in $radar.blips) {
         $name = $blip.name
         $nl = $name.ToLower()
-        $match = ($nl -eq $cl) -or ($nl.StartsWith($cl)) -or ($nl.Contains($cl)) -or ($nl.Contains($q))
+        # Match by canonical alias only (no raw-query contains) to avoid
+        # short-query false positives (e.g. "ts" matching "A2A Agents").
+        $match = ($nl -eq $cl) -or ($nl.StartsWith($cl)) -or ($nl.Contains($cl))
         if ($match) {
             $key = "$name|$($blip.quadrant)|$($blip.ring)"
             if (-not $seen.ContainsKey($key)) {
                 $seen[$key] = $true
                 $why = Extract-Why $blip.description
-                if ($why.Length -gt 160) { $why = $why.Substring(0, 157) + "..." }
+                if ($why.Length -gt 160) {
+                    $cut = $why.Substring(0, 157)
+                    $lastSpace = $cut.LastIndexOf(' ')
+                    if ($lastSpace -gt 0) { $cut = $cut.Substring(0, $lastSpace) }
+                    $why = $cut + "..."
+                }
                 $results += [PSCustomObject]@{
                     name = $name
                     quadrant = $blip.quadrant
@@ -131,11 +134,11 @@ foreach ($g in $techGroups) {
     if ($hasStop -and $hasKeep) {
         Write-Output "- ⚡ **Conflicting Placements**: ``$($g.Name)`` has multiple placements across categories ($placements). Check specific quadrant context."
     } elseif ($hasStop) {
-        Write-Output "- ⚠️ **Stop**: ``$($g.Name)`` — Tikal advises against usage; seek Keep/Start alternatives in the same quadrant."
+        Write-Output "- ⚠️ **Stop**: ``$($g.Name)`` — Tikal advises against usage; better alternatives exist. Seek Keep/Start alternatives in the same quadrant."
     } elseif ($hasKeep) {
         Write-Output "- ✅ **Adopt**: ``$($g.Name)`` — Recommended standard ($placements)."
     } elseif ($hasTry) {
-        Write-Output "- 🧪 **Try**: ``$($g.Name)`` — Promising technology; suitable for low-risk trials or POCs."
+        Write-Output "- 🧪 **Try**: ``$($g.Name)`` — Seems promising on the surface; evaluate before broader adoption."
     }
 }
 

@@ -30,15 +30,15 @@ graph TD
     AuthService["Authentication<br/>Service"]
     BusinessLogic["Business Logic<br/>Layer"]
     DataAccess["Data Access<br/>Layer"]
-    
+
     APIGateway -->|Routes| AuthService
     APIGateway -->|Routes| BusinessLogic
     AuthService -->|Validates| BusinessLogic
     BusinessLogic -->|Queries| DataAccess
-    
+
     classDef serviceNode fill:#4a9eff,stroke:#333,stroke-width:2px,color:#fff
     classDef dataNode fill:#66c2a5,stroke:#333,stroke-width:2px,color:#fff
-    
+
     class APIGateway,AuthService,BusinessLogic serviceNode
     class DataAccess dataNode
 ```

@@ -20,10 +20,10 @@ and four adoption **rings**:
 
 | Ring | Meaning | Guidance |
 |------|---------|----------|
-| `Keep` | Mature, battle-tested standard | Recommend by default for current & new work |
-| `Start` | Modern, high-value | Recommend adopting on new projects |
-| `Try` | Emerging / promising | Recommend for low-risk trials or POCs |
-| `Stop` | Deprecated / anti-pattern | Warn against; recommend a `Keep`/`Start` alternative |
+| `Try` | New stuff that on the surface seems good (good press, new solution) | Explore / evaluate; not yet endorsed for production use |
+| `Start` | A good solution more companies should use; if in beta, active progress and contribution | Recommend adopting on new projects |
+| `Keep` | Stable release (non-beta) with major supporter acceptance (large community, used by corporates) | Recommend by default for current & new work |
+| `Stop` | Items we recommend companies stop using — better alternatives exist | Warn against; recommend a `Keep`/`Start` alternative |
 
 Each blip's `description` embeds an HTML `<p>Why?</p>` block followed by a
 `<p>Description</p>` block. The **Why?** text carries Tikal's explicit stance and
@@ -79,9 +79,11 @@ pwsh scripts/radar-search.ps1 <tech1> [tech2 ...]
 
 Or for JSON output (add `--json` for bash, `-Json` for PowerShell).
 
-The script handles alias mapping (`k8s` → `Kubernetes`, `postgres` → `PostgreSQL`, `gh actions` → `GitHub Actions`, etc.), matches against `resources/radar.json` (or live dataset), extracts Tikal's `<p>Why?</p>` opinion, and formats the markdown table automatically.
+The script handles alias mapping (`k8s` → `Kubernetes`, `postgres` → `PostgreSQL`, `gh actions` → `GitHub Actions`, etc.), matches against `resources/radar.json`, extracts Tikal's `<p>Why?</p>` opinion, and formats the markdown table automatically.
 
-If a technology appears in multiple quadrants with conflicting rings (e.g., `Node.js` in `DevOps: Stop` and `DevOps: Keep`), the script detects and flags it with a **Conflicting Guidance** note.
+If a technology appears in multiple placements with conflicting rings (e.g.,
+`Node.js` is both `DevOps: Stop` and `DevOps: Keep`), the script detects and
+flags it with a **Conflicting Guidance** note.
 
 **Schema of `resources/radar.json`**:
 ```json
@@ -164,8 +166,8 @@ _Source: Tikal Israeli Tech Radar (local snapshot) · N technologies matched._
 
 - One row per matched blip (include duplicates across quadrants when relevant).
 - Group a short **Radar guidance** list: safe-to-adopt vs avoid-with-alternatives.
-- Add a `_Source_` line noting whether data came from the **live** fetch or the
-  **local snapshot**, and how many technologies matched.
+- Add a `_Source_` line noting the data came from the **local snapshot** and
+  how many technologies matched.
 
 If no candidate technology matches any blip, state that plainly with an empty
 table and a `_Source_` line (e.g. `_Source: … · 0 technologies matched._`) —
@@ -173,9 +175,9 @@ do not fabricate radar placements.
 
 ## Failure Handling
 
-- Live fetch fails or returns non-JSON → silently use `resources/radar.json`.
-- Local fallback missing/unparseable → emit an empty context table noting the
-  radar was unavailable, and continue; never block the user's task.
+- Local `resources/radar.json` missing/unparseable → emit an empty context
+  table noting the radar was unavailable, and continue; never block the
+  user's task.
 - No matches → empty table + `0 technologies matched` line.
 
 ## Red Flags
@@ -195,7 +197,7 @@ do not fabricate radar placements.
 
 - Candidate technologies were extracted from the prompt (or category queries
   formed when no product was named).
-- The radar dataset was loaded (live if valid JSON, else `resources/radar.json`).
+- The radar dataset was loaded from `resources/radar.json`.
 - A **Tikal Tech Radar Context** table was produced with columns Technology /
   Quadrant / Ring / Tikal's Opinion (Why?), with the opinion sourced from the
   `<p>Why?</p>` block.
@@ -206,7 +208,7 @@ do not fabricate radar placements.
 
 ## Configuration
 
-- Live source: `https://www.tikalk.com/radar/` (best-effort; may not expose JSON).
-- Local fallback: `resources/radar.json` (bundled full radar snapshot).
+- Local source: `resources/radar.json` (bundled full radar snapshot; the only source the search script uses).
+- Canonical source: `https://www.tikalk.com/radar/` (for periodic manual snapshot regeneration; not fetched by the script at runtime).
 - Regenerate the snapshot periodically from the canonical Tikal radar dataset to
   stay current.

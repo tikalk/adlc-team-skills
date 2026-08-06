@@ -39,7 +39,7 @@ sequenceDiagram
     participant P1 as Process 1
     participant Q as Message Queue
     participant P2 as Process 2
-    
+
     P1->>Q: Publish event
     Q-->>P2: Deliver event
     P2->>P2: Process

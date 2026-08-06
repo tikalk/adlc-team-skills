@@ -25,18 +25,18 @@
 graph TB
     subgraph "Production"
         LB["Load Balancer"]
-        
+
         subgraph "App Tier"
             Web1["Web Server 1"]
             Web2["Web Server 2"]
         end
-        
+
         subgraph "Data Tier"
             DB["Database"]
             Cache["Cache"]
         end
     end
-    
+
     Internet["Internet"] -->|HTTPS| LB
     LB --> Web1
     LB --> Web2

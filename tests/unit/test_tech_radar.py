@@ -122,3 +122,79 @@ def test_radar_search_script_json_mode():
   assert data[0]["name"] == "FastAPI"
   assert data[0]["ring"] == "Keep"
   assert "why" in data[0]
+
+
+def _run_radar_search(*queries):
+  """Helper: run radar-search.sh and return stdout."""
+  result = subprocess.run(
+      ["bash", str(RADAR_SEARCH_SCRIPT), *queries],
+      capture_output=True,
+      text=True,
+      cwd=ROOT,
+  )
+  assert result.returncode == 0, f"radar-search.sh failed: {result.stderr}"
+  return result.stdout
+
+
+def test_radar_search_ts_no_false_positives():
+  """Short query 'ts' must not match every name containing the substring 'ts'.
+
+  Regression: the old raw-query contains($q) clause matched 'A2A Agents',
+  'Argo Rollouts', 'EKS Blueprints', etc. (17 rows). After the fix, 'ts' should
+  only match TypeScript and its compound entries (Node.js + Typescript).
+  """
+  stdout = _run_radar_search("ts")
+  assert "TypeScript" in stdout
+  # None of these false-positive names should appear
+  assert "A2A Agents" not in stdout
+  assert "Argo Rollouts" not in stdout
+  assert "EKS Blueprints" not in stdout
+  assert "Cert-manager" not in stdout
+
+
+def test_radar_search_airflow_returns_all_placements():
+  """'airflow' must return all Airflow blips, not just Airflow 3.
+
+  Regression: the old alias 'airflow' -> 'Airflow 3' would have narrowed
+  results if not for the contains($c) clause. After removing the narrowing
+  alias, all three placements surface.
+  """
+  stdout = _run_radar_search("airflow")
+  assert "Airflow" in stdout
+  assert "Airflow 2" in stdout
+  assert "Airflow 3" in stdout
+
+
+def test_radar_search_jenkins_conflict_detection():
+  """Jenkins has conflicting placements (Backend:Stop, DevOps:Keep) — must flag it."""
+  stdout = _run_radar_search("jenkins")
+  assert "Conflicting Placements" in stdout
+  assert "Jenkins" in stdout
+  # JCasC (with parens) must be handled by the awk exact-match, not broken by grep regex
+  assert "JCasC" in stdout
+
+
+def test_radar_skill_canonical_ring_definitions():
+  """SKILL.md ring table must use canonical Tikal ring definitions (not paraphrased).
+
+  Locks the definitions so they can't silently drift back to the inaccurate
+  paraphrases ('Mature, battle-tested', 'Emerging / promising', 'low-risk trials').
+  """
+  skill_md = (
+      ROOT / "skills" / "tech-radar" / "tech-radar-context" / "SKILL.md"
+  ).read_text(encoding="utf-8")
+
+  # Canonical Try definition
+  assert "New stuff that on the surface seems good" in skill_md
+  assert "low-risk trials" not in skill_md
+
+  # Canonical Start definition (beta nuance)
+  assert "if in beta, active progress and contribution" in skill_md
+
+  # Canonical Keep definition (non-beta distinction)
+  assert "Stable release (non-beta)" in skill_md
+  assert "Mature, battle-tested" not in skill_md
+
+  # Canonical Stop definition
+  assert "better alternatives exist" in skill_md
+  assert "Deprecated / anti-pattern" not in skill_md

@@ -23,13 +23,13 @@
 erDiagram
     ENTITY1 ||--o{ ENTITY2 : "relationship"
     ENTITY2 }|--|| ENTITY3 : "relationship"
-    
+
     ENTITY1 {
         uuid id PK
         string name
         timestamp created_at
     }
-    
+
     ENTITY2 {
         uuid id PK
         uuid entity1_id FK

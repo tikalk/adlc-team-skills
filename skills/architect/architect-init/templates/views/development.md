@@ -58,12 +58,12 @@ graph TD
     StorageImpl["[Technology]<br/>[Variant]"]:::implNode
     AIGWImpl["[Technology]<br/>[Variant]"]:::implNode
     WorkflowImpl["[Technology]<br/>[Variant]"]:::implNode
-    
+
     AppImpl -->|ORM/Client| DBImpl
     AppImpl -->|SDK| StorageImpl
     AppImpl -->|API Routes| AIGWImpl
     AppImpl -->|Triggers| WorkflowImpl
-    
+
     classDef implNode fill:#e67e22,stroke:#333,stroke-width:2px,color:#fff
 ```
 
@@ -85,10 +85,10 @@ graph LR
     API["API Layer"]
     SVC["Service Layer"]
     REPO["Repository Layer"]
-    
+
     API --> SVC
     SVC --> REPO
-    
+
     classDef layer fill:#4a9eff,stroke:#333,stroke-width:2px,color:#fff
     class API,SVC,REPO layer
 ```

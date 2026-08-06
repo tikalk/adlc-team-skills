@@ -1,6 +1,6 @@
 # Architecture Description: [SYSTEM_NAME]
 
-**Version**: 1.0 | **Created**: [DATE] | **Last Updated**: [DATE]  
+**Version**: 1.0 | **Created**: [DATE] | **Last Updated**: [DATE]\
 **Architect**: [AUTHOR/AI] | **Status**: Draft | Review | Approved
 **ADR Reference**: [.adlc/memory/adr/adr.md](.adlc/memory/adr/adr.md)
 
@@ -74,26 +74,26 @@ graph TD
     %% Stakeholders (human actors)
     Users["Users/Clients"]
     Admins["Administrators"]
-    
+
     %% THE SYSTEM - Single blackbox
     System["System<br/>(This Application)"]
-    
+
     %% External Systems (third-party, outside your control)
     ExtPayment["Payment Provider<br/>(External)"]
     ExtAuth["Identity Provider<br/>(External)"]
-    
+
     %% Stakeholder interactions
     Users -->|"Uses"| System
     Admins -->|"Manages"| System
-    
+
     %% External system integrations
     System -->|"Processes payments"| ExtPayment
     System -->|"Authenticates via"| ExtAuth
-    
+
     classDef systemNode fill:#f47721,stroke:#333,stroke-width:3px,color:#fff
     classDef stakeholderNode fill:#4a9eff,stroke:#333,stroke-width:1px,color:#fff
     classDef externalNode fill:#e0e0e0,stroke:#333,stroke-width:1px
-    
+
     class System systemNode
     class Users,Admins stakeholderNode
     class ExtPayment,ExtAuth externalNode
@@ -128,15 +128,15 @@ graph TD
     AuthService["Authentication<br/>Service"]
     BusinessLogic["Business Logic<br/>Layer"]
     DataAccess["Data Access<br/>Layer"]
-    
+
     APIGateway -->|Routes| AuthService
     APIGateway -->|Routes| BusinessLogic
     AuthService -->|Validates| BusinessLogic
     BusinessLogic -->|Queries| DataAccess
-    
+
     classDef serviceNode fill:#4a9eff,stroke:#333,stroke-width:2px,color:#fff
     classDef dataNode fill:#66c2a5,stroke:#333,stroke-width:2px,color:#fff
-    
+
     class APIGateway,AuthService,BusinessLogic serviceNode
     class DataAccess dataNode
 ```
@@ -277,18 +277,18 @@ project-root/
 graph TB
     subgraph "Production"
         LB["Load Balancer"]
-        
+
         subgraph "App Tier"
             Web1["Web Server 1"]
             Web2["Web Server 2"]
         end
-        
+
         subgraph "Data Tier"
             DB["Database"]
             Cache["Cache"]
         end
     end
-    
+
     Internet["Internet"] -->|HTTPS| LB
     LB --> Web1
     LB --> Web2
@@ -466,10 +466,10 @@ Detailed Architecture Decision Records are maintained in [.adlc/memory/adr/adr.m
 
 ### C. Tech Stack Summary
 
-**Languages**: [e.g., Python 3.11, TypeScript]  
-**Frameworks**: [e.g., FastAPI, React]  
-**Databases**: [e.g., PostgreSQL, Redis]  
-**Infrastructure**: [e.g., Kubernetes, Terraform]  
-**Cloud Platform**: [e.g., AWS]  
-**CI/CD**: [e.g., GitHub Actions]  
+**Languages**: [e.g., Python 3.11, TypeScript]\
+**Frameworks**: [e.g., FastAPI, React]\
+**Databases**: [e.g., PostgreSQL, Redis]\
+**Infrastructure**: [e.g., Kubernetes, Terraform]\
+**Cloud Platform**: [e.g., AWS]\
+**CI/CD**: [e.g., GitHub Actions]\
 **Monitoring**: [e.g., Datadog]

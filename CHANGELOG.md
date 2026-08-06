@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.4] - 2026-08-06
+
+### Changed
+
+- **`team-boot` clarifies native discovery and `/team-discover` scope** (`skills/team/team-boot/SKILL.md`): the Overview now states explicitly that discovery is native — the injected CDR index is matched by the LLM per prompt with no skill invocation — and that `/team-discover` is a user-invoked command, not part of the bootstrap loop.
+
+- **`team-discover` documents its relationship to `team-boot`** (`skills/team/team-discover/SKILL.md`): added a "Relationship to team-boot" section making explicit that team-boot does not invoke this skill in its bootstrap loop (discovery is native) and that `/team-discover` is user-invoked for explicit structured re-discovery. Kills the drift between the two skill docs.
+
 ## [0.23.3] - 2026-08-05
 
 ### Fixed

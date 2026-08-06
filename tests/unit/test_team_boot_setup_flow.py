@@ -1,4 +1,7 @@
 from pathlib import Path
+import json
+import subprocess
+import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 BOOT = (ROOT / "skills/team/team-boot/SKILL.md").read_text(encoding="utf-8")
@@ -287,3 +290,141 @@ def test_tech_radar_skill_references_sh_and_ps1():
 def test_team_setup_no_python():
     """team-setup must not reference python3."""
     assert "python3" not in SETUP
+
+
+# ---------------------------------------------------------------------------
+# boot.sh jq robustness — graceful degradation on malformed .skills.json
+# ---------------------------------------------------------------------------
+
+def _setup_boot_sandbox(tmp_path, skills_json_content):
+    """Create a minimal sandbox: init-options.json + team-ai-directives with
+    a .skills.json whose content the caller controls. Returns the project
+    root Path (cwd for boot.sh execution)."""
+    directives = tmp_path / "directives"
+    directives.mkdir()
+    (directives / "context_modules").mkdir(parents=True)
+    (directives / "context_modules" / "constitution.md").write_text(
+        "1. Test Principle\n"
+    )
+    (directives / "CDR.md").write_text("# CDR\n\n| CDR-2026-001 | Rule | test |\n")
+    (directives / ".skills.json").write_text(skills_json_content)
+    (directives / ".mcp.json").write_text(json.dumps({"mcpServers": {}}))
+
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".adlc").mkdir()
+    (project / ".adlc" / "init-options.json").write_text(
+        json.dumps({"team_ai_directives": str(directives)})
+    )
+    return project
+
+
+BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/boot.sh"
+
+# The exact corruption that caused the production incident: a duplicate
+# closing brace after the last external skill entry. jq exits 4 (parse
+# error) but still emits partial stdout, which used to concatenate with
+# the fallback "0" in $(jq || echo "0") and break the arithmetic.
+_MALFORMED_DUPLICATE_BRACE = """{
+  "default": ["skill-a", "skill-b"],
+  "external": {
+    "tech-radar-context": {
+      "description": "test",
+      "source": "https://example.com",
+      "url": "https://example.com/SKILL.md"
+    }
+    }
+  },
+  "blocked": []
+}
+"""
+
+_MALFORMED_TRUNCATED = '{"default": ["skill-a"], "external": {'
+
+_MALFORMED_EMPTY = ""
+
+
+@pytest.mark.requires_bash
+def test_boot_sh_survives_malformed_skills_json_duplicate_brace(tmp_path):
+    """boot.sh must exit 0 and render skills section even when .skills.json
+    has a duplicate closing brace (the production incident scenario)."""
+    project = _setup_boot_sandbox(tmp_path, _MALFORMED_DUPLICATE_BRACE)
+    result = subprocess.run(
+        ["bash", str(BOOT_SH_PATH)],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, f"boot.sh failed:\n{result.stderr}"
+    assert "syntax error" not in result.stderr
+    assert "syntax error" not in result.stdout
+    assert "## Available Skills" in result.stdout
+    assert "_Total:" in result.stdout
+
+
+@pytest.mark.requires_bash
+def test_boot_sh_survives_truncated_skills_json(tmp_path):
+    """boot.sh must exit 0 on truncated JSON (jq emits nothing, exits 4)."""
+    project = _setup_boot_sandbox(tmp_path, _MALFORMED_TRUNCATED)
+    result = subprocess.run(
+        ["bash", str(BOOT_SH_PATH)],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, f"boot.sh failed:\n{result.stderr}"
+    assert "syntax error" not in result.stderr
+    assert "## Available Skills" in result.stdout
+    assert "_Total: 0 skills available." in result.stdout
+
+
+@pytest.mark.requires_bash
+def test_boot_sh_survives_empty_skills_json(tmp_path):
+    """boot.sh must exit 0 on empty .skills.json file."""
+    project = _setup_boot_sandbox(tmp_path, _MALFORMED_EMPTY)
+    result = subprocess.run(
+        ["bash", str(BOOT_SH_PATH)],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, f"boot.sh failed:\n{result.stderr}"
+    assert "syntax error" not in result.stderr
+    assert "_Total: 0 skills available." in result.stdout
+
+
+@pytest.mark.requires_bash
+def test_boot_sh_valid_skills_json_counts_correctly(tmp_path):
+    """boot.sh must report correct skill count on valid .skills.json."""
+    valid = json.dumps({
+        "default": ["skill-a", "skill-b", "skill-c"],
+        "external": {
+            "ext-1": {"description": "external one"},
+        },
+        "blocked": [],
+    })
+    project = _setup_boot_sandbox(tmp_path, valid)
+    result = subprocess.run(
+        ["bash", str(BOOT_SH_PATH)],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, f"boot.sh failed:\n{result.stderr}"
+    assert "_Total: 4 skills available." in result.stdout
+
+
+def test_boot_sh_no_fragile_jq_or_pattern():
+    """boot.sh must NOT use the fragile $(jq ... || echo "0") pattern that
+    concatenates partial jq output with the fallback on parse errors."""
+    assert '|| echo "0"' not in BOOT_SH
+    assert "|| echo '0'" not in BOOT_SH
+
+
+def test_boot_sh_validates_skill_count_is_integer():
+    """boot.sh must validate jq output is a pure integer before arithmetic."""
+    assert "^[0-9]+$" in BOOT_SH

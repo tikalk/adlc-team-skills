@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.23.4] - 2026-08-06
 
+### Fixed
+
+- **`boot.sh` / `boot.ps1` crash on malformed `.skills.json`** (`skills/team/team-boot/scripts/`): the `$(jq ... || echo "0")` pattern concatenated partial jq stdout with the fallback `"0"` when jq exited with a parse error, producing multi-line values like `"16\n0"` that broke the arithmetic on line 58 (`syntax error in expression (error token is "0")`). This caused team-boot `session_start` hook failures across all projects using a directives repo with corrupted JSON. Fixed by separating stdout capture from the fallback (`$(jq ...) || VAR=0`) and validating the result is a pure integer (`[[ "$VAR" =~ ^[0-9]+$ ]]`). Also hardened the `jq ... | while read` iteration pipelines and `CDR_COUNT` with the same pattern, and wrapped `boot.ps1`'s `ConvertFrom-Json` in try/catch so malformed JSON degrades gracefully instead of crashing the script.
+
 ### Changed
 
 - **`team-boot` clarifies native discovery and `/team-discover` scope** (`skills/team/team-boot/SKILL.md`): the Overview now states explicitly that discovery is native — the injected CDR index is matched by the LLM per prompt with no skill invocation — and that `/team-discover` is a user-invoked command, not part of the bootstrap loop.

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-08-08
+
+### Added
+
+- **`workspace --init` mode** (`skills/workspace/SKILL.md`, `skills/workspace/scripts/bash/setup-workspace.sh`, `skills/workspace/scripts/powershell/setup-workspace.ps1`): new init mode that creates the `.adlc/` directory tree (10 subdirs: `product/`, `architecture/`, `context/`, `skills/`, `drafts/{pdr,adr,cdr,skills,evals}/`), checks `.gitignore` conventions (13 rules for local agent state), and discovers child repos at depth 1. Idempotent — second run reports 0 dirs created. Setup script outputs JSON with `REPO_ROOT`, `ADLC_DIRS_CREATED`, `GITIGNORE_RULES_MISSING`, `CHILD_REPOS`, etc. Adapted from the spec-kit's `git.workspace` command (`speckit.git.workspace.md` + `speckit.git.setup-ignore.md`).
+
+- **`workspace --ignore-only` mode** (`skills/workspace/SKILL.md`): adds child repos to `.gitignore` instead of creating submodules. Removes from parent index if tracked (`git rm --cached`), adds `<name>/` to `.gitignore`, commits with `[workspace]` message. Idempotent. Use when child repos are truly independent projects.
+
+### Changed
+
+- **`workspace` skill merged with `workspace-init`** (`skills/workspace/SKILL.md`): the separate `workspace-init` skill was merged back into `workspace` as a `--init` flag. Single skill with clear mode separation: `--init` (one-time setup), default (read-only audit), `--link` (submodule registration), `--ignore-only` (ignore instead of submodules). Eliminates the artificial split between init and audit. All 88 tests pass.
+
+- **`.opencode/commands/workspace.md` and `README.md` aligned with merged skill**: updated description, workflow example, and commands list to reflect `--init` and `--ignore-only` modes.
+
 ## [0.23.4] - 2026-08-06
 
 ### Fixed

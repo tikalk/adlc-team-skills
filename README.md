@@ -188,7 +188,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 
 - **`mission-brief`** — spec-contract pipeline with converge loop, circuit breaker, resume.
 - **`tech-radar-context`** — injects Tikal Tech Radar context for tech choices. Auto-triggered.
-- **`workspace`** — multi-repo workspace: shared `.adlc/` context across child repos.
+- **`workspace`** — multi-repo workspace: `--init` creates `.adlc/` structure + `.gitignore`, discover/link/audit child repos.
 
 ---
 
@@ -341,6 +341,7 @@ mission-brief "feature" → review brief → execute steps → converge → miss
 
 **Multi-repo workspace:**
 ```
+workspace --init → create .adlc/ structure + configure .gitignore
 product-specify / architect-specify → create shared PDRs/ADRs in parent .adlc/
 workspace --link → register child repos as submodules
 workspace --status → audit branch, dirty, unpushed, SHA drift

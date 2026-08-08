@@ -45,7 +45,8 @@ echo ""
 
 # CDR Index — compact: ID + Type + Descriptor only
 echo "## CDR Index"
-CDR_COUNT=$(awk '/^\| CDR|^\| skill|^\| example/ {count++} END {print count+0}' "$TEAM_AI_DIRECTIVES/CDR.md" 2>/dev/null || echo "0")
+CDR_COUNT=$(awk '/^\| CDR|^\| skill|^\| example/ {count++} END {print count+0}' "$TEAM_AI_DIRECTIVES/CDR.md" 2>/dev/null) || CDR_COUNT=0
+[[ "$CDR_COUNT" =~ ^[0-9]+$ ]] || CDR_COUNT=0
 awk -F'|' '/^\| CDR|^\| skill|^\| example/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$4); gsub(/^ +| +$/,"",$9); print "| " $2 " | " $4 " | " $9 " |"}' "$TEAM_AI_DIRECTIVES/CDR.md" 2>/dev/null || echo "(not found)"
 echo ""
 echo "_Total: $CDR_COUNT CDR entries available._"
@@ -53,12 +54,14 @@ echo ""
 
 # Skills — names + descriptions only (lean)
 echo "## Available Skills"
-SKILL_DEFAULT_COUNT=$(jq -r '.default | length' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || echo "0")
-SKILL_EXTERNAL_COUNT=$(jq -r '.external | length' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || echo "0")
+SKILL_DEFAULT_COUNT=$(jq -r '.default | length' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null) || SKILL_DEFAULT_COUNT=0
+[[ "$SKILL_DEFAULT_COUNT" =~ ^[0-9]+$ ]] || SKILL_DEFAULT_COUNT=0
+SKILL_EXTERNAL_COUNT=$(jq -r '.external | length' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null) || SKILL_EXTERNAL_COUNT=0
+[[ "$SKILL_EXTERNAL_COUNT" =~ ^[0-9]+$ ]] || SKILL_EXTERNAL_COUNT=0
 SKILL_TOTAL=$((SKILL_DEFAULT_COUNT + SKILL_EXTERNAL_COUNT))
 jq -r '.default[]' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null | while read -r name; do
   echo "- $name"
-done
+done || true
 jq -r '.external | to_entries[] | "- \(.key): \(.value.description)"' "$TEAM_AI_DIRECTIVES/.skills.json" 2>/dev/null || true
 echo ""
 echo "_Total: $SKILL_TOTAL skills available._"

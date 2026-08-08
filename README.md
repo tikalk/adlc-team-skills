@@ -114,6 +114,10 @@ get commands only.
 it points you to `/team-setup`, which clones, links, or scaffolds your
 team-ai-directives repo. `team-constitution` fills in your principles.
 
+**Using `agentic-sdlc-spec-kit` alongside this repo?** See
+[Coexistence with Spec Kit](docs/spec-kit-integration.md) for the
+conflict-free install flow.
+
 ## Universal orchestration
 
 `mission-brief` doesn't force a proprietary ecosystem. At mission start it

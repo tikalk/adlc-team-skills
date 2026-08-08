@@ -620,8 +620,8 @@ Chosen option: "{title option 1}", because {justification}.
 Recommended next steps:
 
 1. **Review ADRs**: Ensure all decisions are accurate and complete
-2. **Run `/architect.clarify`**: Refine any ambiguous or incomplete ADRs
-3. **Run `/architect.implement`**: Generate full Architecture Description from ADRs
+2. **Run `/architect-clarify`**: Refine any ambiguous or incomplete ADRs
+3. **Run `/architect-implement`**: Generate full Architecture Description from ADRs
 4. **Proceed to features**: Use `/architect-specify` to create new ADRs for additional decisions
 
 ### Context

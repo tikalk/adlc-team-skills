@@ -119,3 +119,21 @@ def test_architect_ps1_setup_copies_identical():
     contents = {p: p.read_bytes() for p in ARCHITECT_PS1_SETUPS}
     unique = set(contents.values())
     assert len(unique) == 1, "architect setup-architect.ps1 files have diverged — keep all 5 copies identical"
+
+
+def test_no_dot_notation_skill_references():
+    """Skills must hand over to hyphenated command names (/architect-init), never
+    spec-kit dot-notation (/architect.init, /architect.adlc, /product.clarify).
+    The .opencode/commands/ files are hyphenated, so dot-notation references are dead links."""
+    import re
+    pattern = re.compile(
+        r"/(architect|product|levelup|evals|team)\."
+        r"(init|specify|clarify|implement|analyze|roadmap|validate|publish|adlc)\b"
+    )
+    offenders = []
+    for ext in ("*.md", "*.sh", "*.ps1"):
+        for f in ROOT.glob(f"skills/**/{ext}"):
+            for lineno, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                if pattern.search(line):
+                    offenders.append(f"{f.relative_to(ROOT)}:{lineno}: {line.strip()[:100]}")
+    assert not offenders, "Dot-notation skill references found (use hyphens):\n" + "\n".join(offenders[:20])

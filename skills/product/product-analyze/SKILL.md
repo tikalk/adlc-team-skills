@@ -1,6 +1,6 @@
 ---
 name: product-analyze
-description: Read-only analysis of PDR↔PRD consistency, PDR quality, cross-PDR conflicts, and staleness. Outputs a structured markdown report with severity-assigned findings. Use after /product.implement or periodically to detect drift.
+description: Read-only analysis of PDR↔PRD consistency, PDR quality, cross-PDR conflicts, and staleness. Outputs a structured markdown report with severity-assigned findings. Use after /product-implement or periodically to detect drift.
 disable-model-invocation: true
 ---
 
@@ -20,14 +20,14 @@ Performs **read-only** product consistency analysis:
 
 ## When to use
 
-- After `/product.implement` to validate generated PRD
-- After `/product.clarify` to verify refinements
+- After `/product-implement` to validate generated PRD
+- After `/product-clarify` to verify refinements
 - Before feature development to ensure product is solid
 - Periodically to detect drift as product evolves
 
 ## When NOT to use
 
-- No product artifacts exist (use `/product.init` or `/product.specify` first)
+- No product artifacts exist (use `/product-init` or `/product-specify` first)
 - You want to modify files (this is analysis-only)
 
 ## Execution Steps
@@ -148,13 +148,13 @@ For each PDR, check if decision appears in PRD:
 
 ### Next Actions
 - **CRITICAL issues**: Resolve constitution violations before proceeding
-  - Command: `/product.clarify`
+  - Command: `/product-clarify`
 - **HIGH PDR quality**: Address missing alternatives and consequences
-  - Command: `/product.clarify`
+  - Command: `/product-clarify`
 - **PDR→PRD drift**: Update PRD to reflect PDR decisions
-  - Command: `/product.implement --update`
+  - Command: `/product-implement --update`
 - **PRD→PDR drift**: Create missing PDRs
-  - Command: `/product.specify` or `/product.init`
+  - Command: `/product-specify` or `/product-init`
 ```
 
 ## Key Rules

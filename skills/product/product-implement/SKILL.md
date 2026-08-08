@@ -1,6 +1,6 @@
 ---
 name: product-implement
-description: Generate a full Product Requirements Document (PRD.md) from accepted PDRs using multi-agent DAG orchestration. Reads individual PDR files, generates PRD sections from templates, validates output, and promotes accepted PDRs to memory. Use after /product.clarify.
+description: Generate a full Product Requirements Document (PRD.md) from accepted PDRs using multi-agent DAG orchestration. Reads individual PDR files, generates PRD sections from templates, validates output, and promotes accepted PDRs to memory. Use after /product-clarify.
 disable-model-invocation: true
 ---
 
@@ -21,13 +21,13 @@ Transforms **accepted PDRs** into a comprehensive, self-contained `PRD.md` using
 
 ## When to use
 
-- After `/product.clarify` has approved PDRs
-- After `/product.init` to document existing product
+- After `/product-clarify` has approved PDRs
+- After `/product-init` to document existing product
 - PDR updates requiring PRD regeneration
 
 ## When NOT to use
 
-- No Accepted PDRs (run `/product.clarify` first)
+- No Accepted PDRs (run `/product-clarify` first)
 - Minor PRD edits (edit `PRD.md` directly)
 
 ## Pre-Flight Validation
@@ -39,7 +39,7 @@ Transforms **accepted PDRs** into a comprehensive, self-contained `PRD.md` using
    - If **zero**: STOP and output:
      ```
      Cannot proceed: No Accepted PDRs found.
-     Run /product.clarify to review and approve PDRs first.
+     Run /product-clarify to review and approve PDRs first.
      ```
    - If ≥1: Proceed
 

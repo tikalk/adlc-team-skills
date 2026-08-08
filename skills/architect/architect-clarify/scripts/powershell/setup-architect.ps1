@@ -449,6 +449,51 @@ function Parse-Views {
     }
 }
 
+# Get architecture diagram format (mermaid or ascii).
+# Override via ARCHITECTURE_DIAGRAM_FORMAT env var; defaults to "mermaid".
+# Invalid values fall back to "mermaid".
+function Get-ArchitectureDiagramFormat {
+    $format = $env:ARCHITECTURE_DIAGRAM_FORMAT
+    if ($format -eq 'mermaid' -or $format -eq 'ascii') {
+        return $format
+    }
+    return 'mermaid'
+}
+
+# Validate Mermaid diagram syntax (lightweight regex validation)
+# Returns $true if valid, $false if invalid
+# Args: MermaidCode - Mermaid code string
+function Test-MermaidSyntax {
+    param(
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [string]$MermaidCode
+    )
+
+    # Check if empty
+    if ([string]::IsNullOrWhiteSpace($MermaidCode)) {
+        return $false
+    }
+
+    # Check for basic Mermaid diagram types
+    if ($MermaidCode -notmatch '^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline)') {
+        return $false
+    }
+
+    # Check for balanced brackets/parentheses (simplified)
+    $openBrackets = ([regex]::Matches($MermaidCode, '\[')).Count
+    $closeBrackets = ([regex]::Matches($MermaidCode, '\]')).Count
+    $openParens = ([regex]::Matches($MermaidCode, '\(')).Count
+    $closeParens = ([regex]::Matches($MermaidCode, '\)')).Count
+
+    if ($openBrackets -ne $closeBrackets -or $openParens -ne $closeParens) {
+        return $false
+    }
+
+    # Basic syntax passed
+    return $true
+}
+
 # Generate and insert diagrams into architecture.md
 function New-ArchitectureDiagrams {
     param(

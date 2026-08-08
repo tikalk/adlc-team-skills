@@ -55,3 +55,46 @@ get_feature_paths() {
     _seed_templates "$repo_root"
     echo "REPO_ROOT=\"$repo_root\""
 }
+
+# Get architecture diagram format (mermaid or ascii).
+# Override via ARCHITECTURE_DIAGRAM_FORMAT env var; defaults to "mermaid".
+# Invalid values fall back to "mermaid".
+get_architecture_diagram_format() {
+    local format="${ARCHITECTURE_DIAGRAM_FORMAT:-mermaid}"
+    if [[ "$format" == "mermaid" || "$format" == "ascii" ]]; then
+        echo "$format"
+    else
+        echo "mermaid"
+    fi
+}
+
+# Validate Mermaid diagram syntax (lightweight regex validation).
+# Returns 0 if valid, 1 if invalid.
+# Args: $1 - Mermaid code string
+validate_mermaid_syntax() {
+    local mermaid_code="$1"
+
+    # Check if empty
+    if [[ -z "$mermaid_code" ]]; then
+        return 1
+    fi
+
+    # Check for basic Mermaid diagram types
+    if ! echo "$mermaid_code" | grep -qE '^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline)'; then
+        return 1
+    fi
+
+    # Check for balanced brackets/parentheses (simplified)
+    local open_brackets close_brackets open_parens close_parens
+    open_brackets=$(echo "$mermaid_code" | grep -o '\[' | wc -l)
+    close_brackets=$(echo "$mermaid_code" | grep -o '\]' | wc -l)
+    open_parens=$(echo "$mermaid_code" | grep -o '(' | wc -l)
+    close_parens=$(echo "$mermaid_code" | grep -o ')' | wc -l)
+
+    if [[ $open_brackets -ne $close_brackets ]] || [[ $open_parens -ne $close_parens ]]; then
+        return 1
+    fi
+
+    # Basic syntax passed
+    return 0
+}

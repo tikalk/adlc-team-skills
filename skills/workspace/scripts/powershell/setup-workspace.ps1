@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# setup-workspace-init.ps1 — Setup for workspace-init (self-contained)
+# setup-workspace.ps1 — Setup for workspace --init mode (self-contained)
 #
 # Creates .adlc/ directory structure, checks .gitignore conventions,
 # discovers child repos at depth 1, and outputs JSON metadata.

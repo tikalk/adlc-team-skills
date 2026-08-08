@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-workspace-init.sh — Setup for workspace-init (self-contained)
+# setup-workspace.sh — Setup for workspace --init mode (self-contained)
 #
 # Creates .adlc/ directory structure, checks .gitignore conventions,
 # discovers child repos at depth 1, and outputs JSON metadata.

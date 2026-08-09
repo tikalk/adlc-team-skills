@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-08-09
+
+### Added
+
+- **Auto-tag release on PR merge** (`.github/workflows/auto-tag.yml`, `RELEASE.md`): new GitHub Actions workflow that runs on every push to `main`, parses the `## [X.Y.Z]` headers from `CHANGELOG.md`, and creates annotated `adlc-team-skills-v*` tags for every new untagged version at the merge commit. Each pushed tag then triggers the existing Release workflow, which creates the GitHub release — no manual tagging needed after a PR merges. Multi-version merge commits get one tag per new CHANGELOG version. The workflow carries `contents: write` but only runs on push to `main` (never on `pull_request`), so the elevated token is never exposed to untrusted PR code; `test.yml` remains `contents: read`. Versions older than the latest existing tag are deliberately skipped (historical gaps like `0.1.0` must still be tagged manually at their original commit).
+
 ## [0.24.1] - 2026-08-08
 
 ### Fixed

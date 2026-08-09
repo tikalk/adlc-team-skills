@@ -1,0 +1,96 @@
+name: Auto-Tag Release
+
+# Tags new CHANGELOG versions automatically after a PR merges to main.
+# Compares the versions declared in CHANGELOG.md against existing
+# `adlc-team-skills-v*` tags and creates annotated tags for any NEW untagged
+# versions at the merge commit. Each pushed tag then triggers the existing
+# Release workflow, which validates and creates the GitHub release.
+#
+# Security: this is the ONLY workflow that carries contents: write, and it
+# only runs on push to main (never on pull_request), so the elevated token
+# is never exposed to untrusted PR code. test.yml stays contents: read.
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    # Only tag on the canonical repo, never on forks.
+    if: github.repository == 'tikalk/adlc-team-skills'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find new untagged CHANGELOG versions
+        id: versions
+        run: |
+          # All semver versions declared in CHANGELOG.md, newest first.
+          mapfile -t declared < <(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md)
+
+          if [[ ${#declared[@]} -eq 0 ]]; then
+            echo "ERROR: no version headers (## [X.Y.Z]) found in CHANGELOG.md"
+            exit 1
+          fi
+
+          # Highest already-tagged version, if any.
+          latest_tagged="$(git tag -l 'adlc-team-skills-v*' \
+            | sed 's/^adlc-team-skills-v//' | sort -V | tail -n1 || true)"
+
+          # Only versions NEWER than the latest tag qualify for auto-tagging.
+          # Older untagged versions (pre-existing gaps like 0.1.0) must be
+          # tagged manually at their original commit, not at the merge commit.
+          candidates=()
+          for version in "${declared[@]}"; do
+            if [[ -z "$latest_tagged" ]] \
+              || [[ "$(printf '%s\n%s' "$version" "$latest_tagged" | sort -V | tail -n1)" == "$version" ]]; then
+              candidates+=("$version")
+            fi
+          done
+
+          # Drop already-tagged versions.
+          untagged=()
+          for version in "${candidates[@]}"; do
+            if ! git rev-parse -q --verify "refs/tags/adlc-team-skills-v${version}" >/dev/null; then
+              untagged+=("$version")
+            fi
+          done
+
+          if [[ ${#untagged[@]} -eq 0 ]]; then
+            echo "No new versions to tag (latest tagged: ${latest_tagged:-none})."
+            echo "untagged=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "New versions to tag at ${GITHUB_SHA}:"
+          for version in "${untagged[@]}"; do
+            echo "  - $version"
+          done
+
+          echo "untagged=${untagged[*]}" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tags
+        if: steps.versions.outputs.untagged != ''
+        run: |
+          for version in ${{ steps.versions.outputs.untagged }}; do
+            # Validate semver shape before tagging.
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+              || { echo "ERROR: not semver: $version"; exit 1; }
+
+            tag="adlc-team-skills-v${version}"
+            # Idempotency guard: skip if a concurrent run already tagged it.
+            if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+              echo "Tag already exists locally, skipping: $tag"
+              continue
+            fi
+
+            echo "Creating tag: $tag at ${GITHUB_SHA}"
+            git tag -a "$tag" -m "v${version}" "$GITHUB_SHA"
+            git push origin "$tag"
+            echo "Pushed: $tag"
+          done

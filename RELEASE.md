@@ -14,22 +14,30 @@ Examples: `adlc-team-skills-v0.9.0`, `adlc-team-skills-v1.0.0`
 
 1. **Update `CHANGELOG.md`** — add the new version entry at the top with a date and Added/Changed/Fixed/Removed sections
 2. **Commit and push** — all changes committed and pushed to `main`
-3. **Create annotated tag** at the release commit:
-   ```bash
-   git tag adlc-team-skills-vX.Y.Z -m "vX.Y.Z"
-   ```
-4. **Push the tag**:
-   ```bash
-   git push origin adlc-team-skills-vX.Y.Z
-   ```
-5. **Create GitHub release** with the CHANGELOG section as notes:
-   ```bash
-   awk '/^## \[X.Y.Z\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md \
-     | gh release create adlc-team-skills-vX.Y.Z --title "adlc-team-skills vX.Y.Z" --notes-file - --latest
-   ```
-6. **Verify**: `gh release list` shows the new release as Latest, notes render correctly
+3. **Merge the PR** — the **Auto-Tag Release** workflow creates the annotated
+   tag at the merge commit automatically (see below). Manual tagging is only
+   needed for pre-existing untagged versions (e.g. old gaps like `0.1.0`).
+4. **Verify**: `gh release list` shows the new release as Latest, notes render correctly
 
-## Automated release
+## Automated tagging (after PR merge)
+
+The **Auto-Tag Release** GitHub Actions workflow runs on every push to `main`:
+
+1. Parses all `## [X.Y.Z]` headers from `CHANGELOG.md`.
+2. Compares them against existing `adlc-team-skills-v*` tags.
+3. Creates annotated tags for every **new** untagged version **newer than the
+   latest existing tag**, pointing at the merge commit.
+4. Each pushed tag triggers the **Release** workflow, which validates the
+   CHANGELOG entry, confirms the commit is on `main`, extracts the notes, and
+   creates the release with `--latest` — automatically.
+
+Multi-version commits are handled: if one merge commit adds several new
+CHANGELOG versions, each version gets its own tag at that commit.
+
+## Manual release
+
+If you prefer to tag explicitly (or are tagging a pre-existing untagged
+version that the workflow deliberately skips):
 
 1. Update `CHANGELOG.md` with the new version entry and commit/push to `main`.
 2. Tag and push:
@@ -77,7 +85,10 @@ gh release create adlc-team-skills-vX.Y.Z --title "adlc-team-skills vX.Y.Z" --no
 
 ### Missing tag for old version
 
-If a version has a CHANGELOG entry but no tag:
+The Auto-Tag Release workflow deliberately only tags versions **newer than the
+latest existing tag**, so it will never auto-tag a historical gap (it would
+point at the wrong commit). If an old version has a CHANGELOG entry but no
+tag, tag its original release commit manually:
 
 ```bash
 # Tag the release commit retroactively
@@ -106,5 +117,6 @@ awk '/^## \[X.Y.Z\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md \
 
 - One tag per CHANGELOG version entry
 - If multiple CHANGELOG versions are bundled into a single commit, tag the same commit for each version
+- The Auto-Tag Release workflow tags every new version in CHANGELOG.md on each push to `main`; it is a no-op when nothing is untagged
 - Always mark the latest release with `--latest`
 - Release notes come from the CHANGELOG section, not the commit message

@@ -23,7 +23,7 @@ jobs:
     if: github.repository == 'tikalk/adlc-team-skills'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -73,6 +73,14 @@ jobs:
           done
 
           echo "untagged=${untagged[*]}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity
+        if: steps.versions.outputs.untagged != ''
+        run: |
+          # Annotated tags require a committer identity; runners have none by
+          # default (otherwise `git tag -a` fails with "empty ident name").
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Create and push tags
         if: steps.versions.outputs.untagged != ''

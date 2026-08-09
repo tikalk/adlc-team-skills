@@ -9,8 +9,9 @@ name: Release
 #      does NOT re-trigger `on: push` events from GITHUB_TOKEN-owned pushes, so
 #      the tag push alone would never fire this workflow.
 #
-# The job always resolves "unreleased tags" (tags with no GitHub release yet),
-# so one run creates releases for every tag the auto-tag workflow just made.
+# The job resolves "unreleased tags" (tags with no GitHub release yet) and
+# creates a release for each. After all releases are created, the highest-
+# version tag is marked as "latest".
 
 on:
   push:
@@ -37,6 +38,8 @@ jobs:
 
       - name: Find unreleased tags
         id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Tags with an existing GitHub release are skipped (idempotent).
           gh release list --limit 200 --json tagName \
@@ -55,7 +58,7 @@ jobs:
             exit 0
           fi
 
-          # Newest first, so make_latest ends up on the highest version.
+          # Newest first.
           printf '%s\n' "${unreleased[@]}" | sort -V -r > /tmp/unreleased.txt
           echo "Releasing:"
           cat /tmp/unreleased.txt
@@ -69,32 +72,51 @@ jobs:
           for tag in ${{ steps.versions.outputs.tags }}; do
             VERSION="${tag#adlc-team-skills-v}"
 
+            # Skip if a release already exists (race protection).
+            if gh release view "$tag" --json tagName --jq '.tagName' >/dev/null 2>&1; then
+              echo "Release already exists, skipping: $tag"
+              continue
+            fi
+
             # Validate semver format.
-            [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-              || { echo "ERROR: not semver: $tag"; exit 1; }
+            if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "WARNING: skipping $tag: not semver"
+              continue
+            fi
 
             # Validate CHANGELOG entry exists.
-            grep -q "^## \[$VERSION\]" CHANGELOG.md \
-              || { echo "ERROR: no CHANGELOG entry for [$VERSION]"; exit 1; }
+            if ! grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+              echo "WARNING: skipping $tag: no CHANGELOG entry for [$VERSION]"
+              continue
+            fi
 
             # Validate tagged commit is on main.
-            git merge-base --is-ancestor "$(git rev-parse "$tag^{}")" origin/main \
-              || { echo "ERROR: tagged commit is not on main: $tag"; exit 1; }
+            if ! git merge-base --is-ancestor "$(git rev-parse "$tag^{}")" origin/main; then
+              echo "WARNING: skipping $tag: tagged commit is not on main"
+              continue
+            fi
 
             # Extract CHANGELOG notes.
             awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" \
               CHANGELOG.md > notes.md
             [[ -s notes.md ]] || { echo "WARNING: empty notes extracted for $tag" >&2; }
 
-            # Create the release (softprops equivalent via gh, so we can loop).
-            if ! gh release view "$tag" --json tagName --jq '.tagName' >/dev/null 2>&1; then
-              gh release create "$tag" \
-                --title "adlc-team-skills v$VERSION" \
-                --notes-file notes.md \
-                --latest \
-                --repo "$GITHUB_REPOSITORY"
-              echo "Created release: $tag"
-            else
-              echo "Release already exists, skipping: $tag"
-            fi
+            gh release create "$tag" \
+              --title "adlc-team-skills v$VERSION" \
+              --notes-file notes.md \
+              --repo "$GITHUB_REPOSITORY"
+            echo "Created release: $tag"
           done
+
+      - name: Mark highest version as latest
+        if: steps.versions.outputs.tags != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          highest="$(git tag -l 'adlc-team-skills-v*' | sort -V | tail -n1)"
+          if gh release view "$highest" >/dev/null 2>&1; then
+            gh release edit "$highest" --latest --repo "$GITHUB_REPOSITORY"
+            echo "Marked $highest as latest."
+          else
+            echo "WARNING: no release for $highest, cannot set latest."
+          fi

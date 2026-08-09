@@ -126,11 +126,11 @@ flowchart TB
     Web --> CDN
     Mobile --> CDN
     
-    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef gateway fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef backend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    classDef data fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    classDef external fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#1a1a1a
+    classDef gateway fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#1a1a1a
+    classDef backend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1a1a1a
+    classDef data fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#1a1a1a
+    classDef external fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#1a1a1a
     
     class Web,Mobile,Admin frontend
     class Gateway gateway

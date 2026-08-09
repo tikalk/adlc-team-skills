@@ -92,7 +92,7 @@ graph TD
 
     classDef systemNode fill:#f47721,stroke:#333,stroke-width:3px,color:#fff
     classDef stakeholderNode fill:#4a9eff,stroke:#333,stroke-width:1px,color:#fff
-    classDef externalNode fill:#e0e0e0,stroke:#333,stroke-width:1px
+    classDef externalNode fill:#e0e0e0,stroke:#333,stroke-width:1px,color:#1a1a1a
 
     class System systemNode
     class Users,Admins stakeholderNode

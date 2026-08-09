@@ -23,8 +23,8 @@ Transforms a high-level product idea into documented Product Decision Records (P
 
 ## When NOT to use
 
-- Existing product (use `/product.init` instead)
-- Minor PDR updates (use `/product.clarify` instead)
+- Existing product (use `/product-init` instead)
+- Minor PDR updates (use `/product-clarify` instead)
 
 ## Execution Steps
 
@@ -232,8 +232,8 @@ YYYY-MM-DD
 | 3 | Business | PDR-004: Pricing Model, PDR-005: Payment Integration |
 
 ### Next Steps
-1. Review PDRs with /product.clarify
-2. Generate PRD.md with /product.implement
+1. Review PDRs with /product-clarify
+2. Generate PRD.md with /product-implement
 ```
 
 ## PDR Numbering Rules
@@ -284,7 +284,7 @@ YYYY-MM-DD
 
 ## Red Flags
 
-- **Generating PRD before PDRs are accepted** — `/product.implement` requires Accepted status; Proposed PDRs will be skipped.
+- **Generating PRD before PDRs are accepted** — `/product-implement` requires Accepted status; Proposed PDRs will be skipped.
 - **Skipping the constitution check** — misaligned decisions propagate into the PRD and become expensive to fix.
 - **No alternatives documented** — a PDR without alternatives is a statement, not a decision.
 

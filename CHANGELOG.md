@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.1] - 2026-08-08
+
+### Fixed
+
+- **Dot-notation skill handover references replaced with hyphenated command names** (`skills/architect/**`, `skills/product/**`): 219 references to spec-kit-style commands (`/architect.init`, `/architect.adlc`, `/architect.implement`, `/architect.clarify`, `/product.init`, `/product.specify`, `/product.clarify`, `/product.implement`, `/product.roadmap`) were dead links — the actual command files in `.opencode/commands/` are hyphenated (`architect-init.md`, `product-specify.md`, …). `/architect.adlc` (stale name for the greenfield command) mapped to `/architect-specify`. All references now point to real commands.
+
+- **`setup-architect.sh` / `setup-architect.ps1` crash on diagram generation — `get_architecture_diagram_format: command not found`** (`skills/architect/architect-*/scripts/`): the architect scripts were ported from spec-kit, where the large `common.sh`/`common.ps1` defined `get_architecture_diagram_format()` and `validate_mermaid_syntax()` (bash) / `Get-ArchitectureDiagramFormat` and `Test-MermaidSyntax` (PowerShell). The adlc bundled `common.sh` is a minimal 57-line file that never included them, so any action calling `generate_and_insert_diagrams` (e.g. `update`, `map`) died at line 761 with `command not found`. Fixed by adding both functions to the bundled bash `common.sh` (all 5 copies) and both functions inline in the PowerShell `setup-architect.ps1` (all 5 copies). The format is overridable via the `ARCHITECTURE_DIAGRAM_FORMAT` env var (`mermaid`|`ascii`, default `mermaid`), matching the existing `ARCHITECTURE_VIEWS` env var pattern instead of spec-kit's config-file lookup.
+
+### Added
+
+- **Static guard tests for architect diagram helpers** (`tests/unit/test_setup_scripts.py`): `test_architect_common_sh_defines_diagram_functions` + `test_architect_ps1_defines_diagram_functions` verify all 5 bash and all 5 PowerShell copies define the diagram functions, and `test_architect_bash_common_sh_copies_identical` + `test_architect_ps1_setup_copies_identical` lock the 5 copies to stay byte-identical so the shared contract cannot drift. `test_no_dot_notation_skill_references` prevents dot-notation command references from creeping back in.
+
 ## [0.24.0] - 2026-08-08
 
 ### Added

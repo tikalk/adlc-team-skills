@@ -449,6 +449,51 @@ function Parse-Views {
     }
 }
 
+# Get architecture diagram format (mermaid or ascii).
+# Override via ARCHITECTURE_DIAGRAM_FORMAT env var; defaults to "mermaid".
+# Invalid values fall back to "mermaid".
+function Get-ArchitectureDiagramFormat {
+    $format = $env:ARCHITECTURE_DIAGRAM_FORMAT
+    if ($format -eq 'mermaid' -or $format -eq 'ascii') {
+        return $format
+    }
+    return 'mermaid'
+}
+
+# Validate Mermaid diagram syntax (lightweight regex validation)
+# Returns $true if valid, $false if invalid
+# Args: MermaidCode - Mermaid code string
+function Test-MermaidSyntax {
+    param(
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [string]$MermaidCode
+    )
+
+    # Check if empty
+    if ([string]::IsNullOrWhiteSpace($MermaidCode)) {
+        return $false
+    }
+
+    # Check for basic Mermaid diagram types
+    if ($MermaidCode -notmatch '^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline)') {
+        return $false
+    }
+
+    # Check for balanced brackets/parentheses (simplified)
+    $openBrackets = ([regex]::Matches($MermaidCode, '\[')).Count
+    $closeBrackets = ([regex]::Matches($MermaidCode, '\]')).Count
+    $openParens = ([regex]::Matches($MermaidCode, '\(')).Count
+    $closeParens = ([regex]::Matches($MermaidCode, '\)')).Count
+
+    if ($openBrackets -ne $closeBrackets -or $openParens -ne $closeParens) {
+        return $false
+    }
+
+    # Basic syntax passed
+    return $true
+}
+
 # Generate and insert diagrams into architecture.md
 function New-ArchitectureDiagrams {
     param(
@@ -579,12 +624,12 @@ function Invoke-Specify {
     Write-Host "  2. Ask clarifying questions about architecture"
     Write-Host "  3. Create ADRs for each key decision"
     Write-Host "  4. Save decisions to .adlc/drafts/adr/ADR-{NNN}.md (Proposed status)"
-    Write-Host "     (ADRs will be moved to .adlc/memory after /architect.implement)"
+    Write-Host "     (ADRs will be moved to .adlc/memory after /architect-implement)"
     if ($Decompose) {
         Write-Host "  5. Organize ADRs by sub-system"
     }
     Write-Host ""
-    Write-Host "After completion, run '/architect.implement' to generate full AD.md"
+    Write-Host "After completion, run '/architect-implement' to generate full AD.md"
     
     if ($Json) {
         @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose} | ConvertTo-Json
@@ -598,7 +643,7 @@ function Invoke-Clarify {
     $adrDir = Join-Path $repoRoot ".adlc\memory\adr"
     
     if (-not (Test-Path $adrDir)) {
-        Write-Error "ADR file does not exist: $adrDir`nRun '/architect.adlc' or '/architect.init' first"
+        Write-Error "ADR file does not exist: $adrDir`nRun '/architect-specify' or '/architect-init' first"
         exit 1
     }
     
@@ -630,7 +675,7 @@ function Invoke-Implement {
     $adTemplate = Join-Path $repoRoot ".adlc\templates\AD-template.md"
     
     if (-not (Test-Path $adrDir)) {
-        Write-Error "ADR file does not exist: $adrDir`nRun '/architect.adlc' or '/architect.init' first"
+        Write-Error "ADR file does not exist: $adrDir`nRun '/architect-specify' or '/architect-init' first"
         exit 1
     }
     
@@ -763,10 +808,10 @@ function Invoke-Init {
     if ($Decompose) {
         Write-Host "  4. Organize ADRs by sub-system"
     }
-    Write-Host "  5. Auto-trigger /architect.clarify to validate findings"
+    Write-Host "  5. Auto-trigger /architect-clarify to validate findings"
     Write-Host ""
     Write-Host "NOTE: AD.md will NOT be created until ADRs are validated." -ForegroundColor Yellow
-    Write-Host "      After clarification, run /architect.implement to generate AD.md"
+    Write-Host "      After clarification, run /architect-implement to generate AD.md"
     
     if ($Json) {
         @{
@@ -835,7 +880,7 @@ function Invoke-Update {
     param($repoRoot, $architectureFile)
     
     if (-not (Test-Path $architectureFile)) {
-        Write-Error "Architecture does not exist: $architectureFile`nRun '/architect.adlc' or '/architect.init' first"
+        Write-Error "Architecture does not exist: $architectureFile`nRun '/architect-specify' or '/architect-init' first"
         exit 1
     }
     
@@ -875,7 +920,7 @@ function Invoke-Review {
     param($repoRoot, $architectureFile)
     
     if (-not (Test-Path $architectureFile)) {
-        Write-Error "Architecture does not exist: $architectureFile`nRun '/architect.adlc' or '/architect.init' first"
+        Write-Error "Architecture does not exist: $architectureFile`nRun '/architect-specify' or '/architect-init' first"
         exit 1
     }
     
@@ -1080,7 +1125,7 @@ function Invoke-PlanDag {
     
     # Check if ADR file exists
     if (-not (Test-Path $adrDir)) {
-        Write-Error "ADR drafts file does not exist: $adrDir`nRun '/architect.adlc' or '/architect.init' first"
+        Write-Error "ADR drafts file does not exist: $adrDir`nRun '/architect-specify' or '/architect-init' first"
         exit 1
     }
     
@@ -1160,7 +1205,7 @@ function Invoke-ExecuteDag {
     
     # Check if state file exists
     if (-not (Test-Path $stateFile)) {
-        Write-Error "No execution plan found: $stateFile`nRun '/architect.implement' first to generate and approve a DAG plan"
+        Write-Error "No execution plan found: $stateFile`nRun '/architect-implement' first to generate and approve a DAG plan"
         exit 1
     }
     
@@ -1206,7 +1251,7 @@ function Invoke-Summarize {
     
     # Check if views directory exists and has content
     if (-not (Test-Path $viewsDir)) {
-        Write-Error "Views directory not found: $viewsDir`nRun '/architect.implement' to generate views first"
+        Write-Error "Views directory not found: $viewsDir`nRun '/architect-implement' to generate views first"
         exit 1
     }
     
@@ -1215,7 +1260,7 @@ function Invoke-Summarize {
     $viewCount = $viewFiles.Count
     
     if ($viewCount -eq 0) {
-        Write-Error "No view files found in $viewsDir`nRun '/architect.implement' to generate views first"
+        Write-Error "No view files found in $viewsDir`nRun '/architect-implement' to generate views first"
         exit 1
     }
     

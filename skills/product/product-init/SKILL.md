@@ -25,8 +25,8 @@ Reverse-engineers product decisions from an **existing product** using a **three
 
 ## When NOT to use
 
-- New product (use `/product.specify` instead)
-- Minor PDR updates (use `/product.clarify` instead)
+- New product (use `/product-specify` instead)
+- Minor PDR updates (use `/product-clarify` instead)
 
 ## Execution Steps
 
@@ -266,8 +266,8 @@ Generate `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` from all `PDR-*.md` files:
 
 ### Next Steps
 1. Review PDRs: `{REPO_ROOT}/.adlc/drafts/pdr/`
-2. **Resolve inconsistencies**: Run `/product.clarify`
-3. Generate PRD: Run `/product.implement`
+2. **Resolve inconsistencies**: Run `/product-clarify`
+3. Generate PRD: Run `/product-implement`
 ```
 
 ## PDR Numbering Rules

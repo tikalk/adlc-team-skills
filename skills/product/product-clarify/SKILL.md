@@ -1,6 +1,6 @@
 ---
 name: product-clarify
-description: Refine and validate Product Decision Records through targeted clarification questions. Review PDR completeness, detect conflicts, approve decisions, and update status to Accepted. Use before /product.implement.
+description: Refine and validate Product Decision Records through targeted clarification questions. Review PDR completeness, detect conflicts, approve decisions, and update status to Accepted. Use before /product-implement.
 disable-model-invocation: true
 ---
 
@@ -16,14 +16,14 @@ Reviews existing PDRs for quality gaps, asks targeted clarification questions, a
 
 ## When to use
 
-- After `/product.specify` or `/product.init` to refine initial PDRs
-- Before `/product.implement` to approve PDRs (required — implement skips non-Accepted)
+- After `/product-specify` or `/product-init` to refine initial PDRs
+- Before `/product-implement` to approve PDRs (required — implement skips non-Accepted)
 - Periodic PDR review before milestones
 - Resolving inconsistency flags from cross-feature-area analysis
 
 ## When NOT to use
 
-- No PDRs exist (use `/product.specify` or `/product.init` first)
+- No PDRs exist (use `/product-specify` or `/product-init` first)
 
 ## Execution Steps
 
@@ -165,7 +165,7 @@ D. Remove PDR — Delete and follow constitution
 
 ### Phase 8: PDR Approval ⭐
 
-**Critical**: `/product.implement` only processes PDRs with **Accepted** status.
+**Critical**: `/product-implement` only processes PDRs with **Accepted** status.
 
 ```markdown
 ## PDR Approval ⭐
@@ -204,7 +204,7 @@ Change [N] PDRs to Accepted?
 - Accepted PDRs: [N]
 - Pending: [N]
 
-Run `/product.implement` to generate PRD.md.
+Run `/product-implement` to generate PRD.md.
 ```
 
 ## Key Rules

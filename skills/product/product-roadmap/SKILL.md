@@ -28,8 +28,8 @@ A milestone is **live** only when all four layers are green. Anything less gets 
 
 ## When NOT to use
 
-- No PDRs exist (use `/product.specify` or `/product.init` first)
-- You want to create PDRs (use `/product.specify`)
+- No PDRs exist (use `/product-specify` or `/product-init` first)
+- You want to create PDRs (use `/product-specify`)
 
 ## Execution Steps
 
@@ -102,7 +102,7 @@ For each feature PDR in a milestone, verify code evidence:
 - Optionally grep for title keywords in the codebase
 - Lower confidence — reported as "heuristic evidence"
 
-**Hand-off rule**: deep re-discovery is NOT roadmap's job. When evidence is missing/stale on a "Completed" item, the report says: *"⚠️ Code evidence missing — run /product.init to re-discover"*. Roadmap does lightweight checks; full discovery stays in init.
+**Hand-off rule**: deep re-discovery is NOT roadmap's job. When evidence is missing/stale on a "Completed" item, the report says: *"⚠️ Code evidence missing — run /product-init to re-discover"*. Roadmap does lightweight checks; full discovery stays in init.
 
 ### Phase D: Gate Rollup
 
@@ -149,7 +149,7 @@ Tracker: github.com/org/repo/milestone/3 (native: 67% closed, due Sep 5)
 | Condition | Warning |
 |---|---|
 | All features Completed but issues still open | "⚠️ Features claim complete but N issues still open — execution not finished" |
-| All issues closed but code evidence missing | "⚠️ Issues closed but code evidence missing — verify with /product.init" |
+| All issues closed but code evidence missing | "⚠️ Issues closed but code evidence missing — verify with /product-init" |
 | All features done but gates pending | "⚠️ Features done, milestone NOT live — N gates pending: [list]" |
 | Milestone marked Completed but no gates section | "⚠️ Milestone has no gates — consider adding acceptance criteria" |
 
@@ -222,7 +222,7 @@ When querying issue states, detect available tools in this order:
 
 ### Status Updates
 - `--update` blocks on pending issues/gates/evidence unless explicit override
-- Only update PDR status, not PRD directly — `/product.implement` regenerates PRD
+- Only update PDR status, not PRD directly — `/product-implement` regenerates PRD
 - Preserve all other PDR fields when updating status
 
 ### Backward Compatibility

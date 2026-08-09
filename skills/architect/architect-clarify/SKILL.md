@@ -29,7 +29,7 @@ Use this skill:
 Do **not** use this skill when:
 
 - **No ADRs exist**: Use `/architect-init` first to create ADRs
-- **Brownfield projects**: Use `/architect.init` to reverse-engineer ADRs from code
+- **Brownfield projects**: Use `/architect-init` to reverse-engineer ADRs from code
 
 ## Process
 

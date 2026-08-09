@@ -1,9 +1,26 @@
 name: Release
 
+# Creates GitHub releases for `adlc-team-skills-v*` tags.
+#
+# Two triggers:
+#   1. push: tags  - a tag is created manually (e.g. `git tag` + `git push`).
+#   2. workflow_run - the Auto-Tag Release workflow pushed new tag(s). This is
+#      needed because auto-tag pushes with the default GITHUB_TOKEN, and GitHub
+#      does NOT re-trigger `on: push` events from GITHUB_TOKEN-owned pushes, so
+#      the tag push alone would never fire this workflow.
+#
+# The job always resolves "unreleased tags" (tags with no GitHub release yet),
+# so one run creates releases for every tag the auto-tag workflow just made.
+
 on:
   push:
     tags:
       - 'adlc-team-skills-v*'
+  workflow_run:
+    workflows:
+      - 'Auto-Tag Release'
+    types:
+      - completed
 
 permissions:
   contents: write
@@ -11,44 +28,73 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # When triggered by workflow_run, only act if auto-tag actually succeeded.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Extract version from tag
-        id: v
+      - name: Find unreleased tags
+        id: versions
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          VERSION="${TAG#adlc-team-skills-v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # Tags with an existing GitHub release are skipped (idempotent).
+          gh release list --limit 200 --json tagName \
+            --jq '.[].tagName' > /tmp/released.txt 2>/dev/null || true
 
-      - name: Validate semver format
+          mapfile -t all_tags < <(git tag -l 'adlc-team-skills-v*')
+
+          unreleased=()
+          for tag in "${all_tags[@]}"; do
+            grep -qxF "$tag" /tmp/released.txt || unreleased+=("$tag")
+          done
+
+          if [[ ${#unreleased[@]} -eq 0 ]]; then
+            echo "No new tags to release."
+            echo "tags=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Newest first, so make_latest ends up on the highest version.
+          printf '%s\n' "${unreleased[@]}" | sort -V -r > /tmp/unreleased.txt
+          echo "Releasing:"
+          cat /tmp/unreleased.txt
+          echo "tags=$(paste -sd' ' /tmp/unreleased.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Release each unreleased tag
+        if: steps.versions.outputs.tags != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          [[ "${{ steps.v.outputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-            || { echo "ERROR: not semver: ${{ steps.v.outputs.version }}"; exit 1; }
+          for tag in ${{ steps.versions.outputs.tags }}; do
+            VERSION="${tag#adlc-team-skills-v}"
 
-      - name: Validate CHANGELOG entry exists
-        run: |
-          grep -q "^## \[${{ steps.v.outputs.version }}\]" CHANGELOG.md \
-            || { echo "ERROR: no CHANGELOG entry for [${{ steps.v.outputs.version }}]"; exit 1; }
+            # Validate semver format.
+            [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+              || { echo "ERROR: not semver: $tag"; exit 1; }
 
-      - name: Validate tagged commit is on main
-        run: |
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
-            || { echo "ERROR: tagged commit is not on main"; exit 1; }
+            # Validate CHANGELOG entry exists.
+            grep -q "^## \[$VERSION\]" CHANGELOG.md \
+              || { echo "ERROR: no CHANGELOG entry for [$VERSION]"; exit 1; }
 
-      - name: Extract CHANGELOG notes
-        run: |
-          awk "/^## \[${{ steps.v.outputs.version }}\]/{flag=1; next} /^## \[/{flag=0} flag" \
-            CHANGELOG.md > notes.md
-          [[ -s notes.md ]] || { echo "WARNING: empty notes extracted" >&2; }
+            # Validate tagged commit is on main.
+            git merge-base --is-ancestor "$(git rev-parse "$tag^{}")" origin/main \
+              || { echo "ERROR: tagged commit is not on main: $tag"; exit 1; }
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ steps.v.outputs.tag }}
-          name: adlc-team-skills v${{ steps.v.outputs.version }}
-          body_path: notes.md
-          make_latest: true
+            # Extract CHANGELOG notes.
+            awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" \
+              CHANGELOG.md > notes.md
+            [[ -s notes.md ]] || { echo "WARNING: empty notes extracted for $tag" >&2; }
+
+            # Create the release (softprops equivalent via gh, so we can loop).
+            if ! gh release view "$tag" --json tagName --jq '.tagName' >/dev/null 2>&1; then
+              gh release create "$tag" \
+                --title "adlc-team-skills v$VERSION" \
+                --notes-file notes.md \
+                --latest \
+                --repo "$GITHUB_REPOSITORY"
+              echo "Created release: $tag"
+            else
+              echo "Release already exists, skipping: $tag"
+            fi
+          done

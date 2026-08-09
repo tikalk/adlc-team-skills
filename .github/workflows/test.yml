@@ -17,9 +17,9 @@ jobs:
     name: Run Pytest (Scripts & E2E)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Install dependencies
@@ -46,7 +46,7 @@ jobs:
       OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
       EVAL_MODEL: ${{ secrets.EVAL_MODEL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # Pinned exact version + --ignore-scripts: blocks pre/postinstall
       # scripts from any of promptfoo's transitive dependencies from
       # executing during install (the vector used in the 2026-08-04 incident).

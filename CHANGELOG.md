@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.1] - 2026-08-09
+
+### Fixed
+
+- **Node.js 20 runtime deprecation in GitHub Actions** (`.github/workflows/*.yml`): upgraded `actions/checkout@v4` → `@v6`, `actions/setup-python@v5` → `@v6`, and `softprops/action-gh-release@v2` → `@v3` so all workflows run natively on the Node 24 runtime instead of being forced onto it (removes the "Node.js 20 is deprecated" warning; GitHub deprecated Node 20 on 2025-09-19).
+
+- **Auto-Tag Release workflow fails on `git tag -a` — "empty ident name not allowed"** (`.github/workflows/auto-tag.yml`): the workflow created annotated tags (`git tag -a`) but GitHub-hosted runners have no git identity configured by default, so the tag push step died with `fatal: empty ident name` and no release was created. Fixed by configuring `user.name`/`user.email` (github-actions[bot] identity) before creating tags.
+
 ## [0.25.0] - 2026-08-09
 
 ### Added

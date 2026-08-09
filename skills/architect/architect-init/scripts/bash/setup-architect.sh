@@ -861,12 +861,12 @@ action_specify() {
     echo "  2. Ask clarifying questions about architecture" >&2
     echo "  3. Create ADRs for each key decision" >&2
     echo "  4. Save decisions to .adlc/drafts/adr/ADR-{NNN}.md (Proposed status)" >&2
-    echo "     (ADRs will be moved to memory/team after /architect.implement)" >&2
+    echo "     (ADRs will be moved to memory/team after /architect-implement)" >&2
     if [[ "$DECOMPOSE" == "true" ]]; then
         echo "  5. Organize ADRs by sub-system" >&2
     fi
     echo "" >&2
-    echo "After completion, run '/architect.implement' to generate full AD.md" >&2
+    echo "After completion, run '/architect-implement' to generate full AD.md" >&2
 
     if $JSON_MODE; then
         echo "{\"status\":\"success\",\"action\":\"specify\",\"adr_dir\":\"$adr_dir\",\"context\":\"${ARGS[*]}\",\"decomposition\":\"$DECOMPOSE\"}"
@@ -901,7 +901,7 @@ action_clarify() {
             active_scope="memory"
         else
             echo "❌ ADR directory does not exist: $adr_dir" >&2
-            echo "Run '/architect.adlc' or '/architect.init' first" >&2
+            echo "Run '/architect-specify' or '/architect-init' first" >&2
             exit 1
         fi
     fi
@@ -941,7 +941,7 @@ action_implement() {
 
     if [[ "$adr_count" -eq 0 ]]; then
         echo "❌ No ADR drafts found" >&2
-        echo "Run '/architect.adlc' or '/architect.init' first" >&2
+        echo "Run '/architect-specify' or '/architect-init' first" >&2
         exit 1
     fi
 
@@ -1064,10 +1064,10 @@ action_init() {
     if [[ "$DECOMPOSE" == "true" ]]; then
         echo "  4. Organize ADRs by sub-system" >&2
     fi
-    echo "  5. Auto-trigger /architect.clarify to validate findings" >&2
+    echo "  5. Auto-trigger /architect-clarify to validate findings" >&2
     echo "" >&2
     echo "NOTE: AD.md will NOT be created until ADRs are validated." >&2
-    echo "      After clarification, run /architect.implement to generate AD.md" >&2
+    echo "      After clarification, run /architect-implement to generate AD.md" >&2
 
     if $JSON_MODE; then
         echo "{\"status\":\"success\",\"action\":\"init\",\"adr_dir\":\"$adr_dir\",\"tech_stack\":\"$tech_stack\",\"existing_docs\":\"$existing_docs\",\"source\":\"brownfield\",\"decomposition\":\"$decompose_status\",\"subsystems\":$subsystems_json}"
@@ -1127,7 +1127,7 @@ action_map() {
 action_update() {
     if [[ ! -f "$AD_FILE" ]]; then
         echo "❌ Architecture does not exist: $AD_FILE" >&2
-        echo "Run '/architect.adlc' or '/architect.init' first" >&2
+        echo "Run '/architect-specify' or '/architect-init' first" >&2
         exit 1
     fi
     
@@ -1166,7 +1166,7 @@ action_update() {
 action_review() {
     if [[ ! -f "$AD_FILE" ]]; then
         echo "❌ Architecture does not exist: $AD_FILE" >&2
-        echo "Run '/architect.adlc' or '/architect.init' first" >&2
+        echo "Run '/architect-specify' or '/architect-init' first" >&2
         exit 1
     fi
     
@@ -1353,7 +1353,7 @@ action_plan_dag() {
 
     if [[ "$adr_count" -eq 0 ]]; then
         echo "❌ No ADR drafts found" >&2
-        echo "Run '/architect.adlc' or '/architect.init' first" >&2
+        echo "Run '/architect-specify' or '/architect-init' first" >&2
         exit 1
     fi
 
@@ -1447,7 +1447,7 @@ action_execute_dag() {
     # Check if state file exists
     if [[ ! -f "$state_file" ]]; then
         echo "❌ No execution plan found: $state_file" >&2
-        echo "Run '/architect.implement' first to generate and approve a DAG plan" >&2
+        echo "Run '/architect-implement' first to generate and approve a DAG plan" >&2
         exit 1
     fi
     
@@ -1490,7 +1490,7 @@ action_summarize() {
     # Check if views directory exists and has content
     if [[ ! -d "$views_dir" ]]; then
         echo "❌ Views directory not found: $views_dir" >&2
-        echo "Run '/architect.implement' to generate views first" >&2
+        echo "Run '/architect-implement' to generate views first" >&2
         exit 1
     fi
     
@@ -1500,7 +1500,7 @@ action_summarize() {
     
     if [[ "$view_count" -eq 0 ]]; then
         echo "❌ No view files found in $views_dir" >&2
-        echo "Run '/architect.implement' to generate views first" >&2
+        echo "Run '/architect-implement' to generate views first" >&2
         exit 1
     fi
     

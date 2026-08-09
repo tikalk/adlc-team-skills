@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Auto-tag release on PR merge** (`.github/workflows/auto-tag.yml`, `RELEASE.md`): new GitHub Actions workflow that runs on every push to `main`, parses the `## [X.Y.Z]` headers from `CHANGELOG.md`, and creates annotated `adlc-team-skills-v*` tags for every new untagged version at the merge commit. Each pushed tag then triggers the existing Release workflow, which creates the GitHub release — no manual tagging needed after a PR merges. Multi-version merge commits get one tag per new CHANGELOG version. The workflow carries `contents: write` but only runs on push to `main` (never on `pull_request`), so the elevated token is never exposed to untrusted PR code; `test.yml` remains `contents: read`. Versions older than the latest existing tag are deliberately skipped (historical gaps like `0.1.0` must still be tagged manually at their original commit).
 
+## [0.24.1] - 2026-08-08
+
+### Fixed
+
+- **Dot-notation skill handover references replaced with hyphenated command names** (`skills/architect/**`, `skills/product/**`): 219 references to spec-kit-style commands (`/architect.init`, `/architect.adlc`, `/architect.implement`, `/architect.clarify`, `/product.init`, `/product.specify`, `/product.clarify`, `/product.implement`, `/product.roadmap`) were dead links — the actual command files in `.opencode/commands/` are hyphenated (`architect-init.md`, `product-specify.md`, …). `/architect.adlc` (stale name for the greenfield command) mapped to `/architect-specify`. All references now point to real commands.
+
+- **`setup-architect.sh` / `setup-architect.ps1` crash on diagram generation — `get_architecture_diagram_format: command not found`** (`skills/architect/architect-*/scripts/`): the architect scripts were ported from spec-kit, where the large `common.sh`/`common.ps1` defined `get_architecture_diagram_format()` and `validate_mermaid_syntax()` (bash) / `Get-ArchitectureDiagramFormat` and `Test-MermaidSyntax` (PowerShell). The adlc bundled `common.sh` is a minimal 57-line file that never included them, so any action calling `generate_and_insert_diagrams` (e.g. `update`, `map`) died at line 761 with `command not found`. Fixed by adding both functions to the bundled bash `common.sh` (all 5 copies) and both functions inline in the PowerShell `setup-architect.ps1` (all 5 copies). The format is overridable via the `ARCHITECTURE_DIAGRAM_FORMAT` env var (`mermaid`|`ascii`, default `mermaid`), matching the existing `ARCHITECTURE_VIEWS` env var pattern instead of spec-kit's config-file lookup.
+
+### Added
+
+- **Static guard tests for architect diagram helpers** (`tests/unit/test_setup_scripts.py`): `test_architect_common_sh_defines_diagram_functions` + `test_architect_ps1_defines_diagram_functions` verify all 5 bash and all 5 PowerShell copies define the diagram functions, and `test_architect_bash_common_sh_copies_identical` + `test_architect_ps1_setup_copies_identical` lock the 5 copies to stay byte-identical so the shared contract cannot drift. `test_no_dot_notation_skill_references` prevents dot-notation command references from creeping back in.
+
 ## [0.24.0] - 2026-08-08
 
 ### Added
@@ -30,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`boot.sh` / `boot.ps1` crash on malformed `.skills.json`** (`skills/team/team-boot/scripts/`): the `$(jq ... || echo "0")` pattern concatenated partial jq stdout with the fallback `"0"` when jq exited with a parse error, producing multi-line values like `"16\n0"` that broke the arithmetic on line 58 (`syntax error in expression (error token is "0")`). This caused team-boot `session_start` hook failures across all projects using a directives repo with corrupted JSON. Fixed by separating stdout capture from the fallback (`$(jq ...) || VAR=0`) and validating the result is a pure integer (`[[ "$VAR" =~ ^[0-9]+$ ]]`). Also hardened the `jq ... | while read` iteration pipelines and `CDR_COUNT` with the same pattern, and wrapped `boot.ps1`'s `ConvertFrom-Json` in try/catch so malformed JSON degrades gracefully instead of crashing the script.
+
+### Added
+
+- **Spec-kit coexistence guide** (`docs/spec-kit-integration.md`): documents the recommended install flow for using adlc-team-skills alongside agentic-sdlc-spec-kit without skill/command conflicts. Install adlc-team-skills first, run `/team-setup`, then `specify init` without `--team-ai-directives`.
 
 ### Changed
 

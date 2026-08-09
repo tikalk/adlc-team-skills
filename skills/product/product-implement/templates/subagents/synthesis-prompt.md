@@ -69,7 +69,7 @@ For each inconsistency, create a flag (not a separate PDR):
   "affected_areas": ["core", "business"],
   "conflicting_patterns": ["P003", "P012"],
   "description": "Core prioritizes 'ease of use' while Business prioritizes 'revenue optimization' for same user journey",
-  "recommended_action": "Run /product.clarify to align priorities",
+  "recommended_action": "Run /product-clarify to align priorities",
   "pdr_to_attach": "PDR-003"
 }
 ```
@@ -93,7 +93,7 @@ Create PDRs for:
 {YYYY-MM-DD}
 
 ### Source
-Cross-feature-area synthesis via /product.init
+Cross-feature-area synthesis via /product-init
 
 ### Category
 Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature | NFR | Milestone
@@ -120,7 +120,7 @@ Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature |
 - **Severity**: Medium
 - **Issue**: Core area prioritizes "ease of use" while Business area prioritizes "revenue optimization"
 - **Affected PDRs**: PDR-003, PDR-012
-- **Recommended Action**: Run `/product.clarify` to align priorities across areas
+- **Recommended Action**: Run `/product-clarify` to align priorities across areas
 - **Resolution**: Pending
 
 ### Context
@@ -163,14 +163,14 @@ Create synthesis summary:
 ### Inconsistencies Requiring Clarification
 | Flag ID | Type | Areas | Severity | Recommended Action |
 |---------|------|-------|----------|-------------------|
-| FLG-001 | Priority Conflict | core, business | Medium | Run /product.clarify |
-| FLG-002 | Metric Definition | business, growth | Low | Run /product.clarify |
+| FLG-001 | Priority Conflict | core, business | Medium | Run /product-clarify |
+| FLG-002 | Metric Definition | business, growth | Low | Run /product-clarify |
 
 ### Next Steps
 1. Review PDRs with inconsistency flags
-2. Run `/product.clarify` to resolve flagged conflicts
+2. Run `/product-clarify` to resolve flagged conflicts
 3. Update PDRs with resolutions
-4. Run `/product.implement` to generate PRD
+4. Run `/product-implement` to generate PRD
 ```
 
 ## Output Format

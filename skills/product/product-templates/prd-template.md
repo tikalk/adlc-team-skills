@@ -732,7 +732,7 @@ gantt
     [Milestone 2] :milestone, m2, [DATE], 0d
 ```
 
-> **Sync with external tools**: Run `/product.roadmap --sync` to pull milestones from GitHub/GitLab/Jira/Linear
+> **Sync with external tools**: Run `/product-roadmap --sync` to pull milestones from GitHub/GitLab/Jira/Linear
 
 <!-- Generated from Milestone PDRs -->
 

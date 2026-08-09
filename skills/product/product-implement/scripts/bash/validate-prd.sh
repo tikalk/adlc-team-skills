@@ -1,5 +1,6 @@
 #!/bin/bash
-# PRD Validation Script v1.5.6
+# PRD Validation Script v1.5.7
+# v1.5.7: fix set -e abort on ((VAR++)) from 0 (pre-increment); fix REQ regex to match '- **REQ-NNN:**' canonical format; fix BRE \| alternation in REQUIRED_SECTIONS used with grep -E
 # Validates PRD compliance with product extension standards
 # Checks: Section 1 = Doc Info, in-section diagrams, Mermaid, business sections, self-contained, PDR traceability
 # Usage: validate-prd.sh [PRD_FILE] [--strict|--warn]
@@ -62,7 +63,7 @@ if [[ ! -f "$PRD_FILE" ]]; then
 fi
 
 echo -e "${BLUE}🔍 Validating PRD: $PRD_FILE${NC}"
-echo -e "${BLUE}Extension Version: 1.5.6 | Mode: $([ "$STRICT_MODE" == true ] && echo "STRICT" || echo "WARN")${NC}"
+echo -e "${BLUE}Extension Version: 1.5.7 | Mode: $([ "$STRICT_MODE" == true ] && echo "STRICT" || echo "WARN")${NC}"
 echo "================================================"
 
 # Function to report success
@@ -77,13 +78,13 @@ warn() {
     else
         echo -e "${RED}✗ ERROR${NC}: $1"
     fi
-    ((WARNINGS++))
+    ((++WARNINGS))
 }
 
 # Function to report error
 fail() {
     echo -e "${RED}✗ FAIL${NC}: $1"
-    ((ERRORS++))
+    ((++ERRORS))
 }
 
 # ============================================
@@ -221,7 +222,7 @@ echo ""
 echo -e "${BLUE}[5/9] Checking PDR traceability...${NC}"
 
 # Count requirements
-REQ_COUNT=$(grep -cE '^\s*\*\*REQ-[0-9]+\*\*' "$PRD_FILE" || true)
+REQ_COUNT=$(grep -cE '^\s*[-*+]?\s*\*\*REQ-[0-9]+:?\*\*' "$PRD_FILE" || true)
 # Count PDR references
 PDR_REFS=$(grep -cE 'PDR-[0-9]+' "$PRD_FILE" || true)
 
@@ -229,14 +230,14 @@ if [[ $REQ_COUNT -gt 0 ]]; then
     pass "Found $REQ_COUNT requirements (REQ-XXX format)"
     
     # Check if requirements have PDR references
-    REQ_LINES=$(grep -n 'REQ-[0-9]' "$PRD_FILE" | cut -d: -f1)
+    REQ_LINES=$(grep -nE '^\s*[-*+]?\s*\*\*REQ-[0-9]+:?\*\*' "$PRD_FILE" | cut -d: -f1)
     REQ_WITH_PDR=0
     
     for line_num in $REQ_LINES; do
         # Check next 3 lines for PDR reference
         CONTEXT=$(sed -n "${line_num},$((line_num + 3))p" "$PRD_FILE")
         if echo "$CONTEXT" | grep -qE 'PDR-[0-9]+'; then
-            ((REQ_WITH_PDR++))
+            ((++REQ_WITH_PDR))
         fi
     done
     
@@ -259,23 +260,23 @@ echo -e "${BLUE}[6/9] Checking required sections...${NC}"
 REQUIRED_SECTIONS=(
     "1.*Document Information"
     "2.*Overview"
-    "3.*Problem\|3.*The Problem"
-    "4.*Goals\|4.*Objectives"
-    "5.*Metrics\|5.*Success Metrics"
+    "3.*Problem|3.*The Problem"
+    "4.*Goals|4.*Objectives"
+    "5.*Metrics|5.*Success Metrics"
     "6.*Personas"
-    "7.*Functional Requirements\|7.*Requirements"
-    "8.*Non-Functional\|8.*NFRs"
+    "7.*Functional Requirements|7.*Requirements"
+    "8.*Non-Functional|8.*NFRs"
     "9.*Out of Scope"
-    "10.*Risks\|10.*Mitigation"
-    "11.*Roadmap\|11.*Milestones"
-    "12.*PDR Summary\|12.*Product Decision"
+    "10.*Risks|10.*Mitigation"
+    "11.*Roadmap|11.*Milestones"
+    "12.*PDR Summary|12.*Product Decision"
 )
 
 MISSING_SECTIONS=0
 for section_pattern in "${REQUIRED_SECTIONS[@]}"; do
     if ! grep -qiE "^## [0-9]*\.?.*($section_pattern)" "$PRD_FILE"; then
         warn "Missing or misnumbered section matching: $section_pattern"
-        ((MISSING_SECTIONS++))
+        ((++MISSING_SECTIONS))
     fi
 done
 
@@ -302,7 +303,7 @@ for biz_pattern in "${BUSINESS_SECTIONS[@]}"; do
         pass "Found business section: $biz_pattern"
     else
         warn "Missing business section: $biz_pattern (recommended for stakeholder PRDs)"
-        ((MISSING_BUSINESS++))
+        ((++MISSING_BUSINESS))
     fi
 done
 

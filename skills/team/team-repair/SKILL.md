@@ -1,6 +1,6 @@
 ---
 name: team-repair
-description: Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives, scan for rule conflicts, and verify directive freshness. Use when indexes are inconsistent, orphans are detected, after bulk changes, or for periodic team AI directives health validation.
+description: Re-index OKF v0.2 index.md/log.md files, derive CDR.md, rebuild .skills.json and AGENTS.md in team-ai-directives, migrate v0.1→v0.2 frontmatter, scan for rule conflicts, and verify directive freshness. Use when indexes are inconsistent, orphans are detected, after bulk changes, or for periodic team AI directives health validation.
 disable-model-invocation: true
 ---
 
@@ -8,20 +8,23 @@ disable-model-invocation: true
 
 ## Overview
 
-Re-index CDR.md, .skills.json, and AGENTS.md in team-ai-directives to fix inconsistencies, detect orphaned files, and auto-repair issues. Begins with a health-check phase (Phase 0) that verifies the directives framework is installed, configured, and aligned before performing any repairs.
+Re-indexes OKF v0.2 artifacts (`index.md`, `log.md`), derives the flat `CDR.md` inject, rebuilds `.skills.json` and `AGENTS.md` in team-ai-directives to fix inconsistencies, detect orphaned files, and auto-repair issues. Migrates OKF v0.1 frontmatter to v0.2 on every run (always-on, no opt-out). Begins with a health-check phase (Phase 0) that verifies the directives framework is installed, configured, and aligned before performing any repairs.
 
 **Input**: team-ai-directives repository
 
 **Output**:
-0. Health check report (7 checks: team AI directives configured, context modules exist, skills registry, CDR tracking, constitution alignment, type field presence, project AGENTS.md directive)
+0. Health check report (7 checks: team AI directives configured, context modules exist, skills registry, OKF log tracking, constitution alignment, OKF v0.2 type field presence, project AGENTS.md directive)
 1. Repaired AGENTS.md (if missing or corrupted)
-2. Rebuilt CDR.md index from context_modules/
-3. Rebuilt .skills.json manifest from skills/
-4. Auto-added YAML frontmatter to orphan context modules (including OKF fields: `resource`, `tags`, `timestamp`)
-5. Auto-generated .skills.json entries for orphan skills
-6. Conflict scan across rules (creates conflict CDRs if issues found)
-7. Freshness verification (updates `verified` timestamps, flags stale directives)
-8. Summary report of all repairs
+2. Migrated all context module frontmatter from OKF v0.1 to v0.2 (always-on)
+3. Rebuilt per-directory `index.md` files (OKF §8 catalog)
+4. Rebuilt per-directory `log.md` files (OKF §9 audit trail)
+5. Derived `CDR.md` flat table from `index.md` files (for team-boot system prompt injection)
+6. Rebuilt .skills.json manifest from skills/
+7. Auto-added OKF v0.2 YAML frontmatter to orphan context modules
+8. Auto-generated .skills.json entries for orphan skills
+9. Conflict scan across rules (creates conflict CDRs if issues found)
+10. Freshness verification (updates `verified` timestamps, flags stale directives)
+11. Summary report of all repairs
 
 You are acting as an **Index Repair Specialist** ensuring team-ai-directives indexes are consistent and complete. Your role involves:
 
@@ -37,7 +40,9 @@ You are acting as an **Index Repair Specialist** ensuring team-ai-directives ind
 | Target | Location | Purpose |
 |--------|----------|---------|
 | **AGENTS.md** | `{TEAM_AI_DIRECTIVES}/AGENTS.md` | Main instruction file for AI agents |
-| **CDR.md** | `{TEAM_AI_DIRECTIVES}/CDR.md` | Index of approved context contributions |
+| **index.md** | `{TEAM_AI_DIRECTIVES}/context_modules/**/index.md` | OKF §8 per-directory catalogs (progressive disclosure) |
+| **log.md** | `{TEAM_AI_DIRECTIVES}/context_modules/**/log.md` | OKF §9 per-directory audit trails |
+| **CDR.md** | `{TEAM_AI_DIRECTIVES}/CDR.md` | Derived flat table for team-boot system prompt injection (auto-generated from index.md files) |
 | **.skills.json** | `{TEAM_AI_DIRECTIVES}/.skills.json` | Skills manifest registry |
 
 ## When to Use
@@ -54,10 +59,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 - `""` - Repair all three indexes (default)
 - `"--dry-run"` - Report only, don't write changes
-- `"--cdr-only"` - Only repair CDR.md
+- `"--index-only"` - Only rebuild OKF index.md + log.md + derive CDR.md
 - `"--skills-only"` - Only repair .skills.json
 - `"--agents-only"` - Only repair AGENTS.md
-- Empty input: Repair all indexes with auto-fix
+- Empty input: Repair all indexes with auto-fix (includes v0.1→v0.2 migration)
 
 ### Flags
 
@@ -69,10 +74,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 | `--conflicts` | Scan for rule conflicts only |
 | `--freshness` | Verify directive freshness only |
 | `--build-to-delete` | Run evals without directives to identify candidates for removal (Factor XII) |
-| `--cdr-only` | Only repair CDR.md |
+| `--index-only` | Only rebuild OKF index.md + log.md + derive CDR.md |
 | `--skills-only` | Only repair .skills.json |
 | `--agents-only` | Only repair AGENTS.md |
-| (default) | Repair all indexes + validate conflicts and freshness |
+| (default) | Repair all indexes + migrate v0.1→v0.2 + validate conflicts and freshness |
 
 ## Core Process
 
@@ -107,9 +112,12 @@ Output: `[OK]` or `[FAIL]` with reason
 
 Output: `[OK]` or `[FAIL]` with reason
 
-#### Check 4: CDR Tracking
+#### Check 4: OKF Log Tracking
 
-- `{TEAM_AI_DIRECTIVES}/CDR.md` exists
+- `{TEAM_AI_DIRECTIVES}/context_modules/rules/log.md` exists
+- `{TEAM_AI_DIRECTIVES}/context_modules/personas/log.md` exists
+- `{TEAM_AI_DIRECTIVES}/context_modules/examples/log.md` exists
+- `{TEAM_AI_DIRECTIVES}/CDR.md` exists (derived artifact)
 
 Output: `[OK]` or `[FAIL]` with reason
 
@@ -126,15 +134,20 @@ Output: `[OK]` or `[FAIL]` with reason
 4. If project constitution doesn't exist:
    - `[INFO]` — Project constitution doesn't exist yet (first-time setup)
 
-#### Check 6: OKF Type Field Presence
+#### Check 6: OKF v0.2 Conformance
 
 1. Scan all `.md` files in `context_modules/` (excluding `index.md`, `log.md`)
 2. Parse YAML frontmatter from each file
 3. Verify `type` field is present and has a valid value:
    - Valid types: `Constitution`, `Persona`, `Rule`, `Example`, `Skill`
-4. Output:
-   - `[OK]` — All concept files have valid `type` fields
-   - `[WARN]` — Some files missing `type` field (list files)
+4. Verify OKF v0.2 fields (migrate if v0.1 detected):
+   - `generated: { by, at }` present (not legacy `timestamp`)
+   - `verified` is a list format (not bare string)
+   - `status` present (e.g., `stable`, `draft`, `deprecated`)
+   - `stale_after` present (e.g., `180d`)
+5. Output:
+   - `[OK]` — All concept files have valid `type` fields and v0.2 families
+   - `[WARN]` — Some files missing v0.2 fields or still carry v0.1 fields (will be migrated in Phase 4)
 
 #### Check 7: Project AGENTS.md Directive
 
@@ -201,7 +214,7 @@ Or set: export TEAM_AI_DIRECTIVES=/path/to/team-ai-directives
 
 **Objective**: Ensure AGENTS.md exists with required structure
 
-**Skip if**: `--cdr-only` or `--skills-only` flag provided
+**Skip if**: `--index-only` or `--skills-only` flag provided
 
 #### Step 1: Check AGENTS.md Exists
 
@@ -309,19 +322,27 @@ Skip `constitution.md` (not indexed in CDR.md).
 
 #### Step 2: Extract YAML Frontmatter
 
-For each file, parse YAML frontmatter:
+For each file, parse YAML frontmatter (OKF v0.2 form after migration):
 
 ```yaml
 ---
+type: Rule
+title: Python error handling
+description: Python error handling patterns and best practices
+tags: [python, error-handling]
+resource: ./context_modules/rules/python/error-handling.md
+generated: { by: agent:legacy, at: 2026-04-15T00:00:00Z }
 id: rule-python-error-handling
 cdr_ref: CDR-2026-001
 created: 2026-04-15
-modified: 2026-05-18
-verified: 2026-05-18
-age_days: 33
-evidence:
-  - commit: abc123
-  - file: src/errors.py
+verified:
+  - { by: process:team-repair, at: 2026-05-18T00:00:00Z }
+status: stable
+stale_after: 180d
+sources:
+  - id: commit-abc123
+    resource: src/errors.py
+    title: Error handling implementation
 ---
 ```
 
@@ -329,7 +350,7 @@ Extraction logic:
 1. Read file content
 2. Check if starts with `---`
 3. Parse YAML between `---` markers
-4. Extract: `id`, `cdr_ref`, `created`, `modified`, `verified`, `age_days`
+4. Extract: `id`, `cdr_ref`, `created`, `type`, `title`, `description`, `tags`, `generated.at`, `verified` (latest `at`), `status`
 
 #### Step 2a: Build CDR Lookup from Existing CDR.md
 
@@ -382,14 +403,15 @@ For each orphan:
     title: {generated-title}
     description: {generated-description}
     tags: {generated-tags}
-    timestamp: {today}T00:00:00Z
+    resource: {relative-path}
+    generated: { by: agent:team-repair, at: {today}T00:00:00Z }
     id: {generated-id}
     cdr_ref: {from CDR_LOOKUP or null}
     created: {today}
-    modified: {today}
-    verified: {today}
-    age_days: 0
-    evidence: []
+    verified:
+      - { by: agent:team-repair, at: {today}T00:00:00Z }
+    status: stable
+    stale_after: 180d
     ```
 
 If `--dry-run`:
@@ -407,6 +429,39 @@ Otherwise, auto-fix:
 2. Prepend generated YAML frontmatter
 3. Write back to file
 
+#### Step 3b: Migrate v0.1 Frontmatter to v0.2 (Always-On)
+
+For every `.md` file in `context_modules/` (excluding `index.md`, `log.md`) that has existing frontmatter, detect and migrate v0.1 fields to v0.2. This runs on every `team-repair` invocation — no flag, no opt-out.
+
+**Migration rules** (idempotent — skip if already v0.2):
+
+| Detection | Action |
+|---|---|
+| `timestamp:` present, `generated:` absent | Rewrite to `generated: { by: agent:legacy, at: <timestamp value> }`, delete `timestamp` |
+| `timestamp:` present, `generated:` present | Delete `timestamp` (v0.2 takes precedence) |
+| `verified:` is a bare string (not a list) | Rewrite to `verified: [{ by: process:team-repair, at: <value>T00:00:00Z }]` |
+| `evidence:` present with entries | Map each entry to `sources[]` entry (`id`, `resource`, `title`), delete `evidence` |
+| `evidence: []` (empty list) | Delete field, omit `sources` |
+| `modified:` present | Delete (redundant with `generated.at`) |
+| `age_days:` present | Delete (derived at render time) |
+| `status:` absent | Add `status: stable` |
+| `stale_after:` absent | Add `stale_after: 180d` |
+| `resource:` absent | Add from file relative path |
+| `generated` already present, no v0.1 fields | Skip (already v0.2) |
+
+Preserve custom fields (`id`, `cdr_ref`, `created`, `type`, `title`, `description`, `tags`) as-is per OKF §4.1.
+
+If `--dry-run`:
+```markdown
+### v0.1 → v0.2 Migration Preview
+
+| File | Fields Migrated | Fields Added | Fields Removed |
+|------|----------------|--------------|----------------|
+| rules/security/sql_injection_prevention.md | timestamp→generated, verified→list | status, stale_after, resource | modified, age_days, evidence |
+```
+
+Otherwise, rewrite frontmatter in place for each file.
+
 #### Step 4: Build Context Module Index
 
 Create index structure:
@@ -420,8 +475,10 @@ Create index structure:
       "cdr_ref": "CDR-2026-001",
       "type": "Rule",
       "created": "2026-04-15",
-      "verified": "2026-05-18",
-      "age_days": 33,
+      "generated_at": "2026-04-15T00:00:00Z",
+      "verified_at": "2026-05-18T00:00:00Z",
+      "status": "stable",
+      "stale_after": "180d",
       "descriptor": "Python error handling patterns and best practices"
     }
   ],
@@ -439,7 +496,7 @@ Create index structure:
 
 **Objective**: Find all skills and build manifest entries
 
-**Skip if**: `--cdr-only` or `--agents-only` flag provided
+**Skip if**: `--index-only` or `--agents-only` flag provided
 
 #### Step 1: Find All Skill Directories
 
@@ -514,72 +571,133 @@ Auto-remove invalid entries.
 }
 ```
 
-### Phase 6: Rebuild CDR.md
+### Phase 6: Rebuild OKF index.md + log.md + Derive CDR.md
 
-**Objective**: Generate fresh CDR.md from scanned context modules
+**Objective**: Generate OKF v0.2 per-directory `index.md` (§8) and `log.md` (§9) files from scanned context modules, then derive the flat `CDR.md` table from the index.md data for team-boot system prompt injection.
 
 **Skip if**: `--skills-only` or `--agents-only` flag provided
 
-#### Step 1: Generate CDR Index Table
+#### Step 1: Rebuild Per-Directory index.md (OKF §8)
 
-From scanned context modules, build index:
+For each subdirectory (`rules/`, `personas/`, `examples/`) and the `context_modules/` root, generate an `index.md` file in OKF §8 list format.
+
+**`context_modules/index.md`** (root — carries `okf_version`):
 
 ```markdown
-# Context Directive Records
+---
+okf_version: "0.2"
+---
 
-Context Directive Records (CDRs) track decisions about contributing context modules (rules, personas, examples, skills) to team-ai-directives.
+# Context Modules
+
+* [Rules](rules/index.md) - Team rules and workflows
+* [Personas](personas/index.md) - Team personas
+* [Examples](examples/index.md) - Team examples
+```
+
+**`context_modules/rules/index.md`** (per-type catalog):
+
+```markdown
+# Rules
+
+* [Prevent SQL Injection](security/sql_injection_prevention.md) - Standards for preventing SQL injection vulnerabilities across all languages
+* [Dependency Injection](architecture/dependency_injection.md) - Dependency injection patterns for maintainable code
+```
+
+Entries are derived from each module's frontmatter `title` and `description`. Sort alphabetically by title within each directory. If a module lacks `description`, derive from first body paragraph.
+
+Personas and Examples follow the same pattern with `# Personas` and `# Examples` headings.
+
+#### Step 2: Rebuild Per-Directory log.md (OKF §9)
+
+For each subdirectory, generate a `log.md` file in OKF §9 date-grouped format (newest first).
+
+**`context_modules/rules/log.md`**:
+
+```markdown
+# Rules Update Log
+
+## 2026-05-23
+* **Creation**: Added [Dependency Injection](architecture/dependency_injection.md) — Dependency injection patterns for maintainable code. CDR: CDR-2026-008.
+* **Verification**: Verified [SQL Injection Prevention](security/sql_injection_prevention.md). CDR: CDR-2026-021.
+
+## 2026-05-21
+* **Creation**: Added [SQL Injection Prevention](security/sql_injection_prevention.md) — Standards for preventing SQL injection. CDR: CDR-2026-021.
+```
+
+Log entries are derived from:
+1. Git history: `git log --diff-filter=A --format="%ai %s" -- <file>` for creation dates
+2. Frontmatter `verified` timestamps for verification entries
+3. Existing `log.md` content (preserve manual entries, append new)
+
+**`context_modules/log.md`** (root — aggregate):
+
+```markdown
+# Context Modules Update Log
+
+## 2026-08-12
+* **Re-index**: Rebuilt all index.md and log.md files via /team-repair. Rules: {N} files, Personas: {N} files, Examples: {N} files.
+```
+
+#### Step 3: Derive CDR.md (Flat Table for team-boot)
+
+From the per-directory `index.md` data + module frontmatter, derive a flat `CDR.md` table for team-boot system prompt injection.
+
+**`{TEAM_AI_DIRECTIVES}/CDR.md`**:
+
+```markdown
+# Context Directive Records (Derived Index)
+
+> ⚠️ Auto-generated by `/team-repair`. Do not edit manually.
+> Source of truth: `context_modules/*/index.md` + module frontmatter.
+> Decision lifecycle (Accepted/Rejected) lives in project `.adlc/drafts/cdr/`.
 
 ## CDR Index
 
-| ID | Target Module | Type | Status | Created | Verified | Age | Descriptor |
-|----|---------------|------|--------|---------|----------|-----|------------|
-| CDR-2026-001 | context_modules/rules/python/error-handling.md | Rule | Accepted | 2026-04-15 | 2026-05-18 | 33d | Python error handling patterns and best practices |
-| rule-python-new-pattern | context_modules/rules/python/new-pattern.md | Rule | Auto-generated | 2026-05-22 | 2026-05-22 | 0d | (auto-generated — edit descriptor at first publish) |
+| ID | Path | Type | Description | Generated | Verified | Age | Status |
+|----|------|------|-------------|-----------|----------|-----|--------|
+| CDR-2026-021 | context_modules/rules/security/sql_injection_prevention.md | Rule | Standards for preventing SQL injection... | 2026-06-14 | 2026-05-21 | 46d | stable |
+| rule-frontend-routing | context_modules/rules/frontend/framework/frontend_routing.md | Rule | Client-side routing patterns... | 2026-06-15 | 2026-06-15 | 0d | stable |
 
 **Stats**: {N} entries | Last Updated: {date}
-
----
-
-## CDR-2026-001: {Title from context module}
-
-### Status
-**Accepted**
-
-### Target Module
-`context_modules/rules/python/error-handling.md`
-
-### Descriptor
-{One-line "when to use" summary derived from file content or frontmatter description. This becomes the search surface for the `team-discover` command.}
-
-### Evidence
-{From YAML frontmatter}
-
----
-
-{Repeat for each entry}
 ```
 
-#### Step 2: Write CDR.md
+**Columns**:
+- `ID`: `cdr_ref` from frontmatter (or `id` if `cdr_ref` is null)
+- `Path`: relative path from `TEAM_AI_DIRECTIVES`
+- `Type`: `type` from frontmatter
+- `Description`: `description` from frontmatter (truncated to 80 chars)
+- `Generated`: `generated.at` date (YYYY-MM-DD)
+- `Verified`: latest `verified[].at` date (YYYY-MM-DD)
+- `Age`: days since `verified` date
+- `Status`: `status` from frontmatter (or `stable` if absent)
+
+#### Step 4: Write Files
 
 If `--dry-run`:
+
 ```markdown
-### CDR.md Preview
+### OKF Files Preview
 
-Would write {N} entries to CDR.md
+Would write:
+- context_modules/index.md ({N} entries)
+- context_modules/log.md
+- context_modules/rules/index.md ({N} entries)
+- context_modules/rules/log.md
+- context_modules/personas/index.md ({N} entries)
+- context_modules/personas/log.md
+- context_modules/examples/index.md ({N} entries)
+- context_modules/examples/log.md
+- CDR.md ({N} derived entries)
 ```
 
-Otherwise:
-```bash
-cat > "{TEAM_AI_DIRECTIVES}/CDR.md" << 'EOF'
-{generated content}
-EOF
-```
+Otherwise, write all 9 files.
 
-### Phase 7: Rebuild .skills.json
+
 
 **Objective**: Generate fresh .skills.json from scanned skills
 
-**Skip if**: `--cdr-only` or `--agents-only` flag provided
+**Skip if**: `--index-only` or `--agents-only` flag provided
 
 #### Step 1: Generate Skills Manifest
 
@@ -699,27 +817,24 @@ For each context module file (rules, personas, examples, constitution) and skill
 For each eligible directive:
 
 1. Parse YAML frontmatter
-2. Update `verified` to today's date
-3. Update `timestamp` to current ISO 8601 datetime
-4. Reset `age_days` to 0
-5. Append to verification log table:
+2. Append to `verified` list: `{ by: process:team-repair, at: {today}T00:00:00Z }`
+3. Update `generated.at` if content changed during this repair run
+4. Append verification entry to per-directory `log.md`:
 
 ```markdown
-| Date | Verified By | Notes |
-|---|---|---|
-| {today} | /team-repair --validate | Validation passed, no conflicts |
+* **Verification**: Verified [{Title}](path) — no conflicts detected.
 ```
 
 #### Step 3: Report Stale Directives
 
-Flag directives with `age_days` > 30 or whose `verified` date is older than 30 days.
+Flag directives whose latest `verified[].at` is older than `stale_after` (default 180d), or whose `status` is `deprecated`.
 
 ```markdown
 ### Stale Directives
 
-| File | Age | Last Verified |
-|---|---|---|
-| rules/old-pattern.md | 45d | 2026-04-01 |
+| File | Last Verified | Age | Stale After | Status |
+|---|---|---|---|---|
+| rules/old-pattern.md | 2026-04-01 | 190d | 180d | stale |
 ```
 
 ### Phase 10: Build to Delete (Factor XII)
@@ -844,12 +959,15 @@ Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review de
 |--------|--------|
 | {VALID|CREATED|OVERWRITTEN} | {No changes needed|Created from template|Re-created from template} |
 
-### CDR.md Repair
+### OKF index.md + log.md + CDR.md Repair
 
 | Action | Count |
 |--------|-------|
 | Files scanned | {n} |
-| Valid entries | {n} |
+| v0.1→v0.2 migrated | {n} |
+| index.md files rebuilt | {n} |
+| log.md files rebuilt | {n} |
+| CDR.md derived entries | {n} |
 | Orphans repaired | {n} |
 | Missing removed | {n} |
 
@@ -901,7 +1019,7 @@ Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review de
 
 - **Auto-fix**: Always repairs issues automatically (no confirmation needed)
 - **Dry run**: Use `--dry-run` to preview changes without writing
-- **Selective repair**: Use `--cdr-only`, `--skills-only`, or `--agents-only` for specific targets
+- **Selective repair**: Use `--index-only`, `--skills-only`, or `--agents-only` for specific targets
 - **Validation modes**: `--validate` runs conflict scan + freshness; `--conflicts` and `--freshness` run each separately
 - **YAML frontmatter**: Auto-generated for orphan context modules
 - **Skills entries**: Auto-generated from SKILL.md content

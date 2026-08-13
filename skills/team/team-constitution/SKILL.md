@@ -14,12 +14,12 @@ The scaffold written by `team-setup` (Mode 3) contains only a placeholder ("No t
 
 - Propose principles informed by team context (existing rules, CDRs, AGENTS.md)
 - Review each principle interactively — confirm, edit, or reject
-- Write the constitution in the established team format (OKF frontmatter + numbered principles + Governance section)
+- Write the constitution in the established team format (OKF v0.2 frontmatter + numbered principles + Governance section)
 
 **What this skill is NOT**:
 
 - Not a port of spec-kit's `spec.constitution` template machinery — no placeholder tokens, no hooks, no `extensions.yml`, no template propagation, no Sync Impact Report
-- Not semantic versioning — the team constitution is versioned by **git history** in the team AI directives repo; freshness is tracked by OKF frontmatter (`modified`, `verified`) via `/team-repair`
+- Not semantic versioning — the team constitution is versioned by **git history** in the team AI directives repo; freshness is tracked by OKF v0.2 frontmatter (`generated`, `verified`, `stale_after`) via `/team-repair`
 - Not for **project-level** constitutions (`.adlc/memory/constitution.md`) — those remain `spec.constitution` territory when spec-kit is in play
 
 ## When to use
@@ -65,7 +65,7 @@ You are acting as a **Team Governance Facilitator** — helping the team articul
 2. **Load Team Context** (Phase 1): Read existing constitution + team directives to inform proposals
 3. **Elicit Principles** (Phase 2): Interactive create/amend loop
 4. **Governance Section** (Phase 3): Compose the lightweight governance paragraph
-5. **Write Constitution** (Phase 4): Write the file with OKF frontmatter
+5. **Write Constitution** (Phase 4): Write the file with OKF v0.2 frontmatter
 6. **Commit & Summary** (Phase 5): Offer commit, report results
 
 ### Execution Steps
@@ -173,7 +173,14 @@ title: "{TEAM_NAME} Constitution"
 description: "Team-wide principles and governance"
 resource: ./context_modules/constitution.md
 tags: [constitution]
-timestamp: {TODAY}T00:00:00Z
+generated: { by: agent:team-constitution, at: {TODAY}T00:00:00Z }
+id: constitution
+cdr_ref: null
+created: {TODAY}
+verified:
+  - { by: agent:team-constitution, at: {TODAY}T00:00:00Z }
+status: stable
+stale_after: 180d
 ---
 
 # {TEAM_NAME} Constitution
@@ -193,7 +200,7 @@ timestamp: {TODAY}T00:00:00Z
 
 Rules for writing:
 
-- Preserve the existing OKF frontmatter fields when amending; update `timestamp` to today. If the file carries custom fields (`created`, `modified`, `verified`, `age_days`, `id`, `cdr_ref`, `evidence`), preserve them and set `modified` to today.
+- Preserve the existing OKF v0.2 frontmatter fields when amending; update `generated.at` to today and append to `verified` list. If the file carries custom fields (`created`, `id`, `cdr_ref`), preserve them. Remove any legacy v0.1 fields (`timestamp`, `modified`, `age_days`, `evidence`) if present — `/team-repair` handles this automatically.
 - `title` and H1: keep the existing team name if present; otherwise derive from the team AI directives directory name or ask.
 - Numbered flat list (`1. **Name**`) — no `###` subsections per principle, no version/ratified date lines.
 - If `CONSTITUTION_STATE` was `missing`, create the parent directory first: `mkdir -p "{TEAM_AI_DIRECTIVES}/context_modules"`.
@@ -241,7 +248,7 @@ Report:
 
 #### Team Format Only
 
-- OKF frontmatter + numbered principles + Governance — no spec-kit template structure
+- OKF v0.2 frontmatter + numbered principles + Governance — no spec-kit template structure
 - No `**Version**` / `**Ratified**` lines — git history is the versioning
 - No `###` subsections per principle — flat numbered list
 
@@ -271,7 +278,7 @@ Ongoing amendments follow the CDR lifecycle (`/levelup-init` or `/levelup-specif
 
 ## Verification
 
-- `{CONSTITUTION_FILE}` exists with OKF frontmatter (`type: Constitution` present)
+- `{CONSTITUTION_FILE}` exists with OKF v0.2 frontmatter (`type: Constitution` present, `generated` field present)
 - `placeholder` marker text is gone
 - Every principle has a bolded name, a declarative statement, and a rationale
 - Governance section present with the three points (amendments, compliance, alignment)

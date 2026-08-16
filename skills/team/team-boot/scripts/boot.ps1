@@ -78,6 +78,50 @@ Write-Output ""
 Write-Output "_Total: $CdrCount CDR entries available._"
 Write-Output ""
 
+# PDR Index — from project memory (Accepted PDRs)
+Write-Output "## PDR Index"
+$PdrCount = 0
+$pdrPath = ".adlc/memory/pdr.md"
+if (Test-Path $pdrPath) {
+    $pdrLines = Get-Content $pdrPath | Where-Object { $_ -match '^\| PDR' }
+    $PdrCount = $pdrLines.Count
+    $pdrLines | ForEach-Object {
+        $cols = $_ -split '\|'
+        if ($cols.Count -ge 9) {
+            $id = $cols[1].Trim()
+            $featureArea = $cols[2].Trim()
+            $status = $cols[4].Trim()
+            $title = $cols[7].Trim()
+            Write-Output "| $id | $status | $featureArea | $title |"
+        }
+    }
+}
+Write-Output ""
+Write-Output "_Total: $PdrCount PDR entries available._"
+Write-Output ""
+
+# ADR Index — from project memory (Accepted ADRs)
+Write-Output "## ADR Index"
+$AdrCount = 0
+$adrPath = ".adlc/memory/adr.md"
+if (Test-Path $adrPath) {
+    $adrLines = Get-Content $adrPath | Where-Object { $_ -match '^\| ADR' }
+    $AdrCount = $adrLines.Count
+    $adrLines | ForEach-Object {
+        $cols = $_ -split '\|'
+        if ($cols.Count -ge 7) {
+            $id = $cols[1].Trim()
+            $subsystem = $cols[2].Trim()
+            $decision = $cols[3].Trim()
+            $status = $cols[4].Trim()
+            Write-Output "| $id | $status | $subsystem | $decision |"
+        }
+    }
+}
+Write-Output ""
+Write-Output "_Total: $AdrCount ADR entries available._"
+Write-Output ""
+
 # Skills — names + descriptions only (lean)
 Write-Output "## Available Skills"
 $skillsPath = Join-Path $TEAM_AI_DIRECTIVES ".skills.json"
@@ -115,6 +159,6 @@ Write-Output "| ID | Name | Type | Relevance |"
 Write-Output "|----|------|------|-----------|"
 Write-Output "| CDR-YYYY-NNN | <name> | <type> | <relevance> |"
 Write-Output ""
-Write-Output "Plus: _Searched $CdrCount CDR entries, $SkillTotal skills, J matched._"
+Write-Output "Plus: _Searched $CdrCount CDR entries, $PdrCount PDR entries, $AdrCount ADR entries, $SkillTotal skills, J matched._"
 Write-Output "**J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**"
 Write-Output "</EXTREMELY_IMPORTANT>"

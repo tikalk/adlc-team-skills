@@ -36,6 +36,7 @@ This skill focuses on **current state analysis** — what IS reusable, not what 
 ### When NOT to use
 
 - **Greenfield projects**: Use `/levelup-specify` after implementing a feature
+- **Mining git history / issue-linked changes**: Use `/change-init` to recover past decisions from commits + issue trackers
 - **CDRs already exist**: If `.adlc/drafts/cdr/` has pending CDRs, use `/levelup-clarify` to review
 - **Routine team AI directives health checks**: Use `/team-repair` for re-indexing and conflict scanning
 

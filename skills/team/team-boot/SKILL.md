@@ -1,6 +1,6 @@
 ---
 name: team-boot
-description: Bootstrap the session with team AI directives context (constitution, CDR index, PDR/ADR indexes, skill registry). Runs automatically at session start via the event hook.
+description: Bootstrap the session with team AI directives context (constitution, CDR index, PDR/ADR/ChDR indexes, skill registry). Runs automatically at session start via the event hook.
 scripts:
   sh: scripts/boot.sh
   ps: scripts/boot.ps1
@@ -24,7 +24,7 @@ of the bootstrap loop.
 
 The `session_start` event hook runs `scripts/boot.sh` (POSIX) or
 `scripts/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
-assembles the context block (constitution, CDR index, PDR/ADR indexes,
+assembles the context block (constitution, CDR index, PDR/ADR/ChDR indexes,
 skill registry), and outputs it to stdout. The plugin caches the result
 and pushes it into the system prompt on every step (idempotent — same
 cached content, no accumulation).
@@ -37,7 +37,7 @@ cached content, no accumulation).
 2. If unconfigured (missing, `null`, or path doesn't exist): invoke the
    `team-setup` skill.
 3. If configured: read and assemble the constitution, CDR.md index table,
-   PDR/ADR indexes, and `.skills.json` into your context.
+   PDR/ADR/ChDR indexes, and `.skills.json` into your context.
 4. The CDR index is your catalog — read full module bodies on demand
    when a task matches a CDR descriptor.
 

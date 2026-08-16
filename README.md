@@ -167,6 +167,12 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`levelup-clarify`** — review, accept, reject, or defer pending CDRs.
 - **`levelup-publish`** — compile accepted CDRs into directives + goldensets + draft PR.
 
+### Change (ChDRs)
+
+- **`change-init`** — mine git history for Change Decision Records via issue-linked commits; recovers the *why* behind past changes (reverts, fix chains).
+- **`change-clarify`** — review, accept, reject, or defer mined ChDRs (provenance gate on Decision claims).
+- **`change-publish`** — promote accepted ChDRs to `.adlc/memory/chdr/`; `team-boot` injects the `chdr.md` index at session start.
+
 ### Product (PDRs)
 
 - **`product-init`** — brownfield PDR discovery. **`product-specify`** — greenfield creation.
@@ -206,6 +212,7 @@ skills/
 ├── architect/             # architect-* (5 skills)
 ├── product/               # product-* (6 skills) + product-templates/
 ├── levelup/               # levelup-* (4 skills) + levelup-helpers.{sh,ps1}
+├── change/                # change-* (3 skills) — ChDRs from git history
 ├── mission-brief/         # core SDD orchestrator (1 skill)
 ├── evals/                 # evals-* (6 skills) + evals-templates/
 ├── tech-radar/            # tech-radar-* (1 skill) + resources/radar.json
@@ -335,6 +342,7 @@ Greenfield: architect-specify → architect-clarify → architect-implement → 
 ```
 Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
 Session:    levelup-specify → levelup-clarify → levelup-publish → team-repair
+History:    change-init → change-clarify → change-publish (team-boot injects chdr.md)
 Build to Delete: team-repair --build-to-delete → levelup-clarify (review deletion CDRs)
 ```
 

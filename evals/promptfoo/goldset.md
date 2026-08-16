@@ -111,3 +111,24 @@ The delegation prompt omits the skills list, does not instruct the subagent to i
 - **Scenario**: Delegation prompt with hard-coded mapping
 - **Input Context**: Skills inventory provided but prompt uses static lookup.
 - **Agent Output**: "Phase implement → skill tdd. Phase converge → skill code-review. Execute the mapped skill for this phase."
+
+## Criterion EVAL-006: Change Decision Record (ChDR) Format Integrity
+
+**Status**: published
+**Description**: Verifies that a Change Decision Record mined by `/change-init` has the four required sections (Context, Decision, Consequences, Evidence), at least one commit SHA as a provenance anchor, an issue link or an explicit "no linked issue" marker, and provenance (SHA or URL) on the Decision claims — the context-poisoning circuit breaker that prevents unprovenanced inferred rationale from entering project memory.
+
+### Pass Condition
+The ChDR draft contains `### Context`, `### Decision`, `### Consequences`, and `### Evidence` headings; at least one commit SHA (7-40 hex chars) somewhere in the record; an issue link (JIRA key, GitHub/GitLab `#NNN`, MR `!NNN`, or issue URL) OR an explicit "no linked issue" / "none detected" marker; and at least one SHA or URL inside the Decision section body (provenance on the inferred decision).
+
+### Fail Condition
+The ChDR is missing any required section, has no commit SHA, has neither an issue link nor a no-link marker, or the Decision section states inferred rationale without citing any SHA or URL (unprovenanced — poisoning risk).
+
+### Pass Example 1
+- **Scenario**: A complete ChDR mined from an issue-linked commit cluster
+- **Input Context**: Git history with commit `abc1234` referencing `PROJ-123`.
+- **Agent Output**: A ChDR with all four sections, `### Issue Links: PROJ-123`, `### Commits: abc1234`, and a Decision section citing `abc1234` inline ("capped at 3 (abc1234) because...").
+
+### Fail Example 1
+- **Scenario**: A ChDR whose Decision section infers rationale without citing evidence
+- **Input Context**: Git history with a terse commit and no linked issue.
+- **Agent Output**: A ChDR with all sections and a SHA in Evidence, but the Decision section reads "The cap was chosen for performance reasons" with no SHA or URL — unprovenanced inferred rationale.

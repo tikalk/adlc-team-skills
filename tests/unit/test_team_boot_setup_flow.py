@@ -103,6 +103,33 @@ def test_boot_ps1_context_contract_integrity():
     assert "targeted file searches" in BOOT_PS1
 
 
+def test_boot_sh_includes_chdr_index_section():
+    """boot.sh must inject a ChDR Index section from .adlc/memory/chdr.md.
+
+    Change Decision Records (mined by /change-init, promoted by /change-publish)
+    live in project memory; team-boot surfaces their index at session start
+    alongside the PDR/ADR indexes.
+    """
+    assert "## ChDR Index" in BOOT_SH
+    assert ".adlc/memory/chdr.md" in BOOT_SH
+    # Counts line must include ChDR so the Team Context in Use summary is accurate
+    assert "ChDR entries" in BOOT_SH
+
+
+def test_boot_ps1_includes_chdr_index_section():
+    """boot.ps1 must inject a ChDR Index section from .adlc/memory/chdr.md."""
+    assert "## ChDR Index" in BOOT_PS1
+    assert ".adlc/memory/chdr.md" in BOOT_PS1
+    assert "ChdrCount" in BOOT_PS1
+
+
+def test_boot_counts_line_includes_chdr():
+    """The Searched...counts line in both boot scripts must include the ChDR count."""
+    assert "ChDR entries" in BOOT_SH
+    assert "$CHDR_COUNT" in BOOT_SH
+    assert "$ChdrCount" in BOOT_PS1
+
+
 def test_team_boot_sh_unconfigured_warns_user():
     """boot.sh unconfigured output must warn the user, not instruct the LLM."""
     assert "not configured" in BOOT_SH

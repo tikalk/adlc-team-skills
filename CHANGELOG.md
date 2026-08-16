@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-08-17
+
+### Added
+
+- **`change-*` skill family — Change Decision Records from git history** (`skills/change/change-{init,clarify,publish}/`): a new record type (ChDR) that mines the *why* behind how code came to be, recovered from commit messages + linked issue trackers rather than from current code patterns or the current session. `change-init` scans a `git log` window, auto-detects issue links (JIRA keys, GitHub/GitLab `#NNN`, MR `!NNN`, issue URLs), clusters commits by issue key into change stories, best-effort fetches issue context (GitLab via MCP, GitHub via `gh`, else link-only), and treats revert/fix chains as first-class negative knowledge. `change-clarify` is the human gate (one-ChDR-at-a-time Accept/Reject/Defer) with a provenance check that rejects Decision claims lacking a cited commit SHA or issue URL (the context-poisoning circuit breaker). `change-publish` promotes accepted ChDRs to `.adlc/memory/chdr/` and regenerates the boot-facing `.adlc/memory/chdr.md` index. Every Decision claim carries mandatory provenance; linkage-rate metric in the summary sets expectations about corpus quality (research: rationale density varies 85–99% on disciplined projects, far lower elsewhere). ChDRs publish to project-local memory, not team-ai-directives (they describe this repo's evolution and fail the levelup team-wide signal gate). Empirical foundation: CoMRAT (MSR 2025), DRMiner (ASE 2024), LaToza et al. (ICSE 2006), Ko et al. (ICSE 2007).
+
+- **`team-boot` injects the ChDR index at session start** (`skills/team/team-boot/scripts/boot.sh`, `boot.ps1`, `SKILL.md`): alongside the existing PDR/ADR indexes, `team-boot` now reads `.adlc/memory/chdr.md` and emits a `## ChDR Index` section with `CHDR_COUNT`, so published Change Decision Records are available to every session. The counts line is extended to `_Searched N CDR, P PDR, A ADR, C ChDR entries, S skills, J matched._`. `team-discover` updated to include ChDR matches.
+
+- **Eval coverage for the change family** (`evals/promptfoo/graders/check_chdr_format.py`, `evals/promptfoo/tests/test_check_chdr_format.py`, `evals/promptfoo/goldset.md`): new goldset criterion (EVAL-006) and binary grader asserting ChDR drafts contain required sections (`Context`/`Decision`/`Consequences`/`Evidence`), at least one commit SHA, an issue link or explicit "no linked issue" marker, and provenance on Decision claims. Follows CONTRIBUTING's "new skills ship with eval coverage" requirement.
+
+- **`levelup-init` / `levelup-specify` "When NOT to use"** (`skills/levelup/levelup-{init,specify}/SKILL.md`): added a pointer to `/change-init` for mining git history / issue-linked changes, keeping discovery-source routing unambiguous.
+
 ## [0.25.1] - 2026-08-09
 
 ### Fixed

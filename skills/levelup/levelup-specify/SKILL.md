@@ -35,6 +35,7 @@ This skill focuses on **session-level learnings** — what reusable knowledge em
 ### When NOT to use
 
 - **Brownfield projects**: Use `/levelup-init` to scan existing code
+- **Mining git history / issue-linked changes**: Use `/change-init` to recover past decisions from commits + issue trackers
 - **Before work is done**: Run this after completing the implementation
 - **Routine team AI directives validation**: Use `/team-repair` for health checks
 

@@ -122,6 +122,28 @@ Write-Output ""
 Write-Output "_Total: $AdrCount ADR entries available._"
 Write-Output ""
 
+# ChDR Index — from project memory (Published Change Decision Records mined by /change-init)
+Write-Output "## ChDR Index"
+$ChdrCount = 0
+$chdrPath = ".adlc/memory/chdr.md"
+if (Test-Path $chdrPath) {
+    $chdrLines = Get-Content $chdrPath | Where-Object { $_ -match '^\| ChDR' }
+    $ChdrCount = $chdrLines.Count
+    $chdrLines | ForEach-Object {
+        $cols = $_ -split '\|'
+        if ($cols.Count -ge 6) {
+            $id = $cols[1].Trim()
+            $title = $cols[2].Trim()
+            $date = $cols[4].Trim()
+            $desc = $cols[5].Trim()
+            Write-Output "| $id | $date | $title | $desc |"
+        }
+    }
+}
+Write-Output ""
+Write-Output "_Total: $ChdrCount ChDR entries available._"
+Write-Output ""
+
 # Skills — names + descriptions only (lean)
 Write-Output "## Available Skills"
 $skillsPath = Join-Path $TEAM_AI_DIRECTIVES ".skills.json"
@@ -159,6 +181,6 @@ Write-Output "| ID | Name | Type | Relevance |"
 Write-Output "|----|------|------|-----------|"
 Write-Output "| CDR-YYYY-NNN | <name> | <type> | <relevance> |"
 Write-Output ""
-Write-Output "Plus: _Searched $CdrCount CDR entries, $PdrCount PDR entries, $AdrCount ADR entries, $SkillTotal skills, J matched._"
+Write-Output "Plus: _Searched $CdrCount CDR entries, $PdrCount PDR entries, $AdrCount ADR entries, $ChdrCount ChDR entries, $SkillTotal skills, J matched._"
 Write-Output "**J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**"
 Write-Output "</EXTREMELY_IMPORTANT>"

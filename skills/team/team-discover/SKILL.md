@@ -40,8 +40,8 @@ verifying which directives apply). It is not required for normal operation.
 |----|--------|------|------------|-----------|
 | CDR-2026-003 | context_modules/personas/admin.md | Persona | Admin persona | High |
 
-6. Include PDR/ADR matches from project indexes if relevant.
-7. Include: `_Searched N CDR entries, M PDR entries, K ADR entries, J matches found._`
+6. Include PDR/ADR/ChDR matches from project indexes if relevant.
+7. Include: `_Searched N CDR entries, M PDR entries, K ADR entries, C ChDR entries, J matches found._`
 
 ## Unconfigured projects
 

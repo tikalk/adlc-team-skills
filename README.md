@@ -92,6 +92,83 @@ it: agents get an index by default and pull full rules only when relevant. If
 your instinct is "more rules in context don't work" — we agree. That's the
 design.
 
+## How it works
+
+It starts the moment you open a session. `team-boot` fires via the
+`session_start` event hook and injects a lean index — your team's
+constitution, CDR index, PDR/ADR indexes, and skills registry — roughly a
+hundred tokens of names and one-line descriptors. Not the rules themselves.
+When the active task matches a rule, the agent pulls that rule's full text on
+demand. A task touching SQL loads the SQL rule; nothing else does.
+
+On an unconfigured project, `team-boot` points you to `/team-setup`, which
+clones, links, or scaffolds your team-ai-directives repo. `team-constitution`
+fills in your principles.
+
+When you ask it to build something, it doesn't jump to code. `mission-brief`
+forces a contract first — goal, constraints, non-goals, success criteria —
+then generates an ordered step list and walks `specify → plan → implement ↔
+converge`, with gates, a circuit breaker, resume, and an audit trail. At
+mission start it scans installed skills directories, reads each `SKILL.md`
+frontmatter, and hands the inventory to the subagent; the model picks the
+skill that fits each step — this repo's `product-specify`, superpowers'
+`brainstorming`, spec-kit's commands, or your own.
+
+For new products, `product-specify` captures Product Decision Records (PDRs),
+`product-clarify` refines them, and `product-implement` compiles them into
+`PRD.md`. The `architect-*` skills do the same for Architecture Decision
+Records (ADRs, Rozanski & Woods viewpoints) and compose them into `AD.md`.
+
+The `evals` skills build executable evaluation suites — binary graders
+(Tier 1, plain assertions) for anything code can check, LLM judges (Tier 2)
+only for what static checks can't. `evals-validate` runs the pyramid with
+holdout splits, TPR/TNR, and SLA headroom. Nothing auto-merges; the pipeline
+ends at a PR a human reviews.
+
+When a session surfaces a hard-won fix, `levelup-specify` extracts it as a
+Context Directive Record (CDR) — with a paired eval CDR — and commits it back
+to the team repo. The next session starts smarter.
+
+Rules rot, so `team-repair --build-to-delete` re-runs evals *without* a rule;
+if the model passes anyway, the rule is proposed for deletion. Rules should
+shrink over time, not grow.
+
+And because the skills trigger automatically from the index, you don't do
+anything special once they're installed. Your coding agent just has your
+team's context.
+
+## The Basic Workflow
+
+1. **team-boot** — auto-runs at session start (event hook); injects the
+   directives index (constitution, CDR index, PDR/ADR indexes, skills
+   registry). Full rules pulled on demand when the task matches.
+2. **team-setup** — on an unconfigured project, clones/links/scaffolds the
+   team-ai-directives repo. **team-constitution** fills in your principles.
+3. **mission-brief** — before code, forces a spec contract (goal, constraints,
+   non-goals, success criteria), then walks `specify → plan → implement ↔
+   converge` with gates, circuit breaker, resume, and audit trail.
+4. **product-specify / product-init** — greenfield/brownfield capture of
+   Product Decision Records (PDRs). → **product-clarify** refines →
+   **product-implement** generates `PRD.md` → **product-analyze** checks
+   consistency.
+5. **architect-specify / architect-init** — same shape for Architecture
+   Decision Records (ADRs, Rozanski & Woods). → **architect-clarify** →
+   **architect-implement** generates `AD.md` → **architect-analyze**.
+6. **evals-init → evals-specify → evals-clarify → evals-implement →
+   evals-validate** — builds executable graders (binary Tier 1, LLM judge
+   Tier 2), holdout split, TPR/TNR + SLA validation. Pipeline ends at a
+   human-reviewed PR.
+7. **levelup-specify** — at session end, extracts hard-won fixes as CDRs +
+   paired eval CDRs. → **levelup-clarify** reviews → **levelup-publish**
+   commits to team repo → next session starts smarter.
+8. **team-repair --build-to-delete** — re-runs evals without a rule; if the
+   model passes anyway, proposes the rule for deletion. Rules shrink over
+   time, not grow.
+
+**The agent checks the directives index before any task.** Skills trigger
+automatically when the active task matches — mandatory lifecycle, not
+suggestions.
+
 ## Install
 
 ```bash

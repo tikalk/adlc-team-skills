@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.1] - 2026-08-20
+
+### Added
+
+- **"How it works" + "The Basic Workflow" sections in README** (`README.md`): two new top-level sections, placed between "A note on context stuffing" and "Install", that surface the end-to-end arc before the install/reference walls — `team-boot` session-start index injection (~hundred tokens, full rules pulled on demand) → `team-setup`/`team-constitution` on unconfigured projects → `mission-brief` spec contract and `specify → plan → implement ↔ converge` loop (gates, circuit breaker, resume, audit trail) with universal skill scanning (this repo + superpowers + spec-kit + your own) → `product-*`/`architect-*` PDR/ADR compilation into `PRD.md`/`AD.md` → `evals-*` binary Tier 1 + LLM Tier 2 graders with holdout/TPR/TNR/SLA, ending at a human-reviewed PR → `levelup-specify` CDR capture back to the team repo → `team-repair --build-to-delete` rule pruning. "The Basic Workflow" is an 8-step numbered list with bolded skill names and a closing "skills trigger automatically — mandatory lifecycle, not suggestions" line. Modeled on the [superpowers](https://github.com/obra/superpowers) README's "How it works" / "Basic Workflow" structure. Tone matches the existing technical README; the collapsible `Workflows` `<details>` block and `Reference` table are unchanged (they hold the detailed per-lifecycle chains; the new sections are the high-level summary). Documentation-only; PATCH bump per `RELEASE.md`.
+
 ## [0.26.0] - 2026-08-17
 
 ### Added

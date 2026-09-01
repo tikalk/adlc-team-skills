@@ -15,17 +15,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$radarJson = Join-Path $scriptDir ".." "resources" "radar.json"
-if (-not (Test-Path $radarJson)) {
-    $radarJson = Join-Path $PWD "skills" "tech-radar" "tech-radar-context" "resources" "radar.json"
-}
-if (-not (Test-Path $radarJson)) {
-    Write-Error "radar.json not found"
+$radarUrl = "https://tikalk.com/radar.json"
+
+try {
+    $radar = Invoke-RestMethod -Uri $radarUrl -TimeoutSec 10
+} catch {
+    Write-Error "Error: could not fetch Tikal Tech Radar data from $radarUrl (radar context unavailable)"
     exit 1
 }
-
-$radar = Get-Content $radarJson -Raw | ConvertFrom-Json
 
 $aliases = @{
     "k8s" = "Kubernetes"; "kube" = "Kubernetes"
@@ -143,4 +140,4 @@ foreach ($g in $techGroups) {
 }
 
 Write-Output ""
-Write-Output "_Source: Tikal Israeli Tech Radar (local snapshot) · $($results.Count) blip placement(s) matched._"
+Write-Output "_Source: Tikal Israeli Tech Radar (live: https://tikalk.com/radar.json) · $($results.Count) blip placement(s) matched._"

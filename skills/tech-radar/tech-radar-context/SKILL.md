@@ -10,10 +10,11 @@ description: Discover and inject Tikal Israeli Tech Radar context — adoption r
 Surface **Tikal's opinion** on the technologies relevant to the current prompt so
 a tech stack choice is informed by the Israeli Tech Radar. This skill works like
 `team-discover`, but its search surface is the Tikal Tech Radar dataset
-(`radar.json`) instead of the team CDR index: it extracts candidate technologies
-from the prompt, matches them against radar **blips**, and injects a compact
-**Tech Radar Context** table (ring, quadrant, Tikal's "Why?" opinion) plus
-Tikal-aligned alternatives for anything on `Stop`.
+(fetched live from `https://tikalk.com/radar.json`) instead of the team CDR
+index: it extracts candidate technologies from the prompt, matches them against
+radar **blips**, and injects a compact **Tech Radar Context** table (ring,
+quadrant, Tikal's "Why?" opinion) plus Tikal-aligned alternatives for anything
+on `Stop`.
 
 The radar has four **quadrants** — `DevOps`, `Backend`, `AI/ML`, `Web/Mobile` —
 and four adoption **rings**:
@@ -63,7 +64,7 @@ If the prompt implies a category without naming a product (e.g. "we need a
 vector database", "pick a Python web framework"), treat the category as a query
 and surface the radar's recommended options in that space.
 
-### Step 2: Load and Query the Radar Dataset
+### Step 2: Query the Live Radar Dataset
 
 Execute the deterministic search helper script (relative to this skill directory):
 
@@ -79,13 +80,14 @@ pwsh scripts/radar-search.ps1 <tech1> [tech2 ...]
 
 Or for JSON output (add `--json` for bash, `-Json` for PowerShell).
 
-The script handles alias mapping (`k8s` → `Kubernetes`, `postgres` → `PostgreSQL`, `gh actions` → `GitHub Actions`, etc.), matches against `resources/radar.json`, extracts Tikal's `<p>Why?</p>` opinion, and formats the markdown table automatically.
+The script fetches the radar JSON fresh from `https://tikalk.com/radar.json`,
+handles alias mapping (`k8s` → `Kubernetes`, `postgres` → `PostgreSQL`, `gh actions` → `GitHub Actions`, etc.), extracts Tikal's `<p>Why?</p>` opinion, and formats the markdown table automatically.
 
 If a technology appears in multiple placements with conflicting rings (e.g.,
 `Node.js` is both `DevOps: Stop` and `DevOps: Keep`), the script detects and
 flags it with a **Conflicting Guidance** note.
 
-**Schema of `resources/radar.json`**:
+**Schema of the live radar JSON** (`https://tikalk.com/radar.json`):
 ```json
 {
   "title": "Explore the Tech Radar",
@@ -161,12 +163,12 @@ task answer, so downstream reasoning is grounded in the radar:
 - ✅ Keep/Start: FastAPI — safe to adopt.
 - ⚠️ Stop: Jenkins → consider GitHub Actions, GitLab CI, or Tekton (see Why? above).
 
-_Source: Tikal Israeli Tech Radar (local snapshot) · N technologies matched._
+_Source: Tikal Israeli Tech Radar (live: https://tikalk.com/radar.json) · N technologies matched._
 ```
 
 - One row per matched blip (include duplicates across quadrants when relevant).
 - Group a short **Radar guidance** list: safe-to-adopt vs avoid-with-alternatives.
-- Add a `_Source_` line noting the data came from the **local snapshot** and
+- Add a `_Source_` line noting the data came from the **live radar source** and
   how many technologies matched.
 
 If no candidate technology matches any blip, state that plainly with an empty
@@ -175,16 +177,20 @@ do not fabricate radar placements.
 
 ## Failure Handling
 
-- Local `resources/radar.json` missing/unparseable → emit an empty context
-  table noting the radar was unavailable, and continue; never block the
-  user's task.
+- Live fetch fails (network error, timeout, invalid JSON) → the script exits
+  non-zero with a clear error message to stderr. The skill must emit an empty
+  context table noting the Tech Radar source was unreachable and continue the
+  user's task without radar context — never substitute stale cached or
+  bundled data as if it were current.
 - No matches → empty table + `0 technologies matched` line.
 
 ## Red Flags
 
 - Fabricating a ring, quadrant, or "Why?" opinion for a technology that is not
   in the loaded dataset — report `0 matches` instead.
-- Blocking on the live fetch instead of falling through to the local snapshot.
+- Silently substituting cached, bundled, or stale radar data when the live
+  fetch fails — always report when the radar source is unreachable, never
+  present old data as current.
 - Hardcoding `Stop`→alternative substitutions not backed by the loaded radar.
 - Reporting the neutral `<p>Description</p>` text as Tikal's opinion — the
   opinion lives in the `<p>Why?</p>` block.
@@ -197,18 +203,20 @@ do not fabricate radar placements.
 
 - Candidate technologies were extracted from the prompt (or category queries
   formed when no product was named).
-- The radar dataset was loaded from `resources/radar.json`.
+- The radar dataset was fetched live from `https://tikalk.com/radar.json`.
 - A **Tikal Tech Radar Context** table was produced with columns Technology /
   Quadrant / Ring / Tikal's Opinion (Why?), with the opinion sourced from the
   `<p>Why?</p>` block.
 - `Stop`-ring matches include Tikal-aligned `Keep`/`Start` alternatives from the
   same quadrant, derived from the dataset.
-- A `_Source_` line reports live-vs-snapshot and the match count; a no-match run
-  yields an empty table plus `0 technologies matched` rather than fabricated data.
+- A `_Source_` line reports the live-radar source and the match count; a no-match
+  run yields an empty table plus `0 technologies matched` rather than fabricated
+  data. On fetch failure, an error is reported and the skill continues without
+  radar context.
 
 ## Configuration
 
-- Local source: `resources/radar.json` (bundled full radar snapshot; the only source the search script uses).
-- Canonical source: `https://www.tikalk.com/radar/` (for periodic manual snapshot regeneration; not fetched by the script at runtime).
-- Regenerate the snapshot periodically from the canonical Tikal radar dataset to
-  stay current.
+- Data source: `https://tikalk.com/radar.json` (live-fetched on every invocation;
+  no bundled snapshot or cache).
+- Fetch timeout: 10 seconds. On fetch failure, the skill continues without radar
+  context rather than blocking or substituting stale data.

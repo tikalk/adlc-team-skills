@@ -6,17 +6,11 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from urllib.request import urlopen
 import pytest
 
 ROOT = Path(__file__).parent.parent.parent
-RADAR_JSON_PATH = (
-    ROOT
-    / "skills"
-    / "tech-radar"
-    / "tech-radar-context"
-    / "resources"
-    / "radar.json"
-)
+RADAR_URL = "https://tikalk.com/radar.json"
 RADAR_SEARCH_SCRIPT = (
     ROOT
     / "skills"
@@ -27,12 +21,15 @@ RADAR_SEARCH_SCRIPT = (
 )
 
 
-def test_radar_json_exists_and_is_valid():
-  """Verify radar.json exists, is valid JSON, and contains expected keys."""
-  assert RADAR_JSON_PATH.exists(), f"Missing radar.json at {RADAR_JSON_PATH}"
+def fetch_live_radar():
+  """Fetch radar JSON from live URL."""
+  with urlopen(RADAR_URL, timeout=10) as response:
+    return json.loads(response.read())
 
-  with open(RADAR_JSON_PATH, "r", encoding="utf-8") as f:
-    data = json.load(f)
+
+def test_radar_json_exists_and_is_valid():
+  """Verify radar.json is fetchable from live URL, is valid JSON, and contains expected keys."""
+  data = fetch_live_radar()
 
   assert "quadrants" in data
   assert "rings" in data
@@ -43,9 +40,8 @@ def test_radar_json_exists_and_is_valid():
 
 
 def test_every_blip_has_required_fields_and_why_text():
-  """Verify every blip in radar.json has name, quadrant, ring, and a parseable Why? block."""
-  with open(RADAR_JSON_PATH, "r", encoding="utf-8") as f:
-    data = json.load(f)
+  """Verify every blip fetched from live radar has name, quadrant, ring, and a parseable Why? block."""
+  data = fetch_live_radar()
 
   import re
 
@@ -67,8 +63,7 @@ def test_every_blip_has_required_fields_and_why_text():
 
 def test_fixed_blip_descriptions_are_accurate():
   """Verify that previously corrupted blips (Chaos Toolkit, k6, kube-score, Swarm) have accurate description blocks."""
-  with open(RADAR_JSON_PATH, "r", encoding="utf-8") as f:
-    data = json.load(f)
+  data = fetch_live_radar()
 
   by_name = {b["name"]: b for b in data["blips"]}
 

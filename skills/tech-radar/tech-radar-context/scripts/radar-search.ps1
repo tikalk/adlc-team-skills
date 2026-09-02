@@ -13,14 +13,17 @@ param(
     [switch]$Json
 )
 
-$ErrorActionPreference = "Stop"
-
 $radarUrl = "https://tikalk.com/radar.json"
 
 try {
     $radar = Invoke-RestMethod -Uri $radarUrl -TimeoutSec 10
 } catch {
-    Write-Error "Error: could not fetch Tikal Tech Radar data from $radarUrl (radar context unavailable)"
+    [Console]::Error.WriteLine("Error: could not fetch Tikal Tech Radar data from $radarUrl (radar context unavailable)")
+    exit 1
+}
+
+if (-not $radar.blips) {
+    [Console]::Error.WriteLine("Error: radar data is not valid JSON or missing blips (radar context unavailable)")
     exit 1
 }
 

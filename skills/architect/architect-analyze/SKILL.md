@@ -94,7 +94,7 @@ Architecture document hierarchy:
 2. **Load System-Level Artifacts**:
    - Read `AD.md` (project root) if exists
    - Read ADRs from all locations (priority order):
-     1. `{REPO_ROOT}/.adlc/memory/adr.md` (canonical — Accepted ADRs)
+     1. `{REPO_ROOT}/.adlc/memory/adr/adr.md` (canonical — Accepted ADRs)
      2. `{REPO_ROOT}/.adlc/drafts/adr/` (working copy — Proposed/Discovered, individual file format)
    - Read `{REPO_ROOT}/.adlc/memory/constitution.md` if exists
 
@@ -107,7 +107,7 @@ Architecture document hierarchy:
    | Artifact | Path | Status |
    |----------|------|--------|
    | System AD | `AD.md` | Found/Missing |
-   | System ADRs (canonical) | `{REPO_ROOT}/.adlc/memory/adr.md` | Found/Missing |
+   | System ADRs (canonical) | `{REPO_ROOT}/.adlc/memory/adr/adr.md` | Found/Missing |
    | System ADRs (drafts) | `{REPO_ROOT}/.adlc/drafts/adr/` | Found/Missing |
    | Constitution | `{REPO_ROOT}/.adlc/memory/constitution.md` | Found/Missing |
    | Feature ADs | `specs/*/AD.md` | Count: N |

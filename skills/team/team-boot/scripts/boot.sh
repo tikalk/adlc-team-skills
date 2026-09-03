@@ -75,10 +75,10 @@ echo ""
 # PDR Index — from project memory (Accepted PDRs)
 echo "## PDR Index"
 PDR_COUNT=0
-if [ -f ".adlc/memory/pdr.md" ]; then
-  PDR_COUNT=$(awk '/^\| PDR/ {count++} END {print count+0}' ".adlc/memory/pdr.md" 2>/dev/null || true)
+if [ -f ".adlc/memory/pdr/pdr.md" ]; then
+  PDR_COUNT=$(awk '/^\| PDR/ {count++} END {print count+0}' ".adlc/memory/pdr/pdr.md" 2>/dev/null || true)
   [[ "$PDR_COUNT" =~ ^[0-9]+$ ]] || PDR_COUNT=0
-  awk -F'|' '/^\| PDR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$5); gsub(/^ +| +$/,"",$8); print "| " $2 " | " $5 " | " $3 " | " $8 " |"}' ".adlc/memory/pdr.md" 2>/dev/null || true
+  awk -F'|' '/^\| PDR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$5); gsub(/^ +| +$/,"",$8); print "| " $2 " | " $5 " | " $3 " | " $8 " |"}' ".adlc/memory/pdr/pdr.md" 2>/dev/null || true
 fi
 echo ""
 echo "_Total: $PDR_COUNT PDR entries available._"
@@ -87,10 +87,10 @@ echo ""
 # ADR Index — from project memory (Accepted ADRs)
 echo "## ADR Index"
 ADR_COUNT=0
-if [ -f ".adlc/memory/adr.md" ]; then
-  ADR_COUNT=$(awk '/^\| ADR/ {count++} END {print count+0}' ".adlc/memory/adr.md" 2>/dev/null || true)
+if [ -f ".adlc/memory/adr/adr.md" ]; then
+  ADR_COUNT=$(awk '/^\| ADR/ {count++} END {print count+0}' ".adlc/memory/adr/adr.md" 2>/dev/null || true)
   [[ "$ADR_COUNT" =~ ^[0-9]+$ ]] || ADR_COUNT=0
-  awk -F'|' '/^\| ADR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$4); gsub(/^ +| +$/,"",$5); print "| " $2 " | " $5 " | " $3 " | " $4 " |"}' ".adlc/memory/adr.md" 2>/dev/null || true
+  awk -F'|' '/^\| ADR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$4); gsub(/^ +| +$/,"",$5); print "| " $2 " | " $5 " | " $3 " | " $4 " |"}' ".adlc/memory/adr/adr.md" 2>/dev/null || true
 fi
 echo ""
 echo "_Total: $ADR_COUNT ADR entries available._"

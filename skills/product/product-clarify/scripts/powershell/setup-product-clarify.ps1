@@ -9,9 +9,14 @@ New-Item -ItemType Directory -Force -Path $PdrDraftsDir | Out-Null
 $pdrCount = if (Test-Path $PdrDraftsDir) { (Get-ChildItem -Path $PdrDraftsDir -Filter 'PDR-*.md').Count } else { 0 }
 $acceptedCount = 0
 if (Test-Path $PdrDraftsDir) {
-  Get-ChildItem -Path $PdrDraftsDir -Filter 'PDR-*.md' | ForEach-Object {
-    $content = Get-Content $_.FullName -Raw
-    if ($content -match '\*\*Accepted\*\*') { $acceptedCount++ }
+  . (Join-Path $PSScriptRoot "pdr-lib.ps1") 2>$null
+  if (Get-Command Count-PdrAccepted -ErrorAction SilentlyContinue) {
+    $acceptedCount = Count-PdrAccepted -Dir $PdrDraftsDir
+  } else {
+    Get-ChildItem -Path $PdrDraftsDir -Filter 'PDR-*.md' | ForEach-Object {
+      $content = Get-Content $_.FullName -Raw
+      if ($content -match '\*\*Accepted\*\*') { $acceptedCount++ }
+    }
   }
 }
 if ($Json) {

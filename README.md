@@ -277,6 +277,15 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`tech-radar-context`** — injects Tikal Tech Radar context for tech choices. Auto-triggered.
 - **`workspace`** — multi-repo workspace: `--init` creates `.adlc/` structure + `.gitignore`, discover/link/audit child repos.
 
+### Factory Platform Orchestration & Control Plane
+
+- **`factory-mission`** — spec harness execution engine (copy of `mission-brief`) with tracker-agnostic integration and container-level TDD separation (PDR-049).
+- **`factory-product`** — coordinates product lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `PRD.md`.
+- **`factory-architect`** — coordinates architecture lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `AD.md`.
+- **`factory-learn`** — coordinates continuous improvement learning loops (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`.
+- **`factory-queue`** — manages queue intake and triage (PII scrubbing, AI advisory triage scoring, and label stamping) and milestones/epics generation (PDR-020).
+- **`factory-review`** — performs severity-ranked PR policy compliance reviews against `REVIEW.md` and babysits agent PRs to merge (PDR-044).
+
 ---
 
 <details>

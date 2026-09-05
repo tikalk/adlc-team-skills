@@ -112,7 +112,7 @@ function Parse-PdrField {
     $fmField = $Field.ToLower()
     $val = Parse-FrontmatterField -File $File -Field $fmField
     if ($val) { return $val }
-    $titleField = $Field.Substring(0,1).ToUpper() + $Field.Substring(1).ToLower()
+    $titleField = ($Field -split '-' | ForEach-Object { $_.Substring(0,1).ToUpper() + $_.Substring(1).ToLower() }) -join '-'
     $val = Parse-PdrHeadingField -File $File -Field $titleField
     if ($val) { return $val }
     $val = Parse-PdrHeadingField -File $File -Field $Field

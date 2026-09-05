@@ -141,7 +141,7 @@ parse_pdr_field() {
     # Fallback: heading-based (Title Case the field name for heading matching)
     # Accept both "Feature-Area" and "feature-area" heading styles
     local title_field
-    title_field=$(echo "$field" | awk '{ print toupper(substr($0,1,1)) tolower(substr($0,2)) }')
+    title_field=$(echo "$field" | awk -F'-' '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS='-')
     value=$(parse_pdr_heading_field "$file" "$title_field")
     if [ -n "$value" ]; then
         echo "$value"

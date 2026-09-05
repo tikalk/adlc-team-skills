@@ -1,6 +1,6 @@
 ---
 name: factory-mission
-description: Spec Harness & Execution Engine. Copy of mission-brief; runs the inner loop (specify → plan → implement ↔ converge) with optional tracker integration and structural TDD.
+description: Spec Harness & Execution Engine that runs the inner loop (specify → plan → implement ↔ converge) with optional tracker integration and structural TDD.
 ---
 
 # factory-mission

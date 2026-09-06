@@ -161,7 +161,7 @@ D. Remove PDR — Delete and follow constitution
 1. **Apply clarifications** per-file
 2. **Update status** where applicable
 3. **Update "Last Updated"** timestamps
-4. **Regenerate `pdr.md` index**
+4. **Regenerate `pdr/pdr.md` index** — call `generate_pdr_index drafts` from `pdr-lib.sh` (or `Generate-PdrIndex drafts` from `pdr-lib.ps1`). This uses a frontmatter-primary + heading-fallback parser that handles both H2 and H3 metadata, preventing the blank-row bug.
 
 ### Phase 8: PDR Approval ⭐
 

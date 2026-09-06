@@ -81,7 +81,7 @@ Write-Output ""
 # PDR Index — from project memory (Accepted PDRs)
 Write-Output "## PDR Index"
 $PdrCount = 0
-$pdrPath = ".adlc/memory/pdr.md"
+$pdrPath = ".adlc/memory/pdr/pdr.md"
 if (Test-Path $pdrPath) {
     $pdrLines = Get-Content $pdrPath | Where-Object { $_ -match '^\| PDR' }
     $PdrCount = $pdrLines.Count
@@ -103,7 +103,7 @@ Write-Output ""
 # ADR Index — from project memory (Accepted ADRs)
 Write-Output "## ADR Index"
 $AdrCount = 0
-$adrPath = ".adlc/memory/adr.md"
+$adrPath = ".adlc/memory/adr/adr.md"
 if (Test-Path $adrPath) {
     $adrLines = Get-Content $adrPath | Where-Object { $_ -match '^\| ADR' }
     $AdrCount = $adrLines.Count

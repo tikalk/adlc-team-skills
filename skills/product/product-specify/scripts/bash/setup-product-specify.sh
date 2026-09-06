@@ -7,7 +7,8 @@ for arg in "$@"; do
   case "$arg" in --json) JSON_MODE=true ;; esac
 done
 
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+source "$(dirname "${BASH_SOURCE[0]}")/pdr-lib.sh" 2>/dev/null || true
+REPO_ROOT="${REPO_ROOT:-$(_get_project_root)}"
 PDR_DRAFTS_DIR="$REPO_ROOT/.adlc/drafts/pdr"
 PRD_FILE="$REPO_ROOT/PRD.md"
 

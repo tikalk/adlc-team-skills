@@ -3,7 +3,10 @@
 set -euo pipefail
 JSON_MODE=false
 for arg in "$@"; do case "$arg" in --json) JSON_MODE=true ;; esac; done
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# Source pdr-lib.sh for _get_project_root (walks up to find .adlc, not just .git)
+source "$(dirname "${BASH_SOURCE[0]}")/pdr-lib.sh" 2>/dev/null || true
+REPO_ROOT="${REPO_ROOT:-$(_get_project_root)}"
 PDR_DRAFTS_DIR="$REPO_ROOT/.adlc/drafts/pdr"
 PDR_MEMORY_DIR="$REPO_ROOT/.adlc/memory/pdr"
 PRD_FILE="$REPO_ROOT/PRD.md"
@@ -11,7 +14,7 @@ mkdir -p "$PDR_DRAFTS_DIR"
 PDR_COUNT=$(find "$PDR_DRAFTS_DIR" -name 'PDR-*.md' 2>/dev/null | wc -l)
 ACCEPTED_COUNT=0
 if [[ "$PDR_COUNT" -gt 0 ]]; then
-  ACCEPTED_COUNT=$(grep -l '^### Status' "$PDR_DRAFTS_DIR"/PDR-*.md 2>/dev/null | xargs -I{} grep -l '^\*\*Accepted\*\*' {} 2>/dev/null | wc -l)
+  ACCEPTED_COUNT=$(count_pdr_accepted "$PDR_DRAFTS_DIR" 2>/dev/null || grep -lE '^#+\s*Status' "$PDR_DRAFTS_DIR"/PDR-*.md 2>/dev/null | xargs -I{} grep -l '^\*\*Accepted\*\*' {} 2>/dev/null | wc -l)
 fi
 if $JSON_MODE; then
   cat <<EOF

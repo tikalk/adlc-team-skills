@@ -147,7 +147,7 @@ echo "**J MUST equal the number of rows in your table; if no CDRs/skills genuine
 
 # Pending CDRs — remind user to clarify (safety net for missed suggestions)
 if [ -d ".adlc/drafts/cdr" ]; then
-  PENDING_CDRS=$(grep -rl "Status: \*\*Proposed\*\*" .adlc/drafts/cdr/CDR-*.md 2>/dev/null | wc -l)
+  PENDING_CDRS=$(grep -rl "Status: \*\*Proposed\*\*" .adlc/drafts/cdr/CDR-*.md 2>/dev/null | wc -l || true)
   if [ "$PENDING_CDRS" -gt 0 ]; then
     echo ""
     echo "## Pending CDRs"
@@ -159,9 +159,9 @@ fi
 # Friction-based learning trigger (configurable, default on)
 CONTRIBUTE_HINT=true
 if [ -f "$INIT_FILE" ]; then
-  HINT_VAL=$(grep '"contribute_hint"' "$INIT_FILE" \
+  HINT_VAL=$(grep '"contribute_hint"' "$INIT_FILE" 2>/dev/null \
     | sed 's/.*"contribute_hint"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/' \
-    | head -1)
+    | head -1 || true)
   [ -n "$HINT_VAL" ] && CONTRIBUTE_HINT="$HINT_VAL"
 fi
 if [ "$CONTRIBUTE_HINT" = "true" ]; then

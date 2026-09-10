@@ -144,4 +144,31 @@ echo "| CDR-YYYY-NNN | <name> | <type> | <relevance> |"
 echo ""
 echo "Plus: _Searched $CDR_COUNT CDR entries, $PDR_COUNT PDR entries, $ADR_COUNT ADR entries, $CHDR_COUNT ChDR entries, $SKILL_TOTAL skills, J matched._"
 echo "**J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**"
+
+# Pending CDRs — remind user to clarify (safety net for missed suggestions)
+if [ -d ".adlc/drafts/cdr" ]; then
+  PENDING_CDRS=$(grep -rl "Status: \*\*Proposed\*\*" .adlc/drafts/cdr/CDR-*.md 2>/dev/null | wc -l || true)
+  if [ "$PENDING_CDRS" -gt 0 ]; then
+    echo ""
+    echo "## Pending CDRs"
+    echo "$PENDING_CDRS proposed CDR(s) awaiting review in \`.adlc/drafts/cdr/\`"
+    echo "Run \`/levelup-clarify\` to accept, reject, or defer them."
+  fi
+fi
+
+# Friction-based learning trigger (configurable, default on)
+CONTRIBUTE_HINT=true
+if [ -f "$INIT_FILE" ]; then
+  HINT_VAL=$(grep '"contribute_hint"' "$INIT_FILE" 2>/dev/null \
+    | sed 's/.*"contribute_hint"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/' \
+    | head -1 || true)
+  [ -n "$HINT_VAL" ] && CONTRIBUTE_HINT="$HINT_VAL"
+fi
+if [ "$CONTRIBUTE_HINT" = "true" ]; then
+  echo ""
+  echo "## Session Friction Awareness"
+  echo "After completing work that involved problem-solving friction — retries, corrections, unexpected failures, or significant debugging — proactively suggest running \`/levelup-specify\` to extract reusable patterns."
+  echo "Do NOT suggest for routine work. At most one suggestion per task completion."
+fi
+
 echo "</EXTREMELY_IMPORTANT>"

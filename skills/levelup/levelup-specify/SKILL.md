@@ -1,6 +1,6 @@
 ---
 name: levelup-specify
-description: Extract Context Directive Records (CDRs) from the current session after completing work. Identifies reusable patterns (rules, personas, examples, evals) and captures directive compliance cases for team-ai-directives.
+description: Extract Context Directive Records (CDRs) from the current session after completing work. Reviews the session, writes an audit trace, and identifies reusable patterns (rules, personas, examples, evals) for team-ai-directives.
 disable-model-invocation: true
 ---
 
@@ -88,11 +88,12 @@ You are acting as a **Context Extractor** — identifying reusable patterns from
 
 1. **Environment Setup** (Phase 0): Resolve paths
 2. **Review Session** (Phase 1): Review the current session for patterns and evidence
-3. **Load Existing CDRs** (Phase 2): Read pending CDRs for enrichment
-4. **Extract Patterns** (Phase 3): Identify reusable patterns by context type + extract paired eval CDRs
-5. **Create/Enrich CDRs** (Phase 4): Write CDR files with session evidence
-6. **Regenerate Index** (Phase 5): Update `cdr.md`
-7. **Summary** (Phase 6): Present extraction results
+3. **Write Session Trace** (Phase 1.5): Write audit trail to `.adlc/drafts/trace.md`
+4. **Load Existing CDRs** (Phase 2): Read pending CDRs for enrichment
+5. **Extract Patterns** (Phase 3): Identify reusable patterns by context type + extract paired eval CDRs
+6. **Create/Enrich CDRs** (Phase 4): Write CDR files with session evidence
+7. **Regenerate Index** (Phase 5): Update `cdr.md`
+8. **Summary** (Phase 6): Present extraction results
 
 ### Execution Steps
 
@@ -123,7 +124,7 @@ Or set: export TEAM_AI_DIRECTIVES=/path/to/team-ai-directives
 
 #### Phase 1: Review Session
 
-Review the current session to identify what happened. The agent directly observes the session — no trace file is needed.
+Review the current session to identify what happened. The agent directly observes the session.
 
 1. What did the user ask for?
 2. What did the agent do? (file changes, key decisions, approach)
@@ -142,6 +143,29 @@ git log --oneline -10 2>/dev/null
 
 # New/untracked files
 git status --short 2>/dev/null
+```
+
+#### Phase 1.5: Write Session Trace
+
+Write a compact trace to `{REPO_ROOT}/.adlc/drafts/trace.md` for audit trail.
+
+```markdown
+# Session Trace
+
+Generated: [YYYY-MM-DD]
+Branch: [branch-name or "N/A"]
+
+## Summary
+
+[2-3 sentences: what was asked, what was done, outcome]
+
+## Key Decisions
+
+1. [Decision — rationale]
+
+## Files Changed
+
+- `[path]`: [what changed]
 ```
 
 #### Phase 2: Load Existing CDRs
@@ -363,7 +387,7 @@ Handoff context:
 ```text
 [Agent session — work completed]
     ↓
-/levelup-specify
+/levelup-specify  ← reviews session, writes trace, extracts CDRs
     ↓
 [Extract patterns + paired evals] → Write CDRs to .adlc/drafts/cdr/CDR-{NNN}.md (Proposed)
     ↓
@@ -381,6 +405,7 @@ After `/levelup-specify` completes, run `/levelup-clarify` to review the propose
 ## Verification
 
 - CDRs written to `{REPO_ROOT}/.adlc/drafts/cdr/CDR-{NNN}.md` with status **Proposed**.
+- Audit trace written to `{REPO_ROOT}/.adlc/drafts/trace.md`.
 - Auto-generated `cdr.md` index exists in `{REPO_ROOT}/.adlc/drafts/cdr/`.
 - Each CDR includes session implementation evidence.
 - Eval CDRs are paired with their directive CDRs and contain self-contained pass/fail cases.

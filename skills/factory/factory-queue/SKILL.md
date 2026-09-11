@@ -38,7 +38,7 @@ Operates on candidate issues (labeled `intent`) or local draft briefs:
    - **Risk**: Blast radius, data sensitivity, and architectural impact (Low / Medium / High).
    - **Complexity**: Scope and cross-service dependencies (Low / Medium / High).
    - **Agent Confidence**: Estimation of end-to-end execution success (0-100%, High/Medium/Low bands).
-3. **Intent Gate Presentation**: Present candidate briefs + advisory scores to the human. **The Human Intent Gate is non-negotiable**; no brief is auto-approved or auto-rejected.
+3. **Intent Gate Presentation (ADR-344)**: Present candidate briefs + advisory scores (PDR-048) to the human. If running unattended (no active human terminal), publish the Intent Gate presentation and AI scores as a structured comment with marker `<!-- factory-queue:triage:proposal -->` on the candidate issue. The queue run pauses. The human reviews the proposal, and approves by commenting "approve" or changing the label to `spec-gated`. When resumed, the queue reads the comment/label state and continues. **The Human Intent Gate is non-negotiable**; no brief is auto-approved or auto-rejected.
 4. **Label Stamping (ADR-318)**:
    - On approval: Transition lifecycle label `intent` ──► `spec-gated`. Stamp automation-gating (`agent-can-execute` or `human-required`) and dispatch (`autonomous` | `supervised` | `interactive`) labels.
    - On rejection: Transition `intent` ──► `cancelled` (or delete draft).

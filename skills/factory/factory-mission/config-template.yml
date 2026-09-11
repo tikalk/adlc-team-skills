@@ -27,3 +27,68 @@ workflow:
   # models:
   #   strong: "claude-opus-4-6"   # brainstorm, specify, plan, implement
   #   fast: "claude-haiku-4-5"    # clarify, tasks, analyze, converge, trace
+
+  # ── ADR-332: Worktree isolation ──────────────────────────────
+  # Directory for factory worktrees. Each run gets its own worktree
+  # derived from orchestrator + target slug.
+  worktree_root: .adlc/worktrees
+
+  # ── ADR-333: Lease liveness ──────────────────────────────────
+  # How long (seconds) a heartbeat remains valid before a run is
+  # considered stale. Default 900s = 15 min.
+  lease_ttl: 900
+
+  # ── ADR-334: Stall detection ─────────────────────────────────
+  # How long (seconds) without observable progress before a step
+  # is checked for stall. Default 1200s = 20 min.
+  stall_window: 1200
+
+  # ── ADR-336: Lanes (optional) ────────────────────────────────
+  # When absent, interactive stages run inline, unattended stages
+  # run as agent (fresh session of same CLI).
+  # When present, maps steps to lanes for cross-runtime dispatch.
+  # lanes:
+  #   runtimes:
+  #     opencode:
+  #       match: ["opencode"]
+  #       stages:
+  #         specify: { lane: inline }
+  #         clarify: { lane: inline }
+  #         implement: { lane: agent, model: null }
+  #         converge: { lane: agent, model: null }
+  #         analyze: { lane: agent, model: null }
+  #     claude-code:
+  #       match: ["claude"]
+  #       stages:
+  #         converge: { lane: "cli:claude-code" }
+  #   cli:
+  #     claude-code:
+  #       command: ["claude", "--print", "{cwd}"]
+  #       runtime_label: "Claude Code"
+  #       skills_root: ".agents/skills"
+
+  # ── ADR-340: fd leak prevention ──────────────────────────
+  # Heartbeat process redirection — for CI/CD shells to not hang
+  # heartbeat_redirect: /dev/null
+
+  # ── PDR-055: Scratchpad tools ────────────────────────────
+  # Directory for scratchpads. Persist across steps within a run.
+  scratchpad_root: .adlc/workflow/scratchpads
+
+  # ── PDR-054: Workflow memory ─────────────────────────────
+  # JSONL file for workflow memory. Persist knowledge across runs.
+  memory_path: .adlc/workflow/memory.jsonl
+
+  # ── ADR-343: Hierarchical context parameters ──────────────
+  # Define values once, reference as {{params.<key>}}
+  # Overrides: agent < workflow < repository < project < default
+  # params:
+  #   review_branch: main
+  #   branch_suffix: "-feature"
+
+  # ── ADR-346: Distributed locking across machines ─────────────
+  # Enables remote lease markers and Git ref locking for multi-machine/CI safety.
+  distributed_lock: true
+  remote_lease_ttl: 900          # seconds (15 min)
+  remote_heartbeat_interval: 300 # seconds (5 min)
+

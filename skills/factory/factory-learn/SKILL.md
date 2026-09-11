@@ -45,13 +45,24 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 1. **`verify`** (`verify` phase) -> Run `team-repair --build-to-delete`. Re-runs goldset evals with rules temporarily disabled. If the model passes without a rule, the rule is flagged as redundant.
 2. **`clarify`⭐** -> Proposes the redundant rule's deprecation to `levelup-clarify` for human review.
 
+### Workflow Retrospective Route (PDR-054)
+Runs periodically or on-demand to analyze past runs of other factory skills (e.g. `factory-mission`, `factory-product`) and generate workflow memories:
+1. **`analyze`** (`analyze` phase) -> Scan completed/failed runs' state files (`.factory-<orchestrator>-state.json`) and evidence files. Identify patterns, recurring errors, or successful corrections.
+2. **`clarify`⭐** -> Present proposed memories (active vs tentative) to the user (in gated/hybrid modes) or auto-approve (in autonomous mode, PDR-051).
+3. **`publish`** (`build` phase) -> Write approved memories to `.adlc/workflow/memory.jsonl`. Memories carry weights and use counts; stale or counter-productive memories are automatically archived.
+
 ---
 
 ## Shared Executor Overrides
 
 `factory-learn` overrides the shared executor engine primitives as follows:
 
-1. **Publish Target**: Fixed to `external-repo`. Opens or updates a draft pull request on the configured `team-ai-directives` repository.
-2. **Feedback Loop Ingestion**: Automatically consumes the output of `evals-analyze` (when an application test fails due to specification issues, `evals-analyze` automatically routes to `levelup-specify`, which triggers this orchestrator).
-3. **Supervision Default**: `hybrid`. Human gates are hard-enforced at `clarify`⭐ (approval of CDR/ChDR entries) and at final PR creation.
-4. **Pre-flight Check**: Verifies that `levelup-*`, `change-*`, and `team-*` skills are installed, and that the directives repo path is set in `.adlc/init-options.json`.
+1. **Publish Target**: Fixed to `external-repo`. Opens or updates a draft pull request on the configured `team-ai-directives` repository. Since the publish target is a PR on the directives repo, the comment bus operates on that PR — step outputs (decisions, findings) are published as marker comments on the directives PR.
+2. **Output Types**: Steps use the following `output_type` assignments:
+   - `specify`/`init` → `draft` (CDR/ChDR drafts stay in `.adlc/drafts/`, not published to comment bus)
+   - `clarify`⭐ → `decision` (accepted/rejected CDR/ChDR list published to comment bus on the directives PR)
+   - `publish` → `artifact-ref` (PR URL reference published, content stays on disk)
+   - `prune`/`verify` → `findings` (redundancy/deprecation report published to comment bus)
+3. **Feedback Loop Ingestion**: Automatically consumes the output of `evals-analyze` (when an application test fails due to specification issues, `evals-analyze` automatically routes to `levelup-specify`, which triggers this orchestrator).
+4. **Supervision Default**: `hybrid`. Human gates are hard-enforced at `clarify`⭐ (approval of CDR/ChDR entries) and at final PR creation.
+5. **Pre-flight Check**: Verifies that `levelup-*`, `change-*`, and `team-*` skills are installed, and that the directives repo path is set in `.adlc/init-options.json`.

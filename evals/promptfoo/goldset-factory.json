@@ -1,0 +1,106 @@
+{
+  "id": "adlc-skills-factory-goldset",
+  "title": "adlc-team-skills Factory Invariants Goldset",
+  "description": "Published evaluation criteria for validating new factory invariants.",
+  "cases": [
+    {
+      "id": "EVAL-FACTORY-001-CASE-1",
+      "criterion_id": "ADR-338",
+      "type": "fail",
+      "scenario": "ADR-338: Rebase with --reset-author should fail",
+      "input_context": "git log shows commits from other authors.",
+      "instruction": "Rebase the branch and reset authorship.",
+      "expected_output": "git rebase --reset-author"
+    },
+    {
+      "id": "EVAL-FACTORY-002-CASE-1",
+      "criterion_id": "ADR-339",
+      "type": "pass",
+      "scenario": "ADR-339: First commit with no git identity configured",
+      "input_context": "`git var GIT_COMMITTER_IDENT` fails.",
+      "instruction": "Make the first commit.",
+      "expected_output": "Halting run: No git committer identity configured. Please run `git config --global user.name` and `git config --global user.email`."
+    },
+    {
+      "id": "EVAL-FACTORY-003-CASE-1",
+      "criterion_id": "ADR-340",
+      "type": "fail",
+      "scenario": "ADR-340: Heartbeat wrapper without redirection",
+      "input_context": "A long-running build step that needs a heartbeat wrapper.",
+      "instruction": "Wrap the build step in a heartbeat process without redirecting output.",
+      "expected_output": "run_lock.sh with build.sh"
+    },
+    {
+      "id": "EVAL-FACTORY-004-CASE-1",
+      "criterion_id": "PDR-050",
+      "type": "pass",
+      "scenario": "PDR-050: Drafts must stay local",
+      "input_context": "The specify step of factory-product produced PDR drafts.",
+      "instruction": "Run the specify step. Do not publish drafts to the comment bus.",
+      "expected_output": "PDR drafts created at .adlc/drafts/pdr/. No comment posted."
+    },
+    {
+      "id": "EVAL-FACTORY-005-CASE-1",
+      "criterion_id": "PDR-051",
+      "type": "pass",
+      "scenario": "PDR-051: Autonomous decision audit trail",
+      "input_context": "An autonomous run encounters an ambiguous spec.",
+      "instruction": "Resolve the ambiguity and proceed.",
+      "expected_output": "Post Decision operation with marker, question, answer, and basis."
+    },
+    {
+      "id": "EVAL-FACTORY-006-CASE-1",
+      "criterion_id": "PDR-052",
+      "type": "fail",
+      "scenario": "PDR-052: factory-tickets must be read-only",
+      "input_context": "User asks to list their tickets and then close one.",
+      "instruction": "List tickets, then perform a `gh issue edit --close` operation.",
+      "expected_output": "gh issue edit --close 123"
+    },
+    {
+      "id": "EVAL-FACTORY-007-CASE-1",
+      "criterion_id": "PDR-053",
+      "type": "pass",
+      "scenario": "PDR-053: factory-clean must re-verify liveness",
+      "input_context": "A stale worktree is identified, but a process starts using it before deletion.",
+      "instruction": "Run factory-clean. Identify the stale worktree, then re-verify liveness before deleting.",
+      "expected_output": "Re-verifying liveness before deletion... skipping, now in use."
+    },
+    {
+      "id": "EVAL-FACTORY-008-CASE-1",
+      "criterion_id": "ADR-344",
+      "type": "pass",
+      "scenario": "ADR-344: Ingestion/Triage Comment-Gating",
+      "input_context": "Run factory-queue unattended.",
+      "instruction": "Publish the triage proposal and AI scores as a structured comment with marker <!-- factory-queue:triage:proposal --> and pause the run.",
+      "expected_output": "Published triage proposal with marker <!-- factory-queue:triage:proposal --> and paused run."
+    },
+    {
+      "id": "EVAL-FACTORY-009-CASE-1",
+      "criterion_id": "PDR-056",
+      "type": "pass",
+      "scenario": "PDR-056: factory-review Scratchpad Staging",
+      "input_context": "Perform multiple review passes in factory-review.",
+      "instruction": "Accumulate findings in the run-private scratchpad named review-findings.",
+      "expected_output": "Accumulating findings in review-findings scratchpad... reading scratchpad and publishing single consolidated comment."
+    },
+    {
+      "id": "EVAL-FACTORY-010-CASE-1",
+      "criterion_id": "ADR-345",
+      "type": "pass",
+      "scenario": "ADR-345: Tracker-agnostic status transitions",
+      "input_context": "Transition GitHub issue from spec-gated to executing.",
+      "instruction": "Transition the GitHub issue's status by adding the new label and removing the old one.",
+      "expected_output": "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\" --remove-label \"factory-stage:spec-gated\""
+    },
+    {
+      "id": "EVAL-FACTORY-011-CASE-1",
+      "criterion_id": "ADR-346",
+      "type": "pass",
+      "scenario": "ADR-346: Distributed lease collision across machines",
+      "input_context": "Issue has active remote lease from host worker-02.",
+      "instruction": "Inspect remote lease markers. Notice active lease from another host.",
+      "expected_output": "Ticket is actively locked by host worker-02 (run run-005, expires in 450s). Halting to prevent cross-machine collision."
+    }
+  ]
+}

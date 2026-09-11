@@ -49,7 +49,12 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 
 `factory-architect` overrides the shared executor engine primitives as follows:
 
-1. **Publish Target**: Fixed to `local`. Outputs are written to `.adlc/memory/adr/` and `AD.md`.
-2. **Correction Loop**: If `analyze` returns `CRITICAL` or `HIGH` consistency errors, the executor routes back to `clarify` with the report as input. This loop is bounded by `max_corrections` (default 2); if exceeded, the orchestrator halts for human review.
-3. **Supervision Default**: `hybrid`. A human gate is hard-enforced at `clarify`⭐ (for ADR approvals) and at final `AD.md` review.
-4. **Pre-flight Check**: Verifies that the `architect-*` lifecycle skills are installed in the workspace before beginning Phase 0.
+1. **Publish Target**: Fixed to `local`. Outputs are written to `.adlc/memory/adr/` and `AD.md`. If tracker-integrated, a `tracker` completion summary comment is also posted.
+2. **Output Types**: Steps use the following `output_type` assignments:
+   - `specify`/`init` → `draft` (ADR drafts stay in `.adlc/drafts/adr/`, not published to comment bus)
+   - `clarify`⭐ → `decision` (accepted/rejected ADR list published to comment bus)
+   - `implement` → `artifact-ref` (AD.md path reference published, content stays on disk)
+   - `analyze` → `findings` (severity-ranked consistency report published to comment bus)
+3. **Correction Loop**: If `analyze` returns `CRITICAL` or `HIGH` consistency errors, the executor routes back to `clarify` with the analyze marker in `reads_from`. `clarify` reads the findings from the PR/MR/issue comment bus (or local fallback). This loop is bounded by `max_corrections` (default 2); if exceeded, the orchestrator halts for human review.
+4. **Supervision Default**: `hybrid`. A human gate is hard-enforced at `clarify`⭐ (for ADR approvals) and at final `AD.md` review.
+5. **Pre-flight Check**: Verifies that the `architect-*` lifecycle skills are installed in the workspace before beginning Phase 0.

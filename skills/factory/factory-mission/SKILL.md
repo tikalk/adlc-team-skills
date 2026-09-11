@@ -11,8 +11,17 @@ description: Spec Harness & Execution Engine that runs the inner loop (specify �
 
 It implements the following key factory platform capabilities:
 1. **Universal Skill Routing**: Decoupled step dispatching. It scans installed skills and hands the inventory to subagents (the model picks which tool fits the step).
-2. **Tracker-Agnostic Integration** (`references/tracker-integration.md`): When invoked with `--issue <ref>`, it pulls ticket context, respects automation/dispatch labels (`autonomous`/`supervised`), and writes back status comments + iteration logs.
-3. **Decoupled Test/Code Separation (PDR-049)**: In `autonomous` or `supervised` modes, it splits `implement` into sequential `test` (Test Agent writes tests under read-only `src/`) and `code` (Implement Agent writes code under read-only `tests/`) runs.
+2. **Tracker-Agnostic Integration** (`references/tracker-integration.md`, ADR-317): When invoked with `--issue <ref>`, it pulls ticket context, respects automation/dispatch labels (`autonomous`/`supervised`, ADR-318), and writes back status comments + iteration logs.
+3. **Inter-Agent Comment Bus** (ADR-330, `references/tracker-integration.md` §Inter-Agent Comment Bus): When tracker-integrated, each step's terminal output (decisions, findings, artifact references — never drafts, PDR-050) is published as a structured comment on the PR/MR/issue. The next step reads previous markers before starting. This is the durable inter-agent memory that survives session boundaries, runtime switches, and pod crashes. Drafts stay on local disk.
+4. **Self-Contained Worker Brief** (ADR-331): The Mission Brief is persisted to `.adlc/workflow/brief.md` as a draft. Resumed runs and cross-runtime workers read it from disk — no session-context dependency.
+5. **Worktree Isolation** (ADR-332): Each run gets its own git worktree. Never touches the user's main checkout. Cleaned up on exit (retained if unsaved work).
+6. **Lease-Based Liveness** (ADR-333): The state file carries a renewable lease with heartbeat + TTL. Resume can distinguish live, stale, and completed runs.
+7. **Stall Detection** (ADR-334): After dispatching a subagent, observable progress is checked at a configurable window (default 20 min). A hung agent that passes the circuit breaker is detected and killed.
+8. **Lane-Based Dispatch** (ADR-336, `references/lanes.md`): Steps can run on different lanes — `inline` (this session), `agent` (fresh session of same CLI for maker/checker separation), or `cli:<runtime>` (optional cross-vendor). The `agent` lane is the default for unattended stages.
+9. **Scratchpad Tools** (PDR-055): Subagents share named, run-private scratchpads (`.adlc/workflow/scratchpads/<name>.txt`) to compile notes, drafts, and reviews incrementally before publishing.
+10. **Workflow Memory & Self-Improvement** (PDR-054): Persistent JSONL database (`.adlc/workflow/memory.jsonl`) stores learnings across runs. `factory-learn` periodically runs retrospectives to prune/weight memories.
+11. **Hierarchical Context Parameters** (ADR-343): Workflows and agents reference parameters as `{{params.<key>}}`, resolved from most specific to least specific: `agent < workflow < repository < project < default`.
+12. **Decoupled Test/Code Separation (PDR-049)**: In `autonomous` or `supervised` modes, it splits `implement` into sequential `test` (Test Agent writes tests under read-only `src/`) and `code` (Implement Agent writes code under read-only `tests/`) runs.
 
 ---
 
@@ -35,12 +44,14 @@ It implements the following key factory platform capabilities:
 ### Phase 0 to 4: Setup & Compilation
 1. Read `.adlc/workflow/workflow-config.yml`. Resolve execution and supervision.
 2. If `--issue <ref>` is specified:
-   - Discover credentials and MCP tracker tools (`references/tracker-integration.md`).
+   - Discover credentials and MCP/CLI tools (`references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
    - Read the labels. If dispatch is `interactive` or gating is `human-required` -> **HALT execution** (hand back to interactive session).
-3. If no issue: read spec description from arguments.
-4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria).
-5. Generate the step list based on route classification (`spec`, `change`, `quick`).
+   - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
+3. If no issue: read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
+4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.
+5. Resolve hierarchical Context Parameters (ADR-343) from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
+6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
 
 ### Phase 5: Executing the Converge Loop
 Execute steps sequentially. When reaching `implement` / `converge`:
@@ -65,11 +76,12 @@ In `autonomous` and `supervised` modes, the `implement` step is split into two s
    - `SPEC_CORRECTION_NEEDED`: Stop and route to Phase 6.
 
 ### Phase 6: Completion & Write-Back
-1. Archive state to `.adlc/workflow/runs/<slug>/mission-log.json`.
-2. Write per-implement logs to `iterations.md`.
-3. If tracker-integrated:
-   - Post completion summary and iteration metrics as a ticket comment.
+1. If tracker-integrated: read all marker comments from the PR/MR/issue to compile the audit trail (converge decisions, test findings, implement artifact references, convergence history).
+2. Archive state to `.adlc/workflow/runs/<slug>/mission-log.json`.
+3. Write per-implement logs to `iterations.md`.
+4. If tracker-integrated:
+   - Post completion summary as a ticket comment (marker: `factory-mission:status=completed:run=<run_id>`).
    - Transition lifecycle label from `executing` to `validation` (or `done` if merged).
    - Stamp `agent-authored` on opened PRs.
    - Defer PR merge to code-owner approval (never auto-merge without approval).
-4. Output the complete audit summary.
+5. Output the complete audit summary.

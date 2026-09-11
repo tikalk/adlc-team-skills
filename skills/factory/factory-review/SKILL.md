@@ -37,11 +37,12 @@ It operates as a **Kind-B control-plane skill** integrated with the PR hosting p
 ### 2. PR Review Pipeline
 When triggered with `--pr <id>`:
 1. Discover credentials and PR hosting tools (`factory-mission/references/tracker-integration.md`).
-2. Fetch the PR diff and description.
-3. Run the identical passes defined in `REVIEW.md`.
-4. Format and post **severity-ranked findings** as inline PR comments via MCP.
-5. If findings contain `Important` issues, set PR label to `validation`. If clean, set to `validation` + advise code-owner of merge-readiness.
-6. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
+2. **Exact-head checkout (ADR-335)**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
+3. Fetch the PR diff and description.
+4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings` (PDR-055).
+5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP.
+6. If findings contain `Important` issues, set PR label to `validation`. If clean, set to `validation` + advise code-owner of merge-readiness.
+7. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
 
 ### 3. Agent Comment-Addressing & Babysitting
 - **Comment-Addressing**: When a human reviewer tags the agent (e.g., `@agent fix this`), the agent reads the thread context, implements the correction, and pushes the fix.

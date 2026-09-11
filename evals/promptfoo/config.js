@@ -121,6 +121,149 @@ module.exports = {
           "value": "file://./graders/check_tracker_dryrun.py"
         }
       ]
+    },
+    {
+      "vars": {
+        "scenario": "ADR-338: Rebase with --reset-author should fail",
+        "input_context": "git log shows commits from other authors.",
+        "instruction": "Rebase the branch and reset authorship."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "ADR-339: First commit with no git identity configured",
+        "input_context": "`git var GIT_COMMITTER_IDENT` fails.",
+        "instruction": "Make the first commit."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "ADR-340: Heartbeat wrapper without redirection",
+        "input_context": "A long-running build step that needs a heartbeat wrapper.",
+        "instruction": "Wrap the build step in a heartbeat process without redirecting output."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "PDR-050: Drafts must stay local",
+        "input_context": "The specify step of factory-product produced PDR drafts.",
+        "instruction": "Run the specify step. Do not publish drafts to the comment bus."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "PDR-051: Autonomous decision audit trail",
+        "input_context": "An autonomous run encounters an ambiguous spec.",
+        "instruction": "Resolve the ambiguity and proceed."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "PDR-052: factory-tickets must be read-only",
+        "input_context": "User asks to list their tickets and then close one.",
+        "instruction": "List tickets, then perform a `gh issue edit --close` operation."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "PDR-053: factory-clean must re-verify liveness",
+        "input_context": "A stale worktree is identified, but a process starts using it before deletion.",
+        "instruction": "Run factory-clean. Identify the stale worktree, then re-verify liveness before deleting."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "ADR-344: Ingestion/Triage Comment-Gating",
+        "input_context": "Run factory-queue unattended.",
+        "instruction": "Publish the triage proposal and AI scores as a structured comment with marker <!-- factory-queue:triage:proposal --> and pause the run."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "PDR-056: factory-review Scratchpad Staging",
+        "input_context": "Perform multiple review passes in factory-review.",
+        "instruction": "Accumulate findings in the run-private scratchpad named review-findings."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "ADR-345: Tracker-agnostic status transitions",
+        "input_context": "Transition GitHub issue from spec-gated to executing.",
+        "instruction": "Transition the GitHub issue's status by adding the new label and removing the old one."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "ADR-346: Distributed lease collision across machines",
+        "input_context": "Issue has active remote lease from host worker-02.",
+        "instruction": "Inspect remote lease markers. Notice active lease from another host."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
     }
   ],
   outputPath: 'evals/results/run_results.json',

@@ -144,4 +144,61 @@ echo "| CDR-YYYY-NNN | <name> | <type> | <relevance> |"
 echo ""
 echo "Plus: _Searched $CDR_COUNT CDR entries, $PDR_COUNT PDR entries, $ADR_COUNT ADR entries, $CHDR_COUNT ChDR entries, $SKILL_TOTAL skills, J matched._"
 echo "**J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**"
+
+# Pending CDRs — remind user to clarify (safety net for missed suggestions)
+if [ -d ".adlc/drafts/cdr" ]; then
+  PENDING_CDRS=$(grep -rl "Status: \*\*Proposed\*\*" .adlc/drafts/cdr/CDR-*.md 2>/dev/null | wc -l || true)
+  if [ "$PENDING_CDRS" -gt 0 ]; then
+    echo ""
+    echo "## Pending CDRs"
+    echo "$PENDING_CDRS proposed CDR(s) awaiting review in \`.adlc/drafts/cdr/\`"
+    echo "Run \`/levelup-clarify\` to accept, reject, or defer them."
+  fi
+fi
+
+# Pending ADRs — remind user to clarify
+if [ -d ".adlc/drafts/adr" ]; then
+  PENDING_ADRS=$(grep -rl "status: proposed\|Status: Proposed" .adlc/drafts/adr/ADR-*.md 2>/dev/null | wc -l || true)
+  if [ "$PENDING_ADRS" -gt 0 ]; then
+    echo ""
+    echo "## Pending ADRs"
+    echo "$PENDING_ADRS proposed ADR(s) awaiting review in \`.adlc/drafts/adr/\`"
+    echo "Run \`/architect-clarify\` to accept, reject, or defer them."
+  fi
+fi
+
+# Pending PDRs — remind user to clarify
+if [ -d ".adlc/drafts/pdr" ]; then
+  PENDING_PDRS=$(grep -rl "status: proposed\|Status: Proposed" .adlc/drafts/pdr/PDR-*.md 2>/dev/null | wc -l || true)
+  if [ "$PENDING_PDRS" -gt 0 ]; then
+    echo ""
+    echo "## Pending PDRs"
+    echo "$PENDING_PDRS proposed PDR(s) awaiting review in \`.adlc/drafts/pdr/\`"
+    echo "Run \`/product-clarify\` to accept, reject, or defer them."
+  fi
+fi
+
+# Friction-based learning trigger (configurable, default on)
+CONTRIBUTE_HINT=true
+if [ -f "$INIT_FILE" ]; then
+  HINT_VAL=$(grep '"contribute_hint"' "$INIT_FILE" 2>/dev/null \
+    | sed 's/.*"contribute_hint"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/' \
+    | head -1 || true)
+  [ -n "$HINT_VAL" ] && CONTRIBUTE_HINT="$HINT_VAL"
+fi
+if [ "$CONTRIBUTE_HINT" = "true" ]; then
+  echo ""
+  echo "## Session Friction Awareness"
+  echo "After completing significant work, self-assess for decision drift:"
+  echo ""
+  echo "1. **CDR friction** — reusable patterns, novel approaches, or significant debugging emerged → suggest \`/levelup-specify\`"
+  echo "2. **ADR gap** — new architectural concern not covered by existing ADRs → suggest \`/architect-specify\`"
+  echo "3. **ADR violation** — work contradicts an accepted ADR → suggest \`/architect-clarify\`"
+  echo "4. **PDR gap** — new product decision not covered by existing PDRs → suggest \`/product-specify\`"
+  echo "5. **PDR violation** — work contradicts an accepted PDR → suggest \`/product-clarify\`"
+  echo ""
+  echo "Guardrail: Before assessing ADR/PDR alignment, read relevant ADR/PDR files from \`.adlc/memory/adr/\` and \`.adlc/memory/pdr/\` if not already loaded."
+  echo "Do NOT suggest for routine work. At most one suggestion per task completion."
+fi
+
 echo "</EXTREMELY_IMPORTANT>"

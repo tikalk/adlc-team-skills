@@ -1,6 +1,6 @@
 ---
 name: team-boot
-description: Bootstrap the session with team AI directives context (constitution, CDR index, PDR/ADR/ChDR indexes, skill registry). Runs automatically at session start via the event hook.
+description: Bootstrap the session with team AI directives context (constitution, CDR index, PDR/ADR/ChDR indexes, skill registry). Includes session-end friction trigger for CDR/ADR/PDR capture and pending-decision safety nets. Runs automatically at session start via the event hook.
 scripts:
   sh: scripts/boot.sh
   ps: scripts/boot.ps1

@@ -290,13 +290,13 @@ in a clone as executable code, and disable editor auto-run tasks.
 
 ```mermaid
 flowchart LR
-    FQ["factory-queue<br/>Ingestion & Triage"]
-    FP["factory-product<br/>Product Lifecycle"]
-    FA["factory-architect<br/>Architecture Lifecycle"]
-    FM["factory-mission<br/>Execution Engine"]
-    FR["factory-review<br/>PR Compliance"]
-    FL["factory-learn<br/>Learning Loop"]
-    FC["factory-clean<br/>Resource Cleanup"]
+    FQ["factory-queue<br/>Ingestion & Triage"] ~~~ IG{"Intent Gate"}
+    FP["factory-product<br/>Product Lifecycle"] ~~~ CG1{"clarify⭐ Gate"}
+    FA["factory-architect<br/>Architecture Lifecycle"] ~~~ CG2{"clarify⭐ Gate"}
+    FM["factory-mission<br/>Execution Engine"] ~~~ CB{"Circuit Breaker"}
+    FR["factory-review<br/>PR Compliance"] ~~~ MG{"Merge Gate"}
+    FL["factory-learn<br/>Learning Loop"] ~~~ CG3{"clarify⭐ Gate"}
+    FC["factory-clean<br/>Resource Cleanup"] ~~~ UG{"Approval Gate"}
     FT["factory-tickets<br/>Read-Only Worklist"]
 
     TR[("Issue Tracker<br/>GitHub / GitLab / Linear / Jira")]
@@ -313,12 +313,6 @@ flowchart LR
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
     FT -->|"read-only"| TR
-
-    FQ -.- IG{"Intent Gate"}
-    FA & FP & FL -.- CG{"clarify⭐ Gate"}
-    FR -.- MG{"Merge Gate"}
-    FM -.- CB{"Circuit Breaker"}
-    FC -.- UG{"Approval Gate"}
 ```
 
 ---

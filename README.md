@@ -289,7 +289,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`factory-tickets`** — read-only personal worklist across trackers: open PRs with next actionable move, merged work not yet closed, takable tickets, and blocked work.
 
 ```mermaid
-flowchart TB
+flowchart LR
     FQ["factory-queue<br/>Ingestion & Triage"]
     FP["factory-product<br/>Product Lifecycle"]
     FA["factory-architect<br/>Architecture Lifecycle"]

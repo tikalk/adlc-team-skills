@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-09-04
+
+### Added
+
+- **`factory-*` Category of Orchestrator & Control-Plane Skills** (`skills/factory/`): Creates the control-plane orchestration family for the repo, fully aligned with the "Tikal Solutions | Agentic SDLC Factory" architecture (deck slides 12 & 15).
+  - **`factory-mission`** (`skills/factory/factory-mission/`): Copied from `mission-brief` to serve as the tracker-integrated, TDD-decoupled execution-harness orchestrator.
+  - **`factory-product`** (`skills/factory/factory-product/`): Pure product lifecycle orchestrator (specify/init → clarify⭐ → implement → analyze).
+  - **`factory-architect`** (`skills/factory/factory-architect/`): Pure architecture lifecycle orchestrator (specify/init → clarify⭐ → implement → analyze).
+  - **`factory-learn`** (`skills/factory/factory-learn/`): Continuous improvement learning loop orchestrator (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`.
+  - **`factory-queue`** (`skills/factory/factory-queue/`): Control-plane intake and triage (PII scrubbing, AI advisory triage scoring, and label stamping) and milestones/epics generation.
+  - **`factory-review`** (`skills/factory/factory-review/`): Severity-ranked PR policy compliance reviews against `REVIEW.md` (never auto-approves/merges, strictly advisory).
+  - **Shared References** (`skills/factory/factory-mission/references/`):
+    - `executor.md`: Common, lifecycle-agnostic DAG engine contract (config, resume, brief, steps, gates, circuit-breakers).
+    - `tracker-integration.md`: Tracker-agnostic integration layer sharing spec-kit's configuration model (`.specify/taskstoissues-provider.yml`) and normalizing GitHub, GitLab, Linear, and Jira with strict dry-run+confirm constraints.
+
 ## [0.26.1] - 2026-08-20
 
 ### Added

@@ -277,6 +277,44 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`tech-radar-context`** — injects Tikal Tech Radar context for tech choices. Auto-triggered.
 - **`workspace`** — multi-repo workspace: `--init` creates `.adlc/` structure + `.gitignore`, discover/link/audit child repos.
 
+### Factory Platform Orchestration & Control Plane
+
+- **`factory-mission`** — spec harness execution engine with tracker-agnostic integration, comment bus, worktree isolation, lease-based liveness, stall detection, and decoupled test/code separation.
+- **`factory-product`** — coordinates product lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `PRD.md`.
+- **`factory-architect`** — coordinates architecture lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `AD.md`.
+- **`factory-learn`** — coordinates continuous improvement learning loops (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`.
+- **`factory-queue`** — manages queue intake and triage (AI advisory triage scoring, intent gate, label stamping) and milestones/epics generation (plan mode).
+- **`factory-review`** — performs severity-ranked PR policy compliance reviews against `REVIEW.md` and babysits agent PRs to merge.
+- **`factory-clean`** — inventories project resource costs (worktrees, clones, dependencies, processes) and reclaims only user-approved items. Read-only by default.
+- **`factory-tickets`** — read-only personal worklist across trackers: open PRs with next actionable move, merged work not yet closed, takable tickets, and blocked work.
+
+```mermaid
+flowchart LR
+    FQ["factory-queue<br/>Ingestion & Triage"] ~~~ IG{"Intent Gate"}
+    FP["factory-product<br/>Product Lifecycle"] ~~~ CG1{"clarify⭐ Gate"}
+    FA["factory-architect<br/>Architecture Lifecycle"] ~~~ CG2{"clarify⭐ Gate"}
+    FM["factory-mission<br/>Execution Engine"] ~~~ CB{"Circuit Breaker"}
+    FR["factory-review<br/>PR Compliance"] ~~~ MG{"Merge Gate"}
+    FL["factory-learn<br/>Learning Loop"] ~~~ CG3{"clarify⭐ Gate"}
+    FC["factory-clean<br/>Resource Cleanup"] ~~~ UG{"Approval Gate"}
+    FT["factory-tickets<br/>Read-Only Worklist"]
+
+    TR[("Issue Tracker<br/>GitHub / GitLab / Linear / Jira")]
+    TD[["team-ai-directives<br/>repo"]]
+
+    FQ -->|"spec-gated labels"| TR
+    TR -->|"--issue ref"| FM
+    FP -->|"PRD.md"| FQ
+    FA -->|"AD.md"| FQ
+    FM -->|"agent-authored PRs"| TR
+    TR -->|"PR diff + checks"| FR
+    FR -->|"twice-mistake rule"| FL
+    FL -->|"memory.jsonl"| FM
+    FL -->|"draft PR"| TD
+    FC -.->|"reads state files"| FM
+    FT -->|"read-only"| TR
+```
+
 ---
 
 <details>

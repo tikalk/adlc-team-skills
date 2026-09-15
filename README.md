@@ -279,12 +279,86 @@ in a clone as executable code, and disable editor auto-run tasks.
 
 ### Factory Platform Orchestration & Control Plane
 
-- **`factory-mission`** — spec harness execution engine (copy of `mission-brief`) with tracker-agnostic integration and container-level TDD separation (PDR-049).
+- **`factory-mission`** — spec harness execution engine with tracker-agnostic integration, comment bus, worktree isolation, lease-based liveness, stall detection, and decoupled test/code separation.
 - **`factory-product`** — coordinates product lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `PRD.md`.
 - **`factory-architect`** — coordinates architecture lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `AD.md`.
 - **`factory-learn`** — coordinates continuous improvement learning loops (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`.
-- **`factory-queue`** — manages queue intake and triage (PII scrubbing, AI advisory triage scoring, and label stamping) and milestones/epics generation (PDR-020).
-- **`factory-review`** — performs severity-ranked PR policy compliance reviews against `REVIEW.md` and babysits agent PRs to merge (PDR-044).
+- **`factory-queue`** — manages queue intake and triage (AI advisory triage scoring, intent gate, label stamping) and milestones/epics generation (plan mode).
+- **`factory-review`** — performs severity-ranked PR policy compliance reviews against `REVIEW.md` and babysits agent PRs to merge.
+- **`factory-clean`** — inventories project resource costs (worktrees, clones, dependencies, processes) and reclaims only user-approved items. Read-only by default.
+- **`factory-tickets`** — read-only personal worklist across trackers: open PRs with next actionable move, merged work not yet closed, takable tickets, and blocked work.
+
+```mermaid
+flowchart TB
+    subgraph shared["Shared Contracts (owned by factory-mission)"]
+        EX["executor.md<br/>6-Phase Executor Contract"]
+        TI["tracker-integration.md<br/>Comment Bus + 10 Operations"]
+        LN["lanes.md<br/>Cross-Runtime Dispatch"]
+    end
+
+    subgraph kindA["Kind-A Orchestrators (share executor.md)"]
+        FM["factory-mission<br/>Execution Engine<br/>routed skills"]
+        FA["factory-architect<br/>Architecture Lifecycle"]
+        FP["factory-product<br/>Product Lifecycle"]
+        FL["factory-learn<br/>Learning Loop"]
+    end
+
+    subgraph kindB["Kind-B Control-Plane"]
+        FQ["factory-queue<br/>Ingestion & Planning"]
+        FR["factory-review<br/>PR Compliance"]
+        FC["factory-clean<br/>Resource Cleanup"]
+        FT["factory-tickets<br/>Read-Only Worklist"]
+    end
+
+    subgraph subs["Sub-Skills (fixed DAG)"]
+        AS["architect-*<br/>specify/init/clarify/implement/analyze"]
+        PS["product-*<br/>specify/init/clarify/implement/analyze"]
+        LS["levelup-* / change-*<br/>team-repair"]
+    end
+
+    TR[("Issue Tracker<br/>GitHub / GitLab / Linear / Jira")]
+    TD[["team-ai-directives<br/>repo"]]
+
+    %% Shared contract dependencies
+    EX -.-> FA & FP & FL
+    TI -.-> FQ & FR & FT & FC
+
+    %% Orchestrator -> sub-skills
+    FA ==> AS
+    FP ==> PS
+    FL ==> LS
+
+    %% Integration flows
+    FQ -->|"spec-gated labels"| TR
+    TR -->|"--issue ref"| FM
+    FP -->|"PRD.md"| FQ
+    FA -->|"AD.md"| FQ
+    FM -->|"agent-authored PRs"| TR
+    TR -->|"PR diff + checks"| FR
+    FR -->|"twice-mistake rule"| FL
+    FL -->|"memory.jsonl"| FM
+    FL -->|"draft PR"| TD
+    FC -.->|"reads state files"| FM
+    FT -->|"read-only query"| TR
+
+    %% Gate points (diamond shapes)
+    FQ -.- IG["Intent Gate<br/>(human)"]
+    FA & FP & FL -.- CG["clarify⭐ Gate<br/>(human)"]
+    FR -.- MG["Code-Owner<br/>Merge Gate"]
+    FM -.- CB["Circuit Breaker<br/>+ Stall Detection"]
+    FC -.- UG["User Approval<br/>Gate"]
+```
+
+**Gate points:**
+
+| Gate | Skill | Type | Default |
+|------|-------|------|---------|
+| Intent Gate | factory-queue | Human approval | Non-negotiable; no brief auto-approved |
+| clarify⭐ Gate | factory-architect, factory-product, factory-learn | Human sign-off | `hybrid` supervision; human marks decisions Accepted |
+| Code-Owner Merge Gate | factory-review | Human approval | Never auto-approves or auto-merges |
+| Circuit Breaker + Stall Detection | factory-mission | Convergence limit | 3 consecutive non-converging iterations; 20-min stall window |
+| User Approval Gate | factory-clean | Deletion authorization | Default selects nothing; re-verifies liveness before each delete |
+| Label Gate | factory-mission | Pre-execution halt | Halts if dispatch is `interactive` or gating is `human-required` |
 
 ---
 

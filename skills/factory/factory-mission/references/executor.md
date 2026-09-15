@@ -4,9 +4,9 @@
 
 This is the canonical executor contract for all Kind-A factory orchestrators (`factory-mission`, `factory-product`, `factory-architect`, `factory-learn`). It defines how to compile a feature or lifecycle task into a structured step list, execute steps sequentially with state tracking, handle supervision gates, and run correction loops.
 
-When tracker-integrated, step terminal outputs are published to the code host's PR/MR/issue comment thread (the **comment bus**) via `factory-mission/references/tracker-integration.md` §Inter-Agent Comment Bus (ADR-330). The comment bus is the durable inter-agent memory — it survives session boundaries, runtime switches, and pod crashes. When not tracker-integrated, steps communicate through local files and the state file only (same-session mode).
+When tracker-integrated, step terminal outputs are published to the code host's PR/MR/issue comment thread (the **comment bus**) via `factory-mission/references/tracker-integration.md` §Inter-Agent Comment Bus. The comment bus is the durable inter-agent memory — it survives session boundaries, runtime switches, and pod crashes. When not tracker-integrated, steps communicate through local files and the state file only (same-session mode).
 
-The executor is runtime-independent (ADR-337): it works with any agent CLI in any session. Lanes (ADR-336) provide optional cross-runtime dispatch — the default `agent` lane spawns a fresh session of the same CLI for maker/checker separation.
+The executor is runtime-independent: it works with any agent CLI in any session. Lanes provide optional cross-runtime dispatch — the default `agent` lane spawns a fresh session of the same CLI for maker/checker separation.
 
 ---
 
@@ -19,18 +19,18 @@ The executor is runtime-independent (ADR-337): it works with any agent CLI in an
 3. Verify target lifecycle/compliance skills are installed (check `.agents/skills/` directory). Stop if missing.
 4. If `--issue <ref>` is specified: resolve tracker provider, discover MCP/CLI tools, verify the target PR/MR/issue is accessible (`tracker-integration.md` §1-2). The comment bus is active for this run.
 
-### Phase 0.5 — Workspace Isolation & Atomic Git Ref Lock (ADR-332, ADR-339, ADR-346)
+### Phase 0.5 — Workspace Isolation & Atomic Git Ref Lock
 
 1. Derive worktree path: `<worktree_root>/<orchestrator>-<target-slug>/` where `<target-slug>` = owner-repo-issueN or owner-repo-feature-slug. Default `worktree_root` is `.adlc/worktrees`.
 2. If worktree exists (resume): reuse it. Never remove or reset it. Inspect status and commits; if it holds work, confirm before continuing.
 3. If worktree doesn't exist: `git worktree add <path> -b <branch> <remote>/<base-branch>`. Branch named per project convention or `factory/<orchestrator>/<target-slug>`.
-4. **Atomic Git Ref Lock (ADR-346)**: To eliminate race conditions where two machines read the tracker concurrently, the claiming machine pushes an atomic lock ref: `git push origin HEAD:refs/heads/factory/locks/<orchestrator>-<target-slug>`. If the ref already exists, the Git server rejects the push; the runner immediately halts before making code changes or running LLM steps.
-5. **Committer Identity Validation (ADR-339)**: Confirm a committer identity resolves in the worktree (`git -C <path> var GIT_COMMITTER_IDENT`) before the first commit. If none resolves, the orchestrator must halt and report the missing capability. An unattended runner cannot invent or borrow an identity (never author commits using a reviewer's, assignee's, or pushing login's identity). Authorized identities must be applied worktree-locally, disclosed, never globally.
-6. **Authorship Preservation (ADR-338)**: Verify that any git operation preserves historical authorship. A rebase, cherry-pick, or amend over someone else's commit must keep that commit's original author; never `--reset-author` or `--amend --author="..."` across it. Pushing is restricted to the target's own head branch, and force-push requires `--force-with-lease` for the exact previously observed remote SHA.
+4. **Atomic Git Ref Lock**: To eliminate race conditions where two machines read the tracker concurrently, the claiming machine pushes an atomic lock ref: `git push origin HEAD:refs/heads/factory/locks/<orchestrator>-<target-slug>`. If the ref already exists, the Git server rejects the push; the runner immediately halts before making code changes or running LLM steps.
+5. **Committer Identity Validation**: Confirm a committer identity resolves in the worktree (`git -C <path> var GIT_COMMITTER_IDENT`) before the first commit. If none resolves, the orchestrator must halt and report the missing capability. An unattended runner cannot invent or borrow an identity (never author commits using a reviewer's, assignee's, or pushing login's identity). Authorized identities must be applied worktree-locally, disclosed, never globally.
+6. **Authorship Preservation**: Verify that any git operation preserves historical authorship. A rebase, cherry-pick, or amend over someone else's commit must keep that commit's original author; never `--reset-author` or `--amend --author="..."` across it. Pushing is restricted to the target's own head branch, and force-push requires `--force-with-lease` for the exact previously observed remote SHA.
 7. Never `checkout`, `switch`, `reset`, `clean`, or `stash` in the user's main checkout. Work only in the run's worktree via absolute paths.
 8. Register worktree path and validated git identity in state file and brief.
 
-### Phase 0.7 — Lane & Context Parameter Resolution (ADR-336, ADR-343)
+### Phase 0.7 — Lane & Context Parameter Resolution
 
 1. If `lanes` section exists in `workflow-config.yml`:
    a. Match this runtime's label against `runtimes[].match` (case-insensitive substring).
@@ -38,16 +38,16 @@ The executor is runtime-independent (ADR-337): it works with any agent CLI in an
    c. Verify each `cli` lane's command executable exists. If missing, degrade to `agent` on this runtime and disclose lost independence.
    d. Record resolved lane per step in state file and brief.
 2. If `lanes` section is absent: interactive stages run `inline`, unattended stages run `agent` (fresh session of same CLI). This is the default — backward compatible.
-3. **Context Parameter Resolution (ADR-343)**: Resolve all `{{params.<key>}}` references in the brief and step instructions by looking from most specific to least specific: `agent < workflow < repository < project < default`. A referenced key with no value and no default stops the run at preparation.
+3. **Context Parameter Resolution**: Resolve all `{{params.<key>}}` references in the brief and step instructions by looking from most specific to least specific: `agent < workflow < repository < project < default`. A referenced key with no value and no default stops the run at preparation.
 4. Disclose the resolved lane plan and context parameters to the user before execution.
 
-### Phase 1 — Two-Tier Resume & Lock Check (`--resume`, ADR-346)
+### Phase 1 — Two-Tier Resume & Lock Check (`--resume`)
 
 1. **Tier 1 (Local Check - Same Machine)**:
    - Read local state file: `.adlc/workflow/.factory-<orchestrator>-state.json`.
-   - Read `run_lease` (ADR-333): if `heartbeat_ts + ttl_seconds > now` on this host → resume local session.
+   - Read `run_lease`: if `heartbeat_ts + ttl_seconds > now` on this host → resume local session.
 
-2. **Tier 2 (Remote Distributed Check - Cross-Machine, ADR-346)**:
+2. **Tier 2 (Remote Distributed Check - Cross-Machine)**:
    - If tracker-integrated: execute `tracker-integration.md` §Operation 10 (`Acquire Remote Lease`).
    - If `acquired == false`:
      - **HALT & REFUSE**: "Ticket is actively locked by host `<holder>` (run `<run_id>`). Halting to prevent cross-machine collision."
@@ -59,12 +59,12 @@ The executor is runtime-independent (ADR-337): it works with any agent CLI in an
    - If `mode == "fresh"`:
      - Free to claim; proceed to Phase 2.
 
-3. **Read the brief** (ADR-331): if `.adlc/workflow/brief.md` exists, read it to restore full run context (goal, constraints, success criteria, run ID, route, supervision, target, worktree, step inputs).
+3. **Read the brief**: if `.adlc/workflow/brief.md` exists, read it to restore full run context (goal, constraints, success criteria, run ID, route, supervision, target, worktree, step inputs).
 4. If state is empty and no marker comments exist: start fresh.
 5. If marker comments exist with incomplete steps: load outputs, skip to the first pending step, passing the previous step's findings as input.
 6. Completed runs archive to `.adlc/workflow/runs/<slug>/`. Marker comments remain on the PR/MR/issue as a permanent audit trail.
 
-### Phase 2 — Brief Construction (ADR-331)
+### Phase 2 — Brief Construction
 
 Before executing, compile the input into a structured Brief contract:
 - **Goal**: One-sentence core objective.
@@ -134,7 +134,7 @@ Step schema:
 }
 ```
 
-State file also includes the run lease (ADR-333):
+State file also includes the run lease:
 
 ```json
 {
@@ -153,7 +153,7 @@ State file also includes the run lease (ADR-333):
 
 Mirror steps to a `todowrite` tracking list.
 
-**Output type per orchestrator** (defaults — orchestrators may override, PDR-050):
+**Output type per orchestrator** (defaults — orchestrators may override):
 
 | Step | factory-product | factory-mission | factory-architect | factory-learn |
 |------|-----------------|-----------------|-------------------|---------------|
@@ -172,26 +172,26 @@ For each step:
    - For local path entries: read files from disk. Include content or path reference in the subagent's instruction.
    - If `reads_from` is empty: the step starts from scratch (read `.adlc/workflow/brief.md` for Brief context).
 
-2. **Record heartbeat & Lease Process Wrapping (ADR-333, ADR-340)**: write `heartbeat_ts: now` to state file before dispatch. Record PID if available. For steps expected to exceed half the lease TTL (long builds, tests, deep analysis), the step must be executed under a process-level heartbeat wrapper (e.g., `run_lock.sh with` equivalent) that refreshes the lease on a timer for the lifetime of the child and stops when the child exits.
-   - **FD Leak Prevention (ADR-340)**: To prevent the heartbeat process from inheriting the child's or parent's open file descriptors (which holds write pipes open and causes CI/CD shells to hang indefinitely waiting for EOF), all stdout/stderr for the heartbeat process must be explicitly redirected (e.g. to `/dev/null` or log files) inside the wrapped command. Never pipe the heartbeat wrapper process itself directly into a consumer that waits for EOF.
+2. **Record heartbeat & Lease Process Wrapping**: write `heartbeat_ts: now` to state file before dispatch. Record PID if available. For steps expected to exceed half the lease TTL (long builds, tests, deep analysis), the step must be executed under a process-level heartbeat wrapper (e.g., `run_lock.sh with` equivalent) that refreshes the lease on a timer for the lifetime of the child and stops when the child exits.
+   - **FD Leak Prevention**: To prevent the heartbeat process from inheriting the child's or parent's open file descriptors (which holds write pipes open and causes CI/CD shells to hang indefinitely waiting for EOF), all stdout/stderr for the heartbeat process must be explicitly redirected (e.g. to `/dev/null` or log files) inside the wrapped command. Never pipe the heartbeat wrapper process itself directly into a consumer that waits for EOF.
 
-3. **Dispatch to a subagent** using the step's resolved lane (ADR-336):
+3. **Dispatch to a subagent** using the step's resolved lane:
    - `inline`: follow the step's skill in this session (interactive stages — clarify, specify).
    - `agent`: spawn a fresh session of the same CLI (e.g., `opencode -p "<instruction>"`) with the brief path, reads_from inputs, and skill instruction. Fresh context — no memory of previous steps.
    - `cli:<runtime>`: spawn the other runtime's CLI as a child process. Write step instruction + brief + reads_from inputs to a temp file. The CLI reads it from stdin. Wait for exit. Parse output.
-   - The subagent has access to **Scratchpad Tools (PDR-055)**: `write_scratchpad`, `append_scratchpad`, `read_scratchpad`, `list_scratchpads`. Scratchpads are stored in `.adlc/workflow/scratchpads/<name>.txt` and persist across steps within the run.
-   - The subagent also has access to **Workflow Memory (PDR-054)**: `read_memory`, `write_memory`. Memories are stored in `.adlc/workflow/memory.jsonl` and persist across runs of the same workflow.
+    - The subagent has access to **Scratchpad Tools**: `write_scratchpad`, `append_scratchpad`, `read_scratchpad`, `list_scratchpads`. Scratchpads are stored in `.adlc/workflow/scratchpads/<name>.txt` and persist across steps within the run.
+    - The subagent also has access to **Workflow Memory**: `read_memory`, `write_memory`. Memories are stored in `.adlc/workflow/memory.jsonl` and persist across runs of the same workflow.
    - Exactly one agent is live at a time. Never dispatch a second step while one is running.
    - A `cli:` lane that fails to launch (command missing, runtime refuses) degrades to `agent` on this runtime. Disclose the degradation and record it in state file.
    - The dispatch instruction includes: "Read `.adlc/workflow/brief.md` for full context. The Brief is your specification — do not ask the user to repeat it. Read `.adlc/workflow/memory.jsonl` for past run lessons."
 
-4. If `phase_type` is `verify`: prepend independent verification instructions (maker/checker separation). The reviewer/verifier must review against an **exact revision** (ADR-335): record the `(head SHA, base SHA, merge base)` tuple. If the revision moves during the step, discard the output and re-run against the new revision.
+4. If `phase_type` is `verify`: prepend independent verification instructions (maker/checker separation). The reviewer/verifier must review against an **exact revision**: record the `(head SHA, base SHA, merge base)` tuple. If the revision moves during the step, discard the output and re-run against the new revision.
 
 5. If subagent returns `NEEDS_CORRECTION` or `analyze`/`verify` reports CRITICAL/HIGH errors: route back to the preceding `clarify`⭐ step (bounded by `max_corrections`, default 2). The analyze findings (already published as `output_type: findings`) are passed to clarify via `reads_from` marker.
 
 6. **Confidence Escalation Gate**: If subagent reports `Confidence score: LOW`, auto-escalate supervision to `gated` and halt for human confirmation.
 
-7. **Publish step output.** On step completion, check the step's `output_type` (PDR-050):
+7. **Publish step output.** On step completion, check the step's `output_type`:
 
    a. If `output_type` is `draft`:
    - Persist output to `output_path` on local disk.
@@ -220,7 +220,7 @@ For each step:
 
 8. **The full subagent response is discarded from session context.** Terminal output is now durable — on the comment bus (if tracker-integrated) or on local disk (if not). Session context is freed for the next step.
 
-### §5.5 — Stall Detection (ADR-334)
+### §5.5 — Stall Detection
 
 After dispatching a subagent, check for observable progress when nothing has advanced for `stall_window` seconds (default 1200 = 20 min).
 
@@ -238,7 +238,7 @@ After dispatching a subagent, check for observable progress when nothing has adv
 
 A window is not a deadline on the work. It only asks whether the work is still happening. The run has no time budget.
 
-### §5.6 — Autonomous Decision Recording (PDR-051)
+### §5.6 — Autonomous Decision Recording
 
 When supervision is `autonomous` and a step would have asked the user a question (clarification, approval, authorization, blocker):
 
@@ -272,7 +272,7 @@ On successful convergence of all steps:
 4. Move state to the run archive directory. Marker comments on the PR/MR/issue remain as a permanent, human-visible audit trail.
 5. Print the audit trail.
 
-### Phase 6.5 — Worktree Cleanup & Lease Release (ADR-332, ADR-346)
+### Phase 6.5 — Worktree Cleanup & Lease Release
 
 1. Determine whether removal is safe:
    - No uncommitted or untracked changes
@@ -280,5 +280,5 @@ On successful convergence of all steps:
    - No rebase/merge/cherry-pick/bisect in progress
 2. Safe → remove worktree (`git worktree remove <path>`), keep the branch.
 3. Not safe → retain worktree, report path and what it holds, mark state file `retained`.
-4. **Remote Lease Release (ADR-346)**: If tracker-integrated, post the release marker (`status=released`) via `tracker-integration.md` §Operation 10 to instantly unlock the ticket across all machines. Delete the atomic Git lock ref (`refs/heads/factory/locks/...`) from the remote repository.
+4. **Remote Lease Release**: If tracker-integrated, post the release marker (`status=released`) via `tracker-integration.md` §Operation 10 to instantly unlock the ticket across all machines. Delete the atomic Git lock ref (`refs/heads/factory/locks/...`) from the remote repository.
 5. Run on every exit path — success, failure, user stop.

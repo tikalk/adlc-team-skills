@@ -1,6 +1,6 @@
 ---
 name: factory-tickets
-description: "Show what is on the user's plate across trackers: open pull requests with their next actionable move, merged work not yet closed, takable tickets, and blocked work. Read-only. Use when the user asks \"what is on my plate\" or \"list my active tickets.\""
+description: Personal Worklist Engine. Shows open PRs with their next actionable move, merged work not yet closed, takable tickets, and blocked work — classified by next move rather than abstract status. Read-only. Use when the user asks "what is on my plate" or "list my active tickets."
 ---
 
 # factory-tickets
@@ -20,7 +20,7 @@ It operates directly against the external issue tracker and PR host (GitHub, Git
 - To discover unassigned, unblocked tickets (`spec-gated`) that are ready for execution.
 
 **When NOT to use**:
-- To change ticket status, assignees, or edit bodies (this skill is **strictly read-only**, PDR-052).
+- To change ticket status, assignees, or edit bodies (this skill is **strictly read-only**).
 - To execute or implement tasks (use `factory-mission` instead).
 
 ---
@@ -38,7 +38,7 @@ Never poll individual items. Run two paged searches (via MCP or CLI) to fetch th
 1. **Pull Request Search**: fetch the user's open PRs, including: draft status, review decision, unresolved threads, named check statuses, and mergeability.
 2. **Issue Search**: fetch the user's assigned open issues, including: title, description, state, labels, milestones, and linked project metadata.
 
-### 3. Match Evidence (Tracker-Agnostic, PDR-052)
+### 3. Match Evidence (Tracker-Agnostic)
 A PR routinely cross-references multiple tickets. Associate a pull request to a ticket **only** when there is explicit evidence:
 - A **closing link** established by the tracker itself.
 - A **branch name** that contains the ticket number in the repository's convention.
@@ -67,7 +67,7 @@ Assign every retrieved item to exactly one of the following priority sections. *
 
 ## Invariants & Safety Constraints
 
-1. **Strictly Read-Only (PDR-052)**: This skill physically cannot edit, comment, create, or modify any ticket, label, assignee, or board field. No `gh` or `glab` write commands are present.
+1. **Strictly Read-Only**: This skill physically cannot edit, comment, create, or modify any ticket, label, assignee, or board field. No `gh` or `glab` write commands are present.
 2. **No Caching**: Every run performs a live fetch. A cached or stale queue is worse than none.
 3. **No Rollup Guessing**: Never report check status from a rolled-up "failing" commit status if a job was merely cancelled or skipped. Read and name the exact failing context.
 4. **Unparsed Word Reporting**: If the user's request contains words the query parser doesn't recognize, do not drop them. List them in an "Unparsed Terms" section below the table so the user knows what was ignored.

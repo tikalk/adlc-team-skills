@@ -34,7 +34,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 1. **`specify`** (`generate` phase) -> Invoke `levelup-specify` to extract candidate Context Directive Records (CDRs) and compliances from the active session.
 2. **`clarify`⭐** (`clarify` phase) -> Invoke `levelup-clarify` to review pending CDRs. Enforces the **evals-regression gate** (running the compliance goldset as the `verify` sub-phase to ensure no quality degradation).
 3. **`publish`** (`build` phase) -> Invoke `levelup-publish` to package accepted CDRs, index them, and compile a draft PR targeting the `team-ai-directives` repository.
-4. **`prune`** (`analyze` phase) -> Runs the PDR-021 cleanup bot over the directive store to detect and propose deprecations of superseded, contradictory, or stale rules. Deprecations feed back to `levelup-clarify`.
+4. **`prune`** (`analyze` phase) -> Runs the cleanup bot over the directive store to detect and propose deprecations of superseded, contradictory, or stale rules. Deprecations feed back to `levelup-clarify`.
 
 ### Historical Mining Route (brownfield)
 1. **`init`** (`generate` phase) -> Invoke `change-init` to mine git history and issue trackers for Change Decision Records (ChDRs).
@@ -45,10 +45,10 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 1. **`verify`** (`verify` phase) -> Run `team-repair --build-to-delete`. Re-runs goldset evals with rules temporarily disabled. If the model passes without a rule, the rule is flagged as redundant.
 2. **`clarify`⭐** -> Proposes the redundant rule's deprecation to `levelup-clarify` for human review.
 
-### Workflow Retrospective Route (PDR-054)
+### Workflow Retrospective Route
 Runs periodically or on-demand to analyze past runs of other factory skills (e.g. `factory-mission`, `factory-product`) and generate workflow memories:
 1. **`analyze`** (`analyze` phase) -> Scan completed/failed runs' state files (`.factory-<orchestrator>-state.json`) and evidence files. Identify patterns, recurring errors, or successful corrections.
-2. **`clarify`⭐** -> Present proposed memories (active vs tentative) to the user (in gated/hybrid modes) or auto-approve (in autonomous mode, PDR-051).
+2. **`clarify`⭐** -> Present proposed memories (active vs tentative) to the user (in gated/hybrid modes) or auto-approve (in autonomous mode).
 3. **`publish`** (`build` phase) -> Write approved memories to `.adlc/workflow/memory.jsonl`. Memories carry weights and use counts; stale or counter-productive memories are automatically archived.
 
 ---

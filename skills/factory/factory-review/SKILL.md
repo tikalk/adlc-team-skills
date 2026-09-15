@@ -37,9 +37,9 @@ It operates as a **Kind-B control-plane skill** integrated with the PR hosting p
 ### 2. PR Review Pipeline
 When triggered with `--pr <id>`:
 1. Discover credentials and PR hosting tools (`factory-mission/references/tracker-integration.md`).
-2. **Exact-head checkout (ADR-335)**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
+2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
 3. Fetch the PR diff and description.
-4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings` (PDR-055).
+4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings`.
 5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP.
 6. If findings contain `Important` issues, set PR label to `validation`. If clean, set to `validation` + advise code-owner of merge-readiness.
 7. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
@@ -51,7 +51,7 @@ When triggered with `--pr <id>`:
   - Automatically fix failing checks or address review comments, pushing updates until the PR is green.
   - Leave the PR in a merge-ready state awaiting final human approval.
 
-### 4. Findings to Directives Feedback Loop (PDR-040)
+### 4. Findings to Directives Feedback Loop
 - **Twice-Mistake Threshold**: If the review detects the same policy violation on a second PR, automatically trigger a local `levelup-specify` call to extract a preventive rule.
 - Package the rule as a CDR draft (via `factory-learn`) targeting the `team-ai-directives` repository.
 - Flag any changes that make current directives outdated.
@@ -61,5 +61,5 @@ When triggered with `--pr <id>`:
 ## Safety & Operating Constraints
 
 1. **Strictly Non-Approving**: Under no circumstances does the review agent approve its own code or bypass branch protection.
-2. **Advisory Auto-Merge**: Triage confidence scores (PDR-048) and validation outputs advise on auto-merge eligibility; the actual merge is executed by code-owners or strict GitHub Actions branch rules.
+2. **Advisory Auto-Merge**: Triage confidence scores and validation outputs advise on auto-merge eligibility; the actual merge is executed by code-owners or strict GitHub Actions branch rules.
 3. **Dry-Run Gating**: Initial review comments must be previewed locally before being written to the remote PR thread.

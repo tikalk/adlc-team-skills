@@ -27,7 +27,7 @@ This is the shared reference for all tracker-aware factory skills (`factory-miss
 ### 1. Pull Brief
 Retrieve issue summary, description, and comments via MCP or CLI. Use this raw text as input to compile the Mission Brief.
 
-### 2. Label Gate & Gating Dimensions (ADR-318)
+### 2. Label Gate & Gating Dimensions
 Every ticket carries three label dimensions:
 - **Automation-gating**: `agent-can-execute` | `human-required`
 - **Dispatch**: `autonomous` | `supervised` | `interactive`
@@ -36,7 +36,7 @@ Every ticket carries three label dimensions:
 **Rule**: If dispatch is `interactive` or automation-gating is `human-required`, the agent must halt and refuse auto-execution.
 
 ### 3. Write-Back & Comments
-Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored` (PDR-030).
+Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored`.
 
 ---
 
@@ -61,7 +61,7 @@ comment bus:
 | `output_type` | Published to comment bus? | What is published | Example |
 |---|---|---|---|
 | `draft` | No | Nothing — stays on disk | PDR drafts, Mission Brief, plan |
-| `decision` | Yes | Accepted/rejected + one-line reason each | PDR-001 Accepted, PDR-003 Rejected (scope) |
+| `decision` | Yes | Accepted/rejected + one-line reason each | Decision-001 Accepted, Decision-003 Rejected (scope) |
 | `findings` | Yes | Severity-ranked actionable report | Analyze consistency report, test results |
 | `artifact-ref` | Yes (reference only) | Path/URL + one-line summary, not content | "PRD.md generated at PRD.md. 5 PDRs compiled." |
 
@@ -182,7 +182,7 @@ available for Linear/Jira — findings posted as regular comments.
 | MCP (github) | `create_pull_request_review` |
 | CLI (gh) | `gh pr review <pr> --comment --body <body>` |
 
-### Operation 8 — Post Decision (PDR-051)
+### Operation 8 — Post Decision
 
 Publish an autonomous-mode decision as a structured comment on the
 PR/MR/issue. Used when supervision is `autonomous` and the orchestrator
@@ -230,7 +230,7 @@ A question whose only satisfying answer crosses one of these lines is
 answered **no** with the reason posted, and the step proceeds under
 the resulting waiver.
 
-### Operation 9 — State Label Transitions (ADR-345)
+### Operation 9 — State Label Transitions
 
 Manage issue/PR status transitions across code hosts. When an
 orchestrator transitions a task (e.g. `factory-mission` moving an
@@ -238,7 +238,7 @@ issue from `spec-gated` to `executing`), the integration layer executes
 the transition based on provider type:
 
 1. **Label-Based (GitHub/GitLab)**:
-   - Statuses mapped to `factory-stage:<value>` labels (ADR-318).
+   - Statuses mapped to `factory-stage:<value>` labels.
    - Transitions must **atomically add the new label and remove the old label**.
    - CLI/MCP commands:
      - GitHub CLI: `gh pr edit --add-label "factory-stage:<new>" --remove-label "factory-stage:<old>"`
@@ -254,10 +254,10 @@ the transition based on provider type:
      - Jira MCP: `atlassian-mcp-server` `transition_issue` tool.
      - Linear MCP: `linear-mcp` `update_issue` tool with `stateId`.
 
-3. **Dry-Run Gating (ADR-318)**:
+3. **Dry-Run Gating**:
    - Status transitions must be included in the dry-run/preview block and require explicit human confirmation before execution.
 
-### Operation 10 — Distributed Lease Management (ADR-346)
+### Operation 10 — Distributed Lease Management
 
 Coordinate execution across multiple computers (CI runners, developer laptops,
 Kubernetes pods) using the issue tracker comment thread as a Distributed Lock
@@ -317,7 +317,7 @@ knows which was used.
 6. **No ticket body edits**: Never edit or rewrite a ticket body, title, labels, milestone, or assignee (e.g. no `gh issue edit` or equivalent). Everything the skill contributes (clarifications, progress, blockers) is posted as an issue comment.
 7. **Invocation never widens authorization**: A child skill keeps its own scope, identity, hard rules, and stop conditions. A parent cannot authorize a child to do what the child's own skill forbids.
 8. **Idempotency for all tracker writes**: Before posting any comment, the system must search the thread for the unique combination of the current `run_id` + step/marker identifier. If a matching comment exists, skip to avoid duplicates.
-9. **Commit authorship preservation (ADR-338)**: A rebase, cherry-pick, or amend over someone else's commit must keep that commit's original author; never `--reset-author` or `--amend --author="..."` across it. Pushing is restricted to the PR's own head branch, and force-push requires `--force-with-lease` for the exact previously observed remote SHA.
-10. **Multi-machine distributed locking (ADR-346)**: In distributed or multi-agent environments, no code execution, worktree creation, or LLM prompting may begin without a verified, acquired remote lease marker on the issue tracker. An active unexpired lease from another host requires an immediate halt.
+9. **Commit authorship preservation**: A rebase, cherry-pick, or amend over someone else's commit must keep that commit's original author; never `--reset-author` or `--amend --author="..."` across it. Pushing is restricted to the PR's own head branch, and force-push requires `--force-with-lease` for the exact previously observed remote SHA.
+10. **Multi-machine distributed locking**: In distributed or multi-agent environments, no code execution, worktree creation, or LLM prompting may begin without a verified, acquired remote lease marker on the issue tracker. An active unexpired lease from another host requires an immediate halt.
 
 

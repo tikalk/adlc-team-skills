@@ -1,4 +1,4 @@
-# Lane Profiles — Cross-Runtime Dispatch (ADR-336)
+# Lane Profiles — Cross-Runtime Dispatch
 
 ## Overview
 
@@ -93,8 +93,8 @@ A `cli:` lane dispatch:
 3. Wait for exit.
 4. Parse stdout as the step's output.
 5. The other runtime reads:
-   - `.adlc/workflow/brief.md` from disk (ADR-331)
-   - Step markers from the comment bus (ADR-330)
+    - `.adlc/workflow/brief.md` from disk
+    - Step markers from the comment bus
    - The step's `SKILL.md` from `skills_root` (absolute path)
 6. The other runtime has no shared session context — it starts fresh.
 

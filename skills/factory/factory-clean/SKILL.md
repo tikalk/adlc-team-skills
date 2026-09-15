@@ -21,7 +21,7 @@ It operates as a **Kind-B control-plane skill** that reads the run registry, ide
 
 **When NOT to use**:
 - For routine code development or PR review (use `factory-mission` or `factory-review`).
-- To force-delete unpushed git commits or uncommitted files (this skill **never** deletes unsafe work, PDR-053).
+- To force-delete unpushed git commits or uncommitted files (this skill **never** deletes unsafe work).
 
 ---
 
@@ -30,8 +30,8 @@ It operates as a **Kind-B control-plane skill** that reads the run registry, ide
 ### 1. Project Ingestion
 Determine the project in scope (defaulting to the current repository). Identify its state root, run registry, and worktree root (`.adlc/worktrees/`).
 
-### 2. Live-Work Classification (PDR-053)
-Before displaying any candidate for deletion, read the local state file and the comment bus (if tracker-integrated, ADR-330/ADR-333). Classify every resource into one of these five liveness states:
+### 2. Live-Work Classification
+Before displaying any candidate for deletion, read the local state file and the comment bus (if tracker-integrated, via comment bus and lease markers). Classify every resource into one of these five liveness states:
 
 - **`in use`** — owned by a run whose lease is live (`heartbeat_ts + ttl_seconds > now`), or a path held open by an active process. **Protected.** Never offer for deletion.
 - **`holds work`** — a worktree with uncommitted changes or commits not on its remote, or a registry entry marked `retained`. **Protected.** Show exactly what it holds. Never delete.

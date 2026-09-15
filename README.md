@@ -290,45 +290,18 @@ in a clone as executable code, and disable editor auto-run tasks.
 
 ```mermaid
 flowchart TB
-    subgraph shared["Shared Contracts (owned by factory-mission)"]
-        EX["executor.md<br/>6-Phase Executor Contract"]
-        TI["tracker-integration.md<br/>Comment Bus + 10 Operations"]
-        LN["lanes.md<br/>Cross-Runtime Dispatch"]
-    end
-
-    subgraph kindA["Kind-A Orchestrators (share executor.md)"]
-        FM["factory-mission<br/>Execution Engine<br/>routed skills"]
-        FA["factory-architect<br/>Architecture Lifecycle"]
-        FP["factory-product<br/>Product Lifecycle"]
-        FL["factory-learn<br/>Learning Loop"]
-    end
-
-    subgraph kindB["Kind-B Control-Plane"]
-        FQ["factory-queue<br/>Ingestion & Planning"]
-        FR["factory-review<br/>PR Compliance"]
-        FC["factory-clean<br/>Resource Cleanup"]
-        FT["factory-tickets<br/>Read-Only Worklist"]
-    end
-
-    subgraph subs["Sub-Skills (fixed DAG)"]
-        AS["architect-*<br/>specify/init/clarify/implement/analyze"]
-        PS["product-*<br/>specify/init/clarify/implement/analyze"]
-        LS["levelup-* / change-*<br/>team-repair"]
-    end
+    FQ["factory-queue<br/>Ingestion & Triage"]
+    FP["factory-product<br/>Product Lifecycle"]
+    FA["factory-architect<br/>Architecture Lifecycle"]
+    FM["factory-mission<br/>Execution Engine"]
+    FR["factory-review<br/>PR Compliance"]
+    FL["factory-learn<br/>Learning Loop"]
+    FC["factory-clean<br/>Resource Cleanup"]
+    FT["factory-tickets<br/>Read-Only Worklist"]
 
     TR[("Issue Tracker<br/>GitHub / GitLab / Linear / Jira")]
     TD[["team-ai-directives<br/>repo"]]
 
-    %% Shared contract dependencies
-    EX -.-> FA & FP & FL
-    TI -.-> FQ & FR & FT & FC
-
-    %% Orchestrator -> sub-skills
-    FA ==> AS
-    FP ==> PS
-    FL ==> LS
-
-    %% Integration flows
     FQ -->|"spec-gated labels"| TR
     TR -->|"--issue ref"| FM
     FP -->|"PRD.md"| FQ
@@ -339,26 +312,14 @@ flowchart TB
     FL -->|"memory.jsonl"| FM
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
-    FT -->|"read-only query"| TR
+    FT -->|"read-only"| TR
 
-    %% Gate points (diamond shapes)
-    FQ -.- IG["Intent Gate<br/>(human)"]
-    FA & FP & FL -.- CG["clarify⭐ Gate<br/>(human)"]
-    FR -.- MG["Code-Owner<br/>Merge Gate"]
-    FM -.- CB["Circuit Breaker<br/>+ Stall Detection"]
-    FC -.- UG["User Approval<br/>Gate"]
+    FQ -.- IG{"Intent Gate"}
+    FA & FP & FL -.- CG{"clarify⭐ Gate"}
+    FR -.- MG{"Merge Gate"}
+    FM -.- CB{"Circuit Breaker"}
+    FC -.- UG{"Approval Gate"}
 ```
-
-**Gate points:**
-
-| Gate | Skill | Type | Default |
-|------|-------|------|---------|
-| Intent Gate | factory-queue | Human approval | Non-negotiable; no brief auto-approved |
-| clarify⭐ Gate | factory-architect, factory-product, factory-learn | Human sign-off | `hybrid` supervision; human marks decisions Accepted |
-| Code-Owner Merge Gate | factory-review | Human approval | Never auto-approves or auto-merges |
-| Circuit Breaker + Stall Detection | factory-mission | Convergence limit | 3 consecutive non-converging iterations; 20-min stall window |
-| User Approval Gate | factory-clean | Deletion authorization | Default selects nothing; re-verifies liveness before each delete |
-| Label Gate | factory-mission | Pre-execution halt | Halts if dispatch is `interactive` or gating is `human-required` |
 
 ---
 

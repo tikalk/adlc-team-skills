@@ -75,10 +75,10 @@ echo ""
 # PDR Index — from project memory (Accepted PDRs)
 echo "## PDR Index"
 PDR_COUNT=0
-if [ -f ".adlc/memory/pdr.md" ]; then
-  PDR_COUNT=$(awk '/^\| PDR/ {count++} END {print count+0}' ".adlc/memory/pdr.md" 2>/dev/null || true)
+if [ -f ".adlc/memory/pdr/pdr.md" ]; then
+  PDR_COUNT=$(awk '/^\| PDR/ {count++} END {print count+0}' ".adlc/memory/pdr/pdr.md" 2>/dev/null || true)
   [[ "$PDR_COUNT" =~ ^[0-9]+$ ]] || PDR_COUNT=0
-  awk -F'|' '/^\| PDR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$5); gsub(/^ +| +$/,"",$8); print "| " $2 " | " $5 " | " $3 " | " $8 " |"}' ".adlc/memory/pdr.md" 2>/dev/null || true
+  awk -F'|' '/^\| PDR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$5); gsub(/^ +| +$/,"",$8); print "| " $2 " | " $5 " | " $3 " | " $8 " |"}' ".adlc/memory/pdr/pdr.md" 2>/dev/null || true
 fi
 echo ""
 echo "_Total: $PDR_COUNT PDR entries available._"
@@ -87,10 +87,10 @@ echo ""
 # ADR Index — from project memory (Accepted ADRs)
 echo "## ADR Index"
 ADR_COUNT=0
-if [ -f ".adlc/memory/adr.md" ]; then
-  ADR_COUNT=$(awk '/^\| ADR/ {count++} END {print count+0}' ".adlc/memory/adr.md" 2>/dev/null || true)
+if [ -f ".adlc/memory/adr/adr.md" ]; then
+  ADR_COUNT=$(awk '/^\| ADR/ {count++} END {print count+0}' ".adlc/memory/adr/adr.md" 2>/dev/null || true)
   [[ "$ADR_COUNT" =~ ^[0-9]+$ ]] || ADR_COUNT=0
-  awk -F'|' '/^\| ADR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$4); gsub(/^ +| +$/,"",$5); print "| " $2 " | " $5 " | " $3 " | " $4 " |"}' ".adlc/memory/adr.md" 2>/dev/null || true
+  awk -F'|' '/^\| ADR/ {gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$4); gsub(/^ +| +$/,"",$5); print "| " $2 " | " $5 " | " $3 " | " $4 " |"}' ".adlc/memory/adr/adr.md" 2>/dev/null || true
 fi
 echo ""
 echo "_Total: $ADR_COUNT ADR entries available._"
@@ -144,4 +144,37 @@ echo "| CDR-YYYY-NNN | <name> | <type> | <relevance> |"
 echo ""
 echo "Plus: _Searched $CDR_COUNT CDR entries, $PDR_COUNT PDR entries, $ADR_COUNT ADR entries, $CHDR_COUNT ChDR entries, $SKILL_TOTAL skills, J matched._"
 echo "**J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**"
+echo ""
+echo "## Decision Capture"
+echo ""
+echo "Actively detect decisions made during the session. Maintain a running"
+echo "**Session Decision Ledger** visible in every response (after the Team"
+echo "Context in Use table)."
+echo ""
+echo "### Detection Triggers"
+echo ""
+echo "| Pattern | Type | Skill |"
+echo "|---------|------|-------|"
+echo "| Tech stack choice, pattern selection, \"we chose X over Y\" | ADR | /architect-specify |"
+echo "| Feature scope, persona definition, monetization choice | PDR | /product-specify |"
+echo "| Reusable rule emerged, \"we always do X\", team pattern | CDR | /levelup-specify |"
+echo "| Revert/hotfix rationale, commit linking to issue tracker | ChDR | /change-init |"
+echo ""
+echo "### Session Decision Ledger (every response)"
+echo ""
+echo "After the Team Context in Use table, include:"
+echo ""
+echo "| Decision | Type | Captured? | Skill |"
+echo "|----------|------|-----------|-------|"
+echo "| _none yet_ | — | — | — |"
+echo ""
+echo "_Unrecorded: N pending._"
+echo ""
+echo "- **Detect**: match session decisions against triggers above."
+echo "- **Classify**: assign record type (ADR/PDR/CDR/ChDR)."
+echo "- **Track**: was the matching skill invoked to capture it?"
+echo "- **Surface**: list unrecorded decisions with suggested skill."
+echo "- **Session-end**: before closing, prompt to invoke skills for any unrecorded decisions."
+echo ""
+echo "Only suggest when genuinely warranted — not on every response."
 echo "</EXTREMELY_IMPORTANT>"

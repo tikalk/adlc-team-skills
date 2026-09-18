@@ -7,7 +7,7 @@ description: Spec Harness & Execution Engine that runs the inner loop (specify â
 
 ## What this skill does
 
-`factory-mission` is the execution-harness orchestrator of the software factory (deck slide 12). It takes a feature description, structures it into a **Mission Brief** (goal, constraints, non-goals, success criteria), generates an ordered **step list**, and executes those steps via sequential subagent runs. 
+`factory-mission` is the execution-harness orchestrator of the software factory. It takes a feature description, structures it into a **Mission Brief** (goal, constraints, non-goals, success criteria), generates an ordered **step list**, and executes those steps via sequential subagent runs. 
 
 It implements the following key factory platform capabilities:
 1. **Universal Skill Routing**: Decoupled step dispatching. It scans installed skills and hands the inventory to subagents (the model picks which tool fits the step).

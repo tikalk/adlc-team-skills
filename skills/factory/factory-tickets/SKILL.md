@@ -7,7 +7,7 @@ description: Personal Worklist Engine. Shows open PRs with their next actionable
 
 ## What this skill does
 
-`factory-tickets` is the read-only personal worklist engine of the software factory (deck slide 12 Ingestion & Triage stage). It provides the user with an immediate, live, and actionable overview of their active queue, categorized by "next move" rather than abstract status.
+`factory-tickets` is the read-only personal worklist engine of the software factory. It provides the user with an immediate, live, and actionable overview of their active queue, categorized by "next move" rather than abstract status.
 
 It operates directly against the external issue tracker and PR host (GitHub, GitLab, Linear, Jira) using the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
 

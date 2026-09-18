@@ -7,7 +7,7 @@ description: Control Plane Ingestion & Planning Engine. Manages the Mission Brie
 
 ## What this skill does
 
-`factory-queue` manages the ingestion, triage, and planning boundaries of the software factory (deck slide 12 The Queue stage). It operates directly against the external issue tracker (the Queue) as the single source of truth using the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
+`factory-queue` manages the ingestion, triage, and planning boundaries of the software factory. It operates directly against the external issue tracker (the Queue) as the single source of truth using the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
 
 It performs two primary control-plane operations:
 1. **Advisory Triage & Ingestion** (default `triage` mode): Pulls un-triaged candidate briefs, runs stateless AI triage scoring, presents the Intent Gate to the human, and stamps gating/dispatch labels.

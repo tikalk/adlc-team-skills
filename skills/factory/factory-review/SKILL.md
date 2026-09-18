@@ -7,7 +7,7 @@ description: Quality & Compliance Review Engine (The Great Filter). Reviews PRs 
 
 ## What this skill does
 
-`factory-review` is the PR-review compliance engine of the software factory (deck slide 12 Review & Merge stage). It acts as the automated component of **The Great Filter** (deck slide 16), reviewing Pull Requests against organizational policy-as-code (`REVIEW.md`) and babysitting agent-opened PRs until they are ready for merge.
+`factory-review` is the PR-review compliance engine of the software factory. It acts as the automated component of **The Great Filter**, reviewing Pull Requests against organizational policy-as-code (`REVIEW.md`) and babysitting agent-opened PRs until they are ready for merge.
 
 It operates as a **Kind-B control-plane skill** integrated with the PR hosting provider (GitHub / GitLab) via the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
 

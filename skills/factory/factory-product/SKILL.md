@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## What this skill does
 
-`factory-product` orchestrates the product-decisions lifecycle (deck slide 12 Intent Harness stage). It coordinates individual product-related skills (`product-init`, `product-specify`, `product-clarify`, `product-implement`, `product-analyze`) to maintain a consistent `PRD.md` at the project root.
+`factory-product` orchestrates the product-decisions lifecycle. It coordinates individual product-related skills (`product-init`, `product-specify`, `product-clarify`, `product-implement`, `product-analyze`) to maintain a consistent `PRD.md` at the project root.
 
 It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-mission/references/executor.md`.
 

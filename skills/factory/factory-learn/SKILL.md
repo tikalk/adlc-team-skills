@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## What this skill does
 
-`factory-learn` orchestrates the continuous improvement learning loop of the software factory (deck slide 18). It coordinates individual learning-related skills (`levelup-init`, `levelup-specify`, `levelup-clarify`, `levelup-publish`, `change-init`, `change-clarify`, `change-publish`, `team-repair`, `evals-analyze`) to transition draft directives into verified, published, and minimal team context assets.
+`factory-learn` orchestrates the continuous improvement learning loop of the software factory. It coordinates individual learning-related skills (`levelup-init`, `levelup-specify`, `levelup-clarify`, `levelup-publish`, `change-init`, `change-clarify`, `change-publish`, `team-repair`, `evals-analyze`) to transition draft directives into verified, published, and minimal team context assets.
 
 It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-mission/references/executor.md`.
 

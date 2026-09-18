@@ -7,7 +7,7 @@ description: "Inventory what this project and its agent skills cost the machine 
 
 ## What this skill does
 
-`factory-clean` is the resource-reclamation engine of the software factory (deck slide 18 Maintenance stage). It answers two questions and acts on the second: **what is this project costing this machine right now**, and **what can be reclaimed without destroying work or interrupting an agent that is still running?**
+`factory-clean` is the resource-reclamation engine of the software factory. It answers two questions and acts on the second: **what is this project costing this machine right now**, and **what can be reclaimed without destroying work or interrupting an agent that is still running?**
 
 It operates as a **Kind-B control-plane skill** that reads the run registry, identifies active worktrees, and cleans up discarded/stale artifacts.
 

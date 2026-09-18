@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## What this skill does
 
-`factory-architect` orchestrates the architecture-decisions lifecycle (deck slide 12 Intent Harness stage). It coordinates individual architecture-related skills (`architect-init`, `architect-specify`, `architect-clarify`, `architect-implement`, `architect-analyze`) to maintain a consistent `AD.md` at the project root.
+`factory-architect` orchestrates the architecture-decisions lifecycle. It coordinates individual architecture-related skills (`architect-init`, `architect-specify`, `architect-clarify`, `architect-implement`, `architect-analyze`) to maintain a consistent `AD.md` at the project root.
 
 It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-mission/references/executor.md`.
 

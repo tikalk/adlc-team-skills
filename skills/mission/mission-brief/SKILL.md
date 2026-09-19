@@ -1,13 +1,6 @@
 ---
 name: mission-brief
-description: >-
-  Mission-driven SDD orchestrator: take a feature description, structure it
-  into a Mission Brief (goal, constraints, success criteria), generate an
-  ordered step list with prompts that trigger installed SDD skills via model
-  invocation or command-file discovery, and walk those steps to converged
-  implementation. Use when you want an end-to-end
-  specify → plan → implement ↔ converge loop with gates, a circuit breaker,
-  resume, and an audit trail — without YAML files or per-framework profiles.
+description: Use when building a feature that needs an end-to-end specify → plan → implement ↔ converge loop with gates, a circuit breaker, resume, and an audit trail — or when resuming an interrupted mission.
 ---
 
 # mission-brief

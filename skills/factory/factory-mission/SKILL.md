@@ -1,6 +1,6 @@
 ---
 name: factory-mission
-description: Spec Harness & Execution Engine that runs the inner loop (specify → plan → implement ↔ converge) with optional tracker integration and structural TDD.
+description: Use when executing a spec-gated mission from the queue — inner loop specify → plan → implement ↔ converge with tracker integration, worktree isolation, and a circuit breaker.
 ---
 
 # factory-mission
@@ -21,7 +21,7 @@ It implements the following key factory platform capabilities:
 9. **Scratchpad Tools**: Subagents share named, run-private scratchpads (`.adlc/workflow/scratchpads/<name>.txt`) to compile notes, drafts, and reviews incrementally before publishing.
 10. **Workflow Memory & Self-Improvement**: Persistent JSONL database (`.adlc/workflow/memory.jsonl`) stores learnings across runs. `factory-learn` periodically runs retrospectives to prune/weight memories.
 11. **Hierarchical Context Parameters**: Workflows and agents reference parameters as `{{params.<key>}}`, resolved from most specific to least specific: `agent < workflow < repository < project < default`.
-12. **Decoupled Test/Code Separation**: In `autonomous` or `supervised` modes, it splits `implement` into sequential `test` (Test Agent writes tests under read-only `src/`) and `code` (Implement Agent writes code under read-only `tests/`) runs.
+12. **Decoupled Test/Code Separation**: In `autonomous` or `supervised` modes, it splits `implement` into sequential `test` (Test Agent writes failing tests under read-only `src/`) and `code` (Implement Agent writes code under read-only `tests/`) runs — each closed by a **mandatory mechanical gate** (see Phase 5): the RED gate proves the new suite fails before coding starts; the GREEN gate proves it passes before converge is reached.
 
 ---
 
@@ -56,19 +56,22 @@ It implements the following key factory platform capabilities:
 ### Phase 5: Executing the Converge Loop
 Execute steps sequentially. When reaching `implement` / `converge`:
 
-#### Decoupled Test/Code Execution
-In `autonomous` and `supervised` modes, the `implement` step is split into two sequential subagent dispatches:
+#### Decoupled Test/Code Execution (mandated TDD)
+In `autonomous` and `supervised` modes, the `implement` step is split into two sequential subagent dispatches, each closed by a mechanical verification run:
+
 1. **The Test Agent (`test` step)**:
    - Instruction: Write a failing test suite based on `spec.md` in `tests/`.
    - Enforcement: Mount `src/` as hard **read-only**; only `tests/` is writeable.
+   - **RED gate (mandatory)**: the executor runs the suite and asserts at least one test FAILS. A suite that passes immediately means the feature already exists or the tests assert nothing — route to `SPEC_CORRECTION_NEEDED` with the run output; never proceed to the `code` step. Record the failing count in the run log.
 2. **The Implement Agent (`code` step)**:
    - Instruction: Write minimum implementation code in `src/` to pass the tests.
    - Enforcement: Mount `tests/`, `spec.md`, and `plan.md` as hard **read-only**; only `src/` is writeable.
+   - **GREEN gate (mandatory)**: the executor runs the suite again; `converge` is never reached with a red suite. Any failure loops straight back to the `code` step with the failure list attached (this loop-back does not consume the converge circuit breaker; only broken *iterations* do — use the `code`-step retry cap from `workflow-config.yml`).
 
-*Note: Skip the split in `interactive` mode or if no TDD capability is configured.*
+**Skipping the split** is allowed only when the run declares no test surface: `tdd: false` in `workflow-config.yml`, a docs/config-only step, or `interactive` mode (the attended pair runs its own discipline — e.g. superpowers' `test-driven-development`). A code-bearing step in `autonomous`/`supervised` mode never skips it.
 
 #### Converge Loop (Implement ↔ Converge)
-1. Execute implement step (or `test` + `code` steps).
+1. Execute implement step (or `test` + `code` steps — RED→GREEN gates enforced first).
 2. Execute `converge` step (independent judge mode; checks against Brief and Non-Goals).
 3. If `converge` returns:
    - `DONE` (and quality is above `quality_threshold`): Loop exits.

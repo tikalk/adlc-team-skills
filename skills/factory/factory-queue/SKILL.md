@@ -1,6 +1,6 @@
 ---
 name: factory-queue
-description: Control Plane Ingestion & Planning Engine. Manages the Mission Brief Queue (triage, AI-assisted advisory scoring, and gating label stamping) and product planning.
+description: Use when managing mission brief intake — triage, AI-assisted advisory scoring, gating label stamping, and milestones or epics generation (plan mode).
 ---
 
 # factory-queue

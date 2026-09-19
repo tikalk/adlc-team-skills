@@ -1,6 +1,6 @@
 ---
 name: tech-radar-boot
-description: Class boot for technology selection — injects Tikal Israeli Tech Radar context (adoption ring, quadrant, Tikal's opinion) for any technology, framework, database, library, or cloud tool implied by the current prompt, recommends Keep/Start alternatives for Stop items, and pairs the selection with decision capture via /architect-specify (ADR). Auto-triggered whenever a tech stack choice is being made or evaluated; surfaced in team-boot's Class Boots catalog. Formerly tech-radar-context.
+description: Use when choosing or evaluating a technology (framework, database, library, cloud tool) — injects Tikal Israeli Tech Radar context (adoption ring, quadrant, opinion, Keep/Start alternatives for Stop items) and pairs the selection with ADR capture via /architect-specify; invoked from team-boot's Class Boots catalog (formerly tech-radar-context).
 ---
 
 # tech-radar-boot

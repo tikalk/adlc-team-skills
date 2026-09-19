@@ -1,6 +1,6 @@
 ---
 name: product-analyze
-description: Read-only analysis of PDR↔PRD consistency, PDR quality, cross-PDR conflicts, and staleness. Outputs a structured markdown report with severity-assigned findings. Use after /product-implement or periodically to detect drift.
+description: Use when checking PDR↔PRD consistency after /product-implement or periodically to detect drift, PDR quality issues, cross-PDR conflicts, and staleness.
 disable-model-invocation: true
 ---
 

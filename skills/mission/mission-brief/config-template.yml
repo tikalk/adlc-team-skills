@@ -21,6 +21,13 @@ workflow:
   # as CONTINUE.
   quality_threshold: null
 
+  # TDD test/code split (factory-mission, autonomous/supervised runs).
+  # true (default): the implement step splits into a Test Agent (RED-gated —
+  # suite must fail >=1 test) and an Implement Agent (GREEN-gated — suite
+  # must pass before converge). false: skip the split — only for runs with
+  # no test surface (docs/config-only work).
+  tdd: true
+
   # Per-step model routing (optional). If omitted, every step uses the
   # harness default model. Steps carry a `tier:` annotation (strong | fast);
   # the executor resolves tier -> concrete model using this map at dispatch.

@@ -1,6 +1,6 @@
 ---
 name: team-discover
-description: Manually re-scan team context modules and produce a structured discovery table with relevance assessments. The CDR index is already in the system prompt; use this for explicit re-discovery.
+description: Use when explicit manual re-discovery of team context modules is wanted beyond the injected CDR index (/team-discover) — produces a structured match table with relevance assessments.
 ---
 
 # team-discover

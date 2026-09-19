@@ -1,6 +1,6 @@
 ---
 name: evals-implement
-description: Generate executable graders and configs from goldset. Generates Python graders / metrics and auto-runs unit tests to verify grader correctness.
+description: Use when a published goldset is ready to become executable graders and configs — Python graders and metrics with auto-run unit tests verifying grader correctness.
 disable-model-invocation: true
 ---
 

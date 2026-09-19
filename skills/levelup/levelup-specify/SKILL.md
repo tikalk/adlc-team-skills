@@ -1,6 +1,6 @@
 ---
 name: levelup-specify
-description: Extract Context Directive Records (CDRs) from the current session after completing work. Identifies reusable patterns (rules, personas, examples, evals) and captures directive compliance cases for team-ai-directives.
+description: Use when a completed session surfaced hard-won fixes — extracts reusable patterns (rules, personas, examples, evals) and directive compliance cases as CDRs.
 disable-model-invocation: true
 ---
 

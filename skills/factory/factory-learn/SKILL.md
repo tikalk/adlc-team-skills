@@ -1,6 +1,6 @@
 ---
 name: factory-learn
-description: Learning Loop Orchestrator. Extracts CDRs/ChDRs, reviews them via gates/regression, publishes to team-ai-directives via PR, and prunes/verifies rules via build-to-delete.
+description: Use when coordinating continuous improvement loops (levelup + change + evals feedback + cleanup) targeting team-ai-directives — includes build-to-delete pruning and promote-to-check.
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: evals-clarify
-description: Refine, cluster, and accept draft criteria into the published goldset. Isolates 20% holdout split and publishes goldset.md + goldset.json.
+description: Use when draft eval criteria need refining, clustering, and acceptance into the published goldset with an isolated holdout split (goldset.md + goldset.json).
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: factory-init
-description: Brownfield Bootstrap Orchestrator. One command onboards an existing repo onto ADLC — drives the product, architecture, and change lifecycles end-to-end (init → clarify⭐ → implement → analyze/publish) and emits the PDR↔ADR↔ChDR↔code coverage matrix; owns the recurring cross-layer alignment sweep via --refresh.
+description: Use when onboarding a brownfield repo onto ADLC end-to-end, or running the recurring PDR↔ADR↔ChDR↔code alignment sweep (--refresh).
 disable-model-invocation: true
 ---
 

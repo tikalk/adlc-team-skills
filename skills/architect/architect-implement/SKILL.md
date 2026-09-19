@@ -1,6 +1,6 @@
 ---
 name: architect-implement
-description: Generate a full Architecture Description (AD.md) from accepted ADRs using multi-agent DAG orchestration. Use when accepted ADRs exist and you need to produce or update unified architecture documentation.
+description: Use when accepted ADRs exist and AD.md must be produced or updated as unified architecture documentation.
 disable-model-invocation: true
 ---
 

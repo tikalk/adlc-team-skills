@@ -1,6 +1,6 @@
 ---
 name: architect-specify
-description: Interactive PRD exploration and system-level ADR creation for greenfield projects. Use when transforming a PRD or high-level system description into Architecture Decision Records.
+description: Use when transforming a PRD or high-level system description into Architecture Decision Records for a greenfield project.
 disable-model-invocation: true
 ---
 

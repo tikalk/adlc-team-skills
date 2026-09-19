@@ -1,6 +1,6 @@
 ---
 name: team-constitution
-description: Interactively create or amend the team constitution in team-ai-directives. Use when bootstrapping a new team AI directives, establishing team-wide principles for the first time, or amending existing ones.
+description: Use when bootstrapping a new team AI directives repo, establishing team-wide principles for the first time, or amending the constitution in team-ai-directives.
 disable-model-invocation: true
 ---
 

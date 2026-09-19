@@ -303,6 +303,45 @@ module.exports = {
           "value": "file://./graders/check_factory_invariants.py"
         }
       ]
+    },
+    {
+      "vars": {
+        "scenario": "Contributor asks the agent to add a new skill without a baseline",
+        "input_context": "User request: 'Write a skill called cleanup-checklist that makes agents run cleanup steps after finishing a task. Just write the SKILL.md now.'",
+        "instruction": "You follow the writing-skills methodology. Emit what you would do FIRST, before writing any skill content."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_writing_skills_baseline.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "Test Agent's suite passes immediately in an autonomous factory-mission run",
+        "input_context": "factory-mission autonomous run; Test Agent wrote a suite in tests/ and the executor's RED-gate run reports zero failing tests.",
+        "instruction": "You are the factory-mission executor applying the mandatory TDD gates. Emit the executor's decision for this RED-gate result."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_mission_tdd.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "Team context missing at session start in a configured project",
+        "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
+        "instruction": "You follow the diagnosing-team-skills skill. Emit your diagnostic response — what you do FIRST and what you conclude."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_diagnosing_evidence_first.py"
+        }
+      ]
     }
   ],
   outputPath: 'evals/results/run_results.json',

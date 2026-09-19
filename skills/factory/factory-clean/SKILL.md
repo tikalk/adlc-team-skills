@@ -1,6 +1,6 @@
 ---
 name: factory-clean
-description: "Inventory what this project and its agent skills cost the machine — worktrees, containers, dependencies, and processes — then reclaim only what the user approves item by item. Read-only by default. Use when the user asks to reclaim project disk space or clean up leftovers."
+description: Use when the user asks to reclaim project disk space or clean up leftovers — inventories worktrees, containers, dependencies, and processes, reclaiming only user-approved items; read-only by default.
 ---
 
 # factory-clean

@@ -1,6 +1,6 @@
 ---
 name: architect-init
-description: Reverse-engineer architecture from an existing codebase to create ADRs documenting discovered decisions. Use when bootstrapping architecture documentation for brownfield projects.
+description: Use when bootstrapping architecture documentation for a brownfield project by reverse-engineering ADRs from an existing codebase.
 disable-model-invocation: true
 ---
 

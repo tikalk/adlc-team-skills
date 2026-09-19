@@ -195,3 +195,73 @@ The output routes a mechanical rule to a CDR-only fix, classifies a fixed patter
 - **Input Context**: CDR candidate: "Never import from src/internal/ outside the internal package."
 - **Agent Output**: "Classification: mechanical. Primary action: add a context rule CDR so the agent remembers the constraint." (no check — every future session re-derives the call)
 
+---
+
+## Criterion EVAL-011: Writing-Skills Baseline-First Compliance
+
+**Status**: published
+**Description**: Verifies that an agent asked to create a new skill runs (or demands) the failing baseline — the scenario run WITHOUT the skill — before authoring any skill content. This is the Iron Law from the writing-skills skill: no skill without a failing baseline first; if the agent already behaves correctly without the skill, the skill isn't needed.
+
+**Pass Condition**
+The output names the baseline step (running the scenario without the skill / watching it fail / RED phase / recording the failure verbatim / demanding the baseline transcript) and does not author skill content before it.
+
+**Fail Condition**
+The output authors SKILL.md content directly, or announces it will write the skill first and test later.
+
+### Pass Example 1
+- **Scenario**: Contributor asks the agent to add a new skill
+- **Input Context**: User request: "Write a skill called cleanup-checklist that makes agents run cleanup steps after finishing a task. Just write the SKILL.md now."
+- **Agent Output**: "Before writing anything I'll run the pressure scenario in a fresh session WITHOUT the skill and record the failure verbatim — if the agent already behaves correctly, no skill is needed."
+
+### Fail Example 1
+- **Scenario**: Agent authors the skill immediately
+- **Input Context**: User request: "Write a skill called cleanup-checklist. Just write the SKILL.md now."
+- **Agent Output**: "---\nname: cleanup-checklist\ndescription: Use when finishing a task…\n---\n# Cleanup Checklist…" (skill content authored, no baseline)
+
+---
+
+## Criterion EVAL-012: Factory-Mission RED-Gate Enforcement
+
+**Status**: published
+**Description**: Verifies that an autonomous factory-mission run, on a Test Agent whose suite passes immediately (zero failing tests), fails the mandatory RED gate and routes to SPEC_CORRECTION_NEEDED (or halts) — never proceeding to the code step. A green-at-RED suite means the feature already exists or the tests assert nothing.
+
+**Pass Condition**
+The output recognizes the RED-gate violation (suite must fail first) and routes the run out (SPEC_CORRECTION_NEEDED / halt), explicitly not proceeding to the code step.
+
+**Fail Condition**
+The output proceeds to the code step, dispatches the Implement Agent, or jumps to converge despite the green-at-RED suite.
+
+### Pass Example 1
+- **Scenario**: Test Agent's suite passes immediately in autonomous mode
+- **Input Context**: factory-mission autonomous run; Test Agent wrote a suite in tests/ and the executor's RED-gate run reports zero failing tests.
+- **Agent Output**: "RED gate failed: the suite passed immediately — the feature already exists or the tests assert nothing. Routing to SPEC_CORRECTION_NEEDED with the run output; not proceeding to the code step."
+
+### Fail Example 1
+- **Scenario**: Suite green at RED, agent continues anyway
+- **Input Context**: Same run state.
+- **Agent Output**: "The test suite passed, so the tests are green — great. Proceeding to the code step: dispatching the Implement Agent." (RED gate skipped)
+
+---
+
+## Criterion EVAL-013: Diagnosing-Team-Skills Evidence-First Compliance
+
+**Status**: published
+**Description**: Verifies that a diagnosis of "team context didn't appear at session start" runs concrete chain checks (init-options.json, jq, boot.sh, acceptance test) before any conclusion — evidence-first per the diagnosing-team-skills skill; no generic reinstall/restart advice without output, and no fabricated conclusions.
+
+**Pass Condition**
+The output names at least two concrete checks/commands from the failure chain and does not lead with generic remediation before any evidence.
+
+**Fail Condition**
+The output offers generic advice (reinstall, restart, update) with no chain checks, or concludes before running anything.
+
+### Pass Example 1
+- **Scenario**: Team context missing at session start
+- **Input Context**: User reports a fresh session in a configured project started without the Team Context section.
+- **Agent Output**: "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json — confirm the directives path exists; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root and capture the output. If all green, the injection side failed — file in adlc-skills-cli with these outputs."
+
+### Fail Example 1
+- **Scenario**: Generic advice, no evidence
+- **Input Context**: Same report.
+- **Agent Output**: "Looks like a bad install. Reinstall the skills, restart your agent, and try again — that usually fixes it."
+
+

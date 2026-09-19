@@ -1,6 +1,6 @@
 ---
 name: factory-product
-description: Product Lifecycle Orchestrator. Walks Greenfield (specify) / Brownfield (init) → clarify⭐ → implement → analyze to maintain PRD.md.
+description: Use when orchestrating a product lifecycle (specify/init → clarify → implement → analyze) to generate or verify PRD.md.
 disable-model-invocation: true
 ---
 

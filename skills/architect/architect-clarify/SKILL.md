@@ -1,6 +1,6 @@
 ---
 name: architect-clarify
-description: Refine and validate system-level ADRs through targeted clarification questions. Use when ADRs need review, gaps need filling, or ADR status must be approved before architecture generation.
+description: Use when ADRs need review, gaps need filling, or ADR status must be approved as Accepted before architecture generation.
 disable-model-invocation: true
 ---
 

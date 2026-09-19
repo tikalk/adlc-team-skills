@@ -1,6 +1,6 @@
 ---
 name: architect-boot
-description: Class boot for architecture decisions — injects the project ADR index (.adlc/memory/adr/) as session context when architecture work starts or a tech-stack/pattern decision emerges, and pairs it with decision capture via /architect-specify. Invoked on demand from team-boot's Class Boots catalog; for technology selection also invoke tech-radar-boot.
+description: Use when architecture work starts or a tech-stack or pattern decision emerges — injects the project ADR index (.adlc/memory/adr/) as session context and pairs the decision with capture via /architect-specify; invoked from team-boot's Class Boots catalog.
 ---
 
 # architect-boot

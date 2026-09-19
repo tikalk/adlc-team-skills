@@ -1,6 +1,6 @@
 ---
 name: architect-analyze
-description: Analyze architecture for consistency between ADRs and AD, completeness, and quality issues. Use when validating generated or refined architecture artifacts, before feature development, during architecture review, or periodically to detect drift.
+description: Use when validating generated or refined architecture artifacts, before feature development, during architecture review, or periodically to detect ADR↔AD drift, completeness gaps, and quality issues.
 disable-model-invocation: true
 ---
 

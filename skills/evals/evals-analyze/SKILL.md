@@ -1,6 +1,6 @@
 ---
 name: evals-analyze
-description: Analyze evaluation results and close the loop. Specification failures subclassify — mechanical patterns route to deterministic checks (grader/unit-test fixes), judgment gaps create local CDRs to fix agent rules; generalization failures go to evaluator backlog.
+description: Use when evaluation results need triage and loop-closing — spec failures route to deterministic checks or context rules, generalization failures to the evaluator backlog.
 disable-model-invocation: true
 ---
 

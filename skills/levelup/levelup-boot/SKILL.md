@@ -1,6 +1,6 @@
 ---
 name: levelup-boot
-description: Class boot for team context directives — deep-dives the CDR catalog by reading full context module bodies (personas, rules, examples) from team-ai-directives when a task matches CDR descriptors, and pairs it with decision capture via /levelup-specify. The compact CDR index is always injected by team-boot; invoke this for full-module context or when a reusable team pattern emerges.
+description: Use when a task matches CDR descriptors and full context module bodies (personas, rules, examples) from team-ai-directives are needed, or a reusable team pattern emerges for capture via /levelup-specify; invoked from team-boot's Class Boots catalog.
 ---
 
 # levelup-boot

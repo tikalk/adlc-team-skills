@@ -1,6 +1,6 @@
 ---
 name: workspace
-description: Multi-repo workspace coordinator for shared team context. Initialize .adlc/ structure, configure .gitignore, discover child repos, link them as Git submodules, and audit workspace health. Use --init for first-time setup, default mode for ongoing auditing.
+description: Use when coordinating a multi-repo workspace — init the .adlc/ structure, discover and link child repos as submodules, or audit workspace health (branch, dirty, unpushed, SHA drift).
 ---
 
 # workspace

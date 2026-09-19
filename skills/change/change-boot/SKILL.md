@@ -1,6 +1,6 @@
 ---
 name: change-boot
-description: Class boot for change history — injects the published ChDR index (.adlc/memory/chdr.md) as session context when past-change rationale matters (refactoring unfamiliar code, revert/hotfix analysis, issue-linked commits), and pairs it with decision capture via /change-init. Invoked on demand from team-boot's Class Boots catalog.
+description: Use when past-change rationale matters (refactoring unfamiliar code, revert or hotfix analysis, issue-linked commit archaeology) — injects the published ChDR index (.adlc/memory/chdr.md) as session context and pairs mining with capture via /change-init; invoked from team-boot's Class Boots catalog.
 ---
 
 # change-boot

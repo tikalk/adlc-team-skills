@@ -1,6 +1,6 @@
 ---
 name: team-setup
-description: Interactive setup of team AI directives. Use when bootstrapping a team directives repository from scratch, cloning an existing one, pointing to a local path, or checking an existing configuration. Auto-invoked by team-boot when a project has no configured team AI directives (self-install), and available on demand via /team-setup.
+description: Use when bootstrapping a team directives repository from scratch, cloning an existing one, pointing to a local path, or checking an existing configuration.
 ---
 
 # team-setup

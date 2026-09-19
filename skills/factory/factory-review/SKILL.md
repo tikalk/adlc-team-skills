@@ -1,6 +1,6 @@
 ---
 name: factory-review
-description: Quality & Compliance Review Engine (The Great Filter). Reviews PRs against REVIEW.md policy-as-code, babysits agent PRs to merge, and optionally self-heals via a three-sub-agent converge loop (Review→Fix→Converge) that proactively fixes Important findings before a human sees them.
+description: Use when reviewing PRs for severity-ranked policy compliance against REVIEW.md, babysitting agent PRs to merge, or self-healing Important findings before a human sees them.
 ---
 
 # factory-review

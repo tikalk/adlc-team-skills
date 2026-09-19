@@ -1,6 +1,6 @@
 ---
 name: factory-tickets
-description: Personal Worklist Engine. Shows open PRs with their next actionable move, merged work not yet closed, takable tickets, and blocked work — classified by next move rather than abstract status. Read-only. Use when the user asks "what is on my plate" or "list my active tickets."
+description: Use when the user asks for their active worklist — open PRs with next actionable move, merged work not yet closed, takable tickets, and blocked work, classified by next move.
 ---
 
 # factory-tickets

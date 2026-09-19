@@ -298,13 +298,26 @@ def test_no_stale_parent_walk_remnants():
 
 
 def test_events_json_no_user_prompt_submit():
-    """events.json must not have user_prompt_submit — only session_start."""
+    """events.json must not have user_prompt_submit — injection events are session_start + session_compact."""
     assert "session_start" in EVENTS
     assert "user_prompt_submit" not in EVENTS
 
 
+def test_events_json_declares_session_compact():
+    """events.json must declare session_compact → team-boot: the index must be
+    re-injectable after harness compaction (the dedup guard lives in the
+    generated plugin; this is the declaration side of the contract)."""
+    import json
+    manifest = json.loads(EVENTS)
+    assert "session_start" in manifest["events"]
+    compact = manifest["events"].get("session_compact")
+    assert isinstance(compact, list) and compact, "session_compact must declare handlers"
+    assert compact[0]["skill"] == "team-boot", "session_compact handler must be team-boot"
+    assert compact[0].get("timeout", 60) <= 60
+
+
 def test_events_json_only_team_boot():
-    """events.json must only have team-boot on session_start."""
+    """events.json must only have team-boot as an event handler."""
     assert "team-boot" in EVENTS
     assert "team-discover" not in EVENTS
 

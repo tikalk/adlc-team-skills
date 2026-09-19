@@ -1,6 +1,6 @@
 ---
 name: team-repair
-description: Re-index OKF v0.2 index.md/log.md files, derive CDR.md, rebuild .skills.json and AGENTS.md in team-ai-directives, migrate v0.1→v0.2 frontmatter, scan for rule conflicts, and verify directive freshness. Use when indexes are inconsistent, orphans are detected, after bulk changes, or for periodic team AI directives health validation.
+description: Use when indexes are inconsistent, orphans are detected, after bulk changes to team-ai-directives, or for periodic directives health validation; --build-to-delete proposes rules the model no longer needs.
 disable-model-invocation: true
 ---
 

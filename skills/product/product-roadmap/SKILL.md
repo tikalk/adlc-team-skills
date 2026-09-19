@@ -1,6 +1,6 @@
 ---
 name: product-roadmap
-description: Track milestone progress across four layers of truth — decision state (PDR status), execution state (live issue tracker via MCP), evidence state (code-vs-PDR verification), and gate state (milestone gates). Shows honest completion, done-means warnings, and updates status only when all layers are green. Use for weekly progress checks and milestone validation.
+description: Use when doing weekly progress checks or milestone validation — tracks decision, execution, evidence, and gate states across four layers of truth.
 disable-model-invocation: true
 ---
 

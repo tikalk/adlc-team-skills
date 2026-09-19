@@ -1,6 +1,6 @@
 ---
 name: evals-specify
-description: Extract eval criteria from product specs and production failure traces (bottom-up error analysis). Writes proposed criteria to .adlc/drafts/evals/.
+description: Use when extracting eval criteria from product specs or production failure traces (bottom-up error analysis) into .adlc/drafts/evals/.
 disable-model-invocation: true
 ---
 

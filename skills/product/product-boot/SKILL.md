@@ -1,6 +1,6 @@
 ---
 name: product-boot
-description: Class boot for product decisions — injects the project PDR index (.adlc/memory/pdr/) as session context when product/feature work starts or a PDR-worthy decision emerges, and pairs it with decision capture via /product-specify. Invoked on demand from team-boot's Class Boots catalog.
+description: Use when product or feature work starts, or a PDR-worthy decision (scope, persona, monetization) emerges — injects the PDR index (.adlc/memory/pdr/) as session context and pairs the decision with capture via /product-specify; invoked from team-boot's Class Boots catalog.
 ---
 
 # product-boot

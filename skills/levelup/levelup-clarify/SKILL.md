@@ -1,6 +1,6 @@
 ---
 name: levelup-clarify
-description: Review, accept, reject, or defer Context Directive Records (CDRs) discovered by levelup-init or proposed by levelup-specify. Interactive one-CDR-at-a-time workflow.
+description: Use when reviewing, accepting, rejecting, or deferring CDRs discovered by levelup-init or proposed by levelup-specify — one CDR at a time, with the enforceability gate promoting mechanical rules to deterministic checks.
 disable-model-invocation: true
 ---
 

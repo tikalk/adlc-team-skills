@@ -1,6 +1,6 @@
 ---
 name: factory-architect
-description: Architecture Lifecycle Orchestrator. Walks Greenfield (specify) / Brownfield (init) → clarify⭐ → implement → analyze to maintain AD.md and enforce constraints.
+description: Use when orchestrating an architecture lifecycle (specify/init → clarify → implement → analyze) to generate or maintain AD.md.
 disable-model-invocation: true
 ---
 

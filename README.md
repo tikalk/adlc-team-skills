@@ -3,172 +3,78 @@
 Agent skills that give coding agents your team's context at session start,
 so they stop working like strangers.
 
-## The problem
+## Table of contents
 
-Coding agents start every session knowing nothing about your team. They don't
-know your conventions, which patterns you deprecated, or why service X never
-calls service Y. Developers compensate with personal CLAUDE.md files, but
-those live on one machine, drift out of date, and don't transfer between
-teammates or tools.
-
-## What this does
-
-### #1: The agent doesn't know how your team works
-
-`team-boot` runs at session start and injects an *index* of your team's
-rules, personas, and decisions — names and one-line descriptors, roughly a
-hundred tokens. Not the rules themselves. When the active task matches a
-rule, the agent pulls that rule's full text on demand. A task touching SQL
-loads the SQL rule; nothing else loads.
-
-```
-team-boot        → auto-runs at session start (event hook), injects the index
-team-discover    → /team-discover for a structured match table
-team-constitution → interactively define your team's principles
-team-repair      → re-index, conflict scan, freshness check
-```
-
-The index lives in a git repo ([team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives))
-— versioned, reviewed by PR, shared by the whole team.
-
-### #2: The agent guesses instead of asking
-
-LLMs fill ambiguity with invention. `mission-brief` forces a contract first:
-goal, constraints, non-goals, success criteria — then runs
-specify → plan → tasks → implement ↔ converge. When the agent gets something
-wrong, you fix the spec, not the code.
-
-```
-mission-brief "add user profile API with JWT"
-mission-brief --resume    # continue an interrupted mission
-```
-
-### #3: The maker grades its own work
-
-The `evals` skills build executable evaluation suites (PromptFoo or DeepEval).
-Anything that can be checked by code gets a binary grader — plain assertions,
-Tier 1. LLM judges are Tier 2, reserved for what static checks can't verify.
-Nothing auto-merges; the pipeline ends at a PR a human reviews.
-
-```
-evals-init → evals-specify → evals-clarify → evals-implement → evals-validate → evals-analyze
-```
-
-### #4: Session learnings evaporate
-
-When a session surfaces a hard-won fix, `levelup-specify` extracts it as a
-Context Directive Record (CDR) and commits it back to the team repo — the
-next session starts smarter.
-
-```
-levelup-init → levelup-specify → levelup-clarify → levelup-publish
-```
-
-### #5: Product and architecture decisions are invisible
-
-`product-*` skills capture product decisions as PDR files and compile them
-into `PRD.md`. `architect-*` skills capture architecture decisions as ADRs
-(Rozanski & Woods viewpoints) and compose them into `AD.md`. Every decision
-traces from record to document to code.
-
-```
-product-init|specify → product-clarify → product-implement → product-analyze
-architect-init|specify → architect-clarify → architect-implement → architect-analyze
-```
-
-### #6: Rules pile up and rot
-
-Base models improve; yesterday's scaffolding becomes today's context noise.
-`team-repair --build-to-delete` re-runs evals *without* a rule; if the model
-passes anyway, the rule is proposed for deletion. Rules should shrink over
-time, not grow.
-
-## A note on context stuffing
-
-Long contexts measurably degrade LLM performance — even with perfect retrieval
-([arXiv:2510.05381](https://arxiv.org/abs/2510.05381), 13.9%–85% degradation by
-length alone). This repo exists because of that failure mode, not in spite of
-it: agents get an index by default and pull full rules only when relevant. If
-your instinct is "more rules in context don't work" — we agree. That's the
-design.
+- [How it works](#how-it-works)
+- [The problems these skills solve](#the-problems-these-skills-solve)
+- [Install](#install)
+- [The basic workflow](#the-basic-workflow)
+- [The software factory](#the-software-factory)
+- [Universal orchestration](#universal-orchestration)
+- [What's inside](#whats-inside)
+- [Philosophy](#philosophy)
+- [When something goes wrong](#when-something-goes-wrong)
+- [Security](#security)
+- [Contributing](#contributing)
+- [Reference details](#reference-details)
+- [Release process](#release-process)
+- [License](#license)
 
 ## How it works
 
 It starts the moment you open a session. `team-boot` fires via the
-`session_start` event hook and injects a lean index — your team's
-constitution, CDR index, PDR/ADR indexes, and skills registry — roughly a
-hundred tokens of names and one-line descriptors. Not the rules themselves.
-When the active task matches a rule, the agent pulls that rule's full text on
-demand. A task touching SQL loads the SQL rule; nothing else does.
+`session_start` event hook and injects a lean index of your team's rules —
+roughly a hundred tokens of names and one-line descriptors. Not the rules
+themselves. When the active task matches a rule, the agent pulls that
+rule's full text on demand. A task touching SQL loads the SQL rule;
+nothing else does.
 
-On an unconfigured project, `team-boot` points you to `/team-setup`, which
-clones, links, or scaffolds your team-ai-directives repo. `team-constitution`
-fills in your principles.
+The index lives in a git repo — your [team-ai-directives](https://github.com/tikalk/agentic-sdlc-team-ai-directives) —
+versioned, reviewed by PR, shared by the whole team. No more personal
+CLAUDE.md files that live on one machine, drift out of date, and don't
+transfer between teammates or tools.
 
-When you ask it to build something, it doesn't jump to code. `mission-brief`
-forces a contract first — goal, constraints, non-goals, success criteria —
-then generates an ordered step list and walks `specify → plan → implement ↔
-converge`, with gates, a circuit breaker, resume, and an audit trail. At
-mission start it scans installed skills directories, reads each `SKILL.md`
-frontmatter, and hands the inventory to the subagent; the model picks the
-skill that fits each step — this repo's `product-specify`, superpowers'
-`brainstorming`, spec-kit's commands, or your own.
+When you ask the agent to build something, it doesn't jump to code.
+`mission-brief` forces a contract first — goal, constraints, non-goals,
+success criteria — then walks `specify → plan → implement ↔ converge`, with
+gates, a circuit breaker, resume, and an audit trail. When a session
+surfaces a hard-won fix, `levelup-specify` extracts it as a Context
+Directive Record (CDR) and commits it back to the team repo. The next
+session starts smarter.
 
-For new products, `product-specify` captures Product Decision Records (PDRs),
-`product-clarify` refines them, and `product-implement` compiles them into
-`PRD.md`. The `architect-*` skills do the same for Architecture Decision
-Records (ADRs, Rozanski & Woods viewpoints) and compose them into `AD.md`.
+Verification, history, and tech selection have loops of their own.
+When a rule or skill's behavior needs proof, the `evals-*` skills build
+executable graders — binary checks where code can verify, LLM judges only
+for what static checks can't — validated with holdout splits and TPR/TNR.
+When you touch old code and wonder why it looks like this, `change-init`
+mines git history for issue-linked commits and recovers the past-change
+rationale as ChDRs. And when a tech choice comes up, `tech-radar-boot`
+injects the Tikal Tech Radar's opinion — adoption ring, quadrant — before
+the selection is captured as an ADR.
 
-The `evals` skills build executable evaluation suites — binary graders
-(Tier 1, plain assertions) for anything code can check, LLM judges (Tier 2)
-only for what static checks can't. `evals-validate` runs the pyramid with
-holdout splits, TPR/TNR, and SLA headroom. Nothing auto-merges; the pipeline
-ends at a PR a human reviews.
-
-When a session surfaces a hard-won fix, `levelup-specify` extracts it as a
-Context Directive Record (CDR) — with a paired eval CDR — and commits it back
-to the team repo. The next session starts smarter.
-
-Rules rot, so `team-repair --build-to-delete` re-runs evals *without* a rule;
-if the model passes anyway, the rule is proposed for deletion. Rules should
-shrink over time, not grow.
+That session loop sits inside a bigger one: **the software factory**.
+`factory-queue` triages incoming work, `factory-mission` executes it as
+spec-gated missions in isolated worktrees, `factory-review` grades the
+resulting PRs against policy-as-code, and `factory-learn` feeds what the
+runs taught back into team-ai-directives — with human gates (⭐) at every
+decision point. One platform: intake → mission → review → learning.
 
 And because the skills trigger automatically from the index, you don't do
 anything special once they're installed. Your coding agent just has your
 team's context.
 
-## The Basic Workflow
+## The problems these skills solve
 
-1. **team-boot** — auto-runs at session start (event hook); injects the
-   directives index (constitution, CDR index, PDR/ADR indexes, skills
-   registry). Full rules pulled on demand when the task matches.
-2. **team-setup** — on an unconfigured project, clones/links/scaffolds the
-   team-ai-directives repo. **team-constitution** fills in your principles.
-3. **mission-brief** — before code, forces a spec contract (goal, constraints,
-   non-goals, success criteria), then walks `specify → plan → implement ↔
-   converge` with gates, circuit breaker, resume, and audit trail.
-4. **product-specify / product-init** — greenfield/brownfield capture of
-   Product Decision Records (PDRs). → **product-clarify** refines →
-   **product-implement** generates `PRD.md` → **product-analyze** checks
-   consistency.
-5. **architect-specify / architect-init** — same shape for Architecture
-   Decision Records (ADRs, Rozanski & Woods). → **architect-clarify** →
-   **architect-implement** generates `AD.md` → **architect-analyze**.
-6. **evals-init → evals-specify → evals-clarify → evals-implement →
-   evals-validate** — builds executable graders (binary Tier 1, LLM judge
-   Tier 2), holdout split, TPR/TNR + SLA validation. Pipeline ends at a
-   human-reviewed PR.
-7. **levelup-specify** — at session end, extracts hard-won fixes as CDRs +
-   paired eval CDRs. → **levelup-clarify** reviews → **levelup-publish**
-   commits to team repo → next session starts smarter.
- 8. **team-repair --build-to-delete** — re-runs evals without a rule; if the
-    model passes anyway, proposes the rule for deletion. Mechanical rules
-    that survive are flagged for promotion to deterministic checks. Rules
-    shrink over time, not grow.
-
-**The agent checks the directives index before any task.** Skills trigger
-automatically when the active task matches — mandatory lifecycle, not
-suggestions.
+| # | Problem | Fixed by |
+|--|--|--|
+| 1 | The agent doesn't know how your team works | **`team-*`** — session-start index + on-demand rules |
+| 2 | The agent guesses instead of asking | **`mission-brief`** — spec contract before code |
+| 3 | The maker grades its own work | **`evals-*`** — binary graders, holdout splits, nothing auto-merges |
+| 4 | Session learnings evaporate | **`levelup-*`** — extract fixes as CDRs, publish to the team repo |
+| 5 | Product and architecture decisions are invisible | **`product-*`** / **`architect-*`** — PDR→PRD, ADR→AD traceability |
+| 6 | "Why was this changed?" is archaeology — rationale lives in nobody's head | **`change-*`** — ChDRs mined from git history's issue-linked commits |
+| 7 | The agent picks tech by vibes, not team opinion | **`tech-radar-boot`** — radar context (adoption ring, quadrant) before the ADR |
+| 8 | Rules pile up and rot | **`team-repair --build-to-delete`** — rules should shrink over time, not grow |
 
 ## Install
 
@@ -190,111 +96,48 @@ get commands only.
 
 **First run:** `team-boot` fires at session start. On an unconfigured project
 it points you to `/team-setup`, which clones, links, or scaffolds your
-team-ai-directives repo. `team-constitution` fills in your principles.
+team-ai-directives repo. `/team-constitution` fills in your principles.
 
 **Using `agentic-sdlc-spec-kit` alongside this repo?** See
 [Coexistence with Spec Kit](docs/spec-kit-integration.md) for the
 conflict-free install flow.
 
-## Universal orchestration
+## The basic workflow
 
-`mission-brief` doesn't force a proprietary ecosystem. At mission start it
-scans installed skills directories, reads each `SKILL.md` frontmatter, and
-hands the inventory to the subagent — the model picks the skill that fits
-each step. Works alongside:
+1. **team-boot** — auto-runs at session start; injects the directives
+   index. Full rules pulled on demand when the task matches.
+2. **mission-brief** — before code, forces a spec contract, then walks
+   `specify → plan → implement ↔ converge` with gates, circuit breaker,
+   resume, audit trail.
+3. **levelup-specify** — at session end, extracts hard-won fixes as CDRs +
+   paired eval CDRs → **levelup-clarify** reviews → **levelup-publish**
+   commits to the team repo.
+4. **team-repair --build-to-delete** — re-runs evals without a rule; if the
+   model passes anyway, the rule is proposed for deletion.
 
-| Source | Examples |
-|---|---|
-| [mattpocock/skills](https://github.com/mattpocock/skills) | `/tdd`, `/grill-me`, `/code-review` |
-| [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | Exit-criteria checklists |
-| [superpowers](https://github.com/obra/superpowers) | Workflow skills |
-| spec-kit / [agentic-sdlc-spec-kit](https://github.com/tikalk/agentic-sdlc-spec-kit) / OpenSpec | SDD command frameworks |
-| This repo | `product-specify`, `architect-specify`, `evals-validate`, `levelup-specify` |
-| Your own | Anything following the `SKILL.md` standard |
+Product and architecture lifecycles run the same loop per record class:
 
-## Security
+```
+Product:     product-specify|init → product-clarify → product-implement → product-analyze
+Architecture: architect-specify|init → architect-clarify → architect-implement → architect-analyze
+Team:        levelup-init|specify → levelup-clarify → levelup-publish → team-repair
+Evals:       evals-init → evals-specify → evals-clarify → evals-implement → evals-validate
+```
 
-On 2026-07-27 a supply-chain worm briefly injected a malicious payload into
-this repo's `.claude/` and `.vscode/` directories via a stolen maintainer
-token (exposure window ~11:06–18:30 UTC). The payload only executed if you
-cloned the repo and opened it in VS Code or started a Claude Code session
-inside it; the `npx skills` install path never shipped or ran those files.
+**The agent checks the directives index before any task.** Skills trigger
+automatically when the active task matches — mandatory lifecycle, not
+suggestions.
 
-History was rewritten to strip the payload from all commits and tags, tokens
-and secrets were rotated, and branch protection now blocks the vector used.
-Details and remediation steps: [issue #1](https://github.com/tikalk/adlc-team-skills/issues/1).
+Running the whole lifecycle unattended — intake, execution, review,
+learning? The factory takes over from queue to PR: see
+[The software factory](#the-software-factory).
 
-Lesson for any repo: treat `.vscode/tasks.json` and `.claude/settings.json`
-in a clone as executable code, and disable editor auto-run tasks.
+## The software factory
 
-## Reference
-
-### Team Directives
-
-- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry) and stays out of the record classes. Auto-triggered.
-- **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
-- **`team-setup`** — clone, link, or scaffold a team-ai-directives repo.
-- **`team-constitution`** — define or amend team principles interactively.
-- **`team-repair`** — re-index, conflict scan, freshness, `--build-to-delete`, deterministic-enforcement coverage check (mechanical rules lacking checks, skills lacking evals).
-- **`team-skills`** — browse/install team skills from the directives repo.
-
-### LevelUp / CDR lifecycle
-
-- **`levelup-boot`** — class boot: CDR deep-dive (reads full context module bodies when a task matches descriptors) + CDR decision capture.
-- **`levelup-init`** — brownfield CDR discovery from an existing codebase.
-- **`levelup-specify`** — extract CDRs + paired evals from the current session.
-- **`levelup-clarify`** — review, accept, reject, or defer pending CDRs, with an enforceability gate: mechanical rules promote to deterministic checks (action P), judgement calls become context rules.
-- **`levelup-publish`** — compile accepted CDRs into directives + goldensets + draft PR.
-
-### Change (ChDRs)
-
-- **`change-boot`** — class boot: injects the `chdr.md` index when past-change rationale matters + ChDR mining capture.
-- **`change-init`** — mine git history for Change Decision Records via issue-linked commits; recovers the *why* behind past changes (reverts, fix chains).
-- **`change-clarify`** — review, accept, reject, or defer mined ChDRs (provenance gate on Decision claims).
-- **`change-publish`** — promote accepted ChDRs to `.adlc/memory/chdr/`; `change-boot` injects the `chdr.md` index on demand.
-
-### Product (PDRs)
-
-- **`product-boot`** — class boot: injects the PDR index for product/feature work + PDR decision capture.
-- **`product-init`** — brownfield PDR discovery. **`product-specify`** — greenfield creation.
-- **`product-clarify`** — refine and approve. **`product-implement`** — generate `PRD.md`.
-- **`product-analyze`** — PDR↔PRD consistency. **`product-roadmap`** — milestone progress.
-
-### Architecture (ADRs)
-
-- **`architect-boot`** — class boot: injects the ADR index for architecture work + ADR decision capture (routes tech selection through `tech-radar-boot`).
-- **`architect-init`** — reverse-engineer ADRs. **`architect-specify`** — create ADRs.
-- **`architect-clarify`** — refine. **`architect-implement`** — generate `AD.md`.
-- **`architect-analyze`** — ADR↔AD consistency.
-
-### Evals
-
-- **`evals-init`** — scaffold `evals/{system}/` with security baseline.
-- **`evals-specify`** — extract criteria from specs / failure traces.
-- **`evals-clarify`** — cluster, isolate holdout, publish goldset.
-- **`evals-implement`** — generate graders + unit tests.
-- **`evals-validate`** — run evaluation pyramid, TPR/TNR + SLA headroom.
-- **`evals-analyze`** — route failures to deterministic checks (mechanical), context rules (judgment gaps), or evaluator backlog.
-
-### Orchestration & misc
-
-- **`mission-brief`** — spec-contract pipeline with converge loop, circuit breaker, resume.
-- **`tech-radar-boot`** — class boot: injects Tikal Tech Radar context for tech selection + ADR capture pairing. Auto-triggered. Supersedes `tech-radar-context`.
-- **`workspace`** — multi-repo workspace: `--init` creates `.adlc/` structure + `.gitignore`, discover/link/audit child repos.
-
-### Factory Platform Orchestration & Control Plane
-
-- **`factory-mission`** — spec harness execution engine with tracker-agnostic integration, comment bus, worktree isolation, lease-based liveness, stall detection, and decoupled test/code separation.
-- **`factory-product`** — coordinates product lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `PRD.md`.
-- **`factory-architect`** — coordinates architecture lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `AD.md`.
-- **`factory-learn`** — coordinates continuous improvement learning loops (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`; build-to-delete prunes redundant rules, promote-to-check turns mechanical ones into deterministic checks.
-- **`factory-init`** — unified brownfield bootstrap: drives product + architecture + change lifecycles end-to-end and emits the PDR↔ADR↔ChDR↔code coverage matrix; owns the recurring alignment sweep (`--refresh`).
-- **`factory-queue`** — manages queue intake and triage (AI advisory triage scoring, intent gate, label stamping) and milestones/epics generation (plan mode).
-- **`factory-review`** — performs severity-ranked PR policy compliance reviews against `REVIEW.md` and babysits agent PRs to merge.
-- **`factory-clean`** — inventories project resource costs (worktrees, clones, dependencies, processes) and reclaims only user-approved items. Read-only by default.
-- **`factory-tickets`** — read-only personal worklist across trackers: open PRs with next actionable move, merged work not yet closed, takable tickets, and blocked work.
-
-The factory outer loop at a glance:
+The factory skills are the full outer loop of an agentic SDLC: they take a
+brownfield repo from bootstrap all the way to merged, reviewed PRs — and
+turn what each run learned into team memory. Every automated stage is
+advisory; humans hold the gates (⭐).
 
 ```
  brownfield repo
@@ -305,38 +148,61 @@ The factory outer loop at a glance:
 └────────┬────────┘  (--refresh = recurring alignment sweep)
          │ PRD.md · AD.md · .adlc/memory/
          ▼
-┌──────────────────────────┐
-│ factory-product /        │  PDRs → PRD.md  ·  ADRs → AD.md
-│ factory-architect        │  (clarify⭐ human gates)
+┌──────────────────────────┐  PDRs → PRD.md  ·  ADRs → AD.md
+│ factory-product /        │  (clarify⭐ human gates)
+│ factory-architect        │
 └────────┬─────────────────┘
          │ Mission Brief (goal + constraints + success criteria)
          ▼
   Intent Gate ⭐  (human approves the brief; AI triage scores are advisory)
          │
          ▼
-┌─────────────────┐
-│  factory-queue  │  spec-gated into the tracker (the Q, single source of truth)
+┌─────────────────┐  spec-gated into the tracker (the Q, single source of truth)
+│  factory-queue  │
 └────────┬────────┘
          │ --issue ref
          ▼
-┌─────────────────┐
-│ factory-mission │  inner loop: specify → plan → implement ↔ converge
-└────────┬────────┘  (comment bus · worktrees · circuit breaker)
+┌─────────────────┐  inner loop: specify → plan → implement ↔ converge
+│ factory-mission │  (comment bus · worktrees · TDD test/code split · circuit breaker)
+└────────┬────────┘
          │ agent-authored PR
          ▼
 ┌─────────────────┐
 │ factory-review  │──▶ Merge Gate ⭐ (human code-owner approval)
 └────────┬────────┘
          ▼
-┌─────────────────┐
-│  factory-learn  │  CDRs/ChDRs → team-ai-directives PR
-└────────┬────────┘  workflow memories → memory.jsonl
+┌─────────────────┐  CDRs/ChDRs → team-ai-directives PR
+│  factory-learn  │  workflow memories → memory.jsonl
+└─────────────────┘
          │
          └─▶ back to factory-mission (memories)
              + team-boot (CDR index — closes the context loop)
 ```
 
-Detailed wiring:
+What each station adds:
+
+- **`factory-init`** — one command onboards an existing repo onto ADLC and
+  emits the PDR↔ADR↔ChDR↔code coverage matrix (`--refresh` for the
+  recurring alignment sweep).
+- **`factory-queue`** — mission brief intake: AI-assisted advisory triage
+  scoring, intent gate, gating label stamping, milestones/epics generation.
+- **`factory-mission`** — the execution engine: spec-gated inner loop
+  (specify → plan → implement ↔ converge) with tracker-agnostic integration,
+  an inter-agent comment bus, worktree isolation, lease-based liveness,
+  stall detection, and a decoupled test/code split for TDD.
+- **`factory-review`** — severity-ranked PR compliance against REVIEW.md
+  policy-as-code; babysits agent PRs to merge, never auto-merges past the
+  human gate.
+- **`factory-learn`** — retrospectives into team-ai-directives:
+  build-to-delete pruning, promote-to-check for mechanical rules.
+- **`factory-product` / `factory-architect`** — lifecycle coordinators
+  maintaining PRD.md and AD.md with clarify⭐ gates.
+- **`factory-tickets`** — read-only worklist across trackers, classified by
+  next actionable move.
+- **`factory-clean`** — resource inventory and reclamation, approval-gated.
+
+<details>
+<summary><strong>Detailed wiring</strong></summary>
 
 ```mermaid
 flowchart LR
@@ -363,33 +229,193 @@ flowchart LR
     FL -->|"memory.jsonl"| FM
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
-    FT -->|"read-only"| TR
+    FT -.->|"read-only"| TR
     FI -.->|"via product-* leaves"| FP
     FI -.->|"via architect-* leaves"| FA
     FI -.->|"via change-* leaves (one-time deep)"| FL
 ```
 
----
+</details>
+
+## Universal orchestration
+
+`mission-brief` doesn't force a proprietary ecosystem. At mission start it
+scans installed skills directories, reads each `SKILL.md` frontmatter, and
+hands the inventory to the subagent — the model picks the skill that fits
+each step. Works alongside:
+
+| Source | Examples |
+|---|---|
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `/tdd`, `/grill-me`, `/code-review` |
+| [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | Exit-criteria checklists |
+| [superpowers](https://github.com/obra/superpowers) | Workflow skills |
+| spec-kit / [agentic-sdlc-spec-kit](https://github.com/tikalk/agentic-sdlc-spec-kit) / OpenSpec | SDD command frameworks |
+| This repo | `product-specify`, `architect-specify`, `evals-validate`, `levelup-specify` |
+| Your own | Anything following the `SKILL.md` standard |
+
+## What's inside
+
+### Team directives — every session, every user
+
+- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry) and stays out of the record classes. Auto-triggered; re-declared for `session_compact` so the index survives harness compaction.
+- **`team-setup`** — clone, link, or scaffold a team-ai-directives repo.
+- **`team-constitution`** — define or amend team principles interactively.
+- **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
+- **`team-repair`** — re-index, conflict scan, freshness, `--build-to-delete`, deterministic-enforcement coverage check.
+- **`team-skills`** — browse/install team skills from the directives repo.
+- **`diagnosing-team-skills`** — evidence-first diagnosis when team context doesn't appear: walks the chain (init-options → jq → boot.sh → artifact sync) and routes injection-side bugs to adlc-skills-cli.
+
+### The software factory — the outer loop
+
+- **`factory-init`** — unified brownfield bootstrap + PDR↔ADR↔ChDR↔code coverage matrix (`--refresh`).
+- **`factory-queue`** — queue intake, AI advisory triage scoring, intent gate, milestone generation.
+- **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, TDD test/code split, circuit breaker.
+- **`factory-review`** — severity-ranked PR policy compliance against `REVIEW.md`; babysits agent PRs to merge.
+- **`factory-product`** / **`factory-architect`** — product/architecture lifecycle coordinators.
+- **`factory-learn`** — continuous improvement loops targeting team-ai-directives.
+- **`factory-tickets`** — read-only personal worklist across trackers.
+- **`factory-clean`** — resource inventory and reclamation (approval-gated).
+
+### Mission-driven development
+
+- **`mission-brief`** — spec-contract pipeline with converge loop, circuit breaker, resume (`mission-brief "feature"`, `--resume`).
+
+### Learning loop (LevelUp / CDRs)
+
+- **`levelup-boot`** — class boot: CDR deep-dive when a task matches descriptors + CDR decision capture.
+- **`levelup-init`** — brownfield CDR discovery from an existing codebase.
+- **`levelup-specify`** — extract CDRs + paired evals from the current session.
+- **`levelup-clarify`** — review/accept/reject/defer pending CDRs, with an enforceability gate: mechanical rules promote to deterministic checks.
+- **`levelup-publish`** — compile accepted CDRs into directives + goldensets + draft PR.
+
+### Evals — verification over vibes
+
+- **`evals-init`** — scaffold `evals/{system}/` with security baseline.
+- **`evals-specify`** — extract criteria from specs / failure traces.
+- **`evals-clarify`** — cluster, isolate holdout, publish goldset.
+- **`evals-implement`** — generate graders + unit tests.
+- **`evals-validate`** — run evaluation pyramid, TPR/TNR + SLA headroom.
+- **`evals-analyze`** — route failures to deterministic checks, context rules, or evaluator backlog.
+
+### Product & architecture lifecycles
+
+- **`product-boot`** / **`product-init`** / **`product-specify`** — PDR index, brownfield discovery, greenfield creation.
+- **`product-clarify`** — refine and approve. **`product-implement`** — generate `PRD.md`.
+- **`product-analyze`** — PDR↔PRD consistency. **`product-roadmap`** — milestone progress across decision, execution, evidence, and gate layers.
+- **`architect-boot`** / **`architect-init`** / **`architect-specify`** — ADR index, reverse-engineering, creation (routes tech selection through `tech-radar-boot`).
+- **`architect-clarify`** — refine. **`architect-implement`** — generate `AD.md`. **`architect-analyze`** — ADR↔AD consistency.
+
+### Change history (ChDRs)
+
+- **`change-boot`** — class boot: injects the `chdr.md` index when past-change rationale matters + ChDR mining capture.
+- **`change-init`** — mine git history for Change Decision Records via issue-linked commits.
+- **`change-clarify`** — review mined ChDRs (provenance gate on Decision claims).
+- **`change-publish`** — promote accepted ChDRs to `.adlc/memory/chdr/`.
+
+### Tech selection
+
+- **`tech-radar-boot`** — class boot: injects Tikal Tech Radar context (adoption ring, quadrant, opinion) for tech selection + ADR capture pairing. Auto-triggered.
+
+### Workspace
+
+- **`workspace`** — multi-repo workspace: `--init` creates `.adlc/` structure, discover/link/audit child repos (`--link`, `--status`).
+
+### Skill authoring — contributors
+
+- **`writing-skills`** — TDD-for-skills: baseline the failure without the skill (RED), write the minimal skill (GREEN), close rationalization loopholes (REFACTOR). Includes the `SKILL.md` template and the testing methodology.
+
+## Philosophy
+
+- **Index, not injection.** Long contexts measurably degrade LLM performance —
+  even with perfect retrieval
+  ([arXiv:2510.05381](https://arxiv.org/abs/2510.05381), 13.9%–85% degradation
+  by length alone). Agents get an index by default and pull full rules only
+  when relevant. If your instinct is "more rules in context don't work" —
+  we agree. That's the design.
+- **Rules should shrink over time, not grow.** Base models improve;
+  yesterday's scaffolding becomes today's context noise. `--build-to-delete`
+  re-runs evals without a rule and proposes deletion when the model passes
+  anyway. Mechanical rules that survive are flagged for promotion to
+  deterministic checks.
+- **Evidence over vibes.** Anything code can check gets a binary grader —
+  plain assertions, Tier 1. LLM judges are Tier 2, reserved for what
+  static checks can't verify. Nothing auto-merges; pipelines end at a PR a
+  human reviews.
+- **Decisions as code.** Every decision class — product (PDR), architecture
+  (ADR), change (ChDR), context (CDR) — lives in version-controlled repos
+  with a draft → clarify → accept → publish → analyze lifecycle, and traces
+  from record to document to code.
+
+## When something goes wrong
+
+- **Team context didn't appear at session start** — check `.adlc/init-options.json`
+  points at an existing team-ai-directives checkout; on an unconfigured
+  project run `/team-setup`. The `session_start` hook (`.events.json` →
+  dispatcher → `team-boot`'s `scripts/boot.sh`) needs `jq` available. Full
+  chain contract: [docs/event-hook-contract.md](docs/event-hook-contract.md);
+  run `scripts/acceptance-test.sh` to verify the whole loop from scratch.
+- **Team context vanished mid-session after compaction** — re-injection
+  after compaction is a declared contract (`session_compact` in
+  `.events.json`); the injection side is implemented by
+  [adlc-skills-cli](https://github.com/tikalk/adlc-skills-cli) — if your
+  agent's adapter doesn't map the event yet, file it there.
+- **Skill descriptions or commands look stale** — the install layer is
+  CLI-generated (`.agents/skills/`, `.opencode/commands/`, `skills-lock.json`).
+  Regenerate: `npx adlc-skills-cli add tikalk/adlc-team-skills -a <agent> -y`.
+  `tests/unit/test_generated_artifacts_sync.py` catches drift locally.
+- **Index is inconsistent or rules conflict** — run `/team-repair`
+  (re-index, conflict scan, freshness check, orphan detection).
+- **Something else** — [open an issue](https://github.com/tikalk/adlc-team-skills/issues).
+  To verify a suspected skill-behavior bug yourself, follow the
+  [manual testing protocol](CONTRIBUTING.md#manual-testing) (scratch project,
+  real agent, report table).
+
+## Security
+
+On 2026-07-27 a supply-chain worm briefly injected a malicious payload into
+this repo's `.claude/` and `.vscode/` directories via a stolen maintainer
+token (exposure window ~11:06–18:30 UTC). The payload only executed if you
+cloned the repo and opened it in VS Code or started a Claude Code session
+inside it; the `npx skills` install path never shipped or ran those files.
+
+History was rewritten to strip the payload from all commits and tags, tokens
+and secrets were rotated, and branch protection now blocks the vector used.
+Details and remediation steps: [issue #1](https://github.com/tikalk/adlc-team-skills/issues/1).
+
+Lesson for any repo: treat `.vscode/tasks.json` and `.claude/settings.json`
+in a clone as executable code, and disable editor auto-run tasks.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). New skills must be agreed in an
+issue first, ship with eval coverage, and follow the `writing-skills`
+methodology — no skill without a failing baseline first.
+
+## Reference details
 
 <details>
 <summary><strong>Repository layout</strong></summary>
 
-Skills are organized into category subdirectories under `skills/`:
+Skills are organized into category subdirectories under `skills/`, ordered
+by the pull each family has on a typical session (team first):
 
 ```
 skills/
-├── architect/             # architect-* (5 skills)
-├── product/               # product-* (6 skills) + product-templates/
-├── levelup/               # levelup-* (4 skills) + levelup-helpers.{sh,ps1}
-├── change/                # change-* (3 skills) — ChDRs from git history
-├── mission-brief/         # core SDD orchestrator (1 skill)
+├── team/                  # team-* (6) + workspace + diagnosing-team-skills (team-helpers live per-skill)
+├── mission/               # mission-brief (1 skill) — core SDD orchestrator
+├── levelup/               # levelup-* (5 skills) + levelup-helpers.{sh,ps1}
 ├── evals/                 # evals-* (6 skills) + evals-templates/
+├── product/               # product-* (7 skills) + product-templates/
+├── architect/             # architect-* (6 skills)
+├── change/                # change-* (4 skills) — ChDRs from git history
 ├── tech-radar/            # tech-radar-* (1 skill) + resources/radar.json
-├── workspace/             # workspace (1 skill) — multi-repo coordination
-└── team/                  # team-* (6 skills) + team-helpers.{sh,ps1}
+├── authoring/             # writing-skills (1 skill) + templates/
+└── factory/               # factory-* (9 skills) — platform orchestration
 ```
 
-This places every single skill exactly 2 levels deep, fully resolving the default depth limit of the `skills` CLI and ensuring all skills install out of the box.
+This places every single skill exactly 2 levels deep, fully resolving the
+default depth limit of the `skills` CLI and ensuring all skills install
+out of the box. (Enforced by `tests/unit/test_playbook_integrity.py`.)
 
 </details>
 
@@ -561,11 +587,9 @@ This repo implements the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/
 
 </details>
 
----
+## Release process
 
-## Release Process
-
-See [RELEASE.md](./RELEASE.md) for the release runbook, tag naming conventions, and recovery procedures.
+See [RELEASE.md](./RELEASE.md) for the release runbook, tag naming conventions, security design, and recovery procedures.
 
 ## License
 

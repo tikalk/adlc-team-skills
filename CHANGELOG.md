@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-09-19
+
+### Added
+
+- **Class Boots — `team-boot` decomposed into per-class boot skills**: `team-boot` now injects only the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry, MCP servers); the four record classes and tech selection load **on demand** through five new model-invoked skills, each pairing its index injection with decision capture (read-decisions and record-decisions as one loop):
+  - **`architect-boot`** (`skills/architect/architect-boot/`): injects the ADR index (`.adlc/memory/adr/`) when architecture work starts or a tech-stack/pattern decision emerges; captures via `/architect-specify`; routes tech-selection ADRs through `tech-radar-boot`.
+  - **`product-boot`** (`skills/product/product-boot/`): injects the PDR index (`.adlc/memory/pdr/`) for product/feature scope, persona, and monetization work; captures via `/product-specify`.
+  - **`change-boot`** (`skills/change/change-boot/`): injects the published ChDR index (`.adlc/memory/chdr.md`) when past-change rationale matters (refactors of unfamiliar code, revert/hotfix analysis); captures via `/change-init`.
+  - **`levelup-boot`** (`skills/levelup/levelup-boot/`): CDR deep-dive — reads full context module bodies from team-ai-directives when a task matches CDR descriptors; captures via `/levelup-specify`. The compact CDR index stays in `team-boot` (always-on native discovery).
+  - **`tech-radar-boot`** (`skills/tech-radar/tech-radar-boot/`): absorbs `tech-radar-context` (renamed; `scripts/` + 424-blip `resources/radar.json` moved via `git mv`) and adds decision-capture pairing — tech selections route to `/architect-specify` with radar evidence. `/tech-radar-context` remains a documented deprecated alias.
+- **Class-boots contract suite** (`tests/unit/test_team_class_boots.py`): pins the five class boots (existence, frontmatter names, description capture-pairing, index sources, per-class searched lines, ledger integration, anti-fabrication) plus the Class Boots catalog across boot.sh/boot.ps1 and all six team-helpers templates.
+
+### Changed
+
+- **Lean `boot.sh` / `boot.ps1`** (`skills/team/team-boot/scripts/`): the inline PDR/ADR/ChDR index sections are replaced by a five-row Class Boots catalog; the always-on searched line is now `_Searched N CDRs, M skills, J matched._` (class indexes report their own `_Searched N <class> records, K matched._` lines when their boot is invoked); the Decision Capture section is compacted to one trigger line per class plus the Session Decision Ledger contract (full guidance lives in the class boots). `boot.ps1` gains the Decision Capture section it was missing (parity with boot.sh).
+- **CDR index filter fix** (`boot.sh`/`boot.ps1`): the injected-index row filter now includes `rule-*` and `constitution` rows — previously only `CDR-*`/`skill-*`/`example-*` prefixes matched, silently dropping 16 of 34 entries (every `context_modules/rules/` module) from the session-start catalog.
+- **Unified AGENTS.md managed-section template** (`team-helpers.sh`/`team-helpers.ps1` in team-repair, team-setup, team-skills): the managed section now embeds the Class Boots catalog and compact Decision Capture triggers, unifying three previously drifted contract variants (boot.sh, the helper template, and live AGENTS.md files).
+- **`team-repair` Check 7** (`skills/team/team-repair/SKILL.md`): now validates the project AGENTS.md managed section includes the Class Boots catalog and the Decision Capture contract, not just the `team-boot` directive.
+- **Boot contract tests** (`tests/unit/test_team_boot_setup_flow.py`): the ChDR-inline-injection tests are replaced with Class Boots catalog, per-class searched-line, and compact Decision Capture tests; radar path constants move to `tech-radar-boot/`; the AGENTS.md test asserts the catalog.
+
 ## [0.27.0] - 2026-09-04
 
 ### Added

@@ -1,22 +1,27 @@
 ---
-name: tech-radar-context
-description: Discover and inject Tikal Israeli Tech Radar context — adoption ring, quadrant, and Tikal's opinion — for any technology, framework, database, library, or cloud tool implied by the current prompt. Model-invoked whenever a tech stack choice is being made or evaluated, similar to team-discover but scoped to the Tikal Tech Radar.
+name: tech-radar-boot
+description: Class boot for technology selection — injects Tikal Israeli Tech Radar context (adoption ring, quadrant, Tikal's opinion) for any technology, framework, database, library, or cloud tool implied by the current prompt, recommends Keep/Start alternatives for Stop items, and pairs the selection with decision capture via /architect-specify (ADR). Auto-triggered whenever a tech stack choice is being made or evaluated; surfaced in team-boot's Class Boots catalog. Formerly tech-radar-context.
 ---
 
-# tech-radar-context
+# tech-radar-boot
 
 ## Overview
 
-Surface **Tikal's opinion** on the technologies relevant to the current prompt so
-a tech stack choice is informed by the Israeli Tech Radar. This skill works like
-`team-discover`, but its search surface is the Tikal Tech Radar dataset
-(`radar.json`) instead of the team CDR index: it extracts candidate technologies
+One of the five **class boots** surfaced by `team-boot`'s Class Boots
+catalog, this skill handles **technology selection**. It surfaces
+**Tikal's opinion** on the technologies relevant to the current prompt so a
+tech stack choice is informed by the Israeli Tech Radar, and it pairs the
+selection with decision capture: the chosen stack is an ADR-class decision
+that should be recorded via `/architect-specify`.
+
+The radar lookup works like `team-discover`, but its search surface is the
+Tikal Tech Radar dataset (`radar.json`): it extracts candidate technologies
 from the prompt, matches them against radar **blips**, and injects a compact
 **Tech Radar Context** table (ring, quadrant, Tikal's "Why?" opinion) plus
 Tikal-aligned alternatives for anything on `Stop`.
 
-The radar has four **quadrants** — `DevOps`, `Backend`, `AI/ML`, `Web/Mobile` —
-and four adoption **rings**:
+The radar has four **quadrants** — `DevOps`, `Backend`, `AI/ML`,
+`Web/Mobile` — and four adoption **rings**:
 
 | Ring | Meaning | Guidance |
 |------|---------|----------|
@@ -26,28 +31,32 @@ and four adoption **rings**:
 | `Stop` | Items we recommend companies stop using — better alternatives exist | Warn against; recommend a `Keep`/`Start` alternative |
 
 Each blip's `description` embeds an HTML `<p>Why?</p>` block followed by a
-`<p>Description</p>` block. The **Why?** text carries Tikal's explicit stance and
-rationale — that is the opinion to surface. A technology may appear more than
-once (different quadrants) with different rings; report each relevant placement.
+`<p>Description</p>` block. The **Why?** text carries Tikal's explicit stance
+and rationale — that is the opinion to surface. A technology may appear more
+than once (different quadrants) with different rings; report each relevant
+placement.
 
 ## When to Use
 
-Model-invoke this skill whenever the prompt involves **choosing or evaluating
-technology**, for example:
+Model-invoke this skill whenever the prompt involves **choosing or
+evaluating technology**, for example:
 
 - Selecting a framework, library, database, message broker, or cloud tool.
 - Comparing options ("X vs Y", "should we use Z").
 - Designing a system, service, or pipeline where stack decisions are implied.
 - Reviewing an existing stack for modernization or replacement.
+- A tech stack choice emerges mid-session (the ADR detection trigger).
 
 Do **not** invoke it for pure business/product questions with no technology
 selection, or when the user explicitly says to ignore the radar.
 
 Manual invocation:
 ```
-/tech-radar-context               # inject radar context for the current prompt
-/tech-radar-context redis vs kafka
+/tech-radar-boot               # inject radar context for the current prompt
+/tech-radar-boot redis vs kafka
 ```
+
+(`/tech-radar-context` still works as a deprecated alias for this skill.)
 
 ## Core Process
 
@@ -173,6 +182,22 @@ If no candidate technology matches any blip, state that plainly with an empty
 table and a `_Source_` line (e.g. `_Source: … · 0 technologies matched._`) —
 do not fabricate radar placements.
 
+### Step 7: Capture the Selection (Decision Pairing)
+
+A technology selection is an **ADR-class decision**:
+
+| Trigger | Action |
+|---------|--------|
+| Tech stack chosen ("we'll use X") | ADR → suggest `/architect-specify`, citing the radar rows that informed it |
+| "X vs Y" comparison resolved | ADR → suggest `/architect-specify` with the comparison outcome |
+| `Stop`-ring technology retained anyway | ADR → suggest `/architect-specify` documenting why the radar guidance was overridden |
+
+Add/refresh rows in the **Session Decision Ledger** (Decision | Type |
+Captured? | Skill) for the selection. If `architect-boot` was already
+invoked this session, extend its ledger rows with the radar evidence; at
+session end, prompt to run `/architect-specify` for any unrecorded tech
+selections.
+
 ## Failure Handling
 
 - Local `resources/radar.json` missing/unparseable → emit an empty context
@@ -192,6 +217,8 @@ do not fabricate radar placements.
   with different rings; surface each relevant placement.
 - Treating the skill load as the work — the Core Process must actually run and
   produce the Tech Radar Context table.
+- Injecting radar context but skipping the capture pairing — a tech selection
+  that informed no ADR is a decision that evaporated.
 
 ## Verification
 
@@ -201,10 +228,13 @@ do not fabricate radar placements.
 - A **Tikal Tech Radar Context** table was produced with columns Technology /
   Quadrant / Ring / Tikal's Opinion (Why?), with the opinion sourced from the
   `<p>Why?</p>` block.
-- `Stop`-ring matches include Tikal-aligned `Keep`/`Start` alternatives from the
-  same quadrant, derived from the dataset.
-- A `_Source_` line reports live-vs-snapshot and the match count; a no-match run
-  yields an empty table plus `0 technologies matched` rather than fabricated data.
+- `Stop`-ring matches include Tikal-aligned `Keep`/`Start` alternatives from
+  the same quadrant, derived from the dataset.
+- A `_Source_` line reports snapshot provenance and the match count; a no-match
+  run yields an empty table plus `0 technologies matched` rather than
+  fabricated data.
+- Tech selections made this session appear in the Session Decision Ledger with
+  `/architect-specify` as the capture skill.
 
 ## Configuration
 

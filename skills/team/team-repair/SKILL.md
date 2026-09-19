@@ -156,6 +156,8 @@ Output: `[OK]` or `[FAIL]` with reason
 3. If the marker exists, verify the managed section includes:
    - A `team-boot` invocation directive
    - A reference to team AI directives context (constitution, CDR index)
+   - The Class Boots catalog (architect-boot / product-boot / change-boot / levelup-boot / tech-radar-boot)
+   - The compact Decision Capture triggers + Session Decision Ledger contract
 4. Output:
    - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
    - `[WARN]` — Project AGENTS.md exists but is missing the managed section (agents won't auto-invoke `team-boot`)
@@ -1053,7 +1055,7 @@ Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review de
 
 - [ ] Phase 0 Health Check passes all 8 checks (no `[FAIL]`) before any repair is attempted.
 - [ ] AGENTS.md exists at `{TEAM_AI_DIRECTIVES}/AGENTS.md` and contains all six required sections.
-- [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the event-hook awareness note, fallback `team-boot` invocation, and the Team Context in Use output contract.
+- [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the event-hook awareness note, fallback `team-boot` invocation, Class Boots catalog, Team Context in Use output contract, and compact Decision Capture triggers.
 - [ ] CDR.md entry count equals the number of scanned context module `.md` files (excluding `constitution.md`).
 - [ ] Every context module file under `context_modules/{rules,personas,examples}/` has YAML frontmatter with a non-empty `id` field.
 - [ ] Every `cdr_ref` in orphan frontmatter matches the pre-existing CDR lookup (no regression to `null` where a prior ref existed).

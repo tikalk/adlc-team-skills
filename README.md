@@ -230,7 +230,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 
 ### Team Directives
 
-- **`team-boot`** — session-start bootstrap; injects the directives index. Auto-triggered.
+- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry) and stays out of the record classes. Auto-triggered.
 - **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
 - **`team-setup`** — clone, link, or scaffold a team-ai-directives repo.
 - **`team-constitution`** — define or amend team principles interactively.
@@ -239,6 +239,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 
 ### LevelUp / CDR lifecycle
 
+- **`levelup-boot`** — class boot: CDR deep-dive (reads full context module bodies when a task matches descriptors) + CDR decision capture.
 - **`levelup-init`** — brownfield CDR discovery from an existing codebase.
 - **`levelup-specify`** — extract CDRs + paired evals from the current session.
 - **`levelup-clarify`** — review, accept, reject, or defer pending CDRs.
@@ -246,18 +247,21 @@ in a clone as executable code, and disable editor auto-run tasks.
 
 ### Change (ChDRs)
 
+- **`change-boot`** — class boot: injects the `chdr.md` index when past-change rationale matters + ChDR mining capture.
 - **`change-init`** — mine git history for Change Decision Records via issue-linked commits; recovers the *why* behind past changes (reverts, fix chains).
 - **`change-clarify`** — review, accept, reject, or defer mined ChDRs (provenance gate on Decision claims).
-- **`change-publish`** — promote accepted ChDRs to `.adlc/memory/chdr/`; `team-boot` injects the `chdr.md` index at session start.
+- **`change-publish`** — promote accepted ChDRs to `.adlc/memory/chdr/`; `change-boot` injects the `chdr.md` index on demand.
 
 ### Product (PDRs)
 
+- **`product-boot`** — class boot: injects the PDR index for product/feature work + PDR decision capture.
 - **`product-init`** — brownfield PDR discovery. **`product-specify`** — greenfield creation.
 - **`product-clarify`** — refine and approve. **`product-implement`** — generate `PRD.md`.
 - **`product-analyze`** — PDR↔PRD consistency. **`product-roadmap`** — milestone progress.
 
 ### Architecture (ADRs)
 
+- **`architect-boot`** — class boot: injects the ADR index for architecture work + ADR decision capture (routes tech selection through `tech-radar-boot`).
 - **`architect-init`** — reverse-engineer ADRs. **`architect-specify`** — create ADRs.
 - **`architect-clarify`** — refine. **`architect-implement`** — generate `AD.md`.
 - **`architect-analyze`** — ADR↔AD consistency.
@@ -274,7 +278,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 ### Orchestration & misc
 
 - **`mission-brief`** — spec-contract pipeline with converge loop, circuit breaker, resume.
-- **`tech-radar-context`** — injects Tikal Tech Radar context for tech choices. Auto-triggered.
+- **`tech-radar-boot`** — class boot: injects Tikal Tech Radar context for tech selection + ADR capture pairing. Auto-triggered. Supersedes `tech-radar-context`.
 - **`workspace`** — multi-repo workspace: `--init` creates `.adlc/` structure + `.gitignore`, discover/link/audit child repos.
 
 ### Factory Platform Orchestration & Control Plane
@@ -457,7 +461,7 @@ Greenfield: architect-specify → architect-clarify → architect-implement → 
 ```
 Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
 Session:    levelup-specify → levelup-clarify → levelup-publish → team-repair
-History:    change-init → change-clarify → change-publish (team-boot injects chdr.md)
+History:    change-init → change-clarify → change-publish (change-boot injects chdr.md)
 Build to Delete: team-repair --build-to-delete → levelup-clarify (review deletion CDRs)
 ```
 
@@ -501,7 +505,7 @@ This repo implements the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/
 | **VII — Verification-First Evals** | LevelUp + Evals skills | LevelUp creates directive-compliance eval CDRs; evals skills build and run application-level evaluation suites (PromptFoo/DeepEval) with binary graders, holdout splits, and statistical validation |
 | **VIII — Ratchet Effect** | LevelUp + Evals skills | Each session extracts eval CDRs alongside directive CDRs; each goldset publication adds criteria that monotonically increase quality — `evals-clarify` publishes, `evals-validate` enforces |
 | **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
-| **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR index, and PDR/ADR indexes into the system prompt at session start; `team-discover` provides manual re-scan |
+| **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR index, and the Class Boots catalog into the system prompt at session start; the class boots load ADR/PDR/ChDR/CDR/radar context on demand, each paired with decision capture; `team-discover` provides manual re-scan |
 | **XI — Directives as Code** | Team + LevelUp + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
 | **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `evals-analyze` routes spec failures to `levelup-specify` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
 

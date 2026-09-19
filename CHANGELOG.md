@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`factory-init`** (`skills/factory/factory-init/`) — unified brownfield bootstrap orchestrator (5th Kind-A peer): one command drives the product, architecture, and change lifecycles end-to-end (init → clarify⭐ → implement → analyze/publish; track-sequential; per-layer skip on partial state) and emits the PDR↔ADR↔ChDR↔code **coverage matrix** at `.adlc/coverage/coverage.md` — feature-area pivot (union row-axis) + four traceability relations (PDR↔ADR, PDR↔code, ADR↔code, ChDR↔code) + family severity model + drift diff vs `.adlc/coverage/history/`. Owns the recurring cross-layer alignment sweep via `--refresh`. CDR excluded (team-level, external publish target) — final output recommends `factory-learn` / `/levelup-init` instead. Zero new leaf skills. (PDR-079, ADR-358)
+- **factory-init eval criteria** — binary grader `check_factory_init_matrix.py` (matrix format integrity: pivot columns, four relations with `Coverage: N%`, layer-tagged + cited gap lines, Drift/Baseline section) with unit tests, plus `check_sweep_layer_routing` branch in `check_factory_invariants.py` (ADR-358 layer-tagged correction routing); wired into `goldset-factory.json` + `config.js`.
+
 ## [0.28.0] - 2026-09-19
 
 ### Added

@@ -86,6 +86,22 @@ def check_distributed_lease_collision(output: str) -> dict:
         return { "pass": True, "score": 1.0, "reason": "Passed ADR-346: Correctly halted and refused execution due to active remote lease on another host." }
     return { "pass": False, "score": 0.0, "reason": f"Failed ADR-346: Expected halt due to remote lease collision, but got: {output}" }
 
+def check_sweep_layer_routing(output: str) -> dict:
+    """ADR-358: Sweep findings route to the matching track's clarify by layer tag."""
+    m = re.search(r"layer:\s*(product|architecture|change|cross)\b", output, re.IGNORECASE)
+    if not m:
+        return { "pass": False, "score": 0.0, "reason": f"Failed ADR-358: No [layer:] tag on the finding — cannot route to the matching track clarify, but got: {output}" }
+    layer = m.group(1).lower()
+    has_track_clarify = re.search(r"(?:product|architect|change)-clarify", output, re.IGNORECASE)
+    if not has_track_clarify:
+        return { "pass": False, "score": 0.0, "reason": f"Failed ADR-358: No named track clarify (product-clarify/architect-clarify/change-clarify) in the routing, but got: {output}" }
+    if layer == "cross":
+        return { "pass": True, "score": 1.0, "reason": "Passed ADR-358: Cross-layer finding routed to a track clarify (cross findings route to the owning track)." }
+    expected = {"product": "product-clarify", "architecture": "architect-clarify", "change": "change-clarify"}[layer]
+    if not re.search(expected, output, re.IGNORECASE):
+        return { "pass": False, "score": 0.0, "reason": f"Failed ADR-358: Layer [{layer}] finding must route to {expected}, but got: {output}" }
+    return { "pass": True, "score": 1.0, "reason": f"Passed ADR-358: Finding [layer: {layer}] routed to the matching track clarify ({expected})." }
+
 # Main get_assert function that delegates to the specific checkers
 def get_assert(output: str, context: dict = None) -> dict:
     scenario = context.get("vars", {}).get("scenario", "")
@@ -112,6 +128,8 @@ def get_assert(output: str, context: dict = None) -> dict:
         return check_status_transitions(output)
     if "ADR-346" in scenario:
         return check_distributed_lease_collision(output)
+    if "ADR-358" in scenario:
+        return check_sweep_layer_routing(output)
         
     return {
         "pass": False,

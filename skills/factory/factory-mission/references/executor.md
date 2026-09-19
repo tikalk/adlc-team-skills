@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is the canonical executor contract for all Kind-A factory orchestrators (`factory-mission`, `factory-product`, `factory-architect`, `factory-learn`). It defines how to compile a feature or lifecycle task into a structured step list, execute steps sequentially with state tracking, handle supervision gates, and run correction loops.
+This is the canonical executor contract for all Kind-A factory orchestrators (`factory-mission`, `factory-product`, `factory-architect`, `factory-learn`, `factory-init`). It defines how to compile a feature or lifecycle task into a structured step list, execute steps sequentially with state tracking, handle supervision gates, and run correction loops.
 
 When tracker-integrated, step terminal outputs are published to the code host's PR/MR/issue comment thread (the **comment bus**) via `factory-mission/references/tracker-integration.md` §Inter-Agent Comment Bus. The comment bus is the durable inter-agent memory — it survives session boundaries, runtime switches, and pod crashes. When not tracker-integrated, steps communicate through local files and the state file only (same-session mode).
 

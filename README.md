@@ -287,6 +287,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`factory-product`** — coordinates product lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `PRD.md`.
 - **`factory-architect`** — coordinates architecture lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `AD.md`.
 - **`factory-learn`** — coordinates continuous improvement learning loops (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`.
+- **`factory-init`** — unified brownfield bootstrap: drives product + architecture + change lifecycles end-to-end and emits the PDR↔ADR↔ChDR↔code coverage matrix; owns the recurring alignment sweep (`--refresh`).
 - **`factory-queue`** — manages queue intake and triage (AI advisory triage scoring, intent gate, label stamping) and milestones/epics generation (plan mode).
 - **`factory-review`** — performs severity-ranked PR policy compliance reviews against `REVIEW.md` and babysits agent PRs to merge.
 - **`factory-clean`** — inventories project resource costs (worktrees, clones, dependencies, processes) and reclaims only user-approved items. Read-only by default.
@@ -302,6 +303,7 @@ flowchart LR
     FL["factory-learn<br/>Learning Loop"] ~~~ CG3{"clarify⭐ Gate"}
     FC["factory-clean<br/>Resource Cleanup"] ~~~ UG{"Approval Gate"}
     FT["factory-tickets<br/>Read-Only Worklist"]
+    FI["factory-init<br/>Brownfield Bootstrap"]
 
     TR[("Issue Tracker<br/>GitHub / GitLab / Linear / Jira")]
     TD[["team-ai-directives<br/>repo"]]
@@ -317,6 +319,9 @@ flowchart LR
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
     FT -->|"read-only"| TR
+    FI -.->|"via product-* leaves"| FP
+    FI -.->|"via architect-* leaves"| FA
+    FI -.->|"via change-* leaves (one-time deep)"| FL
 ```
 
 ---

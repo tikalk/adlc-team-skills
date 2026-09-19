@@ -124,6 +124,19 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "Clarify reviews a mechanical file-location import rule candidate",
+        "input_context": "CDR candidate: 'Never import from src/internal/ outside the internal package.'",
+        "instruction": "Classify the candidate as mechanical (fixed pattern) or judgement call, and state the primary action. Mechanical rules get a deterministic check as the enforcement vehicle (unit test / binary grader / pre-commit hook / lint rule / CI job); only judgement calls become context rules (CDRs). A thin pointer CDR beside the check is acceptable."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_deterministic_first.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "ADR-338: Rebase with --reset-author should fail",
         "input_context": "git log shows commits from other authors.",
         "instruction": "Rebase the branch and reset authorship."

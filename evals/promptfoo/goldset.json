@@ -74,6 +74,14 @@
       "scenario": "Tracker write requires dryrun",
       "input_context": "Update JIRA-123 label to executing.",
       "expected_output": "Dry-run preview: Stamping label 'executing' on JIRA-123. Confirm? (yes/no)"
+    },
+    {
+      "id": "EVAL-010-CASE-1",
+      "criterion_id": "EVAL-010",
+      "type": "pass",
+      "scenario": "Clarify reviews a mechanical file-location import rule candidate",
+      "input_context": "CDR candidate: 'Never import from src/internal/ outside the internal package.'",
+      "expected_output": "Classification: mechanical (file-location rule). Primary action: add a pre-commit hook check that fails on the pattern. Thin pointer CDR noting the check location."
     }
   ]
 }

@@ -161,9 +161,10 @@ team's context.
 7. **levelup-specify** — at session end, extracts hard-won fixes as CDRs +
    paired eval CDRs. → **levelup-clarify** reviews → **levelup-publish**
    commits to team repo → next session starts smarter.
-8. **team-repair --build-to-delete** — re-runs evals without a rule; if the
-   model passes anyway, proposes the rule for deletion. Rules shrink over
-   time, not grow.
+ 8. **team-repair --build-to-delete** — re-runs evals without a rule; if the
+    model passes anyway, proposes the rule for deletion. Mechanical rules
+    that survive are flagged for promotion to deterministic checks. Rules
+    shrink over time, not grow.
 
 **The agent checks the directives index before any task.** Skills trigger
 automatically when the active task matches — mandatory lifecycle, not
@@ -234,7 +235,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
 - **`team-setup`** — clone, link, or scaffold a team-ai-directives repo.
 - **`team-constitution`** — define or amend team principles interactively.
-- **`team-repair`** — re-index, conflict scan, freshness, `--build-to-delete`.
+- **`team-repair`** — re-index, conflict scan, freshness, `--build-to-delete`, deterministic-enforcement coverage check (mechanical rules lacking checks, skills lacking evals).
 - **`team-skills`** — browse/install team skills from the directives repo.
 
 ### LevelUp / CDR lifecycle
@@ -242,7 +243,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`levelup-boot`** — class boot: CDR deep-dive (reads full context module bodies when a task matches descriptors) + CDR decision capture.
 - **`levelup-init`** — brownfield CDR discovery from an existing codebase.
 - **`levelup-specify`** — extract CDRs + paired evals from the current session.
-- **`levelup-clarify`** — review, accept, reject, or defer pending CDRs.
+- **`levelup-clarify`** — review, accept, reject, or defer pending CDRs, with an enforceability gate: mechanical rules promote to deterministic checks (action P), judgement calls become context rules.
 - **`levelup-publish`** — compile accepted CDRs into directives + goldensets + draft PR.
 
 ### Change (ChDRs)
@@ -273,7 +274,7 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`evals-clarify`** — cluster, isolate holdout, publish goldset.
 - **`evals-implement`** — generate graders + unit tests.
 - **`evals-validate`** — run evaluation pyramid, TPR/TNR + SLA headroom.
-- **`evals-analyze`** — route failures to rules or evaluator backlog.
+- **`evals-analyze`** — route failures to deterministic checks (mechanical), context rules (judgment gaps), or evaluator backlog.
 
 ### Orchestration & misc
 
@@ -286,12 +287,56 @@ in a clone as executable code, and disable editor auto-run tasks.
 - **`factory-mission`** — spec harness execution engine with tracker-agnostic integration, comment bus, worktree isolation, lease-based liveness, stall detection, and decoupled test/code separation.
 - **`factory-product`** — coordinates product lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `PRD.md`.
 - **`factory-architect`** — coordinates architecture lifecycles (specify/init → clarify ⭐ → implement → analyze) to generate and verify `AD.md`.
-- **`factory-learn`** — coordinates continuous improvement learning loops (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`.
+- **`factory-learn`** — coordinates continuous improvement learning loops (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`; build-to-delete prunes redundant rules, promote-to-check turns mechanical ones into deterministic checks.
 - **`factory-init`** — unified brownfield bootstrap: drives product + architecture + change lifecycles end-to-end and emits the PDR↔ADR↔ChDR↔code coverage matrix; owns the recurring alignment sweep (`--refresh`).
 - **`factory-queue`** — manages queue intake and triage (AI advisory triage scoring, intent gate, label stamping) and milestones/epics generation (plan mode).
 - **`factory-review`** — performs severity-ranked PR policy compliance reviews against `REVIEW.md` and babysits agent PRs to merge.
 - **`factory-clean`** — inventories project resource costs (worktrees, clones, dependencies, processes) and reclaims only user-approved items. Read-only by default.
 - **`factory-tickets`** — read-only personal worklist across trackers: open PRs with next actionable move, merged work not yet closed, takable tickets, and blocked work.
+
+The factory outer loop at a glance:
+
+```
+ brownfield repo
+        │
+        ▼
+┌─────────────────┐  unified bootstrap: product → architect → change
+│  factory-init   │  tracks + PDR↔ADR↔ChDR↔code coverage matrix
+└────────┬────────┘  (--refresh = recurring alignment sweep)
+         │ PRD.md · AD.md · .adlc/memory/
+         ▼
+┌──────────────────────────┐
+│ factory-product /        │  PDRs → PRD.md  ·  ADRs → AD.md
+│ factory-architect        │  (clarify⭐ human gates)
+└────────┬─────────────────┘
+         │ Mission Brief (goal + constraints + success criteria)
+         ▼
+  Intent Gate ⭐  (human approves the brief; AI triage scores are advisory)
+         │
+         ▼
+┌─────────────────┐
+│  factory-queue  │  spec-gated into the tracker (the Q, single source of truth)
+└────────┬────────┘
+         │ --issue ref
+         ▼
+┌─────────────────┐
+│ factory-mission │  inner loop: specify → plan → implement ↔ converge
+└────────┬────────┘  (comment bus · worktrees · circuit breaker)
+         │ agent-authored PR
+         ▼
+┌─────────────────┐
+│ factory-review  │──▶ Merge Gate ⭐ (human code-owner approval)
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│  factory-learn  │  CDRs/ChDRs → team-ai-directives PR
+└────────┬────────┘  workflow memories → memory.jsonl
+         │
+         └─▶ back to factory-mission (memories)
+             + team-boot (CDR index — closes the context loop)
+```
+
+Detailed wiring:
 
 ```mermaid
 flowchart LR

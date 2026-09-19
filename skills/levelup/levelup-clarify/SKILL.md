@@ -77,17 +77,19 @@ Each CDR should have:
 - [ ] Status is accurate
 - [ ] No conflicts with existing directives
 - [ ] Team-wide applicability
+- [ ] **Enforceability classified**: mechanical (deterministic check) vs judgement call (context rule)
 
 ### Outline
 
 1. **Load Pending CDRs** (Phase 1): Parse CDR files with status Discovered/Proposed
 2. **Pre-Validation** (Phase 2): Skip CDRs missing required sections
 3. **Evals Regression Gate** (Phase 2a): Run existing goldensets before accepting (default ON)
-4. **Gap Identification** (Phase 3): List clarification needs
-5. **Sequential Clarification** (Phase 4): One CDR per interaction
-6. **Update CDRs** (Phase 5): Write status and clarification metadata after each decision
-7. **Regenerate Index** (Phase 6): Update `cdr.md`
-8. **Summary** (Phase 7): Present results
+4. **Enforceability Gate** (Phase 2b): Classify mechanical vs judgement before offering Accept
+5. **Gap Identification** (Phase 3): List clarification needs
+6. **Sequential Clarification** (Phase 4): One CDR per interaction
+7. **Update CDRs** (Phase 5): Write status and clarification metadata after each decision
+8. **Regenerate Index** (Phase 6): Update `cdr.md`
+9. **Summary** (Phase 7): Present results
 
 ### Execution Steps
 
@@ -179,6 +181,19 @@ Report:
 | CDR-002 | BLOCKED | 3 existing cases would fail with modified rule |
 ```
 
+#### Phase 2b: Enforceability Gate
+
+**Default: ON.** For each pending **rule-type** CDR, classify enforceability BEFORE offering Accept — deterministic-checks-first (EVAL-010):
+
+| Classification | Examples | Primary action |
+|---|---|---|
+| **Mechanical** (fixed pattern) | banned API, import shape, file-location rule, fixed syntactic pattern | **Deterministic check** — unit test, binary grader, pre-commit hook, lint rule, or CI job. Pay once; a context rule makes every future session re-derive the same call |
+| **Judgement call** | cross-file consistency, "matches the surrounding style", anything needing intent | Context rule (CDR) as usual |
+
+**Default: build the check over writing the rule.** A mechanical rule CDR is presented with action **P — Promote to check** first (Phase 4). A thin pointer CDR beside the check is acceptable for discoverability; a CDR-only fix for a mechanical rule is not.
+
+Non-rule CDR types (personas, examples, constitutions) skip this gate.
+
 #### Phase 3: Gap Identification
 
 Generate a gap report:
@@ -239,11 +254,21 @@ For each CDR:
 | B | **Reject** — Decline with reason |
 | C | **Defer** — Skip for now, keep pending |
 | D | **Accept all remaining** — Accept this CDR and all pending CDRs without further review |
+| P | **Promote to check** *(mechanical rules only)* — Build the deterministic check (unit test / grader / pre-commit / lint / CI); CDR kept as thin pointer or rejected as superseded |
 
-Reply with your choice (A/B/C/D).
+Reply with your choice (A/B/C/D/P).
 ```
 
 Wait for user input before proceeding.
+
+#### Action P: Promote to Check (mechanical rules only)
+
+For a CDR classified **mechanical** in Phase 2b:
+
+1. Propose the deterministic check (unit test, binary grader per repo eval conventions, pre-commit hook, lint rule, or CI job) with the exact enforcement behavior
+2. On approval: build the check, verify it fails without the rule's constraint and passes with it
+3. Update the CDR: either **Rejected** with reason "Mechanically enforceable — promoted to deterministic check" (preferred) or kept as a **thin pointer** (`Decision: enforced by <check path>; see it before editing`) — user chooses
+4. Add clarification metadata recording the promotion
 
 #### Action A: Accept
 
@@ -284,6 +309,7 @@ Ask for reason:
 | B | Duplicate of existing directive |
 | C | Deprecated/outdated pattern |
 | D | Low value |
+| E | Mechanically enforceable — promoted to deterministic check |
 
 Reply with your choice.
 ```

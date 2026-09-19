@@ -42,8 +42,10 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 3. **`publish`** (`build` phase) -> Invoke `change-publish` to promote accepted ChDRs into `.adlc/memory/chdr/` and regenerate indices.
 
 ### Maintenance & Build-to-Delete Route (periodic)
-1. **`verify`** (`verify` phase) -> Run `team-repair --build-to-delete`. Re-runs goldset evals with rules temporarily disabled. If the model passes without a rule, the rule is flagged as redundant.
-2. **`clarify`⭐** -> Proposes the redundant rule's deprecation to `levelup-clarify` for human review.
+1. **`verify`** (`verify` phase) -> Run `team-repair --build-to-delete`. Re-runs goldset evals with rules temporarily disabled. Two questions per rule:
+   - **Build-to-delete**: if the model passes without the rule, the rule is flagged as redundant.
+   - **Promote-to-check** (deterministic-checks-first, EVAL-010): if a deterministic check (unit test / binary grader / pre-commit hook / lint rule / CI job) can mechanically enforce the rule, flag it as a promotion candidate — pay once for the check instead of re-injecting a fuzzy rule into every session.
+2. **`clarify`⭐** -> Proposes the redundant rule's deprecation and the mechanical rule's promotion to `levelup-clarify` for human review. Promotions route to action **P — Promote to check** (levelup-clarify Phase 2b); once the check exists and runs in CI, the CDR is deprecated or reduced to a thin pointer. Both proposals publish as `findings`.
 
 ### Workflow Retrospective Route
 Runs periodically or on-demand to analyze past runs of other factory skills (e.g. `factory-mission`, `factory-product`) and generate workflow memories:

@@ -30,7 +30,7 @@ def _relation_body(output: str, left: str, right: str) -> str:
 
 
 def get_assert(output: str, context: dict = None) -> dict:
-    """Grader for PDR-079: factory-init coverage matrix format integrity.
+    """Grader for PDR-072: factory-init coverage matrix format integrity.
 
     Asserts the sweep output contains:
       - a Pivot section whose table header has Area, PDR, ADR, and ChDR columns

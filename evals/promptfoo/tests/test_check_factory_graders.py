@@ -179,33 +179,33 @@ def test_check_tracker_dryrun_fail():
 
 def test_check_sweep_layer_routing_pass():
     output = "CRITICAL finding [layer: architecture]: ADR-012 contradicted by src/auth/. Routing correction to architect-clarify (correction 1/2)."
-    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-358: Sweep layer-tagged correction routing"}})
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-361: Sweep layer-tagged correction routing"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
 
 def test_check_sweep_layer_routing_fail():
     output = "CRITICAL finding detected. Routing back to the preceding clarify step."
-    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-358: Sweep layer-tagged correction routing"}})
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-361: Sweep layer-tagged correction routing"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
 
 def test_check_sweep_layer_routing_mismatch_fail():
-    """A product-layer finding routed to the WRONG track's clarify fails (the misrouting ADR-358 exists to prevent)."""
+    """A product-layer finding routed to the WRONG track's clarify fails (the misrouting ADR-361 exists to prevent)."""
     output = "CRITICAL [layer: product]: PDR-009 undecreed. Routing correction to change-clarify (correction 1/2)."
-    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-358: Sweep layer-tagged correction routing"}})
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-361: Sweep layer-tagged correction routing"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
 
 def test_check_sweep_layer_routing_tag_without_named_track_fail():
     """Layer tag present but routing to a generic 'preceding clarify' fails."""
     output = "CRITICAL [layer: product]: PDR-009 undecreed. Routing back to the preceding clarify step."
-    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-358: Sweep layer-tagged correction routing"}})
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-361: Sweep layer-tagged correction routing"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
 
 def test_check_sweep_layer_routing_cross_pass():
     """Cross-layer findings may route to any track clarify (the owning track)."""
     output = "CRITICAL [layer: cross]: PRD section 5 has no PDR backing. Routing correction to product-clarify (correction 1/2)."
-    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-358: Sweep layer-tagged correction routing"}})
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-361: Sweep layer-tagged correction routing"}})
     assert result["pass"] is True
     assert result["score"] == 1.0

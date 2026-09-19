@@ -267,7 +267,7 @@ module.exports = {
     },
     {
       "vars": {
-        "scenario": "PDR-079: factory-init coverage matrix format",
+        "scenario": "PDR-072: factory-init coverage matrix format",
         "input_context": "factory-init bootstrap completed with 5 PDRs, 8 ADRs, and 5 ChDRs across payments/users/notifications areas; a previous sweep exists.",
         "instruction": "Emit the coverage matrix: a Pivot table with columns (Area, Feature-Area, Sub-System, PDRs, ADRs, ChDRs, Code Evidence, Coverage), then four relation sections titled PDR↔ADR, PDR↔code, ADR↔code, and ChDR↔code — each with a 'Coverage: N%' line and gap lines in the form '- Gap: <description citing record IDs (PDR-NNN/ADR-NNN/ChDR-NNN) or file paths> [layer: product|architecture|change|cross]'. End with a '## Drift vs <previous date> sweep' section (or '## Baseline' on first sweep) listing new gaps, closed gaps, and regressed areas."
       },
@@ -280,7 +280,7 @@ module.exports = {
     },
     {
       "vars": {
-        "scenario": "ADR-358: Sweep layer-tagged correction routing",
+        "scenario": "ADR-361: Sweep layer-tagged correction routing",
         "input_context": "Sweep found a CRITICAL finding [layer: architecture]: ADR-012 is contradicted by code in src/auth/.",
         "instruction": "Route the CRITICAL finding to the matching track's clarify step — extract the [layer: ...] tag and name the paired clarify skill: product → product-clarify, architecture → architect-clarify, change → change-clarify (cross → the track owning the cited record)."
       },

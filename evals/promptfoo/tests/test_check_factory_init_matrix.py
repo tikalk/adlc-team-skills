@@ -1,7 +1,7 @@
 """Unit test for check_factory_init_matrix.py grader.
 
 Verifies the grader produces correct pass/fail results for the
-factory-init sweep coverage matrix output (PDR-079).
+factory-init sweep coverage matrix output (PDR-072).
 Follows the evals-implement Phase 2 closed-loop self-tuning pattern.
 """
 import sys

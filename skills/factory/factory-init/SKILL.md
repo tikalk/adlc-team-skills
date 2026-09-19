@@ -82,7 +82,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 ### Correction Loops
 
 - `product-analyze` / `architect-analyze` CRITICAL/HIGH → route back to **their own track's clarify**⭐ (executor default, bounded by `max_corrections`, default 2).
-- `sweep` CRITICAL/HIGH findings route **by layer tag** (ADR-358): every finding carries `[layer: product|architecture|change|cross]` and routes to the matching track's clarify (`product-clarify` / `architect-clarify` / `change-clarify`). `cross` findings route to the track owning the cited record; ambiguous → halt for the human (hybrid gate). Bounded by `max_corrections`.
+- `sweep` CRITICAL/HIGH findings route **by layer tag** (ADR-361): every finding carries `[layer: product|architecture|change|cross]` and routes to the matching track's clarify (`product-clarify` / `architect-clarify` / `change-clarify`). `cross` findings route to the track owning the cited record; ambiguous → halt for the human (hybrid gate). Bounded by `max_corrections`.
 
 ---
 
@@ -132,7 +132,7 @@ Every gap line uses the form:
 
 **4. Drift section** — `## Drift vs <previous date> sweep` (or `## Baseline` on first sweep): new gaps, closed gaps, regressed areas. On refresh, this diff IS the report.
 
-**5. Findings output** — severity-ranked summary published as `output_type: findings` (comment bus if tracker-integrated, else `.adlc/workflow/findings/sweep.md`); every finding tagged `[layer: ...]` for correction routing (ADR-358). The matrix file itself is the artifact; the matrix **never edits records** — it reports, clarify fixes.
+**5. Findings output** — severity-ranked summary published as `output_type: findings` (comment bus if tracker-integrated, else `.adlc/workflow/findings/sweep.md`); every finding tagged `[layer: ...]` for correction routing (ADR-361). The matrix file itself is the artifact; the matrix **never edits records** — it reports, clarify fixes.
 
 ---
 
@@ -190,8 +190,8 @@ Every gap line uses the form:
 
 - `factory-mission/references/executor.md` — shared executor contract (step schema, phases, correction loop, output types)
 - `factory-mission/references/tracker-integration.md` — comment bus, marker comments, distributed lease
-- PDR-079 (factory-init skill — unified brownfield bootstrap + coverage matrix)
-- ADR-358 (sweep layer-tagged correction routing)
+- PDR-072 (factory-init skill — unified brownfield bootstrap + coverage matrix)
+- ADR-361 (sweep layer-tagged correction routing)
 - ADR-341 (workflows as graphs — fixed DAG chosen; declarative graphs remain an option)
 - PDR-050 (output type classification — draft/decision/findings/artifact-ref)
 - `factory-product/SKILL.md`, `factory-architect/SKILL.md`, `factory-learn/SKILL.md` — sibling orchestrators; single-layer entry points

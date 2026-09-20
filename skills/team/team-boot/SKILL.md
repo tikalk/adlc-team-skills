@@ -44,7 +44,7 @@ detection and capture guidance for its class.
 ## Event hook (automatic)
 
 The `session_start` and `session_compact` event hooks (declared in
-`.events.json`, wired by adlc-skills-cli) run `scripts/boot.sh` (POSIX) or
+`.events.json`, wired by adlc-cli) run `scripts/boot.sh` (POSIX) or
 `scripts/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
 assembles the context block (constitution, CDR.md index table,
 `.skills.json`), and outputs it to stdout. The plugin caches the result
@@ -53,7 +53,7 @@ cached content, no accumulation). The `session_compact` declaration makes
 post-compaction re-injection part of the contract: when a harness
 summarizes history, the generated plugin re-runs the handler and the dedup
 guard prevents double-injection. Agents whose adapters don't map
-`session_compact` yet skip it — adlc-skills-cli owns those mappings.
+`session_compact` yet skip it — adlc-cli owns those mappings.
 
 ## Manual fallback (agents without event support)
 

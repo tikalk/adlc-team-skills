@@ -4,7 +4,7 @@ Two sides, two repos:
 
 - **This repo** declares the event and provides the handler's output
   (`.events.json` + `team-boot`'s boot scripts).
-- **[adlc-skills-cli](https://github.com/tikalk/adlc-skills-cli)** implements
+- **[adlc-cli](https://github.com/tikalk/adlc-cli)** implements
   and owns the injection side: the dispatcher, the generated per-agent
   plugins, injection mechanics, caching, and compaction re-injection.
   Requirements and bugs for that side belong there — not here.
@@ -26,7 +26,7 @@ Two sides, two repos:
 - Repos without it get commands only (no event wiring) on install.
 - **`session_compact` is the compaction contract**: harness compaction can
   summarize the injected index away mid-session; declaring the event makes
-  re-injection expected behavior rather than an accident. adlc-skills-cli's
+  re-injection expected behavior rather than an accident. adlc-cli's
   adapters translate canonical event names per agent — an agent whose
   adapter has no `session_compact` mapping skips it (no wiring, no
   failure) until the CLI adds one. The double-injection guard is the
@@ -56,6 +56,6 @@ In order:
 3. `bash .agents/skills/team-boot/scripts/boot.sh` from the project root —
    does it emit the index?
 4. If yes but nothing appears in the session: the injection side failed —
-   that's adlc-skills-cli's territory (generated plugin not loaded, agent
+   that's adlc-cli's territory (generated plugin not loaded, agent
    event wiring). File it there.
 5. `scripts/acceptance-test.sh` verifies the whole loop from scratch.

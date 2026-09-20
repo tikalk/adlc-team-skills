@@ -21,7 +21,7 @@
      (npx promptfoo eval --config evals/promptfoo/config.js) or state that
      you couldn't run it (no OPENAI_API_KEY) and the nightly sweep covers it. -->
 
-<!-- Generated-artifact sync: npx adlc-skills-cli add <repo> -a <agent> -y
+<!-- Generated-artifact sync: npx adlc-cli skill add <repo> -a <agent> -y
      re-run after adding/renaming skills. -->
 
 ## Manual test results

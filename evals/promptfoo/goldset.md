@@ -257,7 +257,7 @@ The output offers generic advice (reinstall, restart, update) with no chain chec
 ### Pass Example 1
 - **Scenario**: Team context missing at session start
 - **Input Context**: User reports a fresh session in a configured project started without the Team Context section.
-- **Agent Output**: "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json — confirm the directives path exists; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root and capture the output. If all green, the injection side failed — file in adlc-skills-cli with these outputs."
+- **Agent Output**: "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json — confirm the directives path exists; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root and capture the output. If all green, the injection side failed — file in adlc-cli with these outputs."
 
 ### Fail Example 1
 - **Scenario**: Generic advice, no evidence

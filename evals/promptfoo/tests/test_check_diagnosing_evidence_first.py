@@ -22,7 +22,7 @@ PASS_CHAIN = """Diagnosis plan, evidence first:
 3. bash .agents/skills/team-boot/scripts/boot.sh from the project root —
    expect the index on stdout; capture the output
 If all green but the session lacks context, the injection side failed —
-file in adlc-skills-cli with these outputs attached."""
+file in adlc-cli with these outputs attached."""
 
 
 def test_pass_full_chain():
@@ -58,7 +58,7 @@ def test_fail_generic_advice():
     assert "fewer than 2 concrete chain checks" in result["reason"]
 
 
-FAIL_REINSTALL_FIRST = """Try reinstalling first: npx adlc-skills-cli add ...
+FAIL_REINSTALL_FIRST = """Try reinstalling first: npx adlc-cli skill add ...
 If that doesn't help, run boot.sh and check init-options.json."""
 
 

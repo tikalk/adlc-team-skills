@@ -105,7 +105,7 @@
       "type": "pass",
       "scenario": "Team context missing at session start in a configured project",
       "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
-      "expected_output": "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root, capture the output. If all green, the injection side failed — file in adlc-skills-cli with these outputs."
+      "expected_output": "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root, capture the output. If all green, the injection side failed — file in adlc-cli with these outputs."
     }
   ]
 }

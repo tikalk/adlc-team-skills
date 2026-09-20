@@ -11,15 +11,15 @@
 #   bash radar-search.sh --json flask
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-RADAR_JSON="${SCRIPT_DIR}/../resources/radar.json"
+RADAR_URL="https://tikalk.com/radar.json"
 
-if [ ! -f "$RADAR_JSON" ]; then
-  RADAR_JSON="${PWD}/skills/tech-radar/tech-radar-context/resources/radar.json"
-fi
+RADAR_DATA=$(curl -fsSL --max-time 10 "$RADAR_URL" 2>/dev/null) || {
+  echo "Error: could not fetch Tikal Tech Radar data from $RADAR_URL (radar context unavailable)" >&2
+  exit 1
+}
 
-if [ ! -f "$RADAR_JSON" ]; then
-  echo "Error: radar.json not found" >&2
+if ! jq -e '.blips' <<<"$RADAR_DATA" >/dev/null 2>&1; then
+  echo "Error: radar data is not valid JSON or missing blips (radar context unavailable)" >&2
   exit 1
 fi
 
@@ -95,7 +95,7 @@ search_blips() {
        $why
      end) as $why_trunc |
     "\(.name)\t\(.quadrant)\t\(.ring)\t\($why_trunc)"
-  ' "$RADAR_JSON" 2>/dev/null
+  ' <<<"$RADAR_DATA" 2>/dev/null
 }
 
 # Collect all results
@@ -132,7 +132,7 @@ if [ -z "$ALL_RESULTS" ]; then
   echo "| Technology | Quadrant | Ring | Tikal's Opinion (Why?) |"
   echo "|------------|----------|------|------------------------|"
   echo ""
-  echo "_Source: Tikal Israeli Tech Radar (local snapshot) · 0 technologies matched._"
+  echo "_Source: Tikal Israeli Tech Radar (live: https://tikalk.com/radar.json) · 0 technologies matched._"
   exit 0
 fi
 
@@ -170,4 +170,4 @@ done
 
 RESULT_COUNT=$(echo "$ALL_RESULTS" | grep -c '|' || true)
 echo ""
-echo "_Source: Tikal Israeli Tech Radar (local snapshot) · ${RESULT_COUNT} blip placement(s) matched._"
+echo "_Source: Tikal Israeli Tech Radar (live: https://tikalk.com/radar.json) · ${RESULT_COUNT} blip placement(s) matched._"

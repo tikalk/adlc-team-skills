@@ -1,6 +1,6 @@
 ---
 name: team-boot
-description: Use when a session starts or resumes after compaction (auto via the session_start and session_compact event hooks) and the team AI directives context — constitution, CDR index, Class Boots catalog, skills registry — is not yet injected.
+description: Use when a session starts or resumes after compaction (auto via the session_start and session_compact event hooks) and the team AI directives context — constitution, CDR index, Class Boots catalog, skills registry — is not yet injected; also fires the session-end friction trigger for CDR/ADR/PDR capture with pending-decision safety nets.
 scripts:
   sh: scripts/boot.sh
   ps: scripts/boot.ps1

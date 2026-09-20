@@ -34,7 +34,7 @@ CLASS_BOOTS = {
     },
     "tech-radar-boot": {
         "dir": ROOT / "skills" / "tech-radar" / "tech-radar-boot",
-        "index": "resources/radar.json",
+        "index": "https://tikalk.com/radar.json",
         "capture": "/architect-specify",
     },
 }
@@ -122,11 +122,14 @@ def test_architect_boot_references_tech_radar():
 
 
 def test_tech_radar_boot_keeps_machinery():
-    """tech-radar-boot must keep the absorbed radar machinery (scripts + dataset)."""
+    """tech-radar-boot must keep the absorbed radar machinery (live-fetch scripts)."""
     spec = CLASS_BOOTS["tech-radar-boot"]
     assert (spec["dir"] / "scripts" / "radar-search.sh").exists()
     assert (spec["dir"] / "scripts" / "radar-search.ps1").exists()
-    assert (spec["dir"] / "resources" / "radar.json").exists()
+    # Live-fetch contract (merged from main): no bundled snapshot.
+    assert not (spec["dir"] / "resources" / "radar.json").exists()
+    body = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
+    assert "https://tikalk.com/radar.json" in body
     content = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
     assert "radar-search.sh" in content
     assert "radar-search.ps1" in content

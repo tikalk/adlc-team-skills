@@ -158,4 +158,64 @@ Write-Output "  **Track** whether the matching skill was invoked; **Surface** un
 Write-Output "- **Session-end**: before closing, prompt to invoke the capture skills for any unrecorded decisions."
 Write-Output ""
 Write-Output "Only suggest when genuinely warranted — not on every response."
+
+# Pending CDRs — remind user to clarify (safety net for missed suggestions)
+if (Test-Path ".adlc/drafts/cdr") {
+    $pendingCdrFiles = Get-ChildItem ".adlc/drafts/cdr/CDR-*.md" -ErrorAction SilentlyContinue
+    $pendingCdrs = ($pendingCdrFiles | Where-Object { (Get-Content $_.FullName -Raw) -match 'Status: \*\*Proposed\*\*' }).Count
+    if ($pendingCdrs -gt 0) {
+        Write-Output ""
+        Write-Output "## Pending CDRs"
+        Write-Output "$pendingCdrs proposed CDR(s) awaiting review in .adlc/drafts/cdr/"
+        Write-Output "Run /levelup-clarify to accept, reject, or defer them."
+    }
+}
+
+# Pending ADRs — remind user to clarify
+if (Test-Path ".adlc/drafts/adr") {
+    $pendingAdrFiles = Get-ChildItem ".adlc/drafts/adr/ADR-*.md" -ErrorAction SilentlyContinue
+    $pendingAdrs = ($pendingAdrFiles | Where-Object { (Get-Content $_.FullName -Raw) -match 'status: proposed|Status: Proposed' }).Count
+    if ($pendingAdrs -gt 0) {
+        Write-Output ""
+        Write-Output "## Pending ADRs"
+        Write-Output "$pendingAdrs proposed ADR(s) awaiting review in .adlc/drafts/adr/"
+        Write-Output "Run /architect-clarify to accept, reject, or defer them."
+    }
+}
+
+# Pending PDRs — remind user to clarify
+if (Test-Path ".adlc/drafts/pdr") {
+    $pendingPdrFiles = Get-ChildItem ".adlc/drafts/pdr/PDR-*.md" -ErrorAction SilentlyContinue
+    $pendingPdrs = ($pendingPdrFiles | Where-Object { (Get-Content $_.FullName -Raw) -match 'status: proposed|Status: Proposed' }).Count
+    if ($pendingPdrs -gt 0) {
+        Write-Output ""
+        Write-Output "## Pending PDRs"
+        Write-Output "$pendingPdrs proposed PDR(s) awaiting review in .adlc/drafts/pdr/"
+        Write-Output "Run /product-clarify to accept, reject, or defer them."
+    }
+}
+
+# Friction-based learning trigger (configurable, default on)
+$ContributeHint = "true"
+if (Test-Path $INIT_FILE) {
+    $initRaw = Get-Content $INIT_FILE -Raw -ErrorAction SilentlyContinue
+    if ($initRaw -match '"contribute_hint"\s*:\s*"(true|false)"') {
+        $ContributeHint = $Matches[1]
+    }
+}
+if ($ContributeHint -eq "true") {
+    Write-Output ""
+    Write-Output "## Session Friction Awareness"
+    Write-Output "After completing significant work, self-assess for decision drift:"
+    Write-Output ""
+    Write-Output "1. **CDR friction** — reusable patterns, novel approaches, or significant debugging emerged → suggest /levelup-specify"
+    Write-Output "2. **ADR gap** — new architectural concern not covered by existing ADRs → suggest /architect-specify"
+    Write-Output "3. **ADR violation** — work contradicts an accepted ADR → suggest /architect-clarify"
+    Write-Output "4. **PDR gap** — new product decision not covered by existing PDRs → suggest /product-specify"
+    Write-Output "5. **PDR violation** — work contradicts an accepted PDR → suggest /product-clarify"
+    Write-Output ""
+    Write-Output "Guardrail: Before assessing ADR/PDR alignment, read relevant ADR/PDR files from .adlc/memory/adr/ and .adlc/memory/pdr/ if not already loaded."
+    Write-Output "Do NOT suggest for routine work. At most one suggestion per task completion."
+}
+
 Write-Output "</EXTREMELY_IMPORTANT>"

@@ -137,29 +137,21 @@ For each discovered PDR:
 1. **Assign ID**: PDR-{NNN} using next available number
 2. **Write file**: `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{NNN}.md`
 
-**PDR file format** (individual file, no frontmatter):
+**PDR file format** (individual file, YAML frontmatter — use the shared template):
+
+Use the template at `{REPO_ROOT}/.agents/skills/product-init/templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections.
+
 ```markdown
-## PDR-001: [Decision Title]
+---
+status: discovered
+date: YYYY-MM-DD
+owner: [Inferred from codebase/authors]
+category: [Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature | NFR]
+feature-area: [core | business | growth | ...]
+title: [Decision Title]
+---
 
-### Status
-
-**Discovered** (Inferred from existing product)
-
-### Date
-
-YYYY-MM-DD
-
-### Owner
-
-[Inferred from codebase/authors]
-
-### Category
-
-[Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature | NFR]
-
-### Feature-Area
-
-[core | business | growth | ...]
+# PDR-001: [Decision Title]
 
 ### Cross-Feature-Area Metadata
 - **Appears in**: [business, growth]

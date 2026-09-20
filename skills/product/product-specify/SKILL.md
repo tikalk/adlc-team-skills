@@ -131,31 +131,23 @@ During exploration, watch for:
 
 After each decision is confirmed, create a PDR file.
 
-**PDR file format** (individual file):
+**PDR file format** (individual file, YAML frontmatter — use the shared template):
+
+Use the template at `{REPO_ROOT}/.agents/skills/product-specify/templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
+
 ```markdown
-## PDR-[NNN]: [Decision Title]
+---
+status: proposed
+date: YYYY-MM-DD
+owner: [User/AI collaboration]
+category: Feature
+feature-area: [core | business | growth | ...]
+title: [Decision Title]
+---
 
-### Status
+# PDR-[NNN]: [Decision Title]
 
-**Proposed**
-
-### Date
-
-YYYY-MM-DD
-
-### Owner
-
-[User/AI collaboration]
-
-### Category
-
-[Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature | NFR | Milestone]
-
-### Feature-Area
-
-[core | business | growth | ...]
-
-### Context
+## Context
 **Problem/Opportunity:**
 [Clear description]
 
@@ -163,7 +155,7 @@ YYYY-MM-DD
 - [Market factor 1]
 - [Customer feedback]
 
-### Decision
+## Decision
 **Decision Statement:**
 [Clear statement of what was decided]
 

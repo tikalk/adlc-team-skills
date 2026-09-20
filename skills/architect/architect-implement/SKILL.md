@@ -1001,7 +1001,7 @@ Compare views across sub-systems for:
 [Apply performance template across all views]
 
 ## 5. Architecture Decision Records Summary
-[Index linking to {REPO_ROOT}/.adlc/memory/adr.md]
+[Index linking to {REPO_ROOT}/.adlc/memory/adr/adr.md]
 
 ## 6. Tech Stack Summary
 [Consolidated from all ADRs]
@@ -1085,15 +1085,18 @@ After generating AD.md, perform ALL of the following steps:
  - **VERIFY**: Confirm:
    - No duplicate ADRs exist (same ID in both locations)
    - Remaining ADRs (if any) are Proposed/Discovered only
-   - `adr.md` and `adr.md` index regenerated for both scopes
+   - `adr.md` index regenerated for both scopes (drafts + memory)
 
 **Step 3b: Generate Memory ADR Index (MANDATORY)**
 
-After moving Accepted ADRs to `.adlc/memory/adr/`, generate a memory index file at `{REPO_ROOT}/.adlc/memory/adr.md` from all `ADR-*.md` files in `.adlc/memory/adr/`.
+After moving Accepted ADRs to `.adlc/memory/adr/`, generate a memory index file at `{REPO_ROOT}/.adlc/memory/adr/adr.md` using the `generate_adr_index` function from the setup script (the same function that generates the drafts index, but with scope=memory):
 
-Scan each `ADR-*.md` file in `.adlc/memory/adr/` and extract: ID, Sub-System, Decision, Status, Date (from frontmatter or first heading).
+```bash
+source "{REPO_ROOT}/.agents/skills/architect-implement/scripts/bash/setup-architect.sh"
+generate_adr_index memory
+```
 
-Write `{REPO_ROOT}/.adlc/memory/adr.md`:
+This writes `{REPO_ROOT}/.adlc/memory/adr/adr.md` with the 7-column schema, parsing YAML frontmatter via `parse_fm_field`. The index format:
 
 ```markdown
 # Architecture Decision Records (Memory)
@@ -1266,7 +1269,7 @@ After implement completes, run `/architect-analyze` to validate consistency and 
 - **AD.md exists** at `{REPO_ROOT}/AD.md` with more than 200 lines and all viewpoint sections (`## 3.x` headers).
 - **Per-subsystem view files** exist at `{REPO_ROOT}/.adlc/architect/views/{subsystem}/{view}.md` for every completed view.
 - **state.json is consistent**: all generated views are marked `"completed"` and the phase is `"completed"`.
-- **Accepted ADRs promoted**: all ADRs with status `"Accepted"` are copied to `{REPO_ROOT}/.adlc/memory/adr.md`.
+- **Accepted ADRs promoted**: all ADRs with status `"Accepted"` are moved to `{REPO_ROOT}/.adlc/memory/adr/`; the memory index is regenerated at `{REPO_ROOT}/.adlc/memory/adr/adr.md`.
 - **Drafts cleaned up**: promoted ADR files moved from `{REPO_ROOT}/.adlc/drafts/adr/` to `{REPO_ROOT}/.adlc/memory/adr/`; no duplicates remain; any remaining drafts are Proposed/Discovered only.
 - **AD.md is viewpoint-organized**: sections are grouped by viewpoint (`## 3. Architectural Views → ### 3.1 Context View`, etc.), not by subsystem.
 - **Mermaid-only diagrams**: no ASCII box-drawing characters (`┌`, `└`, `├`, `│`, `═`, `───`) are used for architectural diagrams.

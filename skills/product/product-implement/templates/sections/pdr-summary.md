@@ -13,7 +13,7 @@
 
 ### 12.1 PDR Index
 
-Detailed Product Decision Records are maintained in [.adlc/drafts/pdr.md](.adlc/drafts/pdr.md).
+Detailed Product Decision Records are maintained in individual PDR files under `.adlc/drafts/pdr/` (Proposed) and `.adlc/memory/pdr/` (Accepted). The full index is at `.adlc/memory/pdr/pdr.md`.
 
 | ID | Category | Decision | Status | Impact | Date |
 |----|----------|----------|--------|--------|------|

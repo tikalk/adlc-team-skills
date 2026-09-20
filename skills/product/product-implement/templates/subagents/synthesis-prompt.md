@@ -209,7 +209,7 @@ Update state.json:
 }
 ```
 
-Write PDRs to `{REPO_ROOT}/.adlc/drafts/pdr.md` with:
+Write PDRs to `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{NNN}.md` with:
 - All generated PDRs
 - Inconsistency flags embedded in relevant PDRs
 - Cross-feature-area analysis summary

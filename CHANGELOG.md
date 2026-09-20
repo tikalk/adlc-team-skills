@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`writing-skills`** (`skills/authoring/writing-skills/` + `templates/SKILL-template.md` + `references/skill-testing.md`) — TDD-for-skills authoring methodology adapted from superpowers' writing-skills: Iron Law (no skill without a failing baseline first), RED-GREEN-REFACTOR for skills, micro-testing wording protocol, Match-the-Form-to-the-Failure guidance, and this repo's structure rules (2-level depth, trigger-only descriptions, token budgets, eval-coverage requirement).
+- **EVAL-011: Writing-Skills Baseline-First Compliance** (`evals/promptfoo/`) — goldset criterion + binary grader `check_writing_skills_baseline.py` + unit tests: an agent asked to create a skill must run/demand the failing baseline before authoring content.
+- **EVAL-012: Factory-Mission RED-Gate Enforcement** (`evals/promptfoo/`) — goldset criterion + binary grader `check_factory_mission_tdd.py` + unit tests: a green-at-RED suite must stop the run and route to SPEC_CORRECTION_NEEDED, never proceeding to the code step.
+- **`tests/unit/test_generated_artifacts_sync.py`** — 3 tests keeping CLI-generated install artifacts (`.agents/skills/` mirror, `.opencode/commands/`) in sync with `skills/`; skips where artifacts aren't generated. Catch-power proven by mirror-corruption.
+- **`requirements.txt`** — pinned dev dependencies matching CI (pytest 9.1.1, pyyaml 6.0.3, deepeval 4.1.5); CONTRIBUTING prerequisites updated to `pip install -r requirements.txt`.
+- **Integrity-test expansion** (`tests/unit/test_playbook_integrity.py`) — description presence + 1024-char limit (validator self-tested against broken fixtures), exact-2-level depth rule, and "Use when…" trigger-only description rule; template frontmatter scan now covers authoring templates.
+- **`tdd: true`** key in `skills/mission/mission-brief/config-template.yml` — documented opt-out for the factory-mission TDD split.
+- **`session_compact` event declared in `.events.json`** — post-compaction re-injection of the team context index is now part of the event contract, not an accident of the OpenCode plugin's per-step transform. The generated plugin's dedup guard prevents double-injection; adlc-skills-cli adapters without a `session_compact` mapping skip it until they add one. Pinned by `test_events_json_declares_session_compact`.
+- **`scripts/acceptance-test.sh`** — the canonical acceptance test (this repo's "Let's make a react todo list"): scratch-installs via adlc-skills-cli, configures a directives checkout, and asserts `boot.sh` emits the full index (constitution, CDR rows, class boots, skills); `--live` adds an opencode smoke check, `--directives`/`--keep` for control.
+- **`.github/workflows/evals-nightly.yml`** — nightly full PromptFoo sweep (tiered eval model: static gates on every PR, live evals on PRs with `OPENAI_API_KEY` + nightly on main; loud failure if the secret goes missing). Rationale: fork-PR skill-behavior changes get zero LLM-eval coverage at PR time — the nightly closes the gap.
+- **`docs/testing.md`** — the two-directory/three-tier testing map (static gates vs grader unit tests vs live evals), the tiered model, and the known limit that `tests/e2e/` tests a re-implementation.
+- **`docs/event-hook-contract.md`** — the `.events.json` + boot-script contract, with the repo boundary drawn: this repo declares events and provides handler output; adlc-skills-cli owns and implements the injection side (dispatcher, plugins, compaction re-injection).
+- **`.github/PULL_REQUEST_TEMPLATE.md` + issue templates** (`bug_report.md`, `skill_proposal.md`) — PR template carries the baseline-failure section (skill changes), manual-test table, and AI disclosure; skill proposals demand the verbatim baseline transcript up front.
+- **`diagnosing-team-skills`** (`skills/team/diagnosing-team-skills/`) — evidence-first diagnosis of the session-start chain (init-options → jq → boot.sh → artifact sync → injection side), routing injection bugs to adlc-skills-cli with outputs attached. Ships with **EVAL-013** (`check_diagnosing_evidence_first.py` + unit tests): a diagnosis without command output is a guess.
+- **Token-budget enforcement** (`tests/unit/test_playbook_integrity.py`) — warn above the 500-line target, fail above the 800-line hard cap; `architect-implement` (1273 lines) and `team-repair` (1134 lines) grandfathered in a shrink-only `TOKEN_BUDGET_EXEMPT` list as tracked debt.
+- **CONTRIBUTING additions** — canonical acceptance-test section (with the pass condition and PR-evidence rule) and an "If you are an AI agent" checklist: search open+closed PRs, one problem per PR, run the full verification set, follow writing-skills' Iron Law, disclose model/harness/plugins, human-approved diff before submitting.
+- **`factory-init`** (`skills/factory/factory-init/`) — unified brownfield bootstrap orchestrator (5th Kind-A peer): one command drives the product, architecture, and change lifecycles end-to-end (init → clarify⭐ → implement → analyze/publish; track-sequential; per-layer skip on partial state) and emits the PDR↔ADR↔ChDR↔code **coverage matrix** at `.adlc/coverage/coverage.md` — feature-area pivot (union row-axis) + four traceability relations (PDR↔ADR, PDR↔code, ADR↔code, ChDR↔code) + family severity model + drift diff vs `.adlc/coverage/history/`. Owns the recurring cross-layer alignment sweep via `--refresh`. CDR excluded (team-level, external publish target) — final output recommends `factory-learn` / `/levelup-init` instead. Zero new leaf skills. (PDR-072, ADR-361)
+- **factory-init eval criteria** — binary grader `check_factory_init_matrix.py` (matrix format integrity: pivot columns, four relations with `Coverage: N%`, layer-tagged + cited gap lines, Drift/Baseline section) with unit tests, plus `check_sweep_layer_routing` branch in `check_factory_invariants.py` (ADR-361 layer-tagged correction routing); wired into `goldset-factory.json` + `config.js`.
+
+### Changed
+
+- **Mandated TDD gates in `factory-mission`** — the decoupled test/code split (capability #12 / Phase 5) now closes each leg with a mechanical gate: the **RED gate** runs the Test Agent's suite and requires ≥1 failing test (green-at-RED routes to SPEC_CORRECTION_NEEDED; a code-bearing step never proceeds on a vacuous suite), the **GREEN gate** blocks converge until the suite passes (failure loops back to the `code` step without consuming the converge circuit breaker). Exemptions narrowed to declared no-test-surface runs (`tdd: false`, docs/config-only steps, interactive mode).
+- **SDO description audit — every skill description** — all `SKILL.md` descriptions now lead with "Use when…" trigger conditions instead of workflow summaries (mission-brief routes subagents by descriptions; summaries measurably cause agents to follow the description instead of reading the skill body). 46 rewritten; `writing-skills` and `diagnosing-team-skills` were authored compliant.
+- **README restructured around skills gravity** — two-loop framing (session loop + the software factory), factory promoted to a visible top-level section (ASCII outer-loop diagram restored, station-by-station list), gravity-ordered "What's inside" catalog (team-* first, factory second), superpowers-style TOC / Philosophy / When-something-goes-wrong / Contributing sections, fixed stale per-domain layout counts (architect 5→6, product 6→7, levelup 4→5, change 3→4; added missing factory/ and authoring/).
+- **Skill depth invariant enforced** — `skills/mission-brief/` → `skills/mission/mission-brief/` and `skills/workspace/` → `skills/team/workspace/`; the documented "exactly 2 levels" rule is now true and tested.
+- **RELEASE.md** — new "Security design" section (token-exposure posture of the release workflows, moved from auto-tag.yml comments; the workflow header now points to RELEASE.md).
+- **Untracked committed `__pycache__/*.pyc` files** — `.gitignore` already covered `__pycache__/`; the pre-rule files are removed from the index.
+- **Deterministic-checks-first across the capture pipeline** (EVAL-010): `levelup-clarify` gains an enforceability gate (Phase 2b) — mechanical rules (fixed patterns, banned APIs, import/file-location shapes) promote to deterministic checks (action **P**: unit test / binary grader / pre-commit / lint / CI) before Accept is offered; only judgement calls become context rules. `factory-learn`'s Maintenance route asks promote-to-check alongside build-to-delete. `team-repair` Phase 0 gains **Check 8 (Deterministic Enforcement Coverage)** — advisory `[WARN]` for mechanical rules lacking checks and skills lacking eval coverage; Phase 10 flags promotion candidates; a pre-existing dangling "Check 8" reference in Phase 3 is corrected to Check 7. `evals-analyze` subclassifies specification failures — mechanical gaps route to grader/unit-test fixes, judgment gaps to `/levelup-specify` CDRs.
+- **EVAL-010 criterion + grader** — `check_deterministic_first.py` binary grader (mechanical classification + deterministic check vehicle required; CDR-only mechanical fixes fail) with unit tests; wired into `goldset.md` + `goldset.json` + `config.js`.
+- **README factory outer-loop ASCII diagram** — overview box-flow above the mermaid detail: factory-init as the brownfield on-ramp, decision skills before the Intent Gate, queue after it, learn → team-boot closing the context loop.
+
+## [0.28.0] - 2026-09-19
+
+### Added
+
+- **Class Boots — `team-boot` decomposed into per-class boot skills**: `team-boot` now injects only the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry, MCP servers); the four record classes and tech selection load **on demand** through five new model-invoked skills, each pairing its index injection with decision capture (read-decisions and record-decisions as one loop):
+  - **`architect-boot`** (`skills/architect/architect-boot/`): injects the ADR index (`.adlc/memory/adr/`) when architecture work starts or a tech-stack/pattern decision emerges; captures via `/architect-specify`; routes tech-selection ADRs through `tech-radar-boot`.
+  - **`product-boot`** (`skills/product/product-boot/`): injects the PDR index (`.adlc/memory/pdr/`) for product/feature scope, persona, and monetization work; captures via `/product-specify`.
+  - **`change-boot`** (`skills/change/change-boot/`): injects the published ChDR index (`.adlc/memory/chdr.md`) when past-change rationale matters (refactors of unfamiliar code, revert/hotfix analysis); captures via `/change-init`.
+  - **`levelup-boot`** (`skills/levelup/levelup-boot/`): CDR deep-dive — reads full context module bodies from team-ai-directives when a task matches CDR descriptors; captures via `/levelup-specify`. The compact CDR index stays in `team-boot` (always-on native discovery).
+  - **`tech-radar-boot`** (`skills/tech-radar/tech-radar-boot/`): absorbs `tech-radar-context` (renamed; `scripts/` + 424-blip `resources/radar.json` moved via `git mv`) and adds decision-capture pairing — tech selections route to `/architect-specify` with radar evidence. `/tech-radar-context` remains a documented deprecated alias.
+- **Class-boots contract suite** (`tests/unit/test_team_class_boots.py`): pins the five class boots (existence, frontmatter names, description capture-pairing, index sources, per-class searched lines, ledger integration, anti-fabrication) plus the Class Boots catalog across boot.sh/boot.ps1 and all six team-helpers templates.
+
+### Changed
+
+- **Lean `boot.sh` / `boot.ps1`** (`skills/team/team-boot/scripts/`): the inline PDR/ADR/ChDR index sections are replaced by a five-row Class Boots catalog; the always-on searched line is now `_Searched N CDRs, M skills, J matched._` (class indexes report their own `_Searched N <class> records, K matched._` lines when their boot is invoked); the Decision Capture section is compacted to one trigger line per class plus the Session Decision Ledger contract (full guidance lives in the class boots). `boot.ps1` gains the Decision Capture section it was missing (parity with boot.sh).
+- **CDR index filter fix** (`boot.sh`/`boot.ps1`): the injected-index row filter now includes `rule-*` and `constitution` rows — previously only `CDR-*`/`skill-*`/`example-*` prefixes matched, silently dropping 16 of 34 entries (every `context_modules/rules/` module) from the session-start catalog.
+- **Unified AGENTS.md managed-section template** (`team-helpers.sh`/`team-helpers.ps1` in team-repair, team-setup, team-skills): the managed section now embeds the Class Boots catalog and compact Decision Capture triggers, unifying three previously drifted contract variants (boot.sh, the helper template, and live AGENTS.md files).
+- **`team-repair` Check 7** (`skills/team/team-repair/SKILL.md`): now validates the project AGENTS.md managed section includes the Class Boots catalog and the Decision Capture contract, not just the `team-boot` directive.
+- **Boot contract tests** (`tests/unit/test_team_boot_setup_flow.py`): the ChDR-inline-injection tests are replaced with Class Boots catalog, per-class searched-line, and compact Decision Capture tests; radar path constants move to `tech-radar-boot/`; the AGENTS.md test asserts the catalog.
+
+## [0.27.0] - 2026-09-04
+
+### Added
+
+- **`factory-*` Category of Orchestrator & Control-Plane Skills** (`skills/factory/`): Creates the control-plane orchestration family for the repo, fully aligned with the "Tikal Solutions | Agentic SDLC Factory" architecture (deck slides 12 & 15).
+  - **`factory-mission`** (`skills/factory/factory-mission/`): Copied from `mission-brief` to serve as the tracker-integrated, TDD-decoupled execution-harness orchestrator.
+  - **`factory-product`** (`skills/factory/factory-product/`): Pure product lifecycle orchestrator (specify/init → clarify⭐ → implement → analyze).
+  - **`factory-architect`** (`skills/factory/factory-architect/`): Pure architecture lifecycle orchestrator (specify/init → clarify⭐ → implement → analyze).
+  - **`factory-learn`** (`skills/factory/factory-learn/`): Continuous improvement learning loop orchestrator (levelup + change + evals feedback + cleanup bot) targeting `team-ai-directives`.
+  - **`factory-queue`** (`skills/factory/factory-queue/`): Control-plane intake and triage (PII scrubbing, AI advisory triage scoring, and label stamping) and milestones/epics generation.
+  - **`factory-review`** (`skills/factory/factory-review/`): Severity-ranked PR policy compliance reviews against `REVIEW.md` (never auto-approves/merges, strictly advisory).
+  - **Shared References** (`skills/factory/factory-mission/references/`):
+    - `executor.md`: Common, lifecycle-agnostic DAG engine contract (config, resume, brief, steps, gates, circuit-breakers).
+    - `tracker-integration.md`: Tracker-agnostic integration layer sharing spec-kit's configuration model (`.specify/taskstoissues-provider.yml`) and normalizing GitHub, GitLab, Linear, and Jira with strict dry-run+confirm constraints.
+
 ## [0.26.1] - 2026-08-20
 
 ### Added

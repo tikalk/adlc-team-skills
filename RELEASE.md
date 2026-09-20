@@ -107,6 +107,21 @@ awk '/^## \[X.Y.Z\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md \
   | gh release create adlc-team-skills-vX.Y.Z --title "adlc-team-skills vX.Y.Z" --notes-file -
 ```
 
+## Security design
+
+The release automation follows a deliberate token-exposure posture
+(hardened after the 2026-08-04 dependency install-script compromise —
+commit 74f317d, distinct from the 2026-07-27 stolen-token worm described
+in the README's Security section):
+
+- **Auto-Tag Release is the only workflow carrying `contents: write`**, and it
+  only runs on `push` to `main` — never on `pull_request` — so the elevated
+  token is never exposed to untrusted PR code. `test.yml` stays
+  `contents: read`.
+- The tagging job is additionally gated on
+  `github.repository == 'tikalk/adlc-team-skills'` so forks never tag.
+- Workflow files are maintainer-reviewed (see `.github/CODEOWNERS`).
+
 ## Version numbering
 
 - **MAJOR** (1.0.0): Breaking changes — skill names renamed/removed, frontmatter format changes

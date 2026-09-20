@@ -1,6 +1,6 @@
 ---
 name: evals-init
-description: Initialize evals/{system}/ directory structure for evaluation system following EDD principles (Standalone). Choose PromptFoo or DeepEval based on tech stack, generate security baseline.
+description: Use when standing up evals/{system}/ for the first time — scaffolds the EDD directory structure, picks PromptFoo or DeepEval by tech stack, and generates a security baseline.
 disable-model-invocation: true
 ---
 

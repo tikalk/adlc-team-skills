@@ -1,0 +1,43 @@
+name: Nightly Skill Evals
+
+# Tiered eval model (see docs/testing.md): PR-time evals are skipped on
+# runs without OPENAI_API_KEY (forks, external PRs) — so LLM-eval coverage
+# of skill-behavior changes would never run for those contributions. This
+# nightly sweep runs the full PromptFoo suite against main every night,
+# with the same supply-chain posture as test.yml: contents: read,
+# --ignore-scripts, pinned versions.
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # 03:15 UTC — off the hour to avoid GitHub's cron rush.
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  nightly-evals:
+    name: Run PromptFoo (Full Suite)
+    runs-on: ubuntu-latest
+    # Only on the canonical repo (secrets are unavailable on forks anyway).
+    if: github.repository == 'tikalk/adlc-team-skills'
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+      EVAL_MODEL: ${{ secrets.EVAL_MODEL }}
+    steps:
+      - uses: actions/checkout@v6
+      # Same pinned version + --ignore-scripts as test.yml.
+      - name: Install PromptFoo
+        run: npm install -g --ignore-scripts promptfoo@0.121.20
+      - name: Run Full Eval Suite
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        run: |
+          promptfoo eval --config evals/promptfoo/config.js --no-cache
+      - name: Missing key guard
+        # The secret disappearing should be a loud failure, not a silent
+        # green run that evaluates nothing.
+        if: ${{ env.OPENAI_API_KEY == '' }}
+        run: |
+          echo "::error::OPENAI_API_KEY is not configured — nightly evals cannot run."
+          exit 1

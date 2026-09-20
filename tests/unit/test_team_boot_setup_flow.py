@@ -10,9 +10,9 @@ SETUP = (ROOT / "skills/team/team-setup/SKILL.md").read_text(encoding="utf-8")
 BOOT_SH = (ROOT / "skills/team/team-boot/scripts/boot.sh").read_text(encoding="utf-8")
 BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/boot.ps1").read_text(encoding="utf-8")
 EVENTS = (ROOT / ".events.json").read_text(encoding="utf-8")
-RADAR_SH = (ROOT / "skills/tech-radar/tech-radar-context/scripts/radar-search.sh").read_text(encoding="utf-8")
-RADAR_PS1 = (ROOT / "skills/tech-radar/tech-radar-context/scripts/radar-search.ps1").read_text(encoding="utf-8")
-TECH_RADAR = (ROOT / "skills/tech-radar/tech-radar-context/SKILL.md").read_text(encoding="utf-8")
+RADAR_SH = (ROOT / "skills/tech-radar/tech-radar-boot/scripts/radar-search.sh").read_text(encoding="utf-8")
+RADAR_PS1 = (ROOT / "skills/tech-radar/tech-radar-boot/scripts/radar-search.ps1").read_text(encoding="utf-8")
+TECH_RADAR = (ROOT / "skills/tech-radar/tech-radar-boot/SKILL.md").read_text(encoding="utf-8")
 # AGENTS.md is gitignored (machine-injected with local paths) — may not exist in CI.
 _AGENTS_PATH = ROOT / "AGENTS.md"
 AGENTS = _AGENTS_PATH.read_text(encoding="utf-8") if _AGENTS_PATH.exists() else ""
@@ -103,31 +103,69 @@ def test_boot_ps1_context_contract_integrity():
     assert "targeted file searches" in BOOT_PS1
 
 
-def test_boot_sh_includes_chdr_index_section():
-    """boot.sh must inject a ChDR Index section from .adlc/memory/chdr.md.
+def test_boot_sh_class_boots_catalog():
+    """boot.sh must surface the Class Boots catalog instead of inline class indexes.
 
-    Change Decision Records (mined by /change-init, promoted by /change-publish)
-    live in project memory; team-boot surfaces their index at session start
-    alongside the PDR/ADR indexes.
+    The record classes (ADR/PDR/ChDR/CDR deep-dive) and tech selection load on
+    demand through the class boots; team-boot injects only the always-relevant
+    team context plus the catalog that routes to them.
     """
-    assert "## ChDR Index" in BOOT_SH
+    assert "## Class Boots" in BOOT_SH
+    for boot in ("architect-boot", "product-boot", "change-boot", "levelup-boot", "tech-radar-boot"):
+        assert boot in BOOT_SH
+    # Class index paths are named in the catalog rows
+    assert ".adlc/memory/adr/" in BOOT_SH
     assert ".adlc/memory/chdr.md" in BOOT_SH
-    # Counts line must include ChDR so the Team Context in Use summary is accurate
-    assert "ChDR entries" in BOOT_SH
+    # Inline class index sections must be gone (moved to the class boots)
+    assert "## PDR Index" not in BOOT_SH
+    assert "## ADR Index" not in BOOT_SH
+    assert "## ChDR Index" not in BOOT_SH
 
 
-def test_boot_ps1_includes_chdr_index_section():
-    """boot.ps1 must inject a ChDR Index section from .adlc/memory/chdr.md."""
-    assert "## ChDR Index" in BOOT_PS1
-    assert ".adlc/memory/chdr.md" in BOOT_PS1
-    assert "ChdrCount" in BOOT_PS1
+def test_boot_ps1_class_boots_catalog():
+    """boot.ps1 must surface the same Class Boots catalog as boot.sh (parity)."""
+    assert "## Class Boots" in BOOT_PS1
+    for boot in ("architect-boot", "product-boot", "change-boot", "levelup-boot", "tech-radar-boot"):
+        assert boot in BOOT_PS1
+    assert "## PDR Index" not in BOOT_PS1
+    assert "## ADR Index" not in BOOT_PS1
+    assert "## ChDR Index" not in BOOT_PS1
 
 
-def test_boot_counts_line_includes_chdr():
-    """The Searched...counts line in both boot scripts must include the ChDR count."""
-    assert "ChDR entries" in BOOT_SH
-    assert "$CHDR_COUNT" in BOOT_SH
-    assert "$ChdrCount" in BOOT_PS1
+def test_boot_counts_line_is_cdrs_and_skills_only():
+    """The Searched...counts line covers what team-boot actually searches.
+
+    Class indexes are searched when their class boot is invoked — each boot
+    reports its own searched line. The always-on line must not claim PDR/ADR/
+    ChDR counts that were never injected.
+    """
+    assert "Searched $CDR_COUNT CDRs, $SKILL_TOTAL skills, J matched." in BOOT_SH
+    assert "Searched $CdrCount CDRs, $SkillTotal skills, J matched." in BOOT_PS1
+    assert "$PDR_COUNT" not in BOOT_SH
+    assert "$ADR_COUNT" not in BOOT_SH
+    assert "$CHDR_COUNT" not in BOOT_SH
+    assert "$PdrCount" not in BOOT_PS1
+    assert "$AdrCount" not in BOOT_PS1
+    assert "$ChdrCount" not in BOOT_PS1
+
+
+def test_boot_sh_compact_decision_capture():
+    """boot.sh must keep compact decision-capture triggers + the ledger contract."""
+    assert "## Decision Capture" in BOOT_SH
+    assert "/architect-specify" in BOOT_SH
+    assert "/product-specify" in BOOT_SH
+    assert "/levelup-specify" in BOOT_SH
+    assert "/change-init" in BOOT_SH
+    assert "Session Decision Ledger" in BOOT_SH
+    assert "Unrecorded: N pending." in BOOT_SH
+
+
+def test_boot_ps1_compact_decision_capture():
+    """boot.ps1 must keep compact decision-capture triggers + the ledger contract (parity)."""
+    assert "## Decision Capture" in BOOT_PS1
+    assert "/architect-specify" in BOOT_PS1
+    assert "Session Decision Ledger" in BOOT_PS1
+    assert "Unrecorded: N pending." in BOOT_PS1
 
 
 def test_team_boot_sh_unconfigured_warns_user():
@@ -260,13 +298,26 @@ def test_no_stale_parent_walk_remnants():
 
 
 def test_events_json_no_user_prompt_submit():
-    """events.json must not have user_prompt_submit — only session_start."""
+    """events.json must not have user_prompt_submit — injection events are session_start + session_compact."""
     assert "session_start" in EVENTS
     assert "user_prompt_submit" not in EVENTS
 
 
+def test_events_json_declares_session_compact():
+    """events.json must declare session_compact → team-boot: the index must be
+    re-injectable after harness compaction (the dedup guard lives in the
+    generated plugin; this is the declaration side of the contract)."""
+    import json
+    manifest = json.loads(EVENTS)
+    assert "session_start" in manifest["events"]
+    compact = manifest["events"].get("session_compact")
+    assert isinstance(compact, list) and compact, "session_compact must declare handlers"
+    assert compact[0]["skill"] == "team-boot", "session_compact handler must be team-boot"
+    assert compact[0].get("timeout", 60) <= 60
+
+
 def test_events_json_only_team_boot():
-    """events.json must only have team-boot on session_start."""
+    """events.json must only have team-boot as an event handler."""
     assert "team-boot" in EVENTS
     assert "team-discover" not in EVENTS
 
@@ -280,6 +331,10 @@ def test_agents_md_simplified():
     assert "Team Context in Use" in AGENTS
     assert "Every response MUST include" in AGENTS
     assert "_Searched" in AGENTS
+    assert "Class Boots" in AGENTS
+    assert "architect-boot" in AGENTS
+    assert "tech-radar-boot" in AGENTS
+    assert "Decision Capture" in AGENTS
     assert "Common Rationalizations" not in AGENTS
     assert "Anti-pattern" not in AGENTS
     assert "every message" not in AGENTS
@@ -304,7 +359,9 @@ def test_radar_search_ps1_uses_convertfrom_json():
 
 def test_radar_search_py_deleted():
     """radar-search.py must not exist (replaced by .sh/.ps1)."""
-    assert not (ROOT / "skills/tech-radar/tech-radar-context/scripts/radar-search.py").exists()
+    assert not (ROOT / "skills/tech-radar/tech-radar-boot/scripts/radar-search.py").exists()
+    # tech-radar-context was absorbed by tech-radar-boot — the old dir must be gone
+    assert not (ROOT / "skills/tech-radar/tech-radar-context").exists()
 
 
 def test_tech_radar_skill_references_sh_and_ps1():

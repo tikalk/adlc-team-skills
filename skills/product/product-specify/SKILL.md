@@ -1,6 +1,6 @@
 ---
 name: product-specify
-description: Interactive PRD exploration and Product Decision Record (PDR) creation for greenfield products. Facilitates product discovery discussions, surfaces trade-offs, and documents decisions as individual PDR files. Use when starting a new product or major pivot.
+description: Use when starting a new product or major pivot — interactive PRD exploration capturing decisions as PDRs (greenfield).
 disable-model-invocation: true
 ---
 

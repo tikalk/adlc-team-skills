@@ -1,6 +1,6 @@
 ---
 name: team-repair
-description: Re-index OKF v0.2 index.md/log.md files, derive CDR.md, rebuild .skills.json and AGENTS.md in team-ai-directives, migrate v0.1→v0.2 frontmatter, scan for rule conflicts, and verify directive freshness. Use when indexes are inconsistent, orphans are detected, after bulk changes, or for periodic team AI directives health validation.
+description: Use when indexes are inconsistent, orphans are detected, after bulk changes to team-ai-directives, or for periodic directives health validation; --build-to-delete proposes rules the model no longer needs.
 disable-model-invocation: true
 ---
 
@@ -85,7 +85,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 **Objective**: Run a non-destructive health check against the team directives framework before proceeding with repairs. If any check returns `[FAIL]`, present the report and stop — the framework is not healthy enough to repair safely.
 
-Execute all seven checks below. Each check prints a status line. If any check is `[FAIL]`, abort repair.
+Execute all eight checks below. Each check prints a status line. If any check is `[FAIL]`, abort repair.
 
 #### Check 1: Team AI Directives Configured
 
@@ -156,10 +156,23 @@ Output: `[OK]` or `[FAIL]` with reason
 3. If the marker exists, verify the managed section includes:
    - A `team-boot` invocation directive
    - A reference to team AI directives context (constitution, CDR index)
+   - The Class Boots catalog (architect-boot / product-boot / change-boot / levelup-boot / tech-radar-boot)
+   - The compact Decision Capture triggers + Session Decision Ledger contract
 4. Output:
    - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
    - `[WARN]` — Project AGENTS.md exists but is missing the managed section (agents won't auto-invoke `team-boot`)
    - `[INFO]` — Project AGENTS.md doesn't exist yet (first-time setup)
+
+#### Check 8: Deterministic Enforcement Coverage
+
+**Advisory check** — outputs `[OK]`/`[WARN]`, never `[FAIL]` (deterministic-checks-first, EVAL-010). A missing guardrail is a finding on its own, not just a mistake's side effect.
+
+1. Scan rule CDRs in `{TEAM_AI_DIRECTIVES}/context_modules/rules/` for mechanically-checkable patterns — fixed syntactic shapes, banned APIs, import shapes, file-location rules — that lack a paired deterministic check (unit test, binary grader, pre-commit hook, lint rule, or CI job)
+2. Scan installed skills for missing eval coverage — a skill with neither a goldset criterion/grader nor a stated no-grader reason has no guardrail
+
+Output:
+- `[OK]` — every mechanical rule has a paired check; every skill has eval coverage or a stated reason
+- `[WARN]` — N mechanical rules lack checks; M skills lack eval coverage (promotion candidates → feed to factory-learn Maintenance route / levelup-clarify Phase 2b, action P)
 
 #### Health Check Output
 
@@ -278,7 +291,7 @@ Store for summary:
 
 After repairing the team AI directives' own `AGENTS.md`, also ensure the **project-level** `AGENTS.md` (at `{REPO_ROOT}/AGENTS.md`) contains the team-boot strict-compliance directive. This is what tells agents to invoke `team-boot` at session start.
 
-If Check 8 returned `[WARN]` or `[INFO]`, run the injection:
+If Check 7 returned `[WARN]` or `[INFO]`, run the injection:
 
 ```bash
 bash "$(dirname "$0")/team-helpers.sh" --inject-agents "{REPO_ROOT}"
@@ -884,6 +897,8 @@ For each directive+eval pair:
 | 80-99% | **Review candidate** | Model mostly handles it — consider simplifying the directive |
 | < 80% | **Keep** | Model still needs the directive |
 
+For every **Keep** (and **Review candidate**) verdict, ask the complementary **promote-to-check** question (EVAL-010): can a deterministic check (unit test / binary grader / pre-commit hook / lint rule / CI job) mechanically enforce this rule? If yes, it is a **Promotion candidate** — pay once for a check instead of re-injecting a fuzzy rule into every session.
+
 #### Step 5: Generate Harness Decay Report
 
 ```markdown
@@ -906,9 +921,15 @@ For each directive+eval pair:
 | Directive | Eval | Pass Rate | Recommendation |
 |---|---|---|---|
 | rules/style/python_pep8.md | evals/CDR-015/ | 40% (2/5) | Keep — model still needs guidance |
+
+### Promotion Candidates (Keep, but check-enforceable)
+
+| Directive | Eval | Pass Rate | Proposed Check |
+|---|---|---|---|
+| rules/architecture/import_boundaries.md | evals/CDR-011/ | 55% (3/5) | Promote to pre-commit lint rule — file-location pattern is mechanical |
 ```
 
-#### Step 6: Create Deletion CDRs
+#### Step 6: Create Deletion CDRs (and Promotion CDRs)
 
 For each **Delete candidate** (100% pass rate), create a CDR in `{REPO_ROOT}/.adlc/drafts/cdr/CDR-{NNN}.md`:
 
@@ -943,6 +964,42 @@ Delete both the directive file and its paired eval goldenset.
 ```
 
 Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review deletion candidates.
+
+For each **Promotion candidate**, create a CDR in `{REPO_ROOT}/.adlc/drafts/cdr/CDR-{NNN}.md`:
+
+```markdown
+## CDR-{NNN}: Promote Directive to Deterministic Check: [Title]
+
+### Status: **Discovered**
+
+### Date: [YYYY-MM-DD]
+
+### Source: Build to Delete via /team-repair --build-to-delete
+
+### Target Module: `context_modules/rules/{domain}/{file}.md`
+
+### Context Type: Rule
+
+### Descriptor: Rule is mechanically enforceable — promote to a deterministic check.
+
+### Context
+The directive `{title}` survived build-to-delete (model still needs it, pass rate < 100%),
+but its pattern is mechanical — a deterministic check (unit test / binary grader /
+pre-commit hook / lint rule / CI job) can enforce it without session context.
+
+### Decision
+Build the deterministic check. Once it exists and runs in CI, deprecate the CDR
+or reduce it to a thin pointer (`enforced by <check path>`). Route to
+`/levelup-clarify` action **P — Promote to check** (Phase 2b).
+
+### Evidence
+- Directive: context_modules/rules/{domain}/{file}.md
+- Proposed check vehicle: [unit test | grader | pre-commit | lint | CI job]
+- Pass rate without directive: N% (M/K cases) — rule still needed
+- Test date: [YYYY-MM-DD]
+```
+
+Regenerate the local CDR index again. Handoff: suggest `/levelup-clarify` to review promotion candidates (action P).
 
 ### Phase 11: Summary Report
 
@@ -1053,7 +1110,7 @@ Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review de
 
 - [ ] Phase 0 Health Check passes all 8 checks (no `[FAIL]`) before any repair is attempted.
 - [ ] AGENTS.md exists at `{TEAM_AI_DIRECTIVES}/AGENTS.md` and contains all six required sections.
-- [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the event-hook awareness note, fallback `team-boot` invocation, and the Team Context in Use output contract.
+- [ ] Project-level `AGENTS.md` at `{REPO_ROOT}/AGENTS.md` contains the `<!-- TEAM_AI_DIRECTIVES START -->` managed section with the event-hook awareness note, fallback `team-boot` invocation, Class Boots catalog, Team Context in Use output contract, and compact Decision Capture triggers.
 - [ ] CDR.md entry count equals the number of scanned context module `.md` files (excluding `constitution.md`).
 - [ ] Every context module file under `context_modules/{rules,personas,examples}/` has YAML frontmatter with a non-empty `id` field.
 - [ ] Every `cdr_ref` in orphan frontmatter matches the pre-existing CDR lookup (no regression to `null` where a prior ref existed).

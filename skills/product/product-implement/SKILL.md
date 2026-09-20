@@ -1,6 +1,6 @@
 ---
 name: product-implement
-description: Generate a full Product Requirements Document (PRD.md) from accepted PDRs using multi-agent DAG orchestration. Reads individual PDR files, generates PRD sections from templates, validates output, and promotes accepted PDRs to memory. Use after /product-clarify.
+description: Use when accepted PDRs exist and PRD.md must be generated or updated.
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: product-init
-description: Reverse-engineer Product Decision Records (PDRs) from an existing codebase and documentation using multi-agent feature-area analysis (brownfield). Use when documenting product decisions inferred from an already-built product.
+description: Use when documenting product decisions inferred from an already-built product (brownfield) via multi-agent feature-area analysis.
 disable-model-invocation: true
 ---
 

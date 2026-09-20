@@ -1,14 +1,7 @@
 name: Auto-Tag Release
 
 # Tags new CHANGELOG versions automatically after a PR merges to main.
-# Compares the versions declared in CHANGELOG.md against existing
-# `adlc-team-skills-v*` tags and creates annotated tags for any NEW untagged
-# versions at the merge commit. Each pushed tag then triggers the existing
-# Release workflow, which validates and creates the GitHub release.
-#
-# Security: this is the ONLY workflow that carries contents: write, and it
-# only runs on push to main (never on pull_request), so the elevated token
-# is never exposed to untrusted PR code. test.yml stays contents: read.
+# Full design, security rationale, and recovery procedures: RELEASE.md.
 
 on:
   push:

@@ -344,21 +344,54 @@ $MarkerStart
 
 This project is bound by the team AI directives repository at ``$TeamDirective``.
 
-team-boot runs automatically at session start via the event hook (for agents with event support), injecting a lean orientation into the first user message with the team constitution, CDR index, skills registry, and MCP servers.
+team-boot runs automatically at session start via the event hook (for agents with event support), injecting a lean orientation into the first user message with the team constitution, CDR index, Class Boots catalog, skills registry, and MCP servers.
 
 If the team AI directives context is NOT in your system prompt or first user message (agent without event support), invoke the ``team-boot`` skill before responding to any task or question.
 
 If team AI directives are unconfigured, invoke the ``team-setup`` skill.
 
+Invoke the matching class boot when a task or decision matches a row:
+
+## Class Boots
+
+| Boot | Injects | Invoke When | Capture Via |
+|--|--|--|--|
+| architect-boot | ADR index (.adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
+| product-boot | PDR index (.adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
+| change-boot | ChDR index (.adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits | /change-init |
+| levelup-boot | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /levelup-specify |
+| tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
+
+Each class boot emits its class context section and its own searched line (_Searched N records, K matched._).
+
 **Every response MUST include** a Team Context in Use section before the task answer:
 
 ## Team Context in Use
 
-| ID | Name | Type | Relevance |
-|----|------|------|-----------|
+| ID | Name | Type | Rel |
+|--|--|--|--|
 | CDR-YYYY-NNN | <name> | <type> | <relevance> |
 
-Plus: ``_Searched N CDR entries, M skills, J matched._`` — **J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**
+Plus: ``_Searched N CDRs, M skills, J matched._`` — **J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**
+
+## Decision Capture
+
+Detect decisions as they emerge; full detection and capture guidance lives in the matching class boot:
+
+- Tech stack / pattern choice → ADR → /architect-specify (pull tech-radar-boot context first for tech selection)
+- Feature scope / persona / monetization → PDR → /product-specify
+- Reusable team rule / pattern → CDR → /levelup-specify
+- Revert/hotfix rationale / issue-linked commit → ChDR → /change-init
+
+Maintain a running Session Decision Ledger in every response (after the Team Context in Use table):
+
+| Decision | Type | Captured? | Skill |
+|----------|------|-----------|-------|
+| _none yet_ | — | — | — |
+
+_Unrecorded: N pending._
+
+At session end, prompt to invoke the capture skills for any unrecorded decisions. Only suggest capture when genuinely warranted.
 $MarkerEnd
 "@
 

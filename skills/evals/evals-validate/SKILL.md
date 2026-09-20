@@ -1,6 +1,6 @@
 ---
 name: evals-validate
-description: Run evaluations and validate evaluator quality (SLA compliance, TPR/TNR, statistical accuracy). Executes PromptFoo or pytest DeepEval.
+description: Use when a goldset with graders is ready to run — executes the evaluation pyramid and validates evaluator quality (SLA compliance, TPR/TNR, statistical accuracy).
 disable-model-invocation: true
 ---
 

@@ -15,7 +15,7 @@ RADAR_SEARCH_SCRIPT = (
     ROOT
     / "skills"
     / "tech-radar"
-    / "tech-radar-context"
+    / "tech-radar-boot"
     / "scripts"
     / "radar-search.sh"
 )
@@ -176,7 +176,7 @@ def test_radar_skill_canonical_ring_definitions():
   paraphrases ('Mature, battle-tested', 'Emerging / promising', 'low-risk trials').
   """
   skill_md = (
-      ROOT / "skills" / "tech-radar" / "tech-radar-context" / "SKILL.md"
+      ROOT / "skills" / "tech-radar" / "tech-radar-boot" / "SKILL.md"
   ).read_text(encoding="utf-8")
 
   # Canonical Try definition

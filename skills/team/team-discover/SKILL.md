@@ -1,6 +1,6 @@
 ---
 name: team-discover
-description: Manually re-scan team context modules and produce a structured discovery table with relevance assessments. The CDR index is already in the system prompt; use this for explicit re-discovery.
+description: Use when explicit manual re-discovery of team context modules is wanted beyond the injected CDR index (/team-discover) — produces a structured match table with relevance assessments.
 ---
 
 # team-discover
@@ -41,7 +41,7 @@ verifying which directives apply). It is not required for normal operation.
 | CDR-2026-003 | context_modules/personas/admin.md | Persona | Admin persona | High |
 
 6. Include PDR/ADR/ChDR matches from project indexes if relevant.
-7. Include: `_Searched N CDR entries, M PDR entries, K ADR entries, C ChDR entries, J matches found._`
+7. Include: `_Searched N CDRs, M PDRs, K ADRs, C ChDRs, J matches found._`
 
 ## Unconfigured projects
 

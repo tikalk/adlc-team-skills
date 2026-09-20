@@ -1,6 +1,6 @@
 ---
 name: team-boot
-description: Bootstrap the session with team AI directives context (constitution, CDR index, PDR/ADR/ChDR indexes, skill registry). Includes session-end friction trigger for CDR/ADR/PDR capture and pending-decision safety nets. Runs automatically at session start via the event hook.
+description: Use when a session starts or resumes after compaction (auto via the session_start and session_compact event hooks) and the team AI directives context — constitution, CDR index, Class Boots catalog, skills registry — is not yet injected; also fires the session-end friction trigger for CDR/ADR/PDR capture with pending-decision safety nets.
 scripts:
   sh: scripts/boot.sh
   ps: scripts/boot.ps1
@@ -14,20 +14,46 @@ Assembles team AI directives context and injects it into the system prompt
 at session start. The CDR index lists all available team context modules
 with descriptors — read full module files on demand when a task matches.
 
+team-boot injects only the **always-relevant** layer: constitution titles,
+the compact CDR index, the Class Boots catalog, the skills registry, and
+MCP servers. The four **record classes** (ADR/PDR/ChDR/CDR deep-dive) plus
+technology selection load on demand through the class boots below — each
+pairs its index injection with decision capture.
+
 Discovery is **native**: the injected CDR index is matched by the LLM
 against the current task on its own, per prompt, with no skill invocation.
 `/team-discover` is a separate, **user-invoked** command for explicit
 structured re-discovery (e.g., starting a complex feature) and is not part
 of the bootstrap loop.
 
+## Class Boots
+
+| Boot | Injects | Invoke When | Capture Via |
+|------|---------|-------------|-------------|
+| `architect-boot` | ADR index (`.adlc/memory/adr/`) | architecture work; tech-stack/pattern choice | `/architect-specify` |
+| `product-boot` | PDR index (`.adlc/memory/pdr/`) | product/feature scope, personas, monetization | `/product-specify` |
+| `change-boot` | ChDR index (`.adlc/memory/chdr.md`) | change-history rationale, reverts, issue-linked commits | `/change-init` |
+| `levelup-boot` | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | `/levelup-specify` |
+| `tech-radar-boot` | Tikal Tech Radar context | choosing/evaluating technology | radar context + `/architect-specify` |
+
+Invoke a class boot when a task or decision matches its row. Each boot
+emits its class context section and its own searched line
+(`_Searched N <class> records, K matched._`), and carries the full
+detection and capture guidance for its class.
+
 ## Event hook (automatic)
 
-The `session_start` event hook runs `scripts/boot.sh` (POSIX) or
+The `session_start` and `session_compact` event hooks (declared in
+`.events.json`, wired by adlc-skills-cli) run `scripts/boot.sh` (POSIX) or
 `scripts/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
-assembles the context block (constitution, CDR index, PDR/ADR/ChDR indexes,
-skill registry), and outputs it to stdout. The plugin caches the result
+assembles the context block (constitution, CDR.md index table,
+`.skills.json`), and outputs it to stdout. The plugin caches the result
 and pushes it into the system prompt on every step (idempotent — same
-cached content, no accumulation).
+cached content, no accumulation). The `session_compact` declaration makes
+post-compaction re-injection part of the contract: when a harness
+summarizes history, the generated plugin re-runs the handler and the dedup
+guard prevents double-injection. Agents whose adapters don't map
+`session_compact` yet skip it — adlc-skills-cli owns those mappings.
 
 ## Manual fallback (agents without event support)
 
@@ -37,9 +63,27 @@ cached content, no accumulation).
 2. If unconfigured (missing, `null`, or path doesn't exist): invoke the
    `team-setup` skill.
 3. If configured: read and assemble the constitution, CDR.md index table,
-   PDR/ADR/ChDR indexes, and `.skills.json` into your context.
+   and `.skills.json` into your context. Present the Class Boots catalog
+   above and follow it: invoke the matching class boot when a task or
+   decision matches a row.
 4. The CDR index is your catalog — read full module bodies on demand
-   when a task matches a CDR descriptor.
+   when a task matches a CDR descriptor (or invoke `levelup-boot` to do
+   it as a structured deep-dive).
+
+## Decision Capture
+
+Detect decisions as they emerge and maintain a running **Session Decision Ledger** in every response (Decision | Type | Captured? | Skill), with
+compact triggers:
+
+- Tech stack / pattern choice → ADR → `/architect-specify` (pull
+  `tech-radar-boot` context first for tech selection)
+- Feature scope / persona / monetization → PDR → `/product-specify`
+- Reusable team rule / pattern → CDR → `/levelup-specify`
+- Revert/hotfix rationale / issue-linked commit → ChDR → `/change-init`
+
+Full detection and capture guidance lives in the matching class boot.
+At session end, prompt to invoke the capture skills for any unrecorded
+decisions.
 
 ## Unconfigured projects
 

@@ -47,14 +47,14 @@ Write-Output "## CDR Index"
 $cdrPath = Join-Path $TEAM_AI_DIRECTIVES "CDR.md"
 $CdrCount = 0
 if (Test-Path $cdrPath) {
-    $cdrLines = Get-Content $cdrPath | Where-Object { $_ -match '^\| CDR|^\| skill|^\| example' }
+    $cdrLines = Get-Content $cdrPath | Where-Object { $_ -match '^\| CDR|^\| rule|^\| skill|^\| example|^\| constitution' }
     $CdrCount = $cdrLines.Count
     $cdrLines | ForEach-Object {
         $cols = $_ -split '\|'
         if ($cols.Count -ge 10) {
             $id = $cols[1].Trim()
             $type = $cols[3].Trim()
-            $desc = $cols[8].Trim()
+            $desc = $cols[4].Trim()
             Write-Output "| $id | $type | $desc |"
         }
     }
@@ -75,73 +75,24 @@ if (Test-Path $cdrPath) {
     }
 }
 Write-Output ""
-Write-Output "_Total: $CdrCount CDR entries available._"
+Write-Output "_Total: $CdrCount CDRs available._"
 Write-Output ""
 
-# PDR Index — from project memory (Accepted PDRs)
-Write-Output "## PDR Index"
-$PdrCount = 0
-$pdrPath = ".adlc/memory/pdr/pdr.md"
-if (Test-Path $pdrPath) {
-    $pdrLines = Get-Content $pdrPath | Where-Object { $_ -match '^\| PDR' }
-    $PdrCount = $pdrLines.Count
-    $pdrLines | ForEach-Object {
-        $cols = $_ -split '\|'
-        if ($cols.Count -ge 9) {
-            $id = $cols[1].Trim()
-            $featureArea = $cols[2].Trim()
-            $status = $cols[4].Trim()
-            $title = $cols[7].Trim()
-            Write-Output "| $id | $status | $featureArea | $title |"
-        }
-    }
-}
+# Class Boots — on-demand record-class context + decision capture.
+# team-boot injects the always-relevant team context (constitution, CDR index,
+# skills); each class boot loads its record-class index when a task or decision
+# matches, and pairs it with decision capture via its -specify/-init skill.
+Write-Output "## Class Boots"
 Write-Output ""
-Write-Output "_Total: $PdrCount PDR entries available._"
+Write-Output "| Boot | Injects | Invoke When | Capture Via |"
+Write-Output "|--|--|--|--|"
+Write-Output "| architect-boot | ADR index (.adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |"
+Write-Output "| product-boot | PDR index (.adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |"
+Write-Output "| change-boot | ChDR index (.adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits | /change-init |"
+Write-Output "| levelup-boot | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /levelup-specify |"
+Write-Output "| tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |"
 Write-Output ""
-
-# ADR Index — from project memory (Accepted ADRs)
-Write-Output "## ADR Index"
-$AdrCount = 0
-$adrPath = ".adlc/memory/adr/adr.md"
-if (Test-Path $adrPath) {
-    $adrLines = Get-Content $adrPath | Where-Object { $_ -match '^\| ADR' }
-    $AdrCount = $adrLines.Count
-    $adrLines | ForEach-Object {
-        $cols = $_ -split '\|'
-        if ($cols.Count -ge 7) {
-            $id = $cols[1].Trim()
-            $subsystem = $cols[2].Trim()
-            $decision = $cols[3].Trim()
-            $status = $cols[4].Trim()
-            Write-Output "| $id | $status | $subsystem | $decision |"
-        }
-    }
-}
-Write-Output ""
-Write-Output "_Total: $AdrCount ADR entries available._"
-Write-Output ""
-
-# ChDR Index — from project memory (Published Change Decision Records mined by /change-init)
-Write-Output "## ChDR Index"
-$ChdrCount = 0
-$chdrPath = ".adlc/memory/chdr.md"
-if (Test-Path $chdrPath) {
-    $chdrLines = Get-Content $chdrPath | Where-Object { $_ -match '^\| ChDR' }
-    $ChdrCount = $chdrLines.Count
-    $chdrLines | ForEach-Object {
-        $cols = $_ -split '\|'
-        if ($cols.Count -ge 6) {
-            $id = $cols[1].Trim()
-            $title = $cols[2].Trim()
-            $date = $cols[4].Trim()
-            $desc = $cols[5].Trim()
-            Write-Output "| $id | $date | $title | $desc |"
-        }
-    }
-}
-Write-Output ""
-Write-Output "_Total: $ChdrCount ChDR entries available._"
+Write-Output "Invoke a class boot when a task or decision matches its row. Each boot emits its class context section and its own searched line (_Searched N <class> records, K matched._)."
 Write-Output ""
 
 # Skills — names + descriptions only (lean)
@@ -170,6 +121,7 @@ if (Test-Path $mcpPath) {
 Write-Output ""
 
 Write-Output "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
+Write-Output "Invoke the matching class boot when a task or decision matches a Class Boots row."
 Write-Output "Prefer targeted file searches over broad directory listings to conserve context."
 Write-Output ""
 Write-Output "**Every response MUST include** a Team Context in Use section before the task answer:"
@@ -177,10 +129,93 @@ Write-Output "Match CDR entries and skills from the lists above to the current t
 Write-Output ""
 Write-Output "## Team Context in Use"
 Write-Output ""
-Write-Output "| ID | Name | Type | Relevance |"
-Write-Output "|----|------|------|-----------|"
+Write-Output "| ID | Name | Type | Rel |"
+Write-Output "|--|--|--|--|"
 Write-Output "| CDR-YYYY-NNN | <name> | <type> | <relevance> |"
 Write-Output ""
-Write-Output "Plus: _Searched $CdrCount CDR entries, $PdrCount PDR entries, $AdrCount ADR entries, $ChdrCount ChDR entries, $SkillTotal skills, J matched._"
+Write-Output "Plus: _Searched $CdrCount CDRs, $SkillTotal skills, J matched._ (Class indexes are searched when their class boot is invoked — each reports its own line.)"
 Write-Output "**J MUST equal the number of rows in your table; if no CDRs/skills genuinely match, show an empty table with 0 matched (do not copy a hard-coded CDR or inflate the count).**"
+Write-Output ""
+Write-Output "## Decision Capture"
+Write-Output ""
+Write-Output "Detect decisions as they emerge; full detection and capture guidance lives in the matching class boot:"
+Write-Output "- Tech stack / pattern choice -> ADR -> /architect-specify (pull tech-radar-boot context first for tech selection)"
+Write-Output "- Feature scope / persona / monetization -> PDR -> /product-specify"
+Write-Output "- Reusable team rule / pattern -> CDR -> /levelup-specify"
+Write-Output "- Revert/hotfix rationale / issue-linked commit -> ChDR -> /change-init"
+Write-Output ""
+Write-Output "Maintain a running **Session Decision Ledger** visible in every response (after the Team"
+Write-Output "Context in Use table):"
+Write-Output ""
+Write-Output "| Decision | Type | Captured? | Skill |"
+Write-Output "|----------|------|-----------|-------|"
+Write-Output "| _none yet_ | - | - | - |"
+Write-Output ""
+Write-Output "_Unrecorded: N pending._"
+Write-Output ""
+Write-Output "- **Detect** decisions against the triggers above; **Classify** (ADR/PDR/CDR/ChDR);"
+Write-Output "  **Track** whether the matching skill was invoked; **Surface** unrecorded decisions."
+Write-Output "- **Session-end**: before closing, prompt to invoke the capture skills for any unrecorded decisions."
+Write-Output ""
+Write-Output "Only suggest when genuinely warranted — not on every response."
+
+# Pending CDRs — remind user to clarify (safety net for missed suggestions)
+if (Test-Path ".adlc/drafts/cdr") {
+    $pendingCdrFiles = Get-ChildItem ".adlc/drafts/cdr/CDR-*.md" -ErrorAction SilentlyContinue
+    $pendingCdrs = ($pendingCdrFiles | Where-Object { (Get-Content $_.FullName -Raw) -match 'Status: \*\*Proposed\*\*' }).Count
+    if ($pendingCdrs -gt 0) {
+        Write-Output ""
+        Write-Output "## Pending CDRs"
+        Write-Output "$pendingCdrs proposed CDR(s) awaiting review in .adlc/drafts/cdr/"
+        Write-Output "Run /levelup-clarify to accept, reject, or defer them."
+    }
+}
+
+# Pending ADRs — remind user to clarify
+if (Test-Path ".adlc/drafts/adr") {
+    $pendingAdrFiles = Get-ChildItem ".adlc/drafts/adr/ADR-*.md" -ErrorAction SilentlyContinue
+    $pendingAdrs = ($pendingAdrFiles | Where-Object { (Get-Content $_.FullName -Raw) -match 'status: proposed|Status: Proposed' }).Count
+    if ($pendingAdrs -gt 0) {
+        Write-Output ""
+        Write-Output "## Pending ADRs"
+        Write-Output "$pendingAdrs proposed ADR(s) awaiting review in .adlc/drafts/adr/"
+        Write-Output "Run /architect-clarify to accept, reject, or defer them."
+    }
+}
+
+# Pending PDRs — remind user to clarify
+if (Test-Path ".adlc/drafts/pdr") {
+    $pendingPdrFiles = Get-ChildItem ".adlc/drafts/pdr/PDR-*.md" -ErrorAction SilentlyContinue
+    $pendingPdrs = ($pendingPdrFiles | Where-Object { (Get-Content $_.FullName -Raw) -match 'status: proposed|Status: Proposed' }).Count
+    if ($pendingPdrs -gt 0) {
+        Write-Output ""
+        Write-Output "## Pending PDRs"
+        Write-Output "$pendingPdrs proposed PDR(s) awaiting review in .adlc/drafts/pdr/"
+        Write-Output "Run /product-clarify to accept, reject, or defer them."
+    }
+}
+
+# Friction-based learning trigger (configurable, default on)
+$ContributeHint = "true"
+if (Test-Path $INIT_FILE) {
+    $initRaw = Get-Content $INIT_FILE -Raw -ErrorAction SilentlyContinue
+    if ($initRaw -match '"contribute_hint"\s*:\s*"(true|false)"') {
+        $ContributeHint = $Matches[1]
+    }
+}
+if ($ContributeHint -eq "true") {
+    Write-Output ""
+    Write-Output "## Session Friction Awareness"
+    Write-Output "After completing significant work, self-assess for decision drift:"
+    Write-Output ""
+    Write-Output "1. **CDR friction** — reusable patterns, novel approaches, or significant debugging emerged → suggest /levelup-specify"
+    Write-Output "2. **ADR gap** — new architectural concern not covered by existing ADRs → suggest /architect-specify"
+    Write-Output "3. **ADR violation** — work contradicts an accepted ADR → suggest /architect-clarify"
+    Write-Output "4. **PDR gap** — new product decision not covered by existing PDRs → suggest /product-specify"
+    Write-Output "5. **PDR violation** — work contradicts an accepted PDR → suggest /product-clarify"
+    Write-Output ""
+    Write-Output "Guardrail: Before assessing ADR/PDR alignment, read relevant ADR/PDR files from .adlc/memory/adr/ and .adlc/memory/pdr/ if not already loaded."
+    Write-Output "Do NOT suggest for routine work. At most one suggestion per task completion."
+}
+
 Write-Output "</EXTREMELY_IMPORTANT>"

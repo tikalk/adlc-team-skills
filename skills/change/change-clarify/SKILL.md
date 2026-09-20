@@ -1,6 +1,6 @@
 ---
 name: change-clarify
-description: Review, accept, reject, or defer Change Decision Records (ChDRs) discovered by change-init. Interactive one-ChDR-at-a-time workflow that validates inferred decisions against their git/issue evidence before promotion to project memory.
+description: Use when reviewing, accepting, rejecting, or deferring ChDRs mined by change-init, validating inferred decisions against their git and issue evidence before promotion to project memory.
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: change-init
-description: Mine git history for Change Decision Records (ChDRs) by detecting commit messages that link to issue trackers, clustering the commits into change stories, and inferring the decisions behind them. Use when bootstrapping project memory from an existing repo's history (brownfield), before refactoring unfamiliar code, or to recover rationale that was never documented.
+description: Use when bootstrapping project memory from an existing repo's git history (brownfield), before refactoring unfamiliar code, or to recover change rationale that was never documented.
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: levelup-init
-description: Reverse-engineer Context Directive Records (CDRs) from an existing codebase for contribution to team-ai-directives. Use when bootstrapping team knowledge from brownfield projects.
+description: Use when bootstrapping team knowledge from a brownfield codebase — reverse-engineers CDRs for contribution to team-ai-directives.
 disable-model-invocation: true
 ---
 

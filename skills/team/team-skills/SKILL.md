@@ -1,6 +1,6 @@
 ---
 name: team-skills
-description: Browse and install team skills from the team AI directives. Use when listing, adding, or onboarding team skills to the current agent's skills directory. Supports --all to install every default and external skill at once.
+description: Use when listing, adding, or onboarding team skills from the directives repo to the agent's skills directory; --all installs every default and external skill at once.
 disable-model-invocation: true
 ---
 

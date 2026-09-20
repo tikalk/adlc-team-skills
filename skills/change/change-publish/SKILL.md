@@ -1,6 +1,6 @@
 ---
 name: change-publish
-description: Promote accepted Change Decision Records (ChDRs) from drafts to project memory at .adlc/memory/chdr/, write OKF-style frontmatter, and regenerate the boot-facing .adlc/memory/chdr.md index that team-boot injects at session start. Use after /change-clarify has accepted ChDRs.
+description: Use when accepted ChDRs are ready for promotion from drafts to project memory at .adlc/memory/chdr/ and the boot-facing chdr.md index needs regenerating.
 disable-model-invocation: true
 ---
 

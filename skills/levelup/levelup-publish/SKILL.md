@@ -1,6 +1,6 @@
 ---
 name: levelup-publish
-description: Compile accepted Context Directive Records (CDRs) into team-ai-directives artifacts and create a draft PR. Builds context modules, evals goldensets, and/or skills based on CDR context types.
+description: Use when accepted CDRs are ready to compile into team-ai-directives artifacts (context modules, goldensets, skills) with a draft PR.
 disable-model-invocation: true
 ---
 

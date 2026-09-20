@@ -1,6 +1,6 @@
 ---
 name: product-clarify
-description: Refine and validate Product Decision Records through targeted clarification questions. Review PDR completeness, detect conflicts, approve decisions, and update status to Accepted. Use before /product-implement.
+description: Use when PDRs need refinement, conflict detection, or approval to Accepted status before /product-implement.
 disable-model-invocation: true
 ---
 

@@ -6,6 +6,13 @@
         "description": "Bootstrap session with team constitution, CDR index, and PDR/ADR context",
         "timeout": 60
       }
+    ],
+    "session_compact": [
+      {
+        "skill": "team-boot",
+        "description": "Re-inject the team context index after harness compaction — the compact summary may have summarized it away; the generated plugin's dedup guard prevents double-injection",
+        "timeout": 60
+      }
     ]
   }
 }

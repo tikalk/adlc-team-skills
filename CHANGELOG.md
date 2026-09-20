@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-09-20
+
 ### Added
 
 - **`writing-skills`** (`skills/authoring/writing-skills/` + `templates/SKILL-template.md` + `references/skill-testing.md`) — TDD-for-skills authoring methodology adapted from superpowers' writing-skills: Iron Law (no skill without a failing baseline first), RED-GREEN-REFACTOR for skills, micro-testing wording protocol, Match-the-Form-to-the-Failure guidance, and this repo's structure rules (2-level depth, trigger-only descriptions, token budgets, eval-coverage requirement).

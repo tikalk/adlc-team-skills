@@ -64,7 +64,7 @@ criterion in `goldset.md` → case in `goldset.json` → binary grader in
 
 ## Canonical acceptance test
 
-`scripts/acceptance-test.sh` — scratch-installs this repo via adlc-skills-cli
+`scripts/acceptance-test.sh` — scratch-installs this repo via adlc-cli
 and asserts team-boot's session_start script emits the full directives
 index (constitution, CDR index, Class Boots, skills). `--live` adds an
 opencode smoke check. See CONTRIBUTING → "Canonical acceptance test".

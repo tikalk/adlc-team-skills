@@ -2,7 +2,7 @@
 # Canonical acceptance test for adlc-team-skills.
 #
 # Tier 1 (default, deterministic — no LLM): scratch-install this repo via
-#   adlc-skills-cli, configure a team-ai-directives checkout, and assert
+#   adlc-cli, configure a team-ai-directives checkout, and assert
 #   team-boot's session_start script emits the full directives index.
 # Tier 2 (--live): plus a live agent smoke check (opencode) verifying the
 #   injected team context appears in a real session.
@@ -89,11 +89,11 @@ log "scratch project: $SCRATCH"
   git config user.email "accept@test" && git config user.name "accept"
 )
 
-log "installing via adlc-skills-cli (this runs npx — may take a moment)"
+log "installing via adlc-cli (this runs npx — may take a moment)"
 (
   cd "$SCRATCH"
-  npx -y adlc-skills-cli add "$REPO_ROOT" -a opencode -y >/dev/null 2>&1 \
-    || fail "adlc-skills-cli install failed"
+  npx -y adlc-cli skill add "$REPO_ROOT" -a opencode -y >/dev/null 2>&1 \
+    || fail "adlc-cli install failed"
 )
 
 [ -d "$SCRATCH/.agents/skills/team-boot" ] || fail "install did not create .agents/skills/team-boot"

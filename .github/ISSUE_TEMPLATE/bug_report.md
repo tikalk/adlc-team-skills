@@ -13,7 +13,7 @@ labels: bug
 **Reproduction:**
 
 1. Scratch project: `mkdir /tmp/bug && cd /tmp/bug && git init`
-2. Install: `npx adlc-skills-cli add tikalk/adlc-team-skills -a <agent> -y`
+2. Install: `npx adlc-cli skill add tikalk/adlc-team-skills -a <agent> -y`
 3. …
 
 **Expected vs actual:**
@@ -25,4 +25,4 @@ labels: bug
 - The skill's output / `.adlc/` artifacts
 - If a skill silently failed to trigger: say what you asked and what happened instead
 
-**Did you regenerate the install artifacts?** (`.agents/skills/`, `.opencode/commands/` can go stale after an update — `npx adlc-skills-cli add tikalk/adlc-team-skills -a <agent> -y`)
+**Did you regenerate the install artifacts?** (`.agents/skills/`, `.opencode/commands/` can go stale after an update — `npx adlc-cli skill add tikalk/adlc-team-skills -a <agent> -y`)

@@ -150,7 +150,7 @@ pytest tests/ evals/promptfoo/tests/ -v
 | Suite | What it covers |
 |---|---|
 | `tests/unit/test_playbook_integrity.py` | Skill frontmatter validity (name + description), directory/name parity, 2-level depth, template YAML |
-| `tests/unit/test_generated_artifacts_sync.py` | Generated install artifacts (`.agents/skills/` mirror, `.opencode/commands/`) stay in sync with `skills/` — regenerate with `npx adlc-skills-cli add <repo> -a <agent> -y` |
+| `tests/unit/test_generated_artifacts_sync.py` | Generated install artifacts (`.agents/skills/` mirror, `.opencode/commands/`) stay in sync with `skills/` — regenerate with `npx adlc-cli skill add <repo> -a <agent> -y` |
 | `tests/unit/test_setup_scripts.py` | Every `setup-*.sh` runs in a sandbox and emits valid JSON/KEY=VALUE |
 | `tests/e2e/` | Workflow state machines (mission-brief, team-repair, universal skill routing) |
 | `evals/promptfoo/tests/` | Every grader produces correct pass/fail on goldset examples |
@@ -270,7 +270,7 @@ Before opening a PR against this repo, you MUST:
 3. **One problem per PR** — bundled unrelated changes get closed.
 4. **Run the full verification set** and paste evidence in the PR:
    `pytest tests/ evals/promptfoo/tests/ -v`; regenerate install artifacts
-   (`npx adlc-skills-cli add <repo> -a <agent> -y`) if you touched
+   (`npx adlc-cli skill add <repo> -a <agent> -y`) if you touched
    `skills/`; `scripts/acceptance-test.sh` for session-start changes.
 5. **Follow `writing-skills` for any skill-content change** — including the
    Iron Law: document the baseline failure. Do not invent one.

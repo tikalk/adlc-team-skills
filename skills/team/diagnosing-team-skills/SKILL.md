@@ -13,7 +13,7 @@ command output is a guess, and guesses get pasted into bug reports.
 
 **Boundary:** this repo owns `.events.json` and the boot scripts' output.
 The injection side (dispatchers, generated per-agent plugins) is owned by
-[adlc-skills-cli](https://github.com/tikalk/adlc-skills-cli) — the
+[adlc-cli](https://github.com/tikalk/adlc-cli) — the
 `docs/event-hook-contract.md` file in the adlc-team-skills repo draws the
 line. Diagnose up to it, then route.
 
@@ -36,7 +36,7 @@ Run the checks **in order** — stop at the first failure, fix, re-run:
 | 2 | Missing tool | `command -v jq` | jq on PATH (skills registry needs it) |
 | 3 | Broken handler | `bash .agents/skills/team-boot/scripts/boot.sh` from the project root | The directives index on stdout, wrapped in `EXTREMELY_IMPORTANT` |
 | 4 | Stale install | `pytest tests/unit/test_generated_artifacts_sync.py -q` (in the skills repo) or compare `skills/**/SKILL.md` vs `.agents/skills/` names | Mirror matches source |
-| 5 | Injection side | Generated plugin present and loaded for the agent? | If 1–4 are green and the session still lacks context → **adlc-skills-cli's territory** — file there with the outputs of checks 1–4 attached |
+| 5 | Injection side | Generated plugin present and loaded for the agent? | If 1–4 are green and the session still lacks context → **adlc-cli's territory** — file there with the outputs of checks 1–4 attached |
 
 For "a rule didn't load" specifically: confirm the session began with the
 index (check 3's content), then check the task actually matched the rule's
@@ -49,7 +49,7 @@ asserts the chain end-to-end (add `--live` for a real agent session).
 
 For a bug report, include: the failing check number, the command, its
 verbatim output, agent name/version, and how the repo was installed
-(`npx skills add` vs `adlc-skills-cli`). No scrubbed narrative — raw
+(`npx skills add` vs `adlc-cli`). No scrubbed narrative — raw
 output.
 
 ## Red Flags

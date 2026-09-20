@@ -80,7 +80,7 @@ team's context.
 
 ```bash
 # Skills + slash commands + session_start events
-npx adlc-skills-cli add tikalk/adlc-team-skills -a opencode
+npx adlc-cli skill add tikalk/adlc-team-skills -a opencode
 
 # Or plain skills (no commands/events)
 npx skills add tikalk/adlc-team-skills -a claude -g
@@ -89,7 +89,7 @@ npx skills add tikalk/adlc-team-skills -a claude -g
 Works with any agent supporting the [Agent Skills standard](https://agentskills.io) —
 Claude Code, Codex, OpenCode, Cursor, Copilot, and others.
 
-[`adlc-skills-cli`](https://github.com/tikalk/adlc-skills-cli) wraps `npx skills add`
+[`adlc-cli`](https://github.com/tikalk/adlc-cli) wraps `npx skills add`
 and additionally generates `/name` slash commands and wires `session_start` event
 hooks (via `.events.json`) for 9 coding agents. Skills repos without `.events.json`
 get commands only.
@@ -263,7 +263,7 @@ each step. Works alongside:
 - **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
 - **`team-repair`** — re-index, conflict scan, freshness, `--build-to-delete`, deterministic-enforcement coverage check.
 - **`team-skills`** — browse/install team skills from the directives repo.
-- **`diagnosing-team-skills`** — evidence-first diagnosis when team context doesn't appear: walks the chain (init-options → jq → boot.sh → artifact sync) and routes injection-side bugs to adlc-skills-cli.
+- **`diagnosing-team-skills`** — evidence-first diagnosis when team context doesn't appear: walks the chain (init-options → jq → boot.sh → artifact sync) and routes injection-side bugs to adlc-cli.
 
 ### The software factory — the outer loop
 
@@ -357,11 +357,11 @@ each step. Works alongside:
 - **Team context vanished mid-session after compaction** — re-injection
   after compaction is a declared contract (`session_compact` in
   `.events.json`); the injection side is implemented by
-  [adlc-skills-cli](https://github.com/tikalk/adlc-skills-cli) — if your
+  [adlc-cli](https://github.com/tikalk/adlc-cli) — if your
   agent's adapter doesn't map the event yet, file it there.
 - **Skill descriptions or commands look stale** — the install layer is
   CLI-generated (`.agents/skills/`, `.opencode/commands/`, `skills-lock.json`).
-  Regenerate: `npx adlc-skills-cli add tikalk/adlc-team-skills -a <agent> -y`.
+  Regenerate: `npx adlc-cli skill add tikalk/adlc-team-skills -a <agent> -y`.
   `tests/unit/test_generated_artifacts_sync.py` catches drift locally.
 - **Index is inconsistent or rules conflict** — run `/team-repair`
   (re-index, conflict scan, freshness check, orphan detection).

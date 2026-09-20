@@ -8,7 +8,7 @@ or lifecycle redundancy.
 
 ```bash
 # 1. Install adlc team skills, slash commands & event hooks
-npx adlc-skills-cli add tikalk/adlc-team-skills -a opencode
+npx adlc-cli skill add tikalk/adlc-team-skills -a opencode
 
 # 2. Run the team-setup skill in your agent session
 #    (links/clones your team-ai-directives repository)
@@ -130,7 +130,7 @@ rm -rf .opencode/skills/team-boot .opencode/skills/team-discover .opencode/skill
 **`team-boot` does not fire at session start.**
 Verify `.events.json` exists at the project root and that
 `.opencode/plugin/adlc-skills-events.ts` is present. Re-run
-`npx adlc-skills-cli add tikalk/adlc-team-skills -a opencode` if either is
+`npx adlc-cli skill add tikalk/adlc-team-skills -a opencode` if either is
 missing.
 
 **Duplicate `/levelup.*` and `/levelup-*` commands.**

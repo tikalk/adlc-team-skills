@@ -1,6 +1,6 @@
 """Sync checks between the source skills tree and CLI-generated artifacts.
 
-The `adlc-skills-cli` install generates artifacts that are gitignored
+The `adlc-cli` install generates artifacts that are gitignored
 (`.agents/skills/` flattened mirror, `.opencode/commands/` slash commands).
 Nothing else verifies they match `skills/` — a stale local install silently
 behaves differently from a fresh one. These tests fail when the generated
@@ -8,7 +8,7 @@ layer drifts from the source of truth.
 
 They skip on trees where the artifacts were never generated (e.g. fresh
 clones, CI): regenerate locally with
-`npx adlc-skills-cli add tikalk/adlc-team-skills -a opencode`.
+`npx adlc-cli skill add tikalk/adlc-team-skills -a opencode`.
 """
 
 import yaml
@@ -22,7 +22,7 @@ COMMANDS_DIR = ROOT / ".opencode" / "commands"
 
 pytestmark = pytest.mark.skipif(
     not MIRROR_DIR.exists() or not COMMANDS_DIR.exists(),
-    reason="generated install artifacts not present — run adlc-skills-cli locally",
+    reason="generated install artifacts not present — run adlc-cli locally",
 )
 
 
@@ -62,7 +62,7 @@ def test_mirror_contains_every_skill_with_matching_frontmatter():
         mirror_meta = _load_frontmatter(mirror_file)
         if mirror_meta.get("description") != meta.get("description"):
             mismatches.append(f"{name}: description differs between skills/ and mirror")
-    assert not mismatches, f"Mirror frontmatter drift (regenerate with adlc-skills-cli): {mismatches}"
+    assert not mismatches, f"Mirror frontmatter drift (regenerate with adlc-cli): {mismatches}"
 
 
 def test_commands_cover_invocable_skills_and_have_no_orphans():
@@ -79,7 +79,7 @@ def test_commands_cover_invocable_skills_and_have_no_orphans():
     orphans = sorted(commands - set(skills))
     assert not missing, (
         f"Model-invocable skills without a command file (regenerate with "
-        f"adlc-skills-cli): {missing}"
+        f"adlc-cli): {missing}"
     )
     assert not orphans, f"Command files with no source skill (stale install): {orphans}"
 

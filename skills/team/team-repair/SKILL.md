@@ -1,6 +1,6 @@
 ---
 name: team-repair
-description: Use when indexes are inconsistent, orphans are detected, after bulk changes to team-ai-directives, or for periodic directives health validation; --build-to-delete proposes rules the model no longer needs.
+description: Use when indexes are inconsistent, orphans are detected, after bulk changes to team-ai-directives, or for periodic directives health validation; --build-to-delete proposes rules the model no longer needs; --validate-drafts validates draft files in .adlc/drafts/ without modifying them.
 disable-model-invocation: true
 ---
 
@@ -24,7 +24,8 @@ Re-indexes OKF v0.2 artifacts (`index.md`, `log.md`), derives the flat `CDR.md` 
 8. Auto-generated .skills.json entries for orphan skills
 9. Conflict scan across rules (creates conflict CDRs if issues found)
 10. Freshness verification (updates `verified` timestamps, flags stale directives)
-11. Summary report of all repairs
+11. Draft validation report (if `--validate-drafts` — read-only, no modifications)
+12. Summary report of all repairs
 
 You are acting as an **Index Repair Specialist** ensuring team-ai-directives indexes are consistent and complete. Your role involves:
 
@@ -62,6 +63,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 - `"--index-only"` - Only rebuild OKF index.md + log.md + derive CDR.md
 - `"--skills-only"` - Only repair .skills.json
 - `"--agents-only"` - Only repair AGENTS.md
+- `"--validate-drafts"` - Validate draft files in .adlc/drafts/ without modifying them
 - Empty input: Repair all indexes with auto-fix (includes v0.1→v0.2 migration)
 
 ### Flags
@@ -74,6 +76,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 | `--conflicts` | Scan for rule conflicts only |
 | `--freshness` | Verify directive freshness only |
 | `--build-to-delete` | Run evals without directives to identify candidates for removal (Factor XII) |
+| `--validate-drafts` | Validate draft files in .adlc/drafts/{adr,pdr,chdr,cdr,evals}/ — validation only, no modifications |
 | `--index-only` | Only rebuild OKF index.md + log.md + derive CDR.md |
 | `--skills-only` | Only repair .skills.json |
 | `--agents-only` | Only repair AGENTS.md |
@@ -259,7 +262,7 @@ grep -qiE "##.*CDR\.md" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
 
 | Status | Action |
 |--------|--------|
-| **Missing** | Create from `templates/agents-template.md` |
+| **Missing** | Create from `../templates/agents-template.md` |
 | **Corrupted** (missing sections) | Overwrite with template |
 | **Valid** | No changes |
 
@@ -272,7 +275,7 @@ If `--dry-run`:
 
 Otherwise, execute repair:
 ```bash
-cp "templates/agents-template.md" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
+cp "../templates/agents-template.md" "{TEAM_AI_DIRECTIVES}/AGENTS.md"
 ```
 
 #### Step 4: Track Results
@@ -1001,7 +1004,116 @@ or reduce it to a thin pointer (`enforced by <check path>`). Route to
 
 Regenerate the local CDR index again. Handoff: suggest `/levelup-clarify` to review promotion candidates (action P).
 
-### Phase 11: Summary Report
+### Phase 11: Validate Drafts
+
+**Objective**: Validate draft decision records in `.adlc/drafts/` for structural completeness — required frontmatter fields, required body sections, and valid enum values. This is a **read-only validation mode** — no files are created, modified, or deleted.
+
+**Skip if**: `--validate-drafts` flag is NOT provided.
+
+**This phase makes NO LLM calls** — it is purely mechanical file parsing and validation, like a linter.
+
+#### Step 1: Scan Draft Directories
+
+Scan all files in the following draft directories relative to `{REPO_ROOT}`:
+
+```
+.adlc/drafts/adr/
+.adlc/drafts/pdr/
+.adlc/drafts/chdr/
+.adlc/drafts/cdr/
+.adlc/drafts/evals/
+```
+
+For each directory, list all `*.md` files. If a directory does not exist, skip it silently (not an error — that draft type simply has no drafts).
+
+If **no draft files are found in any directory**, report: "No draft files found in .adlc/drafts/ — nothing to validate." and skip this phase.
+
+#### Step 2: Validate Frontmatter
+
+For each draft file, parse YAML frontmatter (between `---` delimiters) and verify the following required fields are present:
+
+| Field | Required | Valid Values | Notes |
+|-------|----------|--------------|-------|
+| `status` | Yes | `proposed`, `accepted`, `rejected`, `deferred`, `superseded`, `discovered` | Case-insensitive match |
+| `date` | Yes | Any non-empty string (expected `YYYY-MM-DD`) | Must not be empty or placeholder |
+| `type` | Yes | `decision`, `product`, `pattern`, `incident`, `workaround`, `constraint`, `abandoned`, `eval` | Case-insensitive match |
+| `evidence` | Yes | `confirmed`, `inferred`, `unknown` | Case-insensitive match |
+| `source` | Yes | Any non-empty string | Origin of the draft (skill name, session, etc.) |
+| `revisit-when` | Yes (present) | Empty string, `N/A`, or any non-empty string | Field must exist; value can be empty or `N/A` |
+
+For each missing or invalid field, record:
+- File path
+- Line number (of the frontmatter key, or line 1 if frontmatter is entirely missing)
+- Issue description (e.g., "Missing required field: status", "Invalid status value: 'draft' — expected one of: proposed, accepted, rejected, deferred, superseded, discovered")
+
+#### Step 3: Validate Body Sections
+
+After frontmatter, validate that the following required body sections are present as Markdown headings:
+
+| Section | Required | Notes |
+|---------|----------|-------|
+| `## Context` (or `### Context`) | Yes | Must exist as a heading |
+| `## Decision` (or `### Decision`) | Yes | Must exist as a heading |
+| `## Rejected Alternatives` (or `### Rejected Alternatives`) | Yes | Must exist as a heading |
+| `## Reason` (or `### Reason`) | Yes | Must exist as a heading |
+
+Heading level flexibility: accept `##` or `###` (or even `####`) for each section. Match by heading text (case-insensitive, trimmed).
+
+For each missing section, record:
+- File path
+- Line number (0 if section not found — report as "section not found")
+- Issue description (e.g., "Missing required body section: Rejected Alternatives")
+
+#### Step 4: Conditional Validation — Rejected Alternatives Non-Empty
+
+For draft files where `type` is `decision` or `abandoned`, the `## Rejected Alternatives` (or `### Rejected Alternatives`) section **must not be empty**. "Empty" means:
+- No content between the heading and the next heading or end of file
+- Only whitespace or placeholder text (e.g., "N/A", "TBD", "TODO", "none")
+
+For each violation, record:
+- File path
+- Line number of the heading
+- Issue: "Rejected Alternatives section is empty for decision/abandoned type — must list at least one rejected alternative"
+
+#### Step 5: Generate Validation Report
+
+```markdown
+## Draft Validation Report
+
+**Date**: {date}
+**Mode**: VALIDATE ONLY (no modifications)
+
+### Summary
+
+| Metric | Count |
+|--------|-------|
+| Draft directories scanned | {n} |
+| Draft files validated | {n} |
+| Files with errors | {n} |
+| Files with warnings | {n} |
+| Files passing validation | {n} |
+| Total findings | {n} |
+
+### Findings
+
+| Severity | File | Line | Issue |
+|----------|------|------|-------|
+| Error | .adlc/drafts/adr/ADR-301.md | 3 | Missing required field: evidence |
+| Error | .adlc/drafts/adr/ADR-301.md | 0 | Missing required body section: Reason |
+| Error | .adlc/drafts/pdr/PDR-005.md | 7 | Invalid status value: 'draft' — expected one of: proposed, accepted, rejected, deferred, superseded, discovered |
+| Warning | .adlc/drafts/cdr/CDR-010.md | 15 | Rejected Alternatives section is empty for decision type — must list at least one rejected alternative |
+
+{If no findings:}
+> **All draft files passed validation — no issues found.**
+```
+
+#### Step 6: Handoff
+
+- If errors were found: suggest fixing the draft files before promoting them via the appropriate clarify skill (`/architect-clarify` for ADRs, `/product-clarify` for PDRs, `/change-clarify` for ChDRs, `/levelup-clarify` for CDRs).
+- If all drafts pass validation: confirm drafts are structurally ready for promotion.
+- Remind: validation does not check semantic quality — only structural completeness. A draft that passes validation may still be rejected during clarification.
+
+### Phase 12: Summary Report
 
 ```markdown
 ## Team Repair Summary
@@ -1056,6 +1168,19 @@ Regenerate the local CDR index again. Handoff: suggest `/levelup-clarify` to rev
 | Stale directives (>30d) | {n} |
 | Skipped (has conflicts) | {n} |
 
+### Draft Validation
+
+| Metric | Count |
+|--------|-------|
+| Draft files validated | {n} |
+| Files with errors | {n} |
+| Files with warnings | {n} |
+| Files passing validation | {n} |
+| Total findings | {n} |
+
+{If --validate-drafts was not run:}
+> **Note**: Draft validation not run (use `--validate-drafts` to validate .adlc/drafts/)
+
 ### Files Modified
 
 | File | Change |
@@ -1078,6 +1203,7 @@ Regenerate the local CDR index again. Handoff: suggest `/levelup-clarify` to rev
 - **Dry run**: Use `--dry-run` to preview changes without writing
 - **Selective repair**: Use `--index-only`, `--skills-only`, or `--agents-only` for specific targets
 - **Validation modes**: `--validate` runs conflict scan + freshness; `--conflicts` and `--freshness` run each separately
+- **Draft validation**: `--validate-drafts` validates `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/` — read-only, no modifications (like `--build-to-delete`, it only reports findings)
 - **YAML frontmatter**: Auto-generated for orphan context modules
 - **Skills entries**: Auto-generated from SKILL.md content
 - **AGENTS.md**: Overwrites if corrupted (missing required sections)
@@ -1121,6 +1247,9 @@ Regenerate the local CDR index again. Handoff: suggest `/levelup-clarify` to rev
 - [ ] Conflict scan completed (if not skipped) and conflict CDRs created for any findings.
 - [ ] Freshness verification completed (if not skipped) and stale directives reported.
 - [ ] No rule contradictions remain unreported after `--validate`.
+- [ ] If `--validate-drafts` was run: every draft file in `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/` was scanned and findings reported (if any).
+- [ ] If `--validate-drafts` was run: no files in `.adlc/drafts/` were created, modified, or deleted (validation-only, read-only mode).
+- [ ] If `--validate-drafts` was run: draft validation findings include file path, line number, and issue description for each finding.
 
 ## Configuration
 

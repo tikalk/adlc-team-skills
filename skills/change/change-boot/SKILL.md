@@ -41,6 +41,13 @@ If the index is missing but `.adlc/memory/chdr/ChDR-*.md` files exist,
 synthesize a lean table from each file (ID from filename; Title/Status from
 frontmatter or first heading). If nothing exists, report `0 ChDRs` — never fabricate rows.
 
+### Step 1b: Read the ChDR Drafts Index
+
+Check `.adlc/drafts/chdr/` for `ChDR-*.md` files with `status: proposed` or
+`status: discovered` in frontmatter. These are draft ChDRs pending
+clarification. Collect ID / Title / Type / Status / Date from each file.
+If the directory is empty or absent, report `0 pending drafts`.
+
 ### Step 2: Inject ChDR Context (Output Contract)
 
 Emit before the task answer:
@@ -53,6 +60,14 @@ Emit before the task answer:
 | ChDR-001 | Why payments retries are capped at 3 | stable | 2026-08-16 |
 
 _Searched N ChDRs, K matched._
+
+## Drafts Pending Review
+
+| ID | Title | Type | Status | Date |
+|----|-------|------|--------|------|
+| (from .adlc/drafts/chdr/) |
+
+_N pending drafts — run /change-clarify to review._
 ```
 
 - Render ID / Title / Status / Date from the index (the full index also
@@ -65,15 +80,15 @@ _Searched N ChDRs, K matched._
 
 | Trigger | Action |
 |---------|--------|
-| Revert or hotfix performed/analyzed with rationale | ChDR → suggest `/change-init` |
-| Commit authored that links to an issue tracker | ChDR → suggest `/change-init` post-merge |
-| Fix chain discovered in history | ChDR → suggest `/change-init` |
+| Revert or hotfix performed/analyzed with rationale | ChDR → direct write to `.adlc/drafts/chdr/` |
+| Commit authored that links to an issue tracker | ChDR → direct write to `.adlc/drafts/chdr/` post-merge |
+| Fix chain discovered in history | ChDR → direct write to `.adlc/drafts/chdr/` |
 | ChDR-class decision already in the ledger | verify capture happened; if not, re-surface |
 
 Add/refresh rows in the **Session Decision Ledger** (Decision | Type |
 Captured? | Skill) for every ChDR-class decision detected this session —
 including ones from before this boot was invoked. At session end, prompt to
-run `/change-init` for any unrecorded change rationale.
+run `/change-clarify` for any unrecorded ChDR drafts in `.adlc/drafts/chdr/`.
 
 ## Failure Handling
 

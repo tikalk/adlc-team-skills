@@ -159,7 +159,7 @@ Document Information → Executive Summary → Overview → Problem
 For each section in the DAG:
 
 1. **Check dependencies** — ensure all prerequisites completed
-2. **Load section template** — `templates/sections/{section}.md`
+2. **Load section template** — `../templates/sections/{section}.md`
 3. **Generate content** — fill template with PDR-derived content
 4. **Write section file** — `.adlc/product/sections/{feature-area}/{section}.md`
 5. **Validate** — run `scripts/bash/validate-prd.sh {section}.md`

@@ -24,7 +24,7 @@ _seed_templates() {
     local repo_root="${1:-$(_get_project_root)}"
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local src_dir="$script_dir/../../templates"
+    local src_dir="$script_dir/../../../templates"
     local dest_dir="$repo_root/.adlc/templates"
 
     [ -d "$src_dir" ] || return 0

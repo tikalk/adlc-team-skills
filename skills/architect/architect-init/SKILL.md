@@ -383,7 +383,7 @@ For each discovered architectural decision:
    - What alternatives were available when this was built?
    - What forces likely drove this decision?
 
-2. **Create ADR Entry** (MADR 3.0.0 — see `templates/adr-template.md`):
+2. **Create ADR Entry** (MADR 3.0.0 — see `../templates/adr-template.md`):
 
 ```markdown
 ---

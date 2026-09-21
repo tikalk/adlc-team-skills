@@ -1,6 +1,6 @@
 ---
 name: change-init
-description: Use when bootstrapping project memory from an existing repo's git history (brownfield), before refactoring unfamiliar code, or to recover change rationale that was never documented.
+description: Optional for routine capture — team-boot writes lightweight ChDR drafts directly. Use for interactive deep-dive exploration when you want guided mining of git history, structured change-story clustering, or comprehensive rationale recovery before documenting.
 disable-model-invocation: true
 ---
 
@@ -30,6 +30,12 @@ A ChDR captures a decision that was *made in the past* and survives only in comm
 ChDRs are **project-local memory** (this repo's evolution), not team-wide context — they fail the levelup "team-wide applicability" signal gate. They publish to `{REPO_ROOT}/.adlc/memory/chdr/` (see `/change-publish`), and their index is injected at session start by `team-boot`.
 
 ## When to use
+
+> **Note**: Routine decision capture is handled by team-boot's continuous
+> capture mechanism, which writes lightweight drafts directly to
+> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> — when you want guided trade-off analysis, multi-option comparison, or
+> structured decision facilitation before documenting.
 
 - **Brownfield onboarding**: give an agent project memory without anyone writing docs
 - **Before refactoring unfamiliar code**: surface Chesterton's fences — constraints that exist only in old commits + tickets

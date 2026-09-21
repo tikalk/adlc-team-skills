@@ -1,6 +1,6 @@
 ---
 name: architect-specify
-description: Use when transforming a PRD or high-level system description into Architecture Decision Records for a greenfield project.
+description: Optional for routine capture — team-boot writes lightweight ADR drafts directly. Use for interactive deep-dive exploration when you want guided trade-off analysis, multi-option comparison, or structured architectural decision facilitation before documenting.
 disable-model-invocation: true
 ---
 
@@ -20,6 +20,12 @@ You act as a **Solutions Architect** facilitating an architectural discovery ses
 - **Documenting** decisions in MADR format once consensus is reached
 
 ## When to use
+
+> **Note**: Routine decision capture is handled by team-boot's continuous
+> capture mechanism, which writes lightweight drafts directly to
+> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> — when you want guided trade-off analysis, multi-option comparison, or
+> structured decision facilitation before documenting.
 
 - **New projects**: Starting system architecture from scratch
 - **Major changes**: Significant architectural shifts requiring new decisions
@@ -381,7 +387,7 @@ Reply with your choice (A/B/C), or provide additional context.
 After each decision is confirmed:
 
 1. **Create ADR Entry**:
-   - Use MADR format from `templates/adr-template.md`
+   - Use MADR format from `../templates/adr-template.md`
    - Document context, decision, consequences, and alternatives
    - Link to constitution principles if applicable
    - **Include Sub-System tag**: Mark each ADR with its parent sub-system
@@ -476,7 +482,7 @@ If decomposed, structure the ADR file as:
 
 3. **Cross-Cutting ADRs**: Some decisions affect multiple sub-systems (e.g., "Use PostgreSQL for all sub-systems"). Mark these as **System-Level** and note impact on each sub-system.
 
-4. **ADR Format** (MADR 3.0.0 — see `templates/adr-template.md`):
+4. **ADR Format** (MADR 3.0.0 — see `../templates/adr-template.md`):
 
 ```markdown
 ---

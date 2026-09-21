@@ -46,17 +46,37 @@ ensure_adlc_branch() {
 
   echo "Creating adlc orphan branch..."
   local worktree="/tmp/adlc-init-$$"
-  git -C "$td" worktree add "$worktree" --detach 2>/dev/null || true
-  git -C "$td" branch --orphan "$adlc_branch"
-  git -C "$td" worktree remove "$worktree" 2>/dev/null || true
-  git -C "$td" worktree add "$worktree" "$adlc_branch"
+
+  # Create orphan branch via worktree (doesn't touch main working tree)
+  git -C "$td" worktree add --detach "$worktree" 2>/dev/null || {
+    echo "Failed to create worktree — trying direct orphan branch creation"
+    # Fallback: create orphan branch directly (requires clean working tree)
+    local current_branch
+    current_branch=$(git -C "$td" branch --show-current)
+    git -C "$td" checkout --orphan "$adlc_branch"
+    git -C "$td" rm -rf . 2>/dev/null || true
+    mkdir -p "$td/drafts/cdr" "$td/reports/sessions" "$td/reports/projects"
+    echo '{}' > "$td/reports/confidence-scores.json"
+    touch "$td/drafts/cdr/.gitkeep" "$td/reports/sessions/.gitkeep" "$td/reports/projects/.gitkeep"
+    git -C "$td" add -A
+    git -C "$td" commit -m "Initialize adlc orphan branch (drafts + reports)"
+    git -C "$td" checkout "$current_branch" 2>/dev/null || git -C "$td" checkout main 2>/dev/null || true
+    git -C "$td" push origin "$adlc_branch" 2>/dev/null || true
+    echo "adlc orphan branch created (direct)"
+    return 0
+  }
+
+  # In the detached worktree, create the orphan branch
+  git -C "$worktree" checkout --orphan "$adlc_branch"
+  # Remove all files from the orphan branch (start clean)
+  git -C "$worktree" rm -rf . 2>/dev/null || true
   mkdir -p "$worktree/drafts/cdr" "$worktree/reports/sessions" "$worktree/reports/projects"
   echo '{}' > "$worktree/reports/confidence-scores.json"
   touch "$worktree/drafts/cdr/.gitkeep" "$worktree/reports/sessions/.gitkeep" "$worktree/reports/projects/.gitkeep"
   git -C "$worktree" add -A
   git -C "$worktree" commit -m "Initialize adlc orphan branch (drafts + reports)"
   git -C "$worktree" push origin "$adlc_branch" 2>/dev/null || true
-  git -C "$td" worktree remove "$worktree" 2>/dev/null || true
+  git -C "$td" worktree remove "$worktree" --force 2>/dev/null || true
   echo "adlc orphan branch created"
 }
 
@@ -79,11 +99,10 @@ update_confidence() {
   local today
   today=$(date +%Y-%m-%d)
 
-  local tmp_conf
-  tmp_conf=$(mktemp)
-  trap 'rm -f "$tmp_conf"' EXIT
+  _TMP_CONF=$(mktemp)
+  trap 'rm -f "$_TMP_CONF" 2>/dev/null' EXIT
 
-  cat > "$tmp_conf" << JSONHEAD
+  cat > "$_TMP_CONF" << JSONHEAD
 {
   "last_updated": "$today",
   "cdrs": {
@@ -167,11 +186,11 @@ JSONHEAD
     local projects_list="[${agg_projects[$cdr_id]}]"
 
     if [[ $first_entry -eq 0 ]]; then
-      echo "," >> "$tmp_conf"
+      echo "," >> "$_TMP_CONF"
     fi
     first_entry=0
 
-    cat >> "$tmp_conf" << ENTRY
+    cat >> "$_TMP_CONF" << ENTRY
     "$cdr_id": {
       "usage_count": $uc,
       "apply_count": $ac,
@@ -183,13 +202,13 @@ JSONHEAD
 ENTRY
   done
 
-  cat >> "$tmp_conf" << JSONFOOT
+  cat >> "$_TMP_CONF" << JSONFOOT
   }
 }
 JSONFOOT
 
-  cat "$tmp_conf"
-  rm -f "$tmp_conf"
+  cat "$_TMP_CONF"
+  rm -f "$_TMP_CONF"
 }
 
 ###############################################################################

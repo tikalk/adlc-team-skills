@@ -13,6 +13,13 @@
         "description": "Re-inject the team context index after harness compaction — the compact summary may have summarized it away; the generated plugin's dedup guard prevents double-injection",
         "timeout": 60
       }
+    ],
+    "session_end": [
+      {
+        "skill": "team-learn",
+        "description": "Extract, review, and publish CDRs with confidence scoring",
+        "timeout": 120
+      }
     ]
   }
 }

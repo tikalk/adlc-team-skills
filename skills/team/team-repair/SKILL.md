@@ -77,6 +77,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 | `--freshness` | Verify directive freshness only |
 | `--build-to-delete` | Run evals without directives to identify candidates for removal (Factor XII) |
 | `--validate-drafts` | Validate draft files in .adlc/drafts/{adr,pdr,chdr,cdr,evals}/ — validation only, no modifications |
+| `--update-confidence` | Aggregate usage data from `adlc` branch and update OKF frontmatter confidence scores |
 | `--index-only` | Only rebuild OKF index.md + log.md + derive CDR.md |
 | `--skills-only` | Only repair .skills.json |
 | `--agents-only` | Only repair AGENTS.md |
@@ -852,6 +853,45 @@ Flag directives whose latest `verified[].at` is older than `stale_after` (defaul
 |---|---|---|---|---|
 | rules/old-pattern.md | 2026-04-01 | 190d | 180d | stale |
 ```
+
+### Phase 9b: Confidence Update
+
+**Skip if**: `--update-confidence` flag is NOT provided.
+
+**Objective**: Read usage data from `adlc` orphan branch, aggregate into
+confidence scores, and update OKF frontmatter on main branch.
+
+#### Step 1: Read Usage Data from adlc Branch
+
+```bash
+# Read all project usage files from adlc branch
+for file in $(git -C "$TEAM_AI_DIRECTIVES" ls-tree --name-only "$ADLC_BRANCH" "reports/projects/" 2>/dev/null | grep '\.json$'); do
+  git -C "$TEAM_AI_DIRECTIVES" show "${ADLC_BRANCH}:${file}"
+done
+```
+
+#### Step 2: Aggregate into confidence-scores.json
+
+Merge all project JSONs, calculate:
+- `usage_count`: sum of `matched` across projects
+- `apply_count`: sum of `applied` across projects
+- `success_rate`: `apply_count / usage_count`
+- `last_used`: most recent `last_used` across projects
+- `trend`: `rising` (used in last 7 days), `stable` (last 30 days), `falling` (>30 days)
+- `projects`: list of project names
+
+Write to `adlc` branch: `reports/confidence-scores.json`.
+
+#### Step 3: Update OKF Frontmatter on Main Branch
+
+For each CDR in confidence-scores.json:
+1. Find corresponding context module file via `cdr_ref`
+2. Add/update `confidence:` block in YAML frontmatter
+3. Commit to main branch
+
+#### Step 4: Rebuild CDR.md with Confidence Column
+
+Add `Confidence` and `Usage` columns to the derived CDR.md table.
 
 ### Phase 10: Build to Delete (Factor XII)
 

@@ -16,7 +16,7 @@ Its own final step, the **sweep**, is the only cross-layer analysis in the facto
 
 It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-mission/references/executor.md`.
 
-**Scope boundary**: project-local memory only (PDR, ADR, ChDR + code). Team context directives (CDR / `levelup-init`) are NOT bootstrapped here — they publish to the external `team-ai-directives` repo and are owned by `factory-learn`. The sweep's final output includes a prose recommendation to run `factory-learn` / `/levelup-init` for reusable patterns spotted during bootstrap.
+**Scope boundary**: project-local memory only (PDR, ADR, ChDR + code). Team context directives (CDR / `team-init`) are NOT bootstrapped here — they publish to the external `team-ai-directives` repo and are owned by `factory-learn`. The sweep's final output includes a prose recommendation to run `factory-learn` / `/team-init` for reusable patterns spotted during bootstrap.
 
 ---
 
@@ -145,7 +145,7 @@ Every gap line uses the form:
 3. **Supervision Default**: `hybrid`. Human gates hard-enforced at the three clarify⭐ steps (PDR, ADR, ChDR approvals) and at final coverage-matrix review.
 4. **Pre-flight Check**: Verifies that the `product-*`, `architect-*`, and `change-*` lifecycle skills are installed. Team AI directives configuration is NOT required (CDR excluded); `architect-init`'s team-directives dedup degrades gracefully if unconfigured.
 5. **Worktree / lease / heartbeat**: follow the shared executor contract, as sibling orchestrators do.
-6. **Route for CDR hand-off**: after the sweep, present (prose only, no step): "Reusable patterns spotted during bootstrap → run `factory-learn` or `/levelup-init`."
+6. **Route for CDR hand-off**: after the sweep, present (prose only, no step): "Reusable patterns spotted during bootstrap → run `factory-learn` or `/team-init`."
 
 ---
 
@@ -153,7 +153,7 @@ Every gap line uses the form:
 
 - **`factory-product` / `factory-architect`** brownfield routes remain the **single-layer** entry points; `factory-init` is the unified one. Per-layer skip keeps a re-run cheap on repos that already have one layer documented.
 - **`factory-learn`** Historical Mining route = **ongoing/incremental** ChDR mining (post-incident, pre-refactor); `factory-init` = **one-time deep bootstrap** (full window). Both reuse the same `change-*` leaf skills.
-- **`levelup-init`** (brownfield CDR) has no factory route today — a known gap in `factory-learn`, out of scope here.
+- **`team-init`** (brownfield CDR) has no factory route today — a known gap in `factory-learn`, out of scope here.
 
 ---
 

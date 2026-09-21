@@ -15,7 +15,7 @@ Compile **accepted ChDRs** into the project's memory layer at `{REPO_ROOT}/.adlc
 - Regenerate `{REPO_ROOT}/.adlc/memory/chdr.md` — the **boot-facing index** that `team-boot` injects into the session-start context (same convention as `pdr.md`/`adr.md`)
 - Mark source drafts `### Status: **Published**`
 
-Unlike `/levelup-publish` (which opens a PR against team-ai-directives), `change-publish` writes **project-local memory** — ChDRs describe this repo's evolution and fail the team-wide signal gate. No PR is created; the user commits via their normal flow.
+Unlike `/team-learn` (which opens a PR against team-ai-directives), `change-publish` writes **project-local memory** — ChDRs describe this repo's evolution and fail the team-wide signal gate. No PR is created; the user commits via their normal flow.
 
 **This skill does not run until ChDRs have been accepted via `/change-clarify`.**
 
@@ -214,7 +214,7 @@ Commit `.adlc/memory/chdr/` and `.adlc/memory/chdr.md` via your normal flow.
 
 - ChDRs publish to `.adlc/memory/`, not team-ai-directives
 - No PR created — user commits via normal flow
-- ChDRs fail the levelup "team-wide applicability" signal gate by design
+- ChDRs fail the team-learn "team-wide applicability" signal gate by design
 
 #### Index Format Must Match team-boot
 

@@ -29,7 +29,7 @@ This is the quality gate for Change Decision Records — the human checkpoint be
 ### When NOT to use
 
 - **No pending ChDRs**: if no ChDRs have status Discovered/Proposed, there is nothing to clarify
-- **Reviewing CDRs**: use `/levelup-clarify` (CDRs and ChDRs are distinct record types with separate gates)
+- **Reviewing CDRs**: use `/team-learn` (CDRs and ChDRs are distinct record types with separate gates)
 - **Direct editing**: do not use this skill to bypass the review workflow
 
 ## Process

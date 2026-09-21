@@ -127,7 +127,7 @@ def test_no_dot_notation_skill_references():
     The .opencode/commands/ files are hyphenated, so dot-notation references are dead links."""
     import re
     pattern = re.compile(
-        r"/(architect|product|levelup|evals|team)\."
+        r"/(architect|product|team|evals|team)\."
         r"(init|specify|clarify|implement|analyze|roadmap|validate|publish|adlc)\b"
     )
     offenders = []

@@ -58,7 +58,7 @@ The subagent reports LOW confidence but the orchestrator silently proceeds to th
 ## Criterion EVAL-003: Goldset Formatting Integrity
 
 **Status**: published
-**Description**: Verifies that when levelup-publish writes goldset files, they are structured correctly as self-contained markdown/JSON without trace publication.
+**Description**: Verifies that when team-learn writes goldset files, they are structured correctly as self-contained markdown/JSON without trace publication.
 
 ### Pass Condition
 The published Goldset file contains YAML frontmatter with `type: Eval`, `id`, `paired_directive`, and inline `Pass Cases` / `Fail Cases` with scenario and expected/actual output, with NO full trace files published to traces/.

@@ -100,7 +100,7 @@ def test_factory_learn_state_initialization(sandbox_project):
             {
                 "id": "specify",
                 "phase_type": "generate",
-                "skill": "levelup-specify",
+                "skill": "team-learn",
                 "status": "pending"
             }
         ]

@@ -1,6 +1,6 @@
 ---
 name: factory-learn
-description: Use when coordinating continuous improvement loops (levelup + change + evals feedback + cleanup) targeting team-ai-directives — includes build-to-delete pruning and promote-to-check.
+description: Use when coordinating continuous improvement loops (team-learn + change + evals feedback + cleanup) targeting team-ai-directives — includes build-to-delete pruning and promote-to-check.
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## What this skill does
 
-`factory-learn` orchestrates the continuous improvement learning loop of the software factory. It coordinates individual learning-related skills (`levelup-init`, `levelup-specify`, `levelup-clarify`, `levelup-publish`, `change-init`, `change-clarify`, `change-publish`, `team-repair`, `evals-analyze`) to transition draft directives into verified, published, and minimal team context assets.
+`factory-learn` orchestrates the continuous improvement learning loop of the software factory. It coordinates individual learning-related skills (`team-init`, `team-learn`, `change-init`, `change-clarify`, `change-publish`, `team-repair`, `evals-analyze`) to transition draft directives into verified, published, and minimal team context assets.
 
 It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-mission/references/executor.md`.
 
@@ -31,10 +31,10 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 `factory-learn` implements a **fixed named-skill DAG** (`fixed` step resolution):
 
 ### Session Learnings Route (default on session-end)
-1. **`specify`** (`generate` phase) -> Invoke `levelup-specify` to extract candidate Context Directive Records (CDRs) and compliances from the active session.
-2. **`clarify`⭐** (`clarify` phase) -> Invoke `levelup-clarify` to review pending CDRs. Enforces the **evals-regression gate** (running the compliance goldset as the `verify` sub-phase to ensure no quality degradation).
-3. **`publish`** (`build` phase) -> Invoke `levelup-publish` to package accepted CDRs, index them, and compile a draft PR targeting the `team-ai-directives` repository.
-4. **`prune`** (`analyze` phase) -> Runs the cleanup bot over the directive store to detect and propose deprecations of superseded, contradictory, or stale rules. Deprecations feed back to `levelup-clarify`.
+1. **`specify`** (`generate` phase) -> Invoke `team-learn` to extract candidate Context Directive Records (CDRs) and compliances from the active session.
+2. **`clarify`⭐** (`clarify` phase) -> Invoke `team-learn` to review pending CDRs. Enforces the **evals-regression gate** (running the compliance goldset as the `verify` sub-phase to ensure no quality degradation).
+3. **`publish`** (`build` phase) -> Invoke `team-learn` to package accepted CDRs, index them, and compile a draft PR targeting the `team-ai-directives` repository.
+4. **`prune`** (`analyze` phase) -> Runs the cleanup bot over the directive store to detect and propose deprecations of superseded, contradictory, or stale rules. Deprecations feed back to `team-learn`.
 
 ### Historical Mining Route (brownfield)
 1. **`init`** (`generate` phase) -> Invoke `change-init` to mine git history and issue trackers for Change Decision Records (ChDRs).
@@ -45,7 +45,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 1. **`verify`** (`verify` phase) -> Run `team-repair --build-to-delete`. Re-runs goldset evals with rules temporarily disabled. Two questions per rule:
    - **Build-to-delete**: if the model passes without the rule, the rule is flagged as redundant.
    - **Promote-to-check** (deterministic-checks-first, EVAL-010): if a deterministic check (unit test / binary grader / pre-commit hook / lint rule / CI job) can mechanically enforce the rule, flag it as a promotion candidate — pay once for the check instead of re-injecting a fuzzy rule into every session.
-2. **`clarify`⭐** -> Proposes the redundant rule's deprecation and the mechanical rule's promotion to `levelup-clarify` for human review. Promotions route to action **P — Promote to check** (levelup-clarify Phase 2b); once the check exists and runs in CI, the CDR is deprecated or reduced to a thin pointer. Both proposals publish as `findings`.
+2. **`clarify`⭐** -> Proposes the redundant rule's deprecation and the mechanical rule's promotion to `team-learn` for human review. Promotions route to action **P — Promote to check** (team-learn Phase 2b); once the check exists and runs in CI, the CDR is deprecated or reduced to a thin pointer. Both proposals publish as `findings`.
 
 ### Workflow Retrospective Route
 Runs periodically or on-demand to analyze past runs of other factory skills (e.g. `factory-mission`, `factory-product`) and generate workflow memories:
@@ -65,6 +65,6 @@ Runs periodically or on-demand to analyze past runs of other factory skills (e.g
    - `clarify`⭐ → `decision` (accepted/rejected CDR/ChDR list published to comment bus on the directives PR)
    - `publish` → `artifact-ref` (PR URL reference published, content stays on disk)
    - `prune`/`verify` → `findings` (redundancy/deprecation report published to comment bus)
-3. **Feedback Loop Ingestion**: Automatically consumes the output of `evals-analyze` (when an application test fails due to specification issues, `evals-analyze` automatically routes to `levelup-specify`, which triggers this orchestrator).
+3. **Feedback Loop Ingestion**: Automatically consumes the output of `evals-analyze` (when an application test fails due to specification issues, `evals-analyze` automatically routes to `team-learn`, which triggers this orchestrator).
 4. **Supervision Default**: `hybrid`. Human gates are hard-enforced at `clarify`⭐ (approval of CDR/ChDR entries) and at final PR creation.
-5. **Pre-flight Check**: Verifies that `levelup-*`, `change-*`, and `team-*` skills are installed, and that the directives repo path is set in `.adlc/init-options.json`.
+5. **Pre-flight Check**: Verifies that `team-learn`, `change-*`, and `team-*` skills are installed, and that the directives repo path is set in `.adlc/init-options.json`.

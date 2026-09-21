@@ -27,10 +27,10 @@ CLASS_BOOTS = {
         "index": ".adlc/memory/chdr.md",
         "capture": "/change-init",
     },
-    "levelup-boot": {
-        "dir": ROOT / "skills" / "levelup" / "levelup-boot",
+    "team-learn": {
+        "dir": ROOT / "skills" / "team" / "team-learn",
         "index": "context_modules",
-        "capture": "/levelup-specify",
+        "capture": "/team-learn",
     },
     "tech-radar-boot": {
         "dir": ROOT / "skills" / "tech-radar" / "tech-radar-boot",
@@ -91,7 +91,7 @@ def test_class_boot_searched_line_contract():
         "architect-boot": "Searched N ADRs, K matched.",
         "product-boot": "Searched N PDRs, K matched.",
         "change-boot": "Searched N ChDRs, K matched.",
-        "levelup-boot": "Searched N CDRs, K matched.",
+        "team-learn": "Searched N CDRs, K matched.",
     }
     for name, line in expected.items():
         content = (CLASS_BOOTS[name]["dir"] / "SKILL.md").read_text(encoding="utf-8")

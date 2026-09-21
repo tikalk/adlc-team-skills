@@ -3,7 +3,7 @@ param(
 )
 
 ###############################################################################
-# Inline path resolution (matches levelup setup scripts)
+# Inline path resolution (matches team setup scripts)
 ###############################################################################
 
 $ProjectRoot = if ($env:PROJECT_ROOT) { $env:PROJECT_ROOT } else {

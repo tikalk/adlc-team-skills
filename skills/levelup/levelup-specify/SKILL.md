@@ -1,6 +1,6 @@
 ---
 name: levelup-specify
-description: Optional for routine capture — team-boot writes lightweight CDR drafts directly. Use for interactive deep-dive exploration when you want guided pattern extraction, multi-type CDR analysis, or structured session-trace documentation before contributing to team-ai-directives.
+description: Use when you want guided pattern extraction, multi-type CDR analysis, or structured session-trace documentation before contributing to team-ai-directives. Optional for routine capture — team-boot writes lightweight CDR drafts directly.
 disable-model-invocation: true
 ---
 

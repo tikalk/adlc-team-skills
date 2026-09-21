@@ -1,6 +1,6 @@
 ---
 name: evals-specify
-description: Optional for routine capture — team-boot writes lightweight eval drafts directly. Use for interactive deep-dive exploration when you want guided bottom-up error analysis, structured failure taxonomy discovery, or comprehensive trace coding before documenting eval criteria.
+description: Use when you want guided bottom-up error analysis, structured failure taxonomy discovery, or comprehensive trace coding before documenting eval criteria. Optional for routine capture — team-boot writes lightweight eval drafts directly.
 disable-model-invocation: true
 ---
 

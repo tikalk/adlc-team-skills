@@ -1,6 +1,6 @@
 ---
 name: change-init
-description: Optional for routine capture — team-boot writes lightweight ChDR drafts directly. Use for interactive deep-dive exploration when you want guided mining of git history, structured change-story clustering, or comprehensive rationale recovery before documenting.
+description: Use when you want guided mining of git history, structured change-story clustering, or comprehensive rationale recovery before documenting. Optional for routine capture — team-boot writes lightweight ChDR drafts directly.
 disable-model-invocation: true
 ---
 

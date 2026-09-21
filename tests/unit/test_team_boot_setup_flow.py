@@ -152,10 +152,11 @@ def test_boot_counts_line_is_cdrs_and_skills_only():
 def test_boot_sh_compact_decision_capture():
     """boot.sh must keep compact decision-capture triggers + the ledger contract."""
     assert "## Decision Capture" in BOOT_SH
-    assert "/architect-specify" in BOOT_SH
-    assert "/product-specify" in BOOT_SH
-    assert "/levelup-specify" in BOOT_SH
-    assert "/change-init" in BOOT_SH
+    assert "/architect-clarify" in BOOT_SH
+    assert "/product-clarify" in BOOT_SH
+    assert "/levelup-clarify" in BOOT_SH
+    assert "/change-clarify" in BOOT_SH
+    assert "/evals-clarify" in BOOT_SH
     assert "Session Decision Ledger" in BOOT_SH
     assert "Unrecorded: N pending." in BOOT_SH
 
@@ -163,7 +164,8 @@ def test_boot_sh_compact_decision_capture():
 def test_boot_ps1_compact_decision_capture():
     """boot.ps1 must keep compact decision-capture triggers + the ledger contract (parity)."""
     assert "## Decision Capture" in BOOT_PS1
-    assert "/architect-specify" in BOOT_PS1
+    assert "/architect-clarify" in BOOT_PS1
+    assert "/levelup-clarify" in BOOT_PS1
     assert "Session Decision Ledger" in BOOT_PS1
     assert "Unrecorded: N pending." in BOOT_PS1
 

@@ -1,6 +1,6 @@
 ---
 name: product-specify
-description: Optional for routine capture — team-boot writes lightweight PDR drafts directly. Use for interactive deep-dive exploration when you want guided trade-off analysis, multi-option comparison, or structured product decision facilitation before documenting.
+description: Use when you want guided trade-off analysis, multi-option comparison, or structured product decision facilitation before documenting. Optional for routine capture — team-boot writes lightweight PDR drafts directly.
 disable-model-invocation: true
 ---
 

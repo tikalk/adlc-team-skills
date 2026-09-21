@@ -39,8 +39,10 @@ When you ask the agent to build something, it doesn't jump to code.
 success criteria — then walks `specify → plan → implement ↔ converge`, with
 gates, a circuit breaker, resume, and an audit trail. When a session
 surfaces a hard-won fix, `team-learn` extracts it as a Context
-Directive Record (CDR) and commits it back to the team repo. The next
-session starts smarter.
+Directive Record (CDR), scores it by confidence, and publishes accepted
+CDRs back to the team repo. Usage data and confidence scores live in
+the `adlc` orphan branch — the next session starts smarter and CDRs
+rank by real usage.
 
 Verification, history, and tech selection have loops of their own.
 When a rule or skill's behavior needs proof, the `evals-*` skills build
@@ -111,16 +113,20 @@ conflict-free install flow.
    `specify → plan → implement ↔ converge` with gates, circuit breaker,
    resume, audit trail.
 3. **team-learn** — at session end, extracts hard-won fixes as CDRs +
-   paired eval CDRs, reviews them, and commits accepted CDRs to the team repo.
+   paired eval CDRs, scores confidence, batch-reviews them, and publishes
+   accepted CDRs as a draft PR to team-ai-directives. Drafts and usage
+   reports live in the `adlc` orphan branch (`drafts/cdr/` + `reports/`).
 4. **team-repair --build-to-delete** — re-runs evals without a rule; if the
    model passes anyway, the rule is proposed for deletion.
+   **team-repair --update-confidence** — aggregates usage data from the
+   `adlc` branch into confidence scores and updates OKF frontmatter.
 
 Product and architecture lifecycles run the same loop per record class:
 
 ```
 Product:     product-specify|init → product-clarify (accept + promote to memory) → product-implement → product-analyze
 Architecture: architect-specify|init → architect-clarify (accept + promote to memory) → architect-implement → architect-analyze
-Team:        team-init|specify → team-learn (review + publish) → team-repair
+Team:        team-init → team-learn (extract + review + publish) → team-repair (--update-confidence)
 Evals:       evals-init → evals-specify → evals-clarify → evals-implement → evals-validate
 ```
 
@@ -261,7 +267,7 @@ each step. Works alongside:
 
 ### Team directives — every session, every user
 
-- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry) and dispatches to per-class boots on demand. Auto-triggered; re-declared for `session_compact` so the index survives harness compaction.
+- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index ranked by confidence, Class Boots catalog, skills registry) and dispatches to per-class boots on demand. Auto-triggered; re-declared for `session_compact` so the index survives harness compaction. Also fires the session-end friction trigger for CDR capture.
 - **`team-setup`** — clone, link, or scaffold a team-ai-directives repo.
 - **`team-constitution`** — define or amend team principles interactively.
 - **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
@@ -286,11 +292,9 @@ each step. Works alongside:
 
 ### Learning loop (CDR lifecycle)
 
-- **`team-boot`** — class boot: CDR deep-dive when a task matches descriptors + CDR decision capture.
-- **`team-init`** — brownfield CDR discovery from an existing codebase.
-- **`team-learn`** — extract CDRs + paired evals from the current session.
-- **`team-learn`** — review/accept/reject/defer pending CDRs, with an enforceability gate (EVAL-010): mechanical rules must promote to deterministic checks (unit test, pre-commit, lint, CI job) before Accept is offered.
-- **`team-learn`** — compile accepted CDRs into directives + goldensets + draft PR.
+- **`team-learn`** — session-end CDR lifecycle: extract patterns, score confidence, batch review (A/B/C/D/P), and publish accepted CDRs as a draft PR. Auto-triggers on `session_end` event. Drafts live in the `adlc` orphan branch of team-ai-directives (`drafts/cdr/` + `reports/` for usage data).
+- **`team-init`** — brownfield CDR discovery from an existing codebase. Writes to the `adlc` branch; handoff to `team-learn` for review/publish.
+- **`team-repair --update-confidence`** — aggregate usage data from the `adlc` branch into confidence scores, update OKF frontmatter, rebuild CDR.md with confidence column. `team-boot` ranks CDRs by confidence in the injected index.
 
 ### Evals — verification over vibes
 
@@ -549,10 +553,11 @@ Greenfield: architect-specify → architect-clarify → architect-implement → 
 
 **CDR lifecycle:**
 ```
-Brownfield: team-init → team-learn (specify → clarify → publish) → team-repair
-Session:    team-learn (specify → clarify → publish) → team-repair
+Brownfield: team-init → team-learn (extract + review + publish) → team-repair
+Session:    team-learn (extract + review + publish) → team-repair
 History:    change-init → change-clarify → change-publish (change-boot injects chdr.md)
 Build to Delete: team-repair --build-to-delete → team-learn (review deletion CDRs)
+Confidence:   team-repair --update-confidence → team-boot (ranks CDRs by confidence)
 ```
 
 **Mission:**
@@ -578,7 +583,7 @@ Brownfield (Error-Driven): evals-init → evals-specify (from failures) → eval
 ```
 Product:     product-specify → product-clarify → product-implement → product-analyze
 Architecture: architect-specify → architect-clarify → architect-implement → architect-analyze
-Team:        team-learn (specify → clarify → publish) → team-repair
+Team:        team-learn (extract + review + publish) → team-repair
 ```
 
 </details>
@@ -595,9 +600,9 @@ This repo implements the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/
 | **VII — Verification-First Evals** | team-learn + Evals skills | team-learn creates directive-compliance eval CDRs; evals skills build and run application-level evaluation suites (PromptFoo/DeepEval) with binary graders, holdout splits, and statistical validation |
 | **VIII — Ratchet Effect** | team-learn + Evals skills | Each session extracts eval CDRs alongside directive CDRs; each goldset publication adds criteria that monotonically increase quality — `evals-clarify` publishes, `evals-validate` enforces |
 | **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
-| **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR index, and the Class Boots catalog into the system prompt at session start; the class boots load ADR/PDR/ChDR/CDR/radar context on demand, each paired with decision capture; `team-discover` provides manual re-scan |
-| **XI — Directives as Code** | Team + team-learn + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
-| **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `evals-analyze` routes spec failures to `team-learn` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
+| **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR index (ranked by confidence), and the Class Boots catalog into the system prompt at session start; the class boots load ADR/PDR/ChDR/CDR/radar context on demand, each paired with decision capture; `team-discover` provides manual re-scan |
+| **XI — Directives as Code** | Team + team-learn + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos; CDR drafts and usage reports live in the `adlc` orphan branch of team-ai-directives (`drafts/cdr/` + `reports/`); each lifecycle has extract → review → publish → analyze stages |
+| **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `--update-confidence` aggregates usage data into OKF frontmatter confidence scores; `evals-analyze` routes spec failures to `team-learn` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
 
 </details>
 

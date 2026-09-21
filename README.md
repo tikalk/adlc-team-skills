@@ -74,7 +74,8 @@ team's context.
 | 5 | Product and architecture decisions are invisible | **`product-*`** / **`architect-*`** — PDR→PRD, ADR→AD traceability |
 | 6 | "Why was this changed?" is archaeology — rationale lives in nobody's head | **`change-*`** — ChDRs mined from git history's issue-linked commits |
 | 7 | The agent picks tech by vibes, not team opinion | **`tech-radar-boot`** — radar context (adoption ring, quadrant) before the ADR |
-| 8 | Rules pile up and rot | **`team-repair --build-to-delete`** — rules should shrink over time, not grow |
+| 8 | Rules pile up and rot | **`team-repair --build-to-delete`** — rules should shrink over time, not grow; mechanical rules promoted to deterministic CI checks (EVAL-010) |
+| 9 | Accepted decisions linger in drafts, not memory | **Clarify-side promotion** — Accepted PDRs/ADRs move to memory on approval (atomic); `sweep_duplicates` catches leftovers; analyze flags duplicates as HIGH |
 
 ## Install
 
@@ -118,11 +119,13 @@ conflict-free install flow.
 Product and architecture lifecycles run the same loop per record class:
 
 ```
-Product:     product-specify|init → product-clarify → product-implement → product-analyze
-Architecture: architect-specify|init → architect-clarify → architect-implement → architect-analyze
-Team:        levelup-init|specify → levelup-clarify → levelup-publish → team-repair
+Product:     product-specify|init → product-clarify (accept + promote to memory) → product-implement → product-analyze
+Architecture: architect-specify|init → architect-clarify (accept + promote to memory) → architect-implement → architect-analyze
+Team:        levelup-init|specify → levelup-clarify (accept + promote to memory) → levelup-publish → team-repair
 Evals:       evals-init → evals-specify → evals-clarify → evals-implement → evals-validate
 ```
+
+**Accepted PDRs/ADRs are promoted to memory on approval** — no gap between "Accepted in drafts" and "moved to memory". `sweep_duplicates` in implement catches leftovers from manual copy. `analyze` flags duplicates as HIGH severity.
 
 **The agent checks the directives index before any task.** Skills trigger
 automatically when the active task matches — mandatory lifecycle, not
@@ -189,10 +192,12 @@ What each station adds:
 - **`factory-mission`** — the execution engine: spec-gated inner loop
   (specify → plan → implement ↔ converge) with tracker-agnostic integration,
   an inter-agent comment bus, worktree isolation, lease-based liveness,
-  stall detection, and a decoupled test/code split for TDD.
+  stall detection, and a mandated TDD test/code split (RED gate + GREEN gate,
+  enforced at the skill level, not just the prompt level).
 - **`factory-review`** — severity-ranked PR compliance against REVIEW.md
   policy-as-code; babysits agent PRs to merge, never auto-merges past the
-  human gate.
+  human gate. `--self-heal` runs a three-sub-agent converge loop
+  (Review→Fix→Converge) with maker-checker separation and circuit breaker.
 - **`factory-learn`** — retrospectives into team-ai-directives:
   build-to-delete pruning, promote-to-check for mechanical rules.
 - **`factory-product` / `factory-architect`** — lifecycle coordinators
@@ -257,7 +262,7 @@ each step. Works alongside:
 
 ### Team directives — every session, every user
 
-- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry) and stays out of the record classes. Auto-triggered; re-declared for `session_compact` so the index survives harness compaction.
+- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index, Class Boots catalog, skills registry) and dispatches to per-class boots on demand. Auto-triggered; re-declared for `session_compact` so the index survives harness compaction.
 - **`team-setup`** — clone, link, or scaffold a team-ai-directives repo.
 - **`team-constitution`** — define or amend team principles interactively.
 - **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
@@ -269,10 +274,10 @@ each step. Works alongside:
 
 - **`factory-init`** — unified brownfield bootstrap + PDR↔ADR↔ChDR↔code coverage matrix (`--refresh`).
 - **`factory-queue`** — queue intake, AI advisory triage scoring, intent gate, milestone generation.
-- **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, TDD test/code split, circuit breaker.
+- **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, mandated TDD RED/GREEN gates (Test Agent writes failing tests first, Implement Agent writes code to pass them), circuit breaker.
 - **`factory-review`** — severity-ranked PR policy compliance against `REVIEW.md`; babysits agent PRs to merge.
 - **`factory-product`** / **`factory-architect`** — product/architecture lifecycle coordinators.
-- **`factory-learn`** — continuous improvement loops targeting team-ai-directives.
+- **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.
 - **`factory-clean`** — resource inventory and reclamation (approval-gated).
 
@@ -285,7 +290,7 @@ each step. Works alongside:
 - **`levelup-boot`** — class boot: CDR deep-dive when a task matches descriptors + CDR decision capture.
 - **`levelup-init`** — brownfield CDR discovery from an existing codebase.
 - **`levelup-specify`** — extract CDRs + paired evals from the current session.
-- **`levelup-clarify`** — review/accept/reject/defer pending CDRs, with an enforceability gate: mechanical rules promote to deterministic checks.
+- **`levelup-clarify`** — review/accept/reject/defer pending CDRs, with an enforceability gate (EVAL-010): mechanical rules must promote to deterministic checks (unit test, pre-commit, lint, CI job) before Accept is offered.
 - **`levelup-publish`** — compile accepted CDRs into directives + goldensets + draft PR.
 
 ### Evals — verification over vibes
@@ -322,7 +327,8 @@ each step. Works alongside:
 
 ### Skill authoring — contributors
 
-- **`writing-skills`** — TDD-for-skills: baseline the failure without the skill (RED), write the minimal skill (GREEN), close rationalization loopholes (REFACTOR). Includes the `SKILL.md` template and the testing methodology.
+- **`writing-skills`** — TDD-for-skills: baseline the failure without the skill (RED), write the minimal skill (GREEN), close rationalization loopholes (REFACTOR). Iron Law: no skill without a failing baseline first (EVAL-011). Includes the `SKILL.md` template and the testing methodology.
+- **`diagnosing-team-skills`** — evidence-first diagnosis when team context doesn't appear: walks the session-start chain (init-options → jq → boot.sh → artifact sync → injection) and routes injection-side bugs to adlc-cli (EVAL-013).
 
 ## Philosophy
 
@@ -343,8 +349,9 @@ each step. Works alongside:
   human reviews.
 - **Decisions as code.** Every decision class — product (PDR), architecture
   (ADR), change (ChDR), context (CDR) — lives in version-controlled repos
-  with a draft → clarify → accept → publish → analyze lifecycle, and traces
-  from record to document to code.
+  with a draft → clarify → accept → promote → publish → analyze lifecycle,
+  and traces from record to document to code. Accepted records are promoted
+  to memory atomically with approval — never left in drafts.
 
 ## When something goes wrong
 
@@ -354,6 +361,8 @@ each step. Works alongside:
   dispatcher → `team-boot`'s `scripts/boot.sh`) needs `jq` available. Full
   chain contract: [docs/event-hook-contract.md](docs/event-hook-contract.md);
   run `scripts/acceptance-test.sh` to verify the whole loop from scratch.
+  For evidence-first diagnosis of injection failures, run `/diagnosing-team-skills`
+  (traces init-options → jq → boot.sh → artifact sync → injection; EVAL-013).
 - **Team context vanished mid-session after compaction** — re-injection
   after compaction is a declared contract (`session_compact` in
   `.events.json`); the injection side is implemented by
@@ -401,13 +410,13 @@ by the pull each family has on a typical session (team first):
 
 ```
 skills/
-├── team/                  # team-* (6) + workspace + diagnosing-team-skills (team-helpers live per-skill)
+├── team/                  # team-* (7) + workspace + diagnosing-team-skills (team-helpers live per-skill)
 ├── mission/               # mission-brief (1 skill) — core SDD orchestrator
-├── levelup/               # levelup-* (5 skills) + levelup-helpers.{sh,ps1}
+├── levelup/               # levelup-* (5 skills) + levelup-templates/ + levelup-helpers.{sh,ps1}
 ├── evals/                 # evals-* (6 skills) + evals-templates/
 ├── product/               # product-* (7 skills) + product-templates/
-├── architect/             # architect-* (6 skills)
-├── change/                # change-* (4 skills) — ChDRs from git history
+├── architect/             # architect-* (6 skills) + architect-templates/
+├── change/                # change-* (4 skills) + change-templates/ — ChDRs from git history
 ├── tech-radar/            # tech-radar-* (1 skill) + resources/radar.json
 ├── authoring/             # writing-skills (1 skill) + templates/
 └── factory/               # factory-* (9 skills) — platform orchestration
@@ -416,6 +425,11 @@ skills/
 This places every single skill exactly 2 levels deep, fully resolving the
 default depth limit of the `skills` CLI and ensuring all skills install
 out of the box. (Enforced by `tests/unit/test_playbook_integrity.py`.)
+
+**Template consolidation (v0.29.0):** Each skill family now shares a single
+`{family}/templates/` directory instead of duplicating templates per-skill.
+This eliminated ~12,000 lines of duplicate template files across
+architect, product, change, evals, levelup, and team families.
 
 </details>
 
@@ -495,16 +509,18 @@ All skills write to `.adlc/` (project root) and the team AI directives repo.
 <details>
 <summary><strong>OKF Compliance</strong></summary>
 
-Generated context modules include [Open Knowledge Format (OKF) v0.1](https://blog.agentics.org/open-knowledge-format/) compliant frontmatter alongside custom fields.
+Generated context modules include [Open Knowledge Format (OKF) v0.2](https://blog.agentics.org/open-knowledge-format/) compliant frontmatter alongside custom fields.
 
 | OKF field | Status | Source |
 |-----------|--------|--------|
-| `type` | ✅ | CDR context type |
+| `type` | ✅ | CDR context type (Constitution/Persona/Rule/Example/Skill) |
 | `title` | ✅ | CDR title |
 | `description` | ✅ | CDR descriptor |
-| `resource` | ✅ | Relative path to artifact |
 | `tags` | ✅ | Context type tag |
-| `timestamp` | ✅ | ISO 8601 datetime |
+| `generated` | ✅ | ISO 8601 datetime + author |
+| `verified` | ✅ | ISO 8601 datetime + verifier |
+| `status` | ✅ | stable / draft / deprecated |
+| `stale_after` | ✅ | e.g., `180d` — freshness window for team-repair |
 
 Custom fields co-exist with OKF frontmatter: `id`, `cdr_ref`, `created`, `modified`, `verified`, `age_days`, `evidence`.
 

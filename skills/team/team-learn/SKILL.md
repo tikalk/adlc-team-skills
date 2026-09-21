@@ -1,6 +1,6 @@
 ---
 name: team-learn
-description: Use when a session ends to extract CDRs, score confidence, batch review, and publish accepted CDRs to team-ai-directives. Auto-triggers on session_end event.
+description: Use when a session ends to extract CDRs, score confidence, batch review, and publish accepted CDRs to team-ai-directives. Auto-triggers on session_end event. Also invoked from team-boot's Class Boots catalog for CDR descriptor matches.
 disable-model-invocation: true
 scripts:
   sh: scripts/team-learn.sh
@@ -17,6 +17,8 @@ accepted CDRs as a draft PR to `team-ai-directives`.
 
 Replaces the former `levelup-specify`, `levelup-clarify`, and `levelup-publish`
 skills with a single streamlined workflow.
+
+_Searched N CDRs, K matched._
 
 ## When to use
 
@@ -172,6 +174,13 @@ When two projects draft the same pattern:
    - Adds project-b to `project:` field
    - Appends evidence section
    - Increments confidence (multi-project validation)
+
+## Session Decision Ledger
+
+team-learn integrates with the Session Decision Ledger maintained by team-boot.
+CDR-class decisions detected during the session are captured as drafts and
+tracked in the ledger. Do not fabricate ledger rows — only record decisions
+that actually emerged from the session.
 
 ## Verification
 

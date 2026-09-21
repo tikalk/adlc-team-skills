@@ -4,22 +4,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+###############################################################################
+# 1. PATH RESOLUTION
+###############################################################################
+
 resolve_team_learn_paths() {
   PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
   BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
 
   TEAM_AI_DIRECTIVES="${TEAM_AI_DIRECTIVES:-}"
   if [[ -z "$TEAM_AI_DIRECTIVES" && -f "${PROJECT_ROOT}/.adlc/init-options.json" ]]; then
-    TEAM_AI_DIRECTIVES=$(python3 -c "
-import json
-try:
-    with open('${PROJECT_ROOT}/.adlc/init-options.json') as f:
-        print(json.load(f).get('team_ai_directives', ''))
-except Exception:
-    print('')
-" 2>/dev/null || true)
+    TEAM_AI_DIRECTIVES=$(grep '"team_ai_directives"' "${PROJECT_ROOT}/.adlc/init-options.json" \
+      | sed 's/.*"team_ai_directives"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' \
+      | head -1)
   fi
-  [[ -z "$TEAM_AI_DIRECTIVES" ]] && TEAM_AI_DIRECTIVES="${PROJECT_ROOT}/team-ai-directives"
+  [[ -z "$TEAM_AI_DIRECTIVES" || "$TEAM_AI_DIRECTIVES" = "null" ]] && TEAM_AI_DIRECTIVES="${PROJECT_ROOT}/team-ai-directives"
 
   ADLC_BRANCH="adlc"
   ADLC_WORKTREE="/tmp/adlc-worktree-$$"
@@ -45,41 +44,47 @@ except Exception:
 
 output_json() {
   resolve_team_learn_paths >/dev/null
-  python3 - << PY
-import json, os
-print(json.dumps({
-  "REPO_ROOT": os.environ.get("PROJECT_ROOT", ""),
-  "TEAM_AI_DIRECTIVES": os.environ.get("TEAM_AI_DIRECTIVES", ""),
-  "BRANCH": os.environ.get("BRANCH", ""),
-  "ADLC_BRANCH": os.environ.get("ADLC_BRANCH", "adlc"),
-  "ADLC_WORKTREE": os.environ.get("ADLC_WORKTREE", ""),
-}))
-PY
+  cat << JSON
+{"REPO_ROOT":"$PROJECT_ROOT","TEAM_AI_DIRECTIVES":"$TEAM_AI_DIRECTIVES","BRANCH":"$BRANCH","ADLC_BRANCH":"$ADLC_BRANCH","ADLC_WORKTREE":"$ADLC_WORKTREE"}
+JSON
 }
+
+###############################################################################
+# 2. ADLC ORPHAN BRANCH MANAGEMENT
+###############################################################################
 
 ensure_adlc_branch() {
   local td="${1:-$TEAM_AI_DIRECTIVES}"
   if ! git -C "$td" show-ref --verify --quiet "refs/heads/$ADLC_BRANCH"; then
     git -C "$td" branch --orphan "$ADLC_BRANCH"
-    git -C "$td" worktree add "$ADLC_WORKTREE" "$ADLC_BRANCH"
-    git -C "$ADLC_WORKTREE" commit --allow-empty -m "Initialize adlc orphan branch"
+    git -C "$td" worktree add "$ADLC_WORKTREE" "$ADLC_BRANCH" 2>/dev/null
     mkdir -p "$ADLC_WORKTREE/drafts/cdr" "$ADLC_WORKTREE/reports/sessions" "$ADLC_WORKTREE/reports/projects"
     git -C "$ADLC_WORKTREE" add -A
-    git -C "$ADLC_WORKTREE" commit -m "Add drafts and reports directory structure"
+    git -C "$ADLC_WORKTREE" commit --allow-empty -m "Initialize adlc orphan branch"
     git -C "$ADLC_WORKTREE" push origin "$ADLC_BRANCH" 2>/dev/null || true
     git -C "$td" worktree remove "$ADLC_WORKTREE" 2>/dev/null || true
   fi
 }
 
+###############################################################################
+# 3. CDR NUMBERING
+###############################################################################
+
 next_cdr_number() {
   local td="${1:-$TEAM_AI_DIRECTIVES}"
   local max=0
-  for f in $(git -C "$td" ls-tree --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null | grep -oP 'CDR-\K[0-9]+'); do
-    [[ "$f" =~ ^[0-9]+$ ]] || continue
-    ((10#$f > max)) && max=$((10#$f))
+  for f in $(git -C "$td" ls-tree --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null | sort); do
+    local num
+    num=$(echo "$f" | sed -n 's|.*/CDR-\([0-9]\+\)\.md|\1|p')
+    [[ "$num" =~ ^[0-9]+$ ]] || continue
+    ((10#$num > max)) && max=$((10#$num))
   done
   printf '%03d' $((max + 1))
 }
+
+###############################################################################
+# 4. ADLC BRANCH READ/WRITE
+###############################################################################
 
 read_adlc_file() {
   local td="${1:-$TEAM_AI_DIRECTIVES}"
@@ -100,6 +105,10 @@ write_adlc_file() {
   git -C "$td" worktree remove "$ADLC_WORKTREE" 2>/dev/null || true
 }
 
+###############################################################################
+# 5. CDR INDEX GENERATION
+###############################################################################
+
 regenerate_cdr_index() {
   local td="${1:-$TEAM_AI_DIRECTIVES}"
   local index_path="drafts/cdr/cdr.md"
@@ -109,6 +118,7 @@ regenerate_cdr_index() {
 
   local entries=""
   local count=0
+
   for f in $(git -C "$td" ls-tree --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null | sort); do
     [[ "$f" =~ CDR-[0-9]+\.md$ ]] || continue
     local id target type status created verified age descriptor
@@ -127,8 +137,8 @@ regenerate_cdr_index() {
     [[ -z "$verified" ]] && verified="-"
     [[ -z "$age" ]] && age="-"
 
-    entries+=$(printf '| %s | %s | %s | %s | %s | %s | %s | %s |\n' \
-      "$id" "${target:- }" "${type:- }" "${status:-Discovered}" "${created}" "${verified}" "${age}" "${descriptor:- }")
+    entries="${entries}| ${id} | ${target:- } | ${type:- } | ${status:-Discovered} | ${created} | ${verified} | ${age} | ${descriptor:- } |
+"
     count=$((count + 1))
   done
 
@@ -151,6 +161,10 @@ EOF
   echo "$index_path"
 }
 
+###############################################################################
+# 6. SIGNAL GATE VALIDATION
+###############################################################################
+
 signal_gate() {
   local file="$1"
   local reasons=()
@@ -172,44 +186,25 @@ signal_gate() {
     echo "SKIP: ${reasons[*]}"
     return 1
   fi
+
   echo "PASS"
   return 0
 }
 
-main() {
-  if [[ "$#" -eq 0 ]]; then
-    resolve_team_learn_paths
-    return
+###############################################################################
+# CLI ENTRY
+###############################################################################
+
+if [[ "${1:-}" == "--json" ]]; then
+  output_json
+elif [[ "${1:-}" == "--next-cdr" ]]; then
+  next_cdr_number "${2:-}"
+elif [[ "${1:-}" == "--index" ]]; then
+  regenerate_cdr_index "${2:-}"
+elif [[ "${1:-}" == "--signal-gate" ]]; then
+  if [[ -z "${2:-}" ]]; then
+    echo "ERROR: --signal-gate requires a file path" >&2
+    exit 1
   fi
-
-  case "$1" in
-    --json)
-      output_json
-      ;;
-    --next-cdr)
-      next_cdr_number "${2:-}"
-      ;;
-    --index)
-      regenerate_cdr_index "${2:-}"
-      ;;
-    --signal-gate)
-      if [[ -z "${2:-}" ]]; then
-        echo "ERROR: --signal-gate requires a file argument" >&2
-        exit 1
-      fi
-      signal_gate "$2"
-      ;;
-    --help|-h)
-      echo "Usage: helpers.sh [--json] [--next-cdr [REPO]] [--index [REPO]] [--signal-gate FILE]"
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      exit 1
-      ;;
-  esac
-}
-
-# CLI only when executed directly, not when sourced
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
+  signal_gate "$2"
 fi

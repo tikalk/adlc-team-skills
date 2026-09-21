@@ -111,7 +111,7 @@ def test_boot_sh_class_boots_catalog():
     team context plus the catalog that routes to them.
     """
     assert "## Class Boots" in BOOT_SH
-    for boot in ("architect-boot", "product-boot", "change-boot", "levelup-boot", "tech-radar-boot"):
+    for boot in ("architect-boot", "product-boot", "change-boot", "team-learn", "tech-radar-boot"):
         assert boot in BOOT_SH
     # Class index paths are named in the catalog rows
     assert ".adlc/memory/adr/" in BOOT_SH
@@ -125,7 +125,7 @@ def test_boot_sh_class_boots_catalog():
 def test_boot_ps1_class_boots_catalog():
     """boot.ps1 must surface the same Class Boots catalog as boot.sh (parity)."""
     assert "## Class Boots" in BOOT_PS1
-    for boot in ("architect-boot", "product-boot", "change-boot", "levelup-boot", "tech-radar-boot"):
+    for boot in ("architect-boot", "product-boot", "change-boot", "team-learn", "tech-radar-boot"):
         assert boot in BOOT_PS1
     assert "## PDR Index" not in BOOT_PS1
     assert "## ADR Index" not in BOOT_PS1
@@ -154,7 +154,7 @@ def test_boot_sh_compact_decision_capture():
     assert "## Decision Capture" in BOOT_SH
     assert "/architect-clarify" in BOOT_SH
     assert "/product-clarify" in BOOT_SH
-    assert "/levelup-clarify" in BOOT_SH
+    assert "/team-learn" in BOOT_SH
     assert "/change-clarify" in BOOT_SH
     assert "/evals-clarify" in BOOT_SH
     assert "Session Decision Ledger" in BOOT_SH
@@ -165,7 +165,7 @@ def test_boot_ps1_compact_decision_capture():
     """boot.ps1 must keep compact decision-capture triggers + the ledger contract (parity)."""
     assert "## Decision Capture" in BOOT_PS1
     assert "/architect-clarify" in BOOT_PS1
-    assert "/levelup-clarify" in BOOT_PS1
+    assert "/team-learn" in BOOT_PS1
     assert "Session Decision Ledger" in BOOT_PS1
     assert "Unrecorded: N pending." in BOOT_PS1
 

@@ -56,7 +56,7 @@ Read existing `team-ai-directives` main branch for comparison (avoid duplicates)
 
 ### Phase 4: Write CDRs
 
-Write to `adlc` branch `drafts/cdr/` using the team-learn CDR draft template.
+Write to `adlc` branch `drafts/cdr/` using the shared CDR draft template at `skills/team/templates/cdr-draft-template.md`.
 
 ### Phase 5: Handoff
 

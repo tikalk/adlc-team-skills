@@ -69,7 +69,7 @@ Review the current session to identify reusable patterns:
 3. What reusable patterns emerged?
 4. What files were created/modified? (`git diff --stat`, `git log --oneline -10`)
 
-For each pattern, create a CDR draft using the lightweight template.
+For each pattern, create a CDR draft using the shared template at `skills/team/templates/cdr-draft-template.md`.
 
 Write session trace to `adlc` branch: `reports/sessions/<user>/<YYYY-MM>.md`.
 

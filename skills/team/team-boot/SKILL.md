@@ -33,7 +33,7 @@ of the bootstrap loop.
 | `architect-boot` | ADR index (`.adlc/memory/adr/`) | architecture work; tech-stack/pattern choice | direct write to `.adlc/drafts/adr/` |
 | `product-boot` | PDR index (`.adlc/memory/pdr/`) | product/feature scope, personas, monetization | direct write to `.adlc/drafts/pdr/` |
 | `change-boot` | ChDR index (`.adlc/memory/chdr.md`) | change-history rationale, reverts, issue-linked commits | direct write to `.adlc/drafts/chdr/` |
-| `levelup-boot` | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | direct write to `.adlc/drafts/cdr/` |
+| `team-learn` | CDR module bodies (team-ai-directives) | session end; CDR descriptor match; reusable team pattern | direct write to adlc branch `drafts/cdr/` |
 | `tech-radar-boot` | Tikal Tech Radar context | choosing/evaluating technology | radar context + direct write to `.adlc/drafts/adr/` |
 
 Invoke a class boot when a task or decision matches its row. Each boot
@@ -67,7 +67,7 @@ guard prevents double-injection. Agents whose adapters don't map
    above and follow it: invoke the matching class boot when a task or
    decision matches a row.
 4. The CDR index is your catalog — read full module bodies on demand
-   when a task matches a CDR descriptor (or invoke `levelup-boot` to do
+   when a task matches a CDR descriptor (or invoke `team-learn` to do
    it as a structured deep-dive).
 
 ## Decision Capture
@@ -82,7 +82,7 @@ The only gate is clarify at session end.
 |---------|------|-----------|-------------|
 | Tech stack choice, pattern selection, "we chose X over Y" | decision | drafts/adr/ | /architect-clarify |
 | Feature scope, persona, monetization | product | drafts/pdr/ | /product-clarify |
-| Reusable team rule, "we always do X" | pattern | drafts/cdr/ | /levelup-clarify |
+| Reusable team rule, "we always do X" | pattern | drafts/cdr/ | /team-learn |
 | Revert/hotfix rationale, issue-linked commit | incident | drafts/chdr/ | /change-clarify |
 | Workaround adopted, "X for now because Y" | workaround | drafts/chdr/ | /change-clarify |
 | Operational constraint, "only works because Z" | constraint | drafts/adr/ | /architect-clarify |

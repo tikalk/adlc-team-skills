@@ -15,7 +15,7 @@ Provides **cross-functional team elevation** and **closed-loop feedback** follow
 2. **Failure Routing**:
    - **Specification Failures** (agent logic missing/ambiguous) → subclassified (EVAL-010):
      - **Mechanical** (fixed, checkable pattern) → fix/extend the existing grader or add a unit test — a deterministic check, not a CDR
-     - **Judgment gap** (missing intent, ambiguity, needs context) → automatically triggers a local call to `team-learn` to propose new context rules in `.adlc/drafts/cdr/` to fix agent behavior
+     - **Judgment gap** (missing intent, ambiguity, needs context) → automatically triggers a local call to `team-learn` to propose new context rules in `adlc branch drafts/cdr/` to fix agent behavior
    - **Generalization Failures** (grader flawed or lacks edge-case coverage) → Appends evaluator backlog items to the project backlog for ongoing monitoring.
 3. **Cross-Functional PR** - Creates a team-ai-directives PR with insights and rule updates (EDD Principle X)
 
@@ -59,7 +59,7 @@ Categorizes each failure trace:
 
 #### Phase 3: Action Routing (Close the Loop)
 - **For Mechanical Specification Failures**: Fix/extend the existing binary grader or add a unit test that enforces the pattern. Do NOT propose a CDR for a mechanically-checkable gap — pay once for the check instead of re-deriving it per session.
-- **For Judgment-gap Specification Failures**: Automatically triggers local skill `/team-learn` with the failure trace as input. This creates new rule/persona/example CDRs in `.adlc/drafts/cdr/` to fix the agent's behavior.
+- **For Judgment-gap Specification Failures**: Automatically triggers local skill `/team-learn` with the failure trace as input. This creates new rule/persona/example CDRs in `adlc branch drafts/cdr/` to fix the agent's behavior.
 - **For Generalization Failures**: Appends an evaluator backlog item to `evals/results/evaluator_backlog.md` detailing the needed grader edge-case updates.
 
 #### Phase 4: Cross-Functional Insights & PR
@@ -68,7 +68,7 @@ Categorizes each failure trace:
 
 ## Verification
 - Trajectory failure traces analyzed and classified
-- Mechanical specification failures routed to grader/unit-test fixes (deterministic checks); judgment-gap failures routed to `/team-learn` (proposes CDRs in `.adlc/drafts/cdr/`)
+- Mechanical specification failures routed to grader/unit-test fixes (deterministic checks); judgment-gap failures routed to `/team-learn` (proposes CDRs in `adlc branch drafts/cdr/`)
 - Generalization failures written to `evals/results/evaluator_backlog.md`
 - Stakeholder report `evals/results/team_insights.md` generated
 - Draft PR created in team-ai-directives (if applicable)

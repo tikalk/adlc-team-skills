@@ -455,8 +455,8 @@ All skills write to `.adlc/` (project root) and the team AI directives repo.
 
 **team-learn** (inside `.adlc/` of the target project):
 
-- `.adlc/drafts/cdr/CDR-{NNN}.md` — proposed/discovered CDRs (including eval CDRs)
-- `.adlc/drafts/cdr/cdr.md` — auto-generated CDR index
+- `adlc branch drafts/cdr/CDR-{NNN}.md` — proposed/discovered CDRs (including eval CDRs)
+- `adlc branch drafts/cdr/cdr.md` — auto-generated CDR index
 - `.adlc/init-options.json` — team AI directives path config
 
 **Product** (inside `.adlc/` and repo root):

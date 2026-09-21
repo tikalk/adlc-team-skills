@@ -219,15 +219,18 @@ if (Test-Path ".adlc/drafts/chdr") {
     }
 }
 
-# Pending CDRs — remind user to clarify (safety net for missed suggestions)
-if (Test-Path ".adlc/drafts/cdr") {
-    $pendingCdrFiles = Get-ChildItem ".adlc/drafts/cdr/CDR-*.md" -ErrorAction SilentlyContinue
-    $pendingCdrs = ($pendingCdrFiles | Where-Object { (Get-Content $_.FullName -Raw) -match 'Status: \*\*Proposed\*\*' }).Count
-    if ($pendingCdrs -gt 0) {
-        Write-Output ""
-        Write-Output "## Pending CDRs"
-        Write-Output "$pendingCdrs proposed CDR(s) awaiting review in .adlc/drafts/cdr/"
-        Write-Output "Run /team-learn to accept, reject, or defer them."
+# Pending CDRs — check adlc orphan branch in team-ai-directives
+if ($TEAM_AI_DIRECTIVES -and (Test-Path "$TEAM_AI_DIRECTIVES/.git")) {
+    $adlcBranch = git -C "$TEAM_AI_DIRECTIVES" show-ref --verify --quiet "refs/heads/adlc" 2>$null
+    if ($adlcBranch) {
+        $cdrList = git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/" 2>$null
+        $pendingCdrs = ($cdrList -split "`n" | Where-Object { $_ -match "CDR-" }).Count
+        if ($pendingCdrs -gt 0) {
+            Write-Output ""
+            Write-Output "## Pending CDRs"
+            Write-Output "$pendingCdrs proposed CDR(s) awaiting review in adlc branch"
+            Write-Output "Run /team-learn to accept, reject, or defer them."
+        }
     }
 }
 

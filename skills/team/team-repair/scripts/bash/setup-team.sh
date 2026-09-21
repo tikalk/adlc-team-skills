@@ -27,6 +27,40 @@ else
 fi
 
 ###############################################################################
+# ENSURE ADLC ORPHAN BRANCH
+###############################################################################
+
+ensure_adlc_branch() {
+  local td="${1:-$TEAM_AI_DIRECTIVES}"
+  local adlc_branch="adlc"
+
+  if [[ -z "$td" || ! -d "$td/.git" ]]; then
+    echo "Skipping adlc branch creation — not a git repo: $td"
+    return 0
+  fi
+
+  if git -C "$td" show-ref --verify --quiet "refs/heads/$adlc_branch"; then
+    echo "adlc branch already exists"
+    return 0
+  fi
+
+  echo "Creating adlc orphan branch..."
+  local worktree="/tmp/adlc-init-$$"
+  git -C "$td" worktree add "$worktree" --detach 2>/dev/null || true
+  git -C "$td" branch --orphan "$adlc_branch"
+  git -C "$td" worktree remove "$worktree" 2>/dev/null || true
+  git -C "$td" worktree add "$worktree" "$adlc_branch"
+  mkdir -p "$worktree/drafts/cdr" "$worktree/reports/sessions" "$worktree/reports/projects"
+  echo '{}' > "$worktree/reports/confidence-scores.json"
+  touch "$worktree/drafts/cdr/.gitkeep" "$worktree/reports/sessions/.gitkeep" "$worktree/reports/projects/.gitkeep"
+  git -C "$worktree" add -A
+  git -C "$worktree" commit -m "Initialize adlc orphan branch (drafts + reports)"
+  git -C "$worktree" push origin "$adlc_branch" 2>/dev/null || true
+  git -C "$td" worktree remove "$worktree" 2>/dev/null || true
+  echo "adlc orphan branch created"
+}
+
+###############################################################################
 # CONFIDENCE UPDATE FUNCTION (--update-confidence)
 ###############################################################################
 
@@ -34,21 +68,21 @@ update_confidence() {
   local td="$TEAM_AI_DIRECTIVES"
   local adlc_branch="adlc"
 
-  # Check if adlc branch exists
+  # Ensure adlc branch exists
+  ensure_adlc_branch "$td"
+
   if ! git -C "$td" show-ref --verify --quiet "refs/heads/$adlc_branch"; then
-    echo "adlc branch does not exist — nothing to aggregate"
+    echo "adlc branch does not exist — cannot aggregate"
     return 0
   fi
 
   local today
   today=$(date +%Y-%m-%d)
 
-  # Temp file for aggregated confidence scores
   local tmp_conf
   tmp_conf=$(mktemp)
   trap 'rm -f "$tmp_conf"' EXIT
 
-  # Write JSON header
   cat > "$tmp_conf" << JSONHEAD
 {
   "last_updated": "$today",
@@ -57,11 +91,9 @@ JSONHEAD
 
   local first_entry=1
 
-  # List project files from adlc branch
   local project_files
   project_files=$(git -C "$td" ls-tree --name-only "$adlc_branch" "reports/projects/" 2>/dev/null | grep '\.json$')
 
-  # Associative arrays for aggregation (bash 4+)
   declare -A agg_usage=()
   declare -A agg_apply=()
   declare -A agg_last_used=()
@@ -72,18 +104,14 @@ JSONHEAD
     content=$(git -C "$td" show "${adlc_branch}:${pf}" 2>/dev/null || echo "")
     [[ -z "$content" ]] && continue
 
-    # Extract project name
     local project_name
     project_name=$(echo "$content" | grep '"project"' | sed 's/.*"project"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1)
     [[ -z "$project_name" ]] && project_name="unknown"
 
-    # Extract CDR entries — each block like: "CDR-001": { "matched": 8, "applied": 6, "last_used": "2025-09-21" }
-    # Parse using sed/awk (no python3)
     local cdr_ids
     cdr_ids=$(echo "$content" | grep -oP '"CDR-[0-9]+"' | tr -d '"' | sort -u)
 
     for cdr_id in $cdr_ids; do
-      # Extract matched, applied, last_used for this CDR from this project file
       local matched applied last_used
       matched=$(echo "$content" | grep -A10 "\"$cdr_id\"" | grep '"matched"' | sed 's/.*"matched"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/' | head -1)
       applied=$(echo "$content" | grep -A10 "\"$cdr_id\"" | grep '"applied"' | sed 's/.*"applied"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/' | head -1)
@@ -93,7 +121,6 @@ JSONHEAD
       [[ -z "$applied" ]] && applied=0
       [[ -z "$last_used" ]] && last_used=""
 
-      # Aggregate
       agg_usage[$cdr_id]=$(( ${agg_usage[$cdr_id]:-0} + matched ))
       agg_apply[$cdr_id]=$(( ${agg_apply[$cdr_id]:-0} + applied ))
 
@@ -101,7 +128,6 @@ JSONHEAD
         agg_last_used[$cdr_id]="$last_used"
       fi
 
-      # Track projects (simple: append if not already present)
       local existing="${agg_projects[$cdr_id]:-}"
       if [[ -z "$existing" ]]; then
         agg_projects[$cdr_id]="\"$project_name\""
@@ -111,7 +137,6 @@ JSONHEAD
     done
   done
 
-  # Output aggregated CDR entries as JSON
   for cdr_id in "${!agg_usage[@]}"; do
     local uc="${agg_usage[$cdr_id]}"
     local ac="${agg_apply[$cdr_id]}"
@@ -122,7 +147,6 @@ JSONHEAD
       success_rate=$(awk "BEGIN { printf \"%.2f\", $ac / $uc }")
     fi
 
-    # Calculate trend
     local trend="unknown"
     if [[ -n "$lu" ]]; then
       local today_epoch lu_epoch
@@ -159,16 +183,23 @@ JSONHEAD
 ENTRY
   done
 
-  # Write JSON footer
   cat >> "$tmp_conf" << JSONFOOT
   }
 }
 JSONFOOT
 
-  # Output result
   cat "$tmp_conf"
   rm -f "$tmp_conf"
 }
+
+###############################################################################
+# CLI ENTRY
+###############################################################################
+
+if [[ "${1:-}" == "--ensure-adlc" ]]; then
+  ensure_adlc_branch
+  exit 0
+fi
 
 if [[ "${1:-}" == "--update-confidence" ]]; then
   update_confidence

@@ -209,14 +209,16 @@ if [ -d ".adlc/drafts/chdr" ]; then
   fi
 fi
 
-# Pending CDRs — remind user to clarify (safety net for missed suggestions)
-if [ -d ".adlc/drafts/cdr" ]; then
-  PENDING_CDRS=$(grep -rl "Status: \*\*Proposed\*\*" .adlc/drafts/cdr/CDR-*.md 2>/dev/null | wc -l || true)
-  if [ "$PENDING_CDRS" -gt 0 ]; then
-    echo ""
-    echo "## Pending CDRs"
-    echo "$PENDING_CDRS proposed CDR(s) awaiting review in \`.adlc/drafts/cdr/\`"
-    echo "Run \`/team-learn\` to accept, reject, or defer them."
+# Pending CDRs — check adlc orphan branch in team-ai-directives
+if [ -n "$TEAM_AI_DIRECTIVES" ] && [ -d "$TEAM_AI_DIRECTIVES/.git" ]; then
+  if git -C "$TEAM_AI_DIRECTIVES" show-ref --verify --quiet "refs/heads/adlc" 2>/dev/null; then
+    PENDING_CDRS=$(git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/" 2>/dev/null | grep -c "CDR-" || echo 0)
+    if [ "$PENDING_CDRS" -gt 0 ]; then
+      echo ""
+      echo "## Pending CDRs"
+      echo "$PENDING_CDRS proposed CDR(s) awaiting review in adlc branch"
+      echo "Run \`/team-learn\` to accept, reject, or defer them."
+    fi
   fi
 fi
 

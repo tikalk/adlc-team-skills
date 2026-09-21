@@ -45,6 +45,14 @@ said `0 matched`.
    team-level CDR deep-dive is unavailable and continue; suggest
    `/team-setup` only if the user wants to configure directives.
 
+### Step 1b: Read the CDR Drafts Index
+
+Check `.adlc/drafts/cdr/` for `CDR-*.md` files with `status: proposed` in
+frontmatter. These are draft CDRs pending clarification — proposed team
+patterns that have not been published to team-ai-directives yet. Collect
+ID / Title / Type / Status / Date from each file. If the directory is empty
+or absent, report `0 pending drafts`.
+
 ### Step 2: Read Matched Module Bodies
 
 From the injected CDR index, take the rows whose descriptors match the
@@ -69,6 +77,14 @@ Emit before the task answer:
 | CDR-2026-021 | rules/security/sql_injection_prevention | Parameterized queries only; ... |
 
 _Searched N CDRs, K matched._
+
+## Drafts Pending Review
+
+| ID | Title | Type | Status | Date |
+|----|-------|------|--------|------|
+| (from .adlc/drafts/cdr/) |
+
+_N pending drafts — run /levelup-clarify to review._
 ```
 
 - One row per matched module, with the module's operative rule condensed to
@@ -82,15 +98,15 @@ _Searched N CDRs, K matched._
 
 | Trigger | Action |
 |---------|--------|
-| Reusable rule emerged, "we always do X" | CDR → suggest `/levelup-specify` |
-| Team pattern proven across sessions | CDR → suggest `/levelup-specify` |
-| Persona/example worth sharing | CDR → suggest `/levelup-specify` |
+| Reusable rule emerged, "we always do X" | CDR → direct write to `.adlc/drafts/cdr/` |
+| Team pattern proven across sessions | CDR → direct write to `.adlc/drafts/cdr/` |
+| Persona/example worth sharing | CDR → direct write to `.adlc/drafts/cdr/` |
 | CDR-class decision already in the ledger | verify capture happened; if not, re-surface |
 
 Add/refresh rows in the **Session Decision Ledger** (Decision | Type |
 Captured? | Skill) for every CDR-class decision detected this session —
 including ones from before this boot was invoked. At session end, prompt to
-run `/levelup-specify` for any unrecorded team patterns.
+run `/levelup-clarify` for any unrecorded CDR drafts in `.adlc/drafts/cdr/`.
 
 ## Failure Handling
 

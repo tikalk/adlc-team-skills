@@ -45,6 +45,26 @@ ps: scripts/powershell/setup-product-clarify.ps1
 | PDR-002 | Primary Persona | Proposed | Persona |
 ```
 
+### Step 0: Detect Lightweight Draft Format
+
+Check if the draft being reviewed uses the lightweight draft template (indicated
+by presence of `type`, `evidence`, `source`, `revisit-when` fields in frontmatter
+and `## Rejected Alternatives` / `## Reason` body sections without the full
+formal template sections).
+
+If lightweight:
+1. Read the draft's captured fields (Context, Decision, Rejected Alternatives, Reason)
+2. Transform to full formal template:
+   - ADR: full MADR format with Decision Drivers, Considered Options, Pros/Cons, Constitution Alignment, Related ADRs
+   - PDR: full PDR format with Market Forces, Consequences, Alternatives Considered, Links
+   - ChDR: full ChDR format with Issue Links, Commits, Consequences, Evidence
+   - CDR: full CDR format with Context Type, Target Module, Descriptor, Evidence
+   - EVAL: full eval format with Error Analysis, Pass/Fail Examples, Implementation Notes
+3. Enrich from session context (add details the lightweight draft may have omitted)
+4. Present the enriched draft for review
+
+If already full format, proceed with normal review.
+
 ### Phase 2: PDR Quality Analysis
 
 Check each PDR against standards:

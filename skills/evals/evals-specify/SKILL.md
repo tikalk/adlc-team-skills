@@ -1,6 +1,6 @@
 ---
 name: evals-specify
-description: Use when extracting eval criteria from product specs or production failure traces (bottom-up error analysis) into .adlc/drafts/evals/.
+description: Use when you want guided bottom-up error analysis, structured failure taxonomy discovery, or comprehensive trace coding before documenting eval criteria. Optional for routine capture — team-boot writes lightweight eval drafts directly.
 disable-model-invocation: true
 ---
 
@@ -23,6 +23,12 @@ Conducts **bottom-up error analysis** following **EDD Principles III & IX** (Err
 - **Principle V**: Trajectory Observability - Track full multi-turn conversation traces
 
 ## When to use
+
+> **Note**: Routine decision capture is handled by team-boot's continuous
+> capture mechanism, which writes lightweight drafts directly to
+> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> — when you want guided trade-off analysis, multi-option comparison, or
+> structured decision facilitation before documenting.
 
 - **Starting evaluation development**: No existing criteria, need discovery from failure logs
 - **Production incident analysis**: Recent failures require systematic analysis

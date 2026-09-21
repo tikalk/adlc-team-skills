@@ -1,6 +1,6 @@
 ---
 name: product-specify
-description: Use when starting a new product or major pivot — interactive PRD exploration capturing decisions as PDRs (greenfield).
+description: Use when you want guided trade-off analysis, multi-option comparison, or structured product decision facilitation before documenting. Optional for routine capture — team-boot writes lightweight PDR drafts directly.
 disable-model-invocation: true
 ---
 
@@ -15,6 +15,12 @@ Transforms a high-level product idea into documented Product Decision Records (P
 **Output**: Individual `PDR-{NNN}.md` files (status **Proposed**) in `.adlc/drafts/pdr/` with an auto-generated `pdr.md` index.
 
 ## When to use
+
+> **Note**: Routine decision capture is handled by team-boot's continuous
+> capture mechanism, which writes lightweight drafts directly to
+> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> — when you want guided trade-off analysis, multi-option comparison, or
+> structured decision facilitation before documenting.
 
 - New product from scratch
 - Major product pivots
@@ -133,7 +139,7 @@ After each decision is confirmed, create a PDR file.
 
 **PDR file format** (individual file, YAML frontmatter — use the shared template):
 
-Use the template at `{REPO_ROOT}/.agents/skills/product-specify/templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
+Use the template at `{REPO_ROOT}/.agents/skills/product/templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
 
 ```markdown
 ---

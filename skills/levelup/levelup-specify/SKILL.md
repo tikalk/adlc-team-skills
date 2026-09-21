@@ -1,6 +1,6 @@
 ---
 name: levelup-specify
-description: Use when a completed session surfaced hard-won fixes — extracts reusable patterns (rules, personas, examples, evals) and directive compliance cases as CDRs, writing the session audit trace for team-ai-directives.
+description: Use when you want guided pattern extraction, multi-type CDR analysis, or structured session-trace documentation before contributing to team-ai-directives. Optional for routine capture — team-boot writes lightweight CDR drafts directly.
 disable-model-invocation: true
 ---
 
@@ -27,6 +27,12 @@ This is the primary command for capturing learnings from completed work:
 This skill focuses on **session-level learnings** — what reusable knowledge emerged from the work just completed.
 
 ## When to use
+
+> **Note**: Routine decision capture is handled by team-boot's continuous
+> capture mechanism, which writes lightweight drafts directly to
+> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> — when you want guided trade-off analysis, multi-option comparison, or
+> structured decision facilitation before documenting.
 
 - **After completing work**: Capture reusable patterns from the session
 - **Contributing back to team AI directives**: Turn session work into reusable directives

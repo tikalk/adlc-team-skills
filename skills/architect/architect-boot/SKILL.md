@@ -47,6 +47,13 @@ lean table from each file (ID from filename; Sub-System/Decision/Status
 from frontmatter or first heading). If the directory is empty or absent,
 report `0 ADRs` — never fabricate rows.
 
+### Step 1b: Read the ADR Drafts Index
+
+Check `.adlc/drafts/adr/` for `ADR-*.md` files with `status: proposed` in
+frontmatter. These are draft ADRs pending clarification. Collect ID /
+Title / Type / Status / Date from each file. If the directory is empty or
+absent, report `0 pending drafts`.
+
 ### Step 2: Inject ADR Context (Output Contract)
 
 Emit before the task answer:
@@ -59,6 +66,14 @@ Emit before the task answer:
 | ADR-325 | lanes | Workflow lanes over flat queue | Accepted |
 
 _Searched N ADRs, K matched._
+
+## Drafts Pending Review
+
+| ID | Title | Type | Status | Date |
+|----|-------|------|--------|------|
+| (from .adlc/drafts/adr/) |
+
+_N pending drafts — run /architect-clarify to review._
 ```
 
 - Render ID / Sub-System / Decision / Status from the index (the full index
@@ -71,14 +86,14 @@ _Searched N ADRs, K matched._
 
 | Trigger | Action |
 |---------|--------|
-| Tech stack choice, "we chose X over Y" | ADR → suggest `/architect-specify` (pull `tech-radar-boot` context first) |
-| Pattern selection, structural refactor | ADR → suggest `/architect-specify` |
+| Tech stack choice, "we chose X over Y" | ADR → direct write to `.adlc/drafts/adr/` (pull `tech-radar-boot` context first) |
+| Pattern selection, structural refactor | ADR → direct write to `.adlc/drafts/adr/` |
 | ADR-class decision already in the ledger | verify capture happened; if not, re-surface |
 
 Add/refresh rows in the **Session Decision Ledger** (Decision | Type |
 Captured? | Skill) for every ADR-class decision detected this session —
 including ones from before this boot was invoked. At session end, prompt to
-run `/architect-specify` for any unrecorded ADR decisions.
+run `/architect-clarify` for any unrecorded ADR drafts in `.adlc/drafts/adr/`.
 
 ## Failure Handling
 

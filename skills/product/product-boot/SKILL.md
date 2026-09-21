@@ -44,6 +44,13 @@ lean table from each file (ID from filename; Feature-Area/Status/Title
 from frontmatter or first heading). If the directory is empty or absent,
 report `0 PDRs` — never fabricate rows.
 
+### Step 1b: Read the PDR Drafts Index
+
+Check `.adlc/drafts/pdr/` for `PDR-*.md` files with `status: proposed` in
+frontmatter. These are draft PDRs pending clarification. Collect ID /
+Title / Type / Status / Date from each file. If the directory is empty or
+absent, report `0 pending drafts`.
+
 ### Step 2: Inject PDR Context (Output Contract)
 
 Emit before the task answer:
@@ -56,6 +63,14 @@ Emit before the task answer:
 | PDR-048 | triage | Accepted | AI triage scoring |
 
 _Searched N PDRs, K matched._
+
+## Drafts Pending Review
+
+| ID | Title | Type | Status | Date |
+|----|-------|------|--------|------|
+| (from .adlc/drafts/pdr/) |
+
+_N pending drafts — run /product-clarify to review._
 ```
 
 - Render ID / Feature-Area / Status / Title from the index (the full index
@@ -68,15 +83,15 @@ _Searched N PDRs, K matched._
 
 | Trigger | Action |
 |---------|--------|
-| Feature scope change, in/out decisions | PDR → suggest `/product-specify` |
-| Persona definition or revision | PDR → suggest `/product-specify` |
-| Monetization, pricing, target-market choice | PDR → suggest `/product-specify` |
+| Feature scope change, in/out decisions | PDR → direct write to `.adlc/drafts/pdr/` |
+| Persona definition or revision | PDR → direct write to `.adlc/drafts/pdr/` |
+| Monetization, pricing, target-market choice | PDR → direct write to `.adlc/drafts/pdr/` |
 | PDR-class decision already in the ledger | verify capture happened; if not, re-surface |
 
 Add/refresh rows in the **Session Decision Ledger** (Decision | Type |
 Captured? | Skill) for every PDR-class decision detected this session —
 including ones from before this boot was invoked. At session end, prompt to
-run `/product-specify` for any unrecorded PDR decisions.
+run `/product-clarify` for any unrecorded PDR drafts in `.adlc/drafts/pdr/`.
 
 ## Failure Handling
 

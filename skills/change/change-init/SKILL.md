@@ -19,15 +19,15 @@ A ChDR captures a decision that was *made in the past* and survives only in comm
 - Write `ChDR-{NNN}.md` to `{REPO_ROOT}/.adlc/drafts/chdr/` with status **Discovered**
 - Regenerate `{REPO_ROOT}/.adlc/drafts/chdr/chdr.md` index
 
-**Key differences from the levelup family**:
+**Key differences from the team-learn family**:
 
 | Skill | Source | Record | Question answered |
 |---|---|---|---|
-| `/levelup-init` | current code (what IS) | CDR (Context Directive) | what patterns are reusable |
-| `/levelup-specify` | current session | CDR | what was learned this session |
+| `/team-init` | current code (what IS) | CDR (Context Directive) | what patterns are reusable |
+| `/team-learn` | current session | CDR | what was learned this session |
 | `/change-init` (this skill) | **git history** (why it BECAME) | **ChDR** (Change Decision) | **why this code exists / what was tried and reverted** |
 
-ChDRs are **project-local memory** (this repo's evolution), not team-wide context — they fail the levelup "team-wide applicability" signal gate. They publish to `{REPO_ROOT}/.adlc/memory/chdr/` (see `/change-publish`), and their index is injected at session start by `team-boot`.
+ChDRs are **project-local memory** (this repo's evolution), not team-wide context — they fail the team-learn "team-wide applicability" signal gate. They publish to `{REPO_ROOT}/.adlc/memory/chdr/` (see `/change-publish`), and their index is injected at session start by `team-boot`.
 
 ## When to use
 
@@ -45,8 +45,8 @@ ChDRs are **project-local memory** (this repo's evolution), not team-wide contex
 ### When NOT to use
 
 - **Greenfield / no history**: nothing to mine
-- **Documenting current patterns**: use `/levelup-init` (what IS)
-- **Capturing this session's learnings**: use `/levelup-specify`
+- **Documenting current patterns**: use `/team-init` (what IS)
+- **Capturing this session's learnings**: use `/team-learn`
 - **Pending ChDRs already exist**: run `/change-clarify` to review them first
 
 ## Process
@@ -123,7 +123,7 @@ Parse the JSON output for `REPO_ROOT`, `CHDR_DRAFTS_DIR`, `NEXT_CHDR`, `GIT_AVAI
 
 ```text
 Not a git repository — change-init has nothing to mine.
-Run /levelup-init to scan current code instead.
+Run /team-init to scan current code instead.
 ```
 
 Exit cleanly (do not create empty drafts).

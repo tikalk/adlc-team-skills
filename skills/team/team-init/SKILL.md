@@ -15,7 +15,7 @@ Reverse-engineer **Context Directive Records (CDRs)** from an **existing
 codebase** (brownfield) to document reusable patterns for contribution to
 `team-ai-directives`.
 
-Replaces the former `levelup-init` skill. Drafts are written to the `adlc`
+Replaces the former `team-init` skill. Drafts are written to the `adlc`
 orphan branch of `team-ai-directives` (not project-local `.adlc/drafts/`).
 
 ## When to use
@@ -39,7 +39,7 @@ Resolves `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `NEXT_CDR`, `ADLC_BRANCH`.
 
 ### Phase 1: Sub-System Detection
 
-Analyze codebase for distinct sub-systems (same detection as former levelup-init):
+Analyze codebase for distinct sub-systems (same detection as former team-init):
 - `src/auth/` → Authentication
 - `services/payment/` → Payment
 - etc.

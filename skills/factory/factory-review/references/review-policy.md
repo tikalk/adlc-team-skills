@@ -190,7 +190,7 @@ Checks:
 
 If the review detects the same policy violation (same pass + same check item) on a second PR:
 
-1. Automatically trigger a local `levelup-specify` call to extract a preventive rule.
+1. Automatically trigger a local `team-learn` call to extract a preventive rule.
 2. Package the rule as a CDR draft targeting the `team-ai-directives` repository.
 3. Flag any changes that make current directives outdated.
 

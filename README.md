@@ -38,7 +38,7 @@ When you ask the agent to build something, it doesn't jump to code.
 `mission-brief` forces a contract first — goal, constraints, non-goals,
 success criteria — then walks `specify → plan → implement ↔ converge`, with
 gates, a circuit breaker, resume, and an audit trail. When a session
-surfaces a hard-won fix, `levelup-specify` extracts it as a Context
+surfaces a hard-won fix, `team-learn` extracts it as a Context
 Directive Record (CDR) and commits it back to the team repo. The next
 session starts smarter.
 
@@ -70,7 +70,7 @@ team's context.
 | 1 | The agent doesn't know how your team works | **`team-*`** — session-start index + on-demand rules |
 | 2 | The agent guesses instead of asking | **`mission-brief`** — spec contract before code |
 | 3 | The maker grades its own work | **`evals-*`** — binary graders, holdout splits, nothing auto-merges |
-| 4 | Session learnings evaporate | **`levelup-*`** — extract fixes as CDRs, publish to the team repo |
+| 4 | Session learnings evaporate | **`team-learn`** — extract fixes as CDRs, publish to the team repo |
 | 5 | Product and architecture decisions are invisible | **`product-*`** / **`architect-*`** — PDR→PRD, ADR→AD traceability |
 | 6 | "Why was this changed?" is archaeology — rationale lives in nobody's head | **`change-*`** — ChDRs mined from git history's issue-linked commits |
 | 7 | The agent picks tech by vibes, not team opinion | **`tech-radar-boot`** — radar context (adoption ring, quadrant) before the ADR |
@@ -110,9 +110,8 @@ conflict-free install flow.
 2. **mission-brief** — before code, forces a spec contract, then walks
    `specify → plan → implement ↔ converge` with gates, circuit breaker,
    resume, audit trail.
-3. **levelup-specify** — at session end, extracts hard-won fixes as CDRs +
-   paired eval CDRs → **levelup-clarify** reviews → **levelup-publish**
-   commits to the team repo.
+3. **team-learn** — at session end, extracts hard-won fixes as CDRs +
+   paired eval CDRs, reviews them, and commits accepted CDRs to the team repo.
 4. **team-repair --build-to-delete** — re-runs evals without a rule; if the
    model passes anyway, the rule is proposed for deletion.
 
@@ -121,7 +120,7 @@ Product and architecture lifecycles run the same loop per record class:
 ```
 Product:     product-specify|init → product-clarify (accept + promote to memory) → product-implement → product-analyze
 Architecture: architect-specify|init → architect-clarify (accept + promote to memory) → architect-implement → architect-analyze
-Team:        levelup-init|specify → levelup-clarify (accept + promote to memory) → levelup-publish → team-repair
+Team:        team-init|specify → team-learn (review + publish) → team-repair
 Evals:       evals-init → evals-specify → evals-clarify → evals-implement → evals-validate
 ```
 
@@ -255,7 +254,7 @@ each step. Works alongside:
 | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | Exit-criteria checklists |
 | [superpowers](https://github.com/obra/superpowers) | Workflow skills |
 | spec-kit / [agentic-sdlc-spec-kit](https://github.com/tikalk/agentic-sdlc-spec-kit) / OpenSpec | SDD command frameworks |
-| This repo | `product-specify`, `architect-specify`, `evals-validate`, `levelup-specify` |
+| This repo | `product-specify`, `architect-specify`, `evals-validate`, `team-learn` |
 | Your own | Anything following the `SKILL.md` standard |
 
 ## What's inside
@@ -285,13 +284,13 @@ each step. Works alongside:
 
 - **`mission-brief`** — spec-contract pipeline with converge loop, circuit breaker, resume (`mission-brief "feature"`, `--resume`).
 
-### Learning loop (LevelUp / CDRs)
+### Learning loop (CDR lifecycle)
 
-- **`levelup-boot`** — class boot: CDR deep-dive when a task matches descriptors + CDR decision capture.
-- **`levelup-init`** — brownfield CDR discovery from an existing codebase.
-- **`levelup-specify`** — extract CDRs + paired evals from the current session.
-- **`levelup-clarify`** — review/accept/reject/defer pending CDRs, with an enforceability gate (EVAL-010): mechanical rules must promote to deterministic checks (unit test, pre-commit, lint, CI job) before Accept is offered.
-- **`levelup-publish`** — compile accepted CDRs into directives + goldensets + draft PR.
+- **`team-boot`** — class boot: CDR deep-dive when a task matches descriptors + CDR decision capture.
+- **`team-init`** — brownfield CDR discovery from an existing codebase.
+- **`team-learn`** — extract CDRs + paired evals from the current session.
+- **`team-learn`** — review/accept/reject/defer pending CDRs, with an enforceability gate (EVAL-010): mechanical rules must promote to deterministic checks (unit test, pre-commit, lint, CI job) before Accept is offered.
+- **`team-learn`** — compile accepted CDRs into directives + goldensets + draft PR.
 
 ### Evals — verification over vibes
 
@@ -412,7 +411,6 @@ by the pull each family has on a typical session (team first):
 skills/
 ├── team/                  # team-* (7) + workspace + diagnosing-team-skills (team-helpers live per-skill)
 ├── mission/               # mission-brief (1 skill) — core SDD orchestrator
-├── levelup/               # levelup-* (5 skills) + levelup-templates/ + levelup-helpers.{sh,ps1}
 ├── evals/                 # evals-* (6 skills) + evals-templates/
 ├── product/               # product-* (7 skills) + product-templates/
 ├── architect/             # architect-* (6 skills) + architect-templates/
@@ -429,7 +427,7 @@ out of the box. (Enforced by `tests/unit/test_playbook_integrity.py`.)
 **Template consolidation (v0.29.0):** Each skill family now shares a single
 `{family}/templates/` directory instead of duplicating templates per-skill.
 This eliminated ~12,000 lines of duplicate template files across
-architect, product, change, evals, levelup, and team families.
+architect, product, change, evals, and team families.
 
 </details>
 
@@ -451,7 +449,7 @@ All skills write to `.adlc/` (project root) and the team AI directives repo.
 - `skills/{name}/SKILL.md` + `.skills-entry.json` — published team skills
 - `evals/{directive-id}/goldset.md` + `goldset.json` — directive compliance goldensets
 
-**LevelUp** (inside `.adlc/` of the target project):
+**team-learn** (inside `.adlc/` of the target project):
 
 - `.adlc/drafts/cdr/CDR-{NNN}.md` — proposed/discovered CDRs (including eval CDRs)
 - `.adlc/drafts/cdr/cdr.md` — auto-generated CDR index
@@ -549,12 +547,12 @@ Brownfield: architect-init → architect-clarify → architect-implement → arc
 Greenfield: architect-specify → architect-clarify → architect-implement → architect-analyze
 ```
 
-**LevelUp / CDR lifecycle:**
+**CDR lifecycle:**
 ```
-Brownfield: levelup-init → levelup-clarify → levelup-publish → team-repair
-Session:    levelup-specify → levelup-clarify → levelup-publish → team-repair
+Brownfield: team-init → team-learn (specify → clarify → publish) → team-repair
+Session:    team-learn (specify → clarify → publish) → team-repair
 History:    change-init → change-clarify → change-publish (change-boot injects chdr.md)
-Build to Delete: team-repair --build-to-delete → levelup-clarify (review deletion CDRs)
+Build to Delete: team-repair --build-to-delete → team-learn (review deletion CDRs)
 ```
 
 **Mission:**
@@ -580,7 +578,7 @@ Brownfield (Error-Driven): evals-init → evals-specify (from failures) → eval
 ```
 Product:     product-specify → product-clarify → product-implement → product-analyze
 Architecture: architect-specify → architect-clarify → architect-implement → architect-analyze
-Team:        levelup-specify → levelup-clarify → levelup-publish → team-repair
+Team:        team-learn (specify → clarify → publish) → team-repair
 ```
 
 </details>
@@ -594,12 +592,12 @@ This repo implements the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/
 |--------|--------|-----|
 | **III — Mission Definition** | Product skills | PRD/PDR lifecycle ensures product decisions are documented, reviewed, and traceable before execution |
 | **IV — Structured Planning** | Architecture skills | ADRs and AD.md provide structured planning artifacts using Rozanski & Woods viewpoints |
-| **VII — Verification-First Evals** | LevelUp + Evals skills | LevelUp creates directive-compliance eval CDRs; evals skills build and run application-level evaluation suites (PromptFoo/DeepEval) with binary graders, holdout splits, and statistical validation |
-| **VIII — Ratchet Effect** | LevelUp + Evals skills | Each session extracts eval CDRs alongside directive CDRs; each goldset publication adds criteria that monotonically increase quality — `evals-clarify` publishes, `evals-validate` enforces |
+| **VII — Verification-First Evals** | team-learn + Evals skills | team-learn creates directive-compliance eval CDRs; evals skills build and run application-level evaluation suites (PromptFoo/DeepEval) with binary graders, holdout splits, and statistical validation |
+| **VIII — Ratchet Effect** | team-learn + Evals skills | Each session extracts eval CDRs alongside directive CDRs; each goldset publication adds criteria that monotonically increase quality — `evals-clarify` publishes, `evals-validate` enforces |
 | **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
 | **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR index, and the Class Boots catalog into the system prompt at session start; the class boots load ADR/PDR/ChDR/CDR/radar context on demand, each paired with decision capture; `team-discover` provides manual re-scan |
-| **XI — Directives as Code** | Team + LevelUp + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
-| **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `evals-analyze` routes spec failures to `levelup-specify` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
+| **XI — Directives as Code** | Team + team-learn + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos, each with draft → clarify → accept → publish → analyze stages |
+| **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `evals-analyze` routes spec failures to `team-learn` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
 
 </details>
 

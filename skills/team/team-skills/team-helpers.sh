@@ -224,7 +224,7 @@ LOGTOP
   cat > "${dest}/context_modules/rules/index.md" << 'INDEXRULES'
 # Rules
 
-No rules defined yet. Use /levelup-specify to create rules via CDRs.
+No rules defined yet. Use /team-learn to create rules via CDRs.
 INDEXRULES
 
   cat > "${dest}/context_modules/rules/log.md" << 'LOGRULES'
@@ -234,7 +234,7 @@ LOGRULES
   cat > "${dest}/context_modules/personas/index.md" << 'INDEXPERS'
 # Personas
 
-No personas defined yet. Use /levelup-specify to create personas via CDRs.
+No personas defined yet. Use /team-learn to create personas via CDRs.
 INDEXPERS
 
   cat > "${dest}/context_modules/personas/log.md" << 'LOGPERS'
@@ -244,7 +244,7 @@ LOGPERS
   cat > "${dest}/context_modules/examples/index.md" << 'INDEXEX'
 # Examples
 
-No examples defined yet. Use /levelup-specify to create examples via CDRs.
+No examples defined yet. Use /team-learn to create examples via CDRs.
 INDEXEX
 
   cat > "${dest}/context_modules/examples/log.md" << 'LOGEX'
@@ -292,7 +292,7 @@ scaffold_agents_only() {
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
-- `traces/` — Published session traces (from `/levelup-publish`)
+- `traces/` — Published session traces (from `/team-learn`)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order
@@ -374,7 +374,7 @@ Invoke the matching class boot when a task or decision matches a row:
 | architect-boot | ADR index (.adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
 | product-boot | PDR index (.adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
 | change-boot | ChDR index (.adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits | /change-init |
-| levelup-boot | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /levelup-specify |
+| team-boot | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-learn |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
 
 Each class boot emits its class context section and its own searched line (_Searched N records, K matched._).
@@ -395,7 +395,7 @@ Detect decisions as they emerge; full detection and capture guidance lives in th
 
 - Tech stack / pattern choice → ADR → /architect-specify (pull tech-radar-boot context first for tech selection)
 - Feature scope / persona / monetization → PDR → /product-specify
-- Reusable team rule / pattern → CDR → /levelup-specify
+- Reusable team rule / pattern → CDR → /team-learn
 - Revert/hotfix rationale / issue-linked commit → ChDR → /change-init
 
 Maintain a running Session Decision Ledger in every response (after the Team Context in Use table):

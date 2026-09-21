@@ -9,7 +9,7 @@ description: Use when coordinating a multi-repo workspace — init the .adlc/ st
 
 A multi-repo workspace coordinator for shared team context. The parent
 repository holds shared decisions (PDRs, ADRs, CDRs) under `.adlc/`,
-created by `product-specify`, `architect-specify`, and `levelup-specify`.
+created by `product-specify`, `architect-specify`, and `team-learn`.
 Child implementation repositories are discovered at depth 1 and optionally
 linked as Git submodules so the entire workspace can be cloned with
 `git clone --recursive`.
@@ -91,7 +91,7 @@ scripts/powershell/setup-workspace.ps1
 .adlc/
 ├── product/           # PDRs (product-specify, product-init)
 ├── architecture/      # ADRs (architect-specify, architect-init)
-├── context/           # CDRs (levelup-specify, levelup-init)
+├── context/           # CDRs (team-learn, team-init)
 ├── skills/            # Team skills metadata
 └── drafts/            # Draft artifacts before clarification
     ├── pdr/
@@ -270,7 +270,7 @@ team context. It is created by `--init` and maintained by other skills:
 |---|---|---|
 | PDRs | `.adlc/product/` | `product-specify`, `product-init` |
 | ADRs | `.adlc/architecture/` | `architect-specify`, `architect-init` |
-| CDRs | `.adlc/context/` | `levelup-specify`, `levelup-init` |
+| CDRs | `.adlc/context/` | `team-learn`, `team-init` |
 | Skills | `.adlc/skills/` | `team-skills` |
 | Directory structure | `.adlc/` tree | `workspace --init` (this skill) |
 
@@ -333,7 +333,7 @@ In audit mode (default), this skill does **not** create or modify `.adlc/` conte
 |---|---|
 | `product-specify` | Creates PDRs in parent `.adlc/product/` after `--init` |
 | `architect-specify` | Creates ADRs in parent `.adlc/architecture/` after `--init` |
-| `levelup-specify` | Creates CDRs in parent `.adlc/context/` after `--init` |
+| `team-learn` | Creates CDRs in parent `.adlc/context/` after `--init` |
 | `team-boot` | Loads parent `.adlc` context at session start |
 | `team-setup` | Configures agent directories (`.agents/`, `.opencode/`) — complement to `--init` |
 

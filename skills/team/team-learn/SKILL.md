@@ -100,7 +100,7 @@ For each extracted CDR, calculate confidence:
 
 ### Phase 3: Batch Review
 
-Present CDRs one at a time (same as former levelup-clarify logic):
+Present CDRs one at a time (same as former team-learn logic):
 
 ```markdown
 ## CDR-{ID}: {Title}

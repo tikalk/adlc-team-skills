@@ -153,7 +153,7 @@ factory-review --pr <id> --self-heal
 
 ### 5. Findings to Directives Feedback Loop
 
-- **Twice-Mistake Threshold**: If the review detects the same policy violation on a second PR, automatically trigger a local `levelup-specify` call to extract a preventive rule.
+- **Twice-Mistake Threshold**: If the review detects the same policy violation on a second PR, automatically trigger a local `team-learn` call to extract a preventive rule.
 - Package the rule as a CDR draft (via `factory-learn`) targeting the `team-ai-directives` repository.
 - Flag any changes that make current directives outdated.
 

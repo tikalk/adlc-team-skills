@@ -27,7 +27,7 @@ commands only and lets `adlc-team-skills` own the team-context layer.
 ## Why this works
 
 - **Zero skill/command conflicts.** `adlc-team-skills` owns the Team, Product
-  (PDR), Architecture (ADR), Evals, and LevelUp lifecycles. `spec-kit` owns
+  (PDR), Architecture (ADR), Evals, and CDR lifecycles. `spec-kit` owns
   Spec-Driven Development core commands (`/spec.specify`, `/spec.plan`,
   `/spec.tasks`, `/spec.implement`, `/spec.converge`, …). The two use
   different command naming conventions (hyphen vs dot) and different skill
@@ -36,17 +36,16 @@ commands only and lets `adlc-team-skills` own the team-context layer.
   `session_start` event plugin that auto-injects `team-ai-directives`
   (constitution, CDR index, skills registry) into every agent session —
   keeping agents aligned with team directives from turn 1.
-- **No command redundancy.** Spec Kit (`v0.16.0+adlc2` and later) no longer
-  preinstalls the `levelup` extension by default, eliminating duplicate
-  `/levelup.*` vs `/levelup-*` commands. The extension remains bundled and
-  available on demand via `specify extension install levelup`.
+- **No command redundancy.** CDR lifecycle commands (`/team-learn`,
+  `/team-init`) are provided directly by `adlc-team-skills` — no spec-kit
+  extension is needed.
 
 ## Ownership summary
 
 | Domain / Layer | Owned By | Provided Artifacts |
 |---|---|---|
 | `team-ai-directives` context | `adlc-team-skills` | Auto `team-boot`, `/team-discover`, `/team-constitution`, `/mission-brief` |
-| PDR, ADR, Evals & LevelUp | `adlc-team-skills` | `/product-*`, `/architect-*`, `/evals-*`, `/levelup-*` |
+| PDR, ADR, Evals & CDR | `adlc-team-skills` | `/product-*`, `/architect-*`, `/evals-*`, `/team-learn` |
 | Factory Orchestration | `adlc-team-skills` | `/factory-mission`, `/factory-product`, `/factory-architect`, `/factory-learn`, `/factory-queue`, `/factory-review` |
 | Spec-Driven Feature Dev | `spec-kit` | `/spec.specify`, `/spec.plan`, `/spec.tasks`, `/spec.implement`, `/spec.converge` |
 | Agent Context & Git | `spec-kit` | Auto `AGENTS.md` / `CLAUDE.md` plan updates & git branch/commit integration |
@@ -133,9 +132,9 @@ Verify `.events.json` exists at the project root and that
 `npx adlc-cli skill add tikalk/adlc-team-skills -a opencode` if either is
 missing.
 
-**Duplicate `/levelup.*` and `/levelup-*` commands.**
-Ensure you are running spec-kit `v0.16.0+adlc2` or later. If an older version
-installed the `levelup` extension, disable it:
+**Old `/levelup-*` commands still appear.**
+These were consolidated into `/team-learn` and `/team-init`. Remove any
+stale spec-kit levelup extension if present:
 
 ```bash
 specify extension disable levelup

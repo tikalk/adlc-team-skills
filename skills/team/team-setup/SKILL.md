@@ -327,7 +327,7 @@ Create `{DEST}/context_modules/rules/index.md`:
 ```markdown
 # Rules
 
-No rules defined yet. Use `/levelup-specify` to create rules via CDRs.
+No rules defined yet. Use `/team-learn` to create rules via CDRs.
 ```
 
 Create `{DEST}/context_modules/rules/log.md`:
@@ -339,7 +339,7 @@ Create `{DEST}/context_modules/personas/index.md`:
 ```markdown
 # Personas
 
-No personas defined yet. Use `/levelup-specify` to create personas via CDRs.
+No personas defined yet. Use `/team-learn` to create personas via CDRs.
 ```
 
 Create `{DEST}/context_modules/personas/log.md`:
@@ -351,7 +351,7 @@ Create `{DEST}/context_modules/examples/index.md`:
 ```markdown
 # Examples
 
-No examples defined yet. Use `/levelup-specify` to create examples via CDRs.
+No examples defined yet. Use `/team-learn` to create examples via CDRs.
 ```
 
 Create `{DEST}/context_modules/examples/log.md`:
@@ -367,7 +367,7 @@ touch "{DEST}/context_modules/examples/.gitkeep"
 touch "{DEST}/skills/.gitkeep"
 ```
 
-Initialize git (required for `/levelup-publish` branch/commit/PR flow):
+Initialize git (required for `/team-learn` branch/commit/PR flow):
 ```bash
 cd "{DEST}" && git init && git add -A && git commit -m "Initial team-ai-directives scaffold"
 ```
@@ -464,7 +464,7 @@ Without this section, an agent without event support has no session-start instru
 - **Scaffolding without required dirs being writable** — Mode 3 creates directories with `mkdir -p` but will fail on permission errors; check permissions first.
 - **Skipping the `team_ai_directives` config write** — without this field in `init-options.json`, agents cannot discover the team AI directives.
 - **Using a relative path in `init-options.json`** — always resolve to an absolute path so the config is portable across working directories.
-- **Skipping `git init` in Mode 3** — a scaffolded team AI directives without git cannot be used by `/levelup-publish` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/levelup-publish`.
+- **Skipping `git init` in Mode 3** — a scaffolded team AI directives without git cannot be used by `/team-learn` (branch/commit/PR flow). Mode 3 runs `git init` automatically; if you skip it, run `git init` manually before `/team-learn`.
 - **Skipping the project-level AGENTS.md injection** — without the `<!-- TEAM_AI_DIRECTIVES START -->` managed section in the project's `AGENTS.md`, agents without event support have no session-start instruction to load team context. The `.adlc/init-options.json` config alone is insufficient — it tells skills where the team AI directives is, but nothing tells the agent to check. (For agents with event support, the session-start hook injects the orientation regardless, but AGENTS.md remains the fallback and the source of the Team Context in Use output contract.)
 - **Interpolating user input into Python/shell source strings** — pass paths through the environment (`os.environ`) instead; string interpolation of `$ABSOLUTE_PATH` into a Python one-liner is a command-injection vector.
 - **Cloning a non-`https://` URL in Mode 1** — reject `file://`/`ssh://`/other schemes; cloned content is read by agents later, so only clone trusted repos.

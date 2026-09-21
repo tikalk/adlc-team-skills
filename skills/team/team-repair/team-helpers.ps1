@@ -233,11 +233,11 @@ okf_version: "0.2"
   Set-Content -Path (Join-Path $Dest "context_modules/index.md") -Value $indexTop
   Set-Content -Path (Join-Path $Dest "context_modules/log.md") -Value "# Context Modules Update Log`n"
 
-  Set-Content -Path (Join-Path $Dest "context_modules/rules/index.md") -Value "# Rules`n`nNo rules defined yet. Use /levelup-specify to create rules via CDRs."
+  Set-Content -Path (Join-Path $Dest "context_modules/rules/index.md") -Value "# Rules`n`nNo rules defined yet. Use /team-learn to create rules via CDRs."
   Set-Content -Path (Join-Path $Dest "context_modules/rules/log.md") -Value "# Rules Update Log`n"
-  Set-Content -Path (Join-Path $Dest "context_modules/personas/index.md") -Value "# Personas`n`nNo personas defined yet. Use /levelup-specify to create personas via CDRs."
+  Set-Content -Path (Join-Path $Dest "context_modules/personas/index.md") -Value "# Personas`n`nNo personas defined yet. Use /team-learn to create personas via CDRs."
   Set-Content -Path (Join-Path $Dest "context_modules/personas/log.md") -Value "# Personas Update Log`n"
-  Set-Content -Path (Join-Path $Dest "context_modules/examples/index.md") -Value "# Examples`n`nNo examples defined yet. Use /levelup-specify to create examples via CDRs."
+  Set-Content -Path (Join-Path $Dest "context_modules/examples/index.md") -Value "# Examples`n`nNo examples defined yet. Use /team-learn to create examples via CDRs."
   Set-Content -Path (Join-Path $Dest "context_modules/examples/log.md") -Value "# Examples Update Log`n"
 
   $cdrDerived = @"
@@ -359,7 +359,7 @@ Invoke the matching class boot when a task or decision matches a row:
 | architect-boot | ADR index (.adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
 | product-boot | PDR index (.adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
 | change-boot | ChDR index (.adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits | /change-init |
-| levelup-boot | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /levelup-specify |
+| team-boot | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-learn |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
 
 Each class boot emits its class context section and its own searched line (_Searched N records, K matched._).
@@ -380,7 +380,7 @@ Detect decisions as they emerge; full detection and capture guidance lives in th
 
 - Tech stack / pattern choice → ADR → /architect-specify (pull tech-radar-boot context first for tech selection)
 - Feature scope / persona / monetization → PDR → /product-specify
-- Reusable team rule / pattern → CDR → /levelup-specify
+- Reusable team rule / pattern → CDR → /team-learn
 - Revert/hotfix rationale / issue-linked commit → ChDR → /change-init
 
 Maintain a running Session Decision Ledger in every response (after the Team Context in Use table):

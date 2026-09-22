@@ -102,6 +102,14 @@ hooks (via `.events.json`) for 9 coding agents. `team setup` also runs the
 team-ai-directives repo. Skills repos without `.events.json`
 get commands only.
 
+**Ongoing maintenance:**
+
+```bash
+adlc-cli team update     # git pull team-ai-directives + skills update + confidence update
+adlc-cli team repair     # full repair via agent run (reindex, conflicts, freshness)
+adlc-cli team repair --update-confidence  # deterministic confidence aggregation (no agent)
+```
+
 **First run:** `team-boot` fires at session start. On an unconfigured project
 it points you to `/team-setup`, which clones, links, or scaffolds your
 team-ai-directives repo. `/team-constitution` fills in your principles.

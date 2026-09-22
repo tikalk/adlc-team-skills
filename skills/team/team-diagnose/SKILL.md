@@ -1,9 +1,9 @@
 ---
-name: diagnosing-team-skills
+name: team-diagnose
 description: Use when the team context did not appear at session start, a skill failed to trigger, the install behaves unexpectedly, or someone asks why a session ran without team rules — walks the failure chain with commands and evidence before any conclusion.
 ---
 
-# diagnosing-team-skills
+# team-diagnose
 
 ## Overview
 

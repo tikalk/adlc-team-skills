@@ -286,7 +286,7 @@ each step. Works alongside:
 - **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
 - **`team-repair`** — re-index, conflict scan, freshness, `--build-to-delete`, deterministic-enforcement coverage check.
 - **`team-skills`** — browse/install team skills from the directives repo.
-- **`diagnosing-team-skills`** — evidence-first diagnosis when team context doesn't appear: walks the chain (init-options → jq → boot.sh → artifact sync) and routes injection-side bugs to adlc-cli.
+- **`team-diagnose`** — evidence-first diagnosis when team context doesn't appear: walks the chain (init-options → jq → boot.sh → artifact sync) and routes injection-side bugs to adlc-cli.
 
 ### The software factory — the outer loop
 
@@ -344,7 +344,7 @@ each step. Works alongside:
 ### Skill authoring — contributors
 
 - **`writing-skills`** — TDD-for-skills: baseline the failure without the skill (RED), write the minimal skill (GREEN), close rationalization loopholes (REFACTOR). Iron Law: no skill without a failing baseline first (EVAL-011). Includes the `SKILL.md` template and the testing methodology.
-- **`diagnosing-team-skills`** — evidence-first diagnosis when team context doesn't appear: walks the session-start chain (init-options → jq → boot.sh → artifact sync → injection) and routes injection-side bugs to adlc-cli (EVAL-013).
+- **`team-diagnose`** — evidence-first diagnosis when team context doesn't appear: walks the session-start chain (init-options → jq → boot.sh → artifact sync → injection) and routes injection-side bugs to adlc-cli (EVAL-013).
 
 ## Philosophy
 
@@ -377,7 +377,7 @@ each step. Works alongside:
   dispatcher → `team-boot`'s `scripts/boot.sh`) needs `jq` available. Full
   chain contract: [docs/event-hook-contract.md](docs/event-hook-contract.md);
   run `scripts/acceptance-test.sh` to verify the whole loop from scratch.
-  For evidence-first diagnosis of injection failures, run `/diagnosing-team-skills`
+  For evidence-first diagnosis of injection failures, run `/team-diagnose`
   (traces init-options → jq → boot.sh → artifact sync → injection; EVAL-013).
 - **Team context vanished mid-session after compaction** — re-injection
   after compaction is a declared contract (`session_compact` in
@@ -426,7 +426,7 @@ by the pull each family has on a typical session (team first):
 
 ```
 skills/
-├── team/                  # team-* (7) + workspace + diagnosing-team-skills (team-helpers live per-skill)
+├── team/                  # team-* (8) + workspace (team-helpers live per-skill)
 ├── mission/               # mission-brief (1 skill) — core SDD orchestrator
 ├── evals/                 # evals-* (6 skills) + evals-templates/
 ├── product/               # product-* (7 skills) + product-templates/

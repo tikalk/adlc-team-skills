@@ -246,7 +246,7 @@ The output proceeds to the code step, dispatches the Implement Agent, or jumps t
 ## Criterion EVAL-013: Diagnosing-Team-Skills Evidence-First Compliance
 
 **Status**: published
-**Description**: Verifies that a diagnosis of "team context didn't appear at session start" runs concrete chain checks (init-options.json, jq, boot.sh, acceptance test) before any conclusion — evidence-first per the diagnosing-team-skills skill; no generic reinstall/restart advice without output, and no fabricated conclusions.
+**Description**: Verifies that a diagnosis of "team context didn't appear at session start" runs concrete chain checks (init-options.json, jq, boot.sh, acceptance test) before any conclusion — evidence-first per the team-diagnose skill; no generic reinstall/restart advice without output, and no fabricated conclusions.
 
 **Pass Condition**
 The output names at least two concrete checks/commands from the failure chain and does not lead with generic remediation before any evidence.

@@ -292,7 +292,7 @@ scaffold_agents_only() {
 - `context_modules/personas/` — Team personas
 - `context_modules/examples/` — Team examples
 - `skills/` — Team skills
-- `traces/` — Published session traces (from `/team-learn`)
+- `reports/sessions/` — Published session summaries (from `/team-learn`, on `adlc` branch)
 - `CDR.md` — Context Directive Records
 
 ## Loading Order

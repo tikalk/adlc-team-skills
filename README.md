@@ -82,8 +82,11 @@ team's context.
 ## Install
 
 ```bash
-# Skills + slash commands + session_start events
-npx adlc-cli skill add tikalk/adlc-team-skills -a opencode
+# One command: install skills + configure team-ai-directives (runs /team-setup interactively)
+npx adlc-cli team setup tikalk/adlc-team-skills -a opencode
+
+# Or just install skills (no team-setup)
+npx adlc-cli skills add tikalk/adlc-team-skills -a opencode
 
 # Or plain skills (no commands/events)
 npx skills add tikalk/adlc-team-skills -a claude -g
@@ -94,7 +97,9 @@ Claude Code, Codex, OpenCode, Cursor, Copilot, and others.
 
 [`adlc-cli`](https://github.com/tikalk/adlc-cli) wraps `npx skills add`
 and additionally generates `/name` slash commands and wires `session_start` event
-hooks (via `.events.json`) for 9 coding agents. Skills repos without `.events.json`
+hooks (via `.events.json`) for 9 coding agents. `team setup` also runs the
+`/team-setup` skill via `agent run` to clone, link, or scaffold your
+team-ai-directives repo. Skills repos without `.events.json`
 get commands only.
 
 **First run:** `team-boot` fires at session start. On an unconfigured project
@@ -373,7 +378,7 @@ each step. Works alongside:
   agent's adapter doesn't map the event yet, file it there.
 - **Skill descriptions or commands look stale** — the install layer is
   CLI-generated (`.agents/skills/`, `.opencode/commands/`, `skills-lock.json`).
-  Regenerate: `npx adlc-cli skill add tikalk/adlc-team-skills -a <agent> -y`.
+  Regenerate: `npx adlc-cli skills add tikalk/adlc-team-skills -a <agent> -y`.
   `tests/unit/test_generated_artifacts_sync.py` catches drift locally.
 - **Index is inconsistent or rules conflict** — run `/team-repair`
   (re-index, conflict scan, freshness check, orphan detection).

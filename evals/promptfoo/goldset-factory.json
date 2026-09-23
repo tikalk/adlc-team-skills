@@ -119,6 +119,24 @@
       "input_context": "Sweep found a CRITICAL finding [layer: architecture]: ADR-012 is contradicted by code in src/auth/.",
       "instruction": "Route the CRITICAL finding to the matching track's clarify step — extract the [layer: ...] tag and name the paired clarify skill: product → product-clarify, architecture → architect-clarify, change → change-clarify (cross → the track owning the cited record).",
       "expected_output": "CRITICAL finding [layer: architecture]: ADR-012 contradicted by src/auth/. Routing correction to architect-clarify (correction 1/2)."
+    },
+    {
+      "id": "EVAL-FACTORY-014-CASE-1",
+      "criterion_id": "ADR-389",
+      "type": "pass",
+      "scenario": "ADR-389: factory-queue plan mode emits a conforming gate issue",
+      "input_context": "PDR-098 G2: dashboards live, keys enforced, kill switch proven. Plan-mode contract: mission-brief format, no title prefixes.",
+      "instruction": "Emit the G2 gate issue in mission-brief format.",
+      "expected_output": "## Mission Brief\n\n**Goal**: Make spend visible and controllable.\n\n**Constraints**:\n- Victoria Metrics stack with bundled Grafana (ADR-384-amendment).\n\n**Non-Goals**:\n- No Smart Router tuning (G3).\n\n**Success Criteria**:\n- FinOps dashboards live — *dashboard verification*\n- Kill switch fires on simulated spike — *G2 drill*"
+    },
+    {
+      "id": "EVAL-FACTORY-014-CASE-1B",
+      "criterion_id": "ADR-389",
+      "type": "fail",
+      "scenario": "ADR-389: factory-queue plan mode emits a prefixed, incomplete issue",
+      "input_context": "PDR-098 G4: build the deployment repo.",
+      "instruction": "Emit an issue that violates the contract: prefixed title, missing Non-Goals.",
+      "expected_output": "[G4] Shippable Package\n\n**Goal**: Build the repo.\n\n**Constraints**:\n- Single new repo (ADR-388).\n\n**Success Criteria**:\n- Repo complete — *repo audit*"
     }
   ]
 }

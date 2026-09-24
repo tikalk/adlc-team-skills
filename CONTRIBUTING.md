@@ -56,6 +56,7 @@ evals/promptfoo/tests/test_check_*.py     # grader unit tests
 4. If your change affects a skill's behavior, run the manual test flow (see [Manual testing](#manual-testing))
 5. Push to your fork and submit a pull request against `main`
 6. Wait for review. `main` is protected: PR + approval + green CI are required.
+   - Renaming a CI job? Branch protection pins required check names (`Run Pytest (Scripts & E2E)`, `Run PromptFoo (Skill Evals)`) — update them in the same PR or every future PR blocks on checks that can never run.
 
 Things that increase the likelihood of acceptance:
 

@@ -209,3 +209,31 @@ def test_check_sweep_layer_routing_cross_pass():
     result = get_assert_invariants(output, {"vars": {"scenario": "ADR-361: Sweep layer-tagged correction routing"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
+
+
+def test_check_queue_brief_format_pass():
+    from check_factory_queue_brief_format import get_assert as get_assert_brief
+    output = (
+        "Shippable Package\n\n"
+        "## Mission Brief\n\n"
+        "**Goal**: Build the repo.\n\n"
+        "**Constraints**:\n- Single new repo.\n\n"
+        "**Non-Goals**:\n- No verification (G5).\n\n"
+        "**Success Criteria**:\n- Repo complete — *repo audit*"
+    )
+    result = get_assert_brief(output, {"vars": {"scenario": "EVAL-FACTORY-014 conforming issue"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_queue_brief_format_fail():
+    from check_factory_queue_brief_format import get_assert as get_assert_brief
+    output = (
+        "[G4] Shippable Package\n\n"
+        "**Goal**: Build the repo.\n\n"
+        "**Constraints**:\n- Single new repo.\n\n"
+        "**Success Criteria**:\n- Repo complete — *repo audit*"
+    )
+    result = get_assert_brief(output, {"vars": {"scenario": "EVAL-FACTORY-014 violating issue"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0

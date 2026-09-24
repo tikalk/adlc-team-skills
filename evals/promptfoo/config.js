@@ -332,9 +332,35 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "factory-queue plan mode emits a gate issue",
+        "input_context": "PDR-098 G2: FinOps dashboards live, scoped keys enforced, kill switch proven. Plan-mode output rules (ADR-389): mission-brief format required, no title prefixes.",
+        "instruction": "You are factory-queue in plan mode. Emit the G2 gate issue in mission-brief format: Goal, Constraints, Non-Goals, Success Criteria (each with a measurement method)."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_queue_brief_format.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "factory-queue plan mode emits a prefixed, incomplete issue",
+        "input_context": "PDR-098 G4: build the deployment repo. Output violates ADR-389: title carries a [G4] prefix and Non-Goals are missing.",
+        "instruction": "You are a grader fixture. Emit the non-conforming issue text exactly: a '[G4] Shippable Package' title followed by Goal, Constraints, and Success Criteria sections only."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_queue_brief_format.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "Team context missing at session start in a configured project",
         "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
-        "instruction": "You follow the diagnosing-team-skills skill. Emit your diagnostic response — what you do FIRST and what you conclude."
+        "instruction": "You follow the team-diagnose skill. Emit your diagnostic response — what you do FIRST and what you conclude."
       },
       "assert": [
         {

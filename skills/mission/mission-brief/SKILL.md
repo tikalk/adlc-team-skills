@@ -34,6 +34,8 @@ directly.
 
 ## Mission Brief template
 
+Canonical format: the template in `factory-mission`'s `references/mission-brief-template.md` (single source of truth, shared with `factory-queue` plan mode). Inline copy retained below for readability.
+
 Before generating steps, the description is structured into:
 
 ```markdown

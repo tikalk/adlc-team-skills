@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# workspace.sh — Multi-repo workspace coordinator for shared team context.
+# workspace-init.sh — Initialize and coordinate a WORKSPACE_REPO_ROOT.
 #
 # Modes:
+#   --init     Create .adlc/, PRD.md, AD.md, specs/, evals/ at workspace root.
 #   (default)  Discover child repos at depth 1, show summary.
 #   --link     Register child repos as Git submodules.
 #   --status   Detailed audit: branch, dirty, unpushed, SHA drift, .adlc presence.
@@ -16,6 +17,7 @@ LINK_MODE=false
 STATUS_MODE=false
 DRY_RUN=false
 FORCE=false
+INIT_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -24,11 +26,22 @@ while [[ $# -gt 0 ]]; do
     --status)     STATUS_MODE=true; shift ;;
     --dry-run)    DRY_RUN=true;    shift ;;
     --force)      FORCE=true;      shift ;;
+    --init)       INIT_MODE=true;  shift ;;
     *)            shift ;;
   esac
 done
 
 # --- helpers -----------------------------------------------------------------
+
+init_workspace() {
+  local root="$1"
+  mkdir -p "$root/.adlc" "$root/specs" "$root/evals"
+  [[ -f "$root/PRD.md" ]] || printf '# Product Requirements Document\n\n' > "$root/PRD.md"
+  [[ -f "$root/AD.md" ]] || printf '# Architecture Description\n\n' > "$root/AD.md"
+  [[ -f "$root/.adlc/init-options.json" ]] || printf '{\n  "workspace_repo_root": "."\n}\n' > "$root/.adlc/init-options.json"
+  echo "Initialized workspace metadata at $root" >&2
+}
+
 
 get_repo_root() {
   git rev-parse --show-toplevel 2>/dev/null || pwd
@@ -120,9 +133,39 @@ PARENT_HAS_ADLC=false
 [[ -d "$REPO_ROOT/.adlc" ]] && PARENT_HAS_ADLC=true
 
 # Determine mode
-if   $STATUS_MODE; then MODE="status"
+if   $INIT_MODE;   then MODE="init"
+elif $STATUS_MODE; then MODE="status"
 elif $LINK_MODE;   then MODE="link"
 else                    MODE="discover"
+fi
+
+# --init: create workspace metadata layout at repo root
+if $INIT_MODE; then
+  if $DRY_RUN; then
+    echo "Would initialize workspace metadata at $REPO_ROOT"
+  else
+    init_workspace "$REPO_ROOT"
+  fi
+  PARENT_HAS_ADLC=false
+  [[ -d "$REPO_ROOT/.adlc" ]] && PARENT_HAS_ADLC=true
+  if $JSON_MODE; then
+    cat <<EOF
+{
+  "PARENT_REPO": "${REPO_ROOT}",
+  "PARENT_BRANCH": "${PARENT_BRANCH}",
+  "PARENT_HAS_ADLC": ${PARENT_HAS_ADLC},
+  "MODE": "init",
+  "DRY_RUN": ${DRY_RUN},
+  "DISCOVERED_COUNT": 0,
+  "REGISTERED_COUNT": 0,
+  "SKIPPED_COUNT": 0,
+  "ERROR_COUNT": 0,
+  "REPOS": [],
+  "ERRORS": []
+}
+EOF
+  fi
+  exit 0
 fi
 
 # Discover children early (needed for safety check on --link)

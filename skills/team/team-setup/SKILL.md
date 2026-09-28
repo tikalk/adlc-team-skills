@@ -461,7 +461,7 @@ Without this section, an agent without event support has no session-start instru
 - `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
-- `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for scaffolding and path resolution.
+- `team-paths` / `team-scaffold` / `team-validate` — Shared helpers (path resolution, scaffolding, structure checks). `team-helpers.sh` remains a compatibility shim.
 
 ## 12-Factor Alignment
 

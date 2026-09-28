@@ -952,7 +952,7 @@ Regenerate the local CDR index. Handoff: suggest `/levelup-clarify` to review de
 - `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
-- `team-helpers.sh` / `team-helpers.ps1` — Shared scripts used for path resolution.
+- `team-paths` / `team-scaffold` / `team-validate` — Shared helpers. `team-helpers.sh` remains a compatibility shim.
 
 ## 12-Factor Alignment
 

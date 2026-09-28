@@ -14,20 +14,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Source team helpers for path resolution if available.
+# Source team-paths for path resolution if available.
 # Try multiple relative paths (source repo vs installed flat layout).
 TEAM_HELPERS=""
 for candidate in \
-  "${SCRIPT_DIR}/../../team/team-helpers.sh" \
-  "${SCRIPT_DIR}/../team-helpers.sh" \
-  "${SCRIPT_DIR}/team-helpers.sh"; do
+  "${SCRIPT_DIR}/../../team/team-paths.sh" \
+  "${SCRIPT_DIR}/../team-paths.sh" \
+  "${SCRIPT_DIR}/team-paths.sh"; do
   if [[ -f "$candidate" ]]; then
     TEAM_HELPERS="$candidate"
     break
   fi
 done
 if [[ -n "$TEAM_HELPERS" ]]; then
-  # shellcheck source=team-helpers.sh
+  # shellcheck source=team-paths.sh
   source "$TEAM_HELPERS" >/dev/null 2>&1 || true
 fi
 
@@ -39,7 +39,7 @@ resolve_levelup_paths() {
   PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
   BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
 
-  # Resolve team directives via team-helpers if available
+  # Resolve team directives via team-paths if available
   if declare -f resolve_paths >/dev/null; then
     eval "$(resolve_paths 2>/dev/null | grep -E '^(PROJECT_ROOT|TEAM_AI_DIRECTIVES|BRANCH)=')" || true
   else

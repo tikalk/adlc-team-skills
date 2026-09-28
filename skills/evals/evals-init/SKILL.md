@@ -1,6 +1,6 @@
 ---
 name: evals-init
-description: Initialize $SDD_ROOT/evals/{system}/ directory structure for evaluation system following EDD principles (Standalone). Choose PromptFoo or DeepEval based on tech stack, generate security baseline.
+description: Initialize $WORKSPACE_REPO_ROOT/evals/{system}/ directory structure for evaluation system following EDD principles (Standalone). Choose PromptFoo or DeepEval based on tech stack, generate security baseline.
 disable-model-invocation: true
 ---
 
@@ -11,9 +11,9 @@ disable-model-invocation: true
 Initialize the **project-level evaluation directory structure** following EDD (Eval-Driven Development) principles to prepare for systematic evaluation development. This is completely standalone with zero spec-kit dependencies.
 
 **Output**:
-1. **Directory Structure** - `$SDD_ROOT/evals/{system}/` with proper organization (promptfoo | deepeval)
+1. **Directory Structure** - `$WORKSPACE_REPO_ROOT/evals/{system}/` with proper organization (promptfoo | deepeval)
 2. **Security Baseline** - Auto-created graders for PII leakage, prompt injection, hallucination detection, misinformation detection
-3. **Configuration Files** - Standalone config.yml and goldset templates under `$SDD_ROOT/.adlc/evals/`
+3. **Configuration Files** - Standalone config.yml and goldset templates under `$WORKSPACE_REPO_ROOT/.adlc/evals/`
 4. **Auto-handoff** to `/evals-specify` to begin error analysis
 
 **Key EDD Principles Applied**:
@@ -52,7 +52,7 @@ Parse flags from the arguments first, then treat remaining text as focus areas:
 #### Phase 2: Create Directory Structure
 Creates:
 ```
-$SDD_ROOT/
+$WORKSPACE_REPO_ROOT/
 ├── evals/
 │   ├── {system}/               # promptfoo | deepeval
 │   │   ├── goldset.md          # Published goldset
@@ -70,15 +70,15 @@ $SDD_ROOT/
 ```
 
 #### Phase 3: Configuration Copy
-- Create `$SDD_ROOT/.adlc/evals/` if missing.
-- Copy `skills/evals/evals-templates/evals-config-template.yml` to `$SDD_ROOT/.adlc/evals/evals-config.yml`.
+- Create `$WORKSPACE_REPO_ROOT/.adlc/evals/` if missing.
+- Copy `skills/evals/evals-templates/evals-config-template.yml` to `$WORKSPACE_REPO_ROOT/.adlc/evals/evals-config.yml`.
 
 #### Phase 4: Auto-Handoff
 Trigger `/evals-specify` to begin error analysis.
 
 ## Verification
-- `$SDD_ROOT/evals/{system}/goldset.md` exists (initially empty)
-- `$SDD_ROOT/.adlc/evals/evals-config.yml` exists
+- `$WORKSPACE_REPO_ROOT/evals/{system}/goldset.md` exists (initially empty)
+- `$WORKSPACE_REPO_ROOT/.adlc/evals/evals-config.yml` exists
 - Graders directory populated with 4 security baseline python scripts
 - Results directory contains `.gitignore` to prevent versioning traces
 - Handover report generated with recommended framework and next steps

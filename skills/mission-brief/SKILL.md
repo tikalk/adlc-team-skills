@@ -84,76 +84,35 @@ state: report "No interrupted mission found" and stop.
 **Feature name derivation**: slugify the description to lowercase-hyphenated,
 drop stop words (a, an, the, new, to, with, for, add, fix, update). Example:
 "add a new react dashboard with telemetry" → `react-dashboard-telemetry`.
-If `$SDD_ROOT/.adlc/workflow/runs/` already contains a dir with that name, append `-2`,
+If `$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/` already contains a dir with that name, append `-2`,
 `-3`, etc.
 
 ## Flow
 
-> **All paths are relative to `$SDD_ROOT`** (the project root, unless `sdd_docs_location`
-> is configured, in which case the external location's per-project subfolder).
+> **All paths are relative to `$WORKSPACE_REPO_ROOT`** (the project root, unless `workspace_repo_root`
+> is configured — then artifacts live at the workspace root with **no per-project subfolder**).
 > Do not look in subdirectories for config or state unless explicitly stated.
 
 ### Phase 0 — Configuration
 
-1. Add an explicit resolution step that computes `PROJECT_ROOT`, `SDD_DOCS_LOCATION`,
-   `SDD_ROOT`, and `PROJECT_SUBFOLDER`. You may source `skills/team/team-helpers.sh`
-   and call its helpers, or use this equivalent inline bash:
+1. Resolve `PROJECT_ROOT` and `WORKSPACE_REPO_ROOT` by sourcing `skills/team/team-paths.sh`
+   (preferred) or the equivalent:
 
    ```bash
-   PROJECT_ROOT="$(pwd)"
-
-   resolve_sdd_docs_location() {
-     local sdd_docs_location=""
-     if [[ -n "${SDD_DOCS_LOCATION:-}" ]]; then
-       sdd_docs_location="$SDD_DOCS_LOCATION"
-     else
-       local init_options="${PROJECT_ROOT}/.adlc/init-options.json"
-       if [[ -f "$init_options" ]]; then
-         sdd_docs_location=$(python3 -c "
-import json
-try:
-    with open('$init_options') as f:
-        print(json.load(f).get('sdd_docs_location', ''))
-except Exception:
-    print('')
-" 2>/dev/null || true)
-       fi
-     fi
-     echo "$sdd_docs_location"
-   }
-
-   sdd_project_subfolder_name() {
-     local common_dir
-     common_dir=$(git -C "$PROJECT_ROOT" rev-parse --git-common-dir 2>/dev/null)
-     if [[ -n "$common_dir" ]]; then
-       basename "$(cd "$(dirname "$common_dir")" && pwd)"
-     else
-       basename "$PROJECT_ROOT"
-     fi
-   }
-
-   SDD_DOCS_LOCATION=$(resolve_sdd_docs_location)
-   if [[ -n "$SDD_DOCS_LOCATION" ]]; then
-     SDD_DOCS_LOCATION="${SDD_DOCS_LOCATION/#\~/$HOME}"  # expand tilde
-     PROJECT_SUBFOLDER=$(sdd_project_subfolder_name)
-     SDD_ROOT="${SDD_DOCS_LOCATION%/}/${PROJECT_SUBFOLDER}"
-   else
-     SDD_ROOT="$PROJECT_ROOT"
-   fi
+   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+   source "${SCRIPT_DIR}/../team/team-paths.sh"  # adjust relative path as needed
+   PROJECT_ROOT="$(resolve_project_root)"
+   resolve_workspace_repo_root "$PROJECT_ROOT" >/dev/null
+   # WORKSPACE_REPO_ROOT and WORKSPACE_CONFIGURED are set; no per-project subfolder
    ```
 
-   **Note**: `PROJECT_SUBFOLDER` is derived from the git common-dir's parent
-   directory name (stable across `git worktree add` checkouts of the same
-   repo), matching every setup script that resolves `SDD_ROOT` — do NOT
-   derive it from the git remote URL, which would point mission-brief at a
-   different `SDD_ROOT` than the one the spec/architect/evals skills write to.
 
    **Important**: `.adlc/init-options.json` itself is read from `PROJECT_ROOT`
-   (above), not from `SDD_ROOT`. All other paths in this skill use `SDD_ROOT`.
-2. `mkdir -p "$SDD_ROOT/.adlc/workflow"` (and `"$SDD_ROOT/.adlc/workflow/tmp"`, `"$SDD_ROOT/.adlc/workflow/runs"`).
-3. If `"$SDD_ROOT/.adlc/workflow/workflow-config.yml"` does not exist, copy it from the
+   (above), not from `WORKSPACE_REPO_ROOT`. All other paths in this skill use `WORKSPACE_REPO_ROOT`.
+2. `mkdir -p "$WORKSPACE_REPO_ROOT/.adlc/workflow"` (and `"$WORKSPACE_REPO_ROOT/.adlc/workflow/tmp"`, `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs"`).
+3. If `"$WORKSPACE_REPO_ROOT/.adlc/workflow/workflow-config.yml"` does not exist, copy it from the
    skill's `config-template.yml` (located alongside this SKILL.md).
-4. Read `"$SDD_ROOT/.adlc/workflow/workflow-config.yml"`. Defaults if fields are absent:
+4. Read `"$WORKSPACE_REPO_ROOT/.adlc/workflow/workflow-config.yml"`. Defaults if fields are absent:
 
 ```yaml
 workflow:
@@ -173,13 +132,13 @@ this run.
 
 ### Phase 1 — Resume check (`--resume` only)
 
-> `<FEATURE_DIR>` = `"$SDD_ROOT/.adlc/workflow/runs/<feature>/"` (defined in Phase 4, but
+> `<FEATURE_DIR>` = `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/"` (defined in Phase 4, but
 > referenced here for the completed-mission check).
 
 If `--resume` was passed:
 
-1. Read `"$SDD_ROOT/.adlc/workflow/.mission-state.json"`.
-2. If `"$SDD_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` exists → report "Mission already
+1. Read `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json"`.
+2. If `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` exists → report "Mission already
    completed for feature X. Audit trail: …" → stop.
 3. If state exists with non-empty `completed_steps` → resume: load the step
    list from `state.steps`, skip to Phase 5 (Execute) at the first incomplete
@@ -216,7 +175,7 @@ Structure `spec_description` into the Mission Brief template:
   without confirmation.
 - `--async` → proceed without confirmation (autonomous, ungated).
 
-Store the brief in `"$SDD_ROOT/.adlc/workflow/.mission-state.json.brief"`.
+Store the brief in `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json.brief"`.
 
 ### Phase 3 — Route classification & optional phases
 
@@ -468,7 +427,7 @@ For each step with `status: pending`:
      consult `references/agent-integrations.md` for known locations."
 
 4. Wait for the subagent.
-5. **Update `"$SDD_ROOT/.adlc/workflow/.mission-state.json"` now** — before the next step. Store the
+5. **Update `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json"` now** — before the next step. Store the
    subagent's returned values in state under `step_results.<id>`:
    - Store 1-2 sentence summary as `step_results.<id>.output`
    - Store confidence score as `step_results.<id>.confidence` (if provided, otherwise default to `HIGH`)
@@ -568,11 +527,11 @@ When all steps complete (or a signal forces a return), act on the signal:
 **`converged` or `tasks_appended`** (loop finished):
 
 - sync + gated/hybrid → **require human sign-off**: display the audit trail
-  from `"$SDD_ROOT/.adlc/workflow/runs/<feature>/iterations.md"`; ask "Convergence passed. Review and approve
+  from `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/iterations.md"`; ask "Convergence passed. Review and approve
   completion?" → approve proceeds; reject pauses ("Mission paused for review.
   Run `mission-brief --resume` after addressing issues.").
 - sync + autonomous, or `--async` → skip sign-off.
-- Move `"$SDD_ROOT/.adlc/workflow/.mission-state.json"` → `"$SDD_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"`
+- Move `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json"` → `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"`
   (audit trail — not deleted).
 - Report:
   ```
@@ -583,7 +542,7 @@ When all steps complete (or a signal forces a return), act on the signal:
   - Supervision: <mode>
   - Signal: <converged|tasks_appended>
   - Spec corrections: <n>/<max>
-  - Audit trail: `"$SDD_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"`
+  - Audit trail: `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"`
   ```
 
 **`failed`**: report the error; keep state for inspection. User can re-run
@@ -612,8 +571,8 @@ When all steps complete (or a signal forces a return), act on the signal:
 - **Quality threshold**: if configured, blocks DONE below threshold —
   treats as CONTINUE instead.
 - **Converge independence hint**: converge subagent verifies independently.
-- **Audit trail**: `"$SDD_ROOT/.adlc/workflow/runs/<feature>/iterations.md"` + `"$SDD_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` — not deleted.
-- **State persistence**: `"$SDD_ROOT/.adlc/workflow/.mission-state.json"` survives compaction/restarts.
+- **Audit trail**: `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/iterations.md"` + `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` — not deleted.
+- **State persistence**: `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json"` survives compaction/restarts.
 - **Resume is explicit**: `mission-brief --resume`; fresh `mission-brief` asks
   before clobbering an interrupted state.
 
@@ -630,7 +589,7 @@ When all steps complete (or a signal forces a return), act on the signal:
 
 ## Red Flags
 
-- Executing steps without writing `"$SDD_ROOT/.adlc/workflow/.mission-state.json"` after each one.
+- Executing steps without writing `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json"` after each one.
 - Inserting gates in an `--async` run.
 - Skipping the Mission Brief in autonomous mode when Success Criteria are
   "TBD".
@@ -638,8 +597,8 @@ When all steps complete (or a signal forces a return), act on the signal:
   summarizing + discarding.
 - Clobbering an interrupted state without asking (fresh `mission-brief`
   without `--resume`).
-- Deleting `"$SDD_ROOT/.adlc/workflow/.mission-state.json"` on completion instead of moving it to
-  `"$SDD_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"`.
+- Deleting `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json"` on completion instead of moving it to
+  `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"`.
 - Hardcoding a specific agent's commands directory instead of using the
   discovered paths from `state.discovered`.
 - Ignoring a `SPEC_CORRECTION_NEEDED` signal from the converge subagent
@@ -650,16 +609,16 @@ When all steps complete (or a signal forces a return), act on the signal:
 
 ## Verification
 
-- `"$SDD_ROOT/.adlc/workflow/workflow-config.yml"` exists (copied from template if
+- `"$WORKSPACE_REPO_ROOT/.adlc/workflow/workflow-config.yml"` exists (copied from template if
   absent).
-- `"$SDD_ROOT/.adlc/workflow/.mission-state.json"` contains: `brief` (goal/constraints/success criteria),
+- `"$WORKSPACE_REPO_ROOT/.adlc/workflow/.mission-state.json"` contains: `brief` (goal/constraints/success criteria),
   `steps` (ordered list with phase/tier/prompt/status), `discovered`
   (skills_dirs + commands_dirs + local_skills), `completed_steps` (grows monotonically).
-- `"$SDD_ROOT/.adlc/workflow/runs/<feature>/iterations.md"` gains an entry per implement step.
-- On completion, `"$SDD_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` exists under
-  `"$SDD_ROOT/.adlc/workflow/runs/<feature>/"`.
+- `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/iterations.md"` gains an entry per implement step.
+- On completion, `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` exists under
+  `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/"`.
 - A `--resume` with no state reports "No interrupted mission found" and stops.
-- A `--resume` with `"$SDD_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` present reports "already completed".
+- A `--resume` with `"$WORKSPACE_REPO_ROOT/.adlc/workflow/runs/<feature>/mission-log.json"` present reports "already completed".
 - The delegation prompt includes discovered paths (not a hardcoded list).
 - The delegation prompt includes `<LOCAL_SKILLS_LIST>` built from
   `discovered.local_skills` (empty list → "No custom skills detected").
@@ -675,7 +634,7 @@ When all steps complete (or a signal forces a return), act on the signal:
 
 ## Configuration
 
-- `"$SDD_ROOT/.adlc/workflow/workflow-config.yml"` — execution, supervision, budgets,
+- `"$WORKSPACE_REPO_ROOT/.adlc/workflow/workflow-config.yml"` — execution, supervision, budgets,
   quality threshold, optional models map. See `config-template.yml`.
 - `references/agent-integrations.md` — full agent→directory mapping table.
   Update when new agents are added or conventions change. The executor reads

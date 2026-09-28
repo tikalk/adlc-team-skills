@@ -33,30 +33,6 @@ function Resolve-TeamAiDirectives {
     return (Join-Path $ProjectRoot "team-ai-directives")
 }
 
-function Resolve-SddDocsLocation {
-  param([string]$ProjectRoot)
-  $loc = $env:SDD_DOCS_LOCATION
-  if ($loc) { return $loc }
-  $initOpts = Join-Path $ProjectRoot ".adlc" "init-options.json"
-  if (Test-Path $initOpts) {
-    try {
-      $config = Get-Content $initOpts -Raw | ConvertFrom-Json
-      if ($config.sdd_docs_location) { return $config.sdd_docs_location }
-    } catch {}
-  }
-  return ""
-}
-
-function Get-SddProjectSubfolderName {
-  param([string]$ProjectRoot)
-  $commonDir = git -C $ProjectRoot rev-parse --git-common-dir 2>$null
-  if ($commonDir) {
-    $parent = Split-Path $commonDir -Parent
-    $normalized = (Resolve-Path $parent -ErrorAction SilentlyContinue).Path
-    if ($normalized) { return Split-Path $normalized -Leaf }
-  }
-  return Split-Path $ProjectRoot -Leaf
-}
 
 function Resolve-Branch {
     $b = git branch --show-current 2>$null
@@ -82,20 +58,35 @@ function Get-NextCdrNumber {
 ###############################################################################
 
 $ProjectRoot = Resolve-ProjectRoot
-$TeamAiDirectives = Resolve-TeamAiDirectives $ProjectRoot
-$SddDocsLocation = Resolve-SddDocsLocation -ProjectRoot $ProjectRoot
-if ($SddDocsLocation) {
-  if ($SddDocsLocation.StartsWith("~")) {
-    $SddDocsLocation = Join-Path $env:HOME $SddDocsLocation.Substring(1).TrimStart("/", "\")
-  }
-  $SddRoot = Join-Path $SddDocsLocation.TrimEnd("/", "\") (Get-SddProjectSubfolderName -ProjectRoot $ProjectRoot)
-} else {
-  $SddRoot = $ProjectRoot
+
+# Resolve WORKSPACE_REPO_ROOT via shared team-paths (no per-project subfolders)
+$_scriptDir = $PSScriptRoot
+if (-not $_scriptDir) { $_scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+$_teamPaths = $null
+foreach ($_cand in @(
+  (Join-Path $_scriptDir "../../../../team/team-paths.ps1"),
+  (Join-Path $_scriptDir "../../../team/team-paths.ps1"),
+  (Join-Path $_scriptDir "../../team/team-paths.ps1"),
+  (Join-Path $_scriptDir "../team-paths.ps1"),
+  (Join-Path $_scriptDir "team-paths.ps1")
+)) {
+  if (Test-Path $_cand) { $_teamPaths = $_cand; break }
 }
+if ($_teamPaths) {
+  . $_teamPaths
+  $_ws = Resolve-WorkspaceRepoRoot -ProjectRoot $ProjectRoot
+  $WorkspaceRepoRoot = $_ws.WorkspaceRepoRoot
+  $WorkspaceConfigured = $_ws.WorkspaceConfigured
+} else {
+  $WorkspaceRepoRoot = $ProjectRoot
+  $WorkspaceConfigured = $false
+}
+
+$TeamAiDirectives = Resolve-TeamAiDirectives $ProjectRoot
 $Branch = Resolve-Branch
-$CdrDraftsDir = Join-Path $SddRoot ".adlc/drafts/cdr"
-$SkillsDraftsDir = Join-Path $SddRoot ".adlc/drafts/skills"
-$LevelupStateFile = Join-Path $SddRoot ".adlc/levelup/state.json"
+$CdrDraftsDir = Join-Path $WorkspaceRepoRoot ".adlc/drafts/cdr"
+$SkillsDraftsDir = Join-Path $WorkspaceRepoRoot ".adlc/drafts/skills"
+$LevelupStateFile = Join-Path $WorkspaceRepoRoot ".adlc/levelup/state.json"
 
 New-Item -ItemType Directory -Path $CdrDraftsDir -Force | Out-Null
 New-Item -ItemType Directory -Path $SkillsDraftsDir -Force | Out-Null
@@ -107,7 +98,7 @@ $TdConfigured = if (Test-Path $TeamAiDirectives) { "true" } else { "false" }
 
 $result = @{
     REPO_ROOT = $ProjectRoot
-    SDD_ROOT = $SddRoot
+    WORKSPACE_REPO_ROOT = $WorkspaceRepoRoot
     CDR_DRAFTS_DIR = $CdrDraftsDir
     SKILLS_DRAFTS_DIR = $SkillsDraftsDir
     LEVELUP_STATE_FILE = $LevelupStateFile

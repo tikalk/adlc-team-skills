@@ -2,6 +2,8 @@
 # setup-levelup-publish.sh — Setup for levelup-publish (self-contained)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 ###############################################################################
 # Inline path resolution (no external helper dependency)
 ###############################################################################
@@ -37,33 +39,6 @@ except Exception:
   echo "${project_root}/team-ai-directives"
 }
 
-resolve_sdd_docs_location() {
-  local project_root="$1"
-  local loc="${SDD_DOCS_LOCATION:-}"
-  [[ -n "$loc" ]] && { echo "$loc"; return; }
-  if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
-    loc=$(python3 -c "
-import json
-try:
-    with open('${project_root}/.adlc/init-options.json') as f:
-        print(json.load(f).get('sdd_docs_location', ''))
-except Exception:
-    print('')
-" 2>/dev/null || true)
-  fi
-  echo "$loc"
-}
-
-sdd_project_subfolder_name() {
-  local project_root="$1"
-  local common_dir
-  common_dir=$(git -C "$project_root" rev-parse --git-common-dir 2>/dev/null)
-  if [[ -n "$common_dir" ]]; then
-    basename "$(cd "$(dirname "$common_dir")" && pwd)"
-  else
-    basename "$project_root"
-  fi
-}
 
 resolve_branch() {
   git branch --show-current 2>/dev/null || echo "unknown"
@@ -75,16 +50,29 @@ resolve_branch() {
 
 PROJECT_ROOT=$(resolve_project_root)
 TEAM_AI_DIRECTIVES=$(resolve_team_ai_directives "$PROJECT_ROOT")
-SDD_DOCS_LOCATION=$(resolve_sdd_docs_location "$PROJECT_ROOT")
-if [[ -n "$SDD_DOCS_LOCATION" ]]; then
-  SDD_DOCS_LOCATION="${SDD_DOCS_LOCATION/#\~/$HOME}"
-  SDD_ROOT="${SDD_DOCS_LOCATION%/}/$(sdd_project_subfolder_name "$PROJECT_ROOT")"
+
+# Resolve WORKSPACE_REPO_ROOT via shared team-paths (no per-project subfolders)
+_TEAM_PATHS=""
+for _cand in \
+  "${SCRIPT_DIR}/../../../../team/team-paths.sh" \
+  "${SCRIPT_DIR}/../../../team/team-paths.sh" \
+  "${SCRIPT_DIR}/../../team/team-paths.sh" \
+  "${SCRIPT_DIR}/../team-paths.sh" \
+  "${SCRIPT_DIR}/team-paths.sh"; do
+  [[ -f "$_cand" ]] && { _TEAM_PATHS="$_cand"; break; }
+done
+if [[ -n "$_TEAM_PATHS" ]]; then
+  # shellcheck source=team-paths.sh
+  source "$_TEAM_PATHS"
+  resolve_workspace_repo_root "$PROJECT_ROOT" >/dev/null
 else
-  SDD_ROOT="$PROJECT_ROOT"
+  WORKSPACE_REPO_ROOT="$PROJECT_ROOT"
+  WORKSPACE_CONFIGURED="false"
 fi
+
 BRANCH=$(resolve_branch)
-CDR_DRAFTS_DIR="${SDD_ROOT}/.adlc/drafts/cdr"
-SKILLS_DRAFTS_DIR="${SDD_ROOT}/.adlc/drafts/skills"
+CDR_DRAFTS_DIR="${WORKSPACE_REPO_ROOT}/.adlc/drafts/cdr"
+SKILLS_DRAFTS_DIR="${WORKSPACE_REPO_ROOT}/.adlc/drafts/skills"
 
 mkdir -p "$CDR_DRAFTS_DIR" "$SKILLS_DRAFTS_DIR"
 
@@ -109,11 +97,11 @@ if [[ "$TD_CONFIGURED" == "true" ]]; then
   fi
 fi
 
-python3 - "$PROJECT_ROOT" "$SDD_ROOT" "$CDR_DRAFTS_DIR" "$SKILLS_DRAFTS_DIR" "$TEAM_AI_DIRECTIVES" "$BRANCH" "$ACCEPTED_JSON" "$TD_CONFIGURED" "$TD_IS_GIT" "$TD_CLEAN" << 'PY'
+python3 - "$PROJECT_ROOT" "$WORKSPACE_REPO_ROOT" "$CDR_DRAFTS_DIR" "$SKILLS_DRAFTS_DIR" "$TEAM_AI_DIRECTIVES" "$BRANCH" "$ACCEPTED_JSON" "$TD_CONFIGURED" "$TD_IS_GIT" "$TD_CLEAN" << 'PY'
 import json, sys
 print(json.dumps({
   "REPO_ROOT": sys.argv[1],
-  "SDD_ROOT": sys.argv[2],
+  "WORKSPACE_REPO_ROOT": sys.argv[2],
   "CDR_DRAFTS_DIR": sys.argv[3],
   "SKILLS_DRAFTS_DIR": sys.argv[4],
   "TEAM_AI_DIRECTIVES": sys.argv[5],

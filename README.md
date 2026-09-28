@@ -52,25 +52,34 @@ Already have a directives repo? `team-setup` offers three other modes:
 - **Mode 2 — Point to existing local path** (wire a repo you already have)
 - **Mode 4 — Already configured** (verify an existing setup)
 
-### External SDD Docs Storage (optional)
+### Workspace metadata repo (optional)
 
-By default, all SDD artifacts (PDRs, ADRs, eval criteria, mission state, etc.) live under `.adlc/` in the project root. You can optionally keep them in a separate location — for example, a private specs repo, a compliance share, or a multi-repo consolidation directory — by setting `sdd_docs_location` in `.adlc/init-options.json`.
+By default, all SDD artifacts (PDRs, ADRs, eval criteria, mission state, etc.) live under `.adlc/`, `PRD.md`, `AD.md`, `specs/`, and `evals/` in the project root. You can keep them in a dedicated **workspace metadata repo** (`WORKSPACE_REPO_ROOT`) — for example a parent multi-repo workspace — with root-level artifacts and **no per-project subfolders**:
+
+```
+workspace-root/   ← WORKSPACE_REPO_ROOT
+├── .adlc/  PRD.md  AD.md  specs/  evals/
+├── .gitmodules
+├── backend-api/
+└── frontend/
+```
 
 Resolution order (highest to lowest precedence):
-1. `SDD_DOCS_LOCATION` environment variable
-2. `sdd_docs_location` field in `.adlc/init-options.json`
-3. Empty string (default to project root)
+1. `WORKSPACE_REPO_ROOT` environment variable
+2. `workspace_repo_root` field in project-local `.adlc/init-options.json`
+3. Auto-discovery: parent of `git rev-parse --show-toplevel` contains `.adlc/`
+4. Project root (in-project default)
 
-Example `.adlc/init-options.json` with both team directives and external SDD docs:
+Example `.adlc/init-options.json` with both team directives and a workspace metadata repo:
 
 ```json
 {
   "team_ai_directives": "./team-ai-directives",
-  "sdd_docs_location": "~/sdd-docs"
+  "workspace_repo_root": "~/my-system-workspace"
 }
 ```
 
-With the config above, a project named `my-service` writes its SDD artifacts to `~/sdd-docs/my-service/.adlc/...` and `~/sdd-docs/my-service/PRD.md`/`AD.md`, while the team AI directives repo remains at `./team-ai-directives`. **Important asymmetry**: `sdd_docs_location` uses a **per-project subfolder** (`{sdd_docs_location}/{project-name}/...`), but `team_ai_directives` is a **single shared top-level path** used as-is by every project that points to it. Do not conflate the two — one is a docs *storage root* with project isolation, the other is a shared *directives repository*.
+With the config above, SDD artifacts write to `~/my-system-workspace/.adlc/...`, `PRD.md`, and `AD.md` (shared across child implementation repos). `team_ai_directives` remains a separate shared directives repository path. Use `/workspace-init` to create the layout and `/workspace-publish` to open a draft PR for the metadata pathspec.
 
 ---
 
@@ -225,10 +234,9 @@ skills/
 ├── levelup/               # levelup-* (4 skills) + levelup-helpers.{sh,ps1}
 ├── mission-brief/         # core SDD orchestrator (1 skill)
 ├── evals/                 # evals-* (6 skills) + evals-templates/
-├── sdd-docs/              # sdd-docs-* (1 skill)
+├── workspace/             # workspace-init + workspace-publish
 ├── tech-radar/            # tech-radar-* (1 skill) + resources/radar.json
-├── workspace/             # workspace (1 skill) — multi-repo coordination
-└── team/                  # team-* (6 skills) + team-helpers.{sh,ps1}
+└── team/                  # team-* + team-paths/scaffold/validate helpers
 ```
 
 This places every single skill exactly 2 levels deep, fully resolving the default depth limit of the `skills` CLI and ensuring all skills install out of the box.
@@ -304,32 +312,29 @@ Model-invoked. Grounds tech stack choices in Tikal's Israeli Tech Radar.
 
 - **`tech-radar-context`** — Discovers technologies implied by the prompt, matches them against the Tikal Tech Radar (`radar.json`), and injects a context table with each technology's adoption ring (`Keep`/`Start`/`Try`/`Stop`), quadrant, and Tikal's "Why?" opinion — plus Tikal-aligned alternatives for anything on `Stop`. Auto-triggered whenever a technology, framework, database, library, or cloud tool is being chosen or evaluated. Fetches the live radar best-effort and falls back to a bundled snapshot at `resources/radar.json`.
 
-### Workspace (1 skill)
+### Workspace (2 skills)
 
-User-invoked. Multi-repo workspace coordination for shared team context.
+User-invoked. Workspace metadata repo coordination and publishing.
 
-- **`workspace`** — Discover child repos at depth 1 and optionally link them as Git submodules, creating a multi-repo workspace analogous to VS Code's `.code-workspace`. The parent repo holds shared PDRs, ADRs, and CDRs under `.adlc/` (created by `product-specify`, `architect-specify`, `levelup-specify`); child implementation repos are linked for unified context. Commands: `/workspace` (discover), `/workspace --link` (register submodules), `/workspace --status` (audit: branch, dirty, unpushed, SHA drift). No `workspace.yml` — pure auto-discovery by convention. Say "Set up multi-repo workspace" or `/workspace --link`.
+- **`workspace-init`** — Initialize `.adlc/`, `PRD.md`, `AD.md`, `specs/`, `evals/` at `WORKSPACE_REPO_ROOT`; discover child repos at depth 1; optionally `--link` as Git submodules; `--status` audit. Say "Set up multi-repo workspace" or `/workspace-init --init`.
+- **`workspace-publish`** — Publish workspace metadata via draft PR using explicit pathspec `.adlc PRD.md AD.md specs evals` (never `git add -A`). Use `--ready` for a ready-for-review PR. Say "Publish workspace docs."
 
-### SDD Docs (1 skill)
-
-User-invoked. Publish SDD artifacts from their working location to the configured `sdd_docs_location` (or project root if unconfigured).
-
-- **`sdd-docs-publish`** — Compiles and publishes accepted PDRs, ADRs, eval criteria, PRD.md, AD.md, and mission audit trails to `sdd_docs_location`. Use `--ready` to create a PR instead of a draft. Say "Publish SDD docs."
+**Publishing is not automatic — `product-implement`, `architect-implement`, `evals-implement`, and `mission-brief` never invoke git operations against `WORKSPACE_REPO_ROOT`.**
 
 ### Publishing SDD Docs
 
-`sdd-docs-publish` is the manual publishing step for external SDD docs storage. It follows the same git decision-tree pattern as `levelup-publish` (draft PR → push-only → local-only → git-init offer) and accepts a `--ready` flag to open a ready-for-review PR instead of a draft.
+`workspace-publish` is the manual publishing step for external SDD docs storage. It follows the same git decision-tree pattern as `levelup-publish` (draft PR → push-only → local-only → git-init offer) and accepts a `--ready` flag to open a ready-for-review PR instead of a draft.
 
-**Publishing is not automatic — `product-implement`, `architect-implement`, `evals-implement`, and `mission-brief` never invoke git operations against `sdd_docs_location`.**
+**Publishing is not automatic — `product-implement`, `architect-implement`, `evals-implement`, and `mission-brief` never invoke git operations against `workspace_repo_root`.**
 
 ---
 
 <details>
 <summary><strong>Output File Layout</strong></summary>
 
-All skills write to `$SDD_ROOT/.adlc/` and `$SDD_ROOT/` (repo root), where `$SDD_ROOT` defaults to the project root and resolves to `{sdd_docs_location}/{project-name}/` when `sdd_docs_location` is configured. The paths below are shown relative to `$SDD_ROOT`.
+All skills write to `$WORKSPACE_REPO_ROOT/.adlc/` and `$WORKSPACE_REPO_ROOT/` (workspace root), where `$WORKSPACE_REPO_ROOT` defaults to the project root. The paths below are shown relative to `$WORKSPACE_REPO_ROOT`.
 
-**Carve-outs (always project-local, unaffected by `sdd_docs_location`):**
+**Carve-outs (always project-local, unaffected by `workspace_repo_root`):**
 - The **Team Directives** bullets below (inside the `team_ai_directives` repository).
 - The `.adlc/init-options.json` bullet under **LevelUp**.
 

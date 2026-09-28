@@ -106,33 +106,6 @@ function Seed-Templates {
 }
 
 
-# Resolve external SDD docs location.
-# Priority: SDD_DOCS_LOCATION env var > .adlc/init-options.json > empty (use repo root).
-function Resolve-SddDocsLocation {
-    param([string]$ProjectRoot)
-    $loc = $env:SDD_DOCS_LOCATION
-    if ($loc) { return $loc }
-    $optionsFile = Join-Path $ProjectRoot ".adlc\init-options.json"
-    if (Test-Path $optionsFile) {
-        try {
-            $options = Get-Content $optionsFile -Raw | ConvertFrom-Json -ErrorAction Stop
-            if ($options.sdd_docs_location) { return $options.sdd_docs_location }
-        } catch { }
-    }
-    return ""
-}
-
-# Derive a stable subfolder name for the current project inside SDD_DOCS_LOCATION.
-function Get-SddProjectSubfolderName {
-    param([string]$ProjectRoot)
-    try {
-        $commonDir = git -C $ProjectRoot rev-parse --git-common-dir 2>$null
-        if ($commonDir) {
-            return (Split-Path (Resolve-Path (Join-Path $commonDir "..")).Path -Leaf)
-        }
-    } catch { }
-    return (Split-Path $ProjectRoot -Leaf)
-}
 
 # Detect tech stack from codebase
 function Get-TechStack {
@@ -549,7 +522,7 @@ function New-ArchitectureDiagrams {
 function Invoke-Specify {
     param($repoRoot, $contextArgs)
     
-    $adrDir = Join-Path $sddRoot ".adlc\memory\adr"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\memory\adr"
     $adrTemplate = Join-Path $repoRoot ".adlc\templates\adr-template.md"
     
     Write-Host "📐 Setting up for interactive ADR creation..." -ForegroundColor Cyan
@@ -566,7 +539,7 @@ function Invoke-Specify {
     }
     
     # Ensure memory directory exists
-    $memoryDir = Join-Path $sddRoot ".adlc\memory"
+    $memoryDir = Join-Path $WorkspaceRepoRoot ".adlc\memory"
     if (-not (Test-Path $memoryDir)) {
         New-Item -ItemType Directory -Path $memoryDir -Force | Out-Null
     }
@@ -616,7 +589,7 @@ function Invoke-Specify {
     Write-Host "After completion, run '/architect.implement' to generate full AD.md"
     
     if ($Json) {
-        @{status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose} | ConvertTo-Json
+        @{status="success"; workspace_repo_root=$WorkspaceRepoRoot; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose} | ConvertTo-Json
     }
 }
 
@@ -624,7 +597,7 @@ function Invoke-Specify {
 function Invoke-Clarify {
     param($repoRoot, $contextArgs)
     
-    $adrDir = Join-Path $sddRoot ".adlc\memory\adr"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\memory\adr"
     
     if (-not (Test-Path $adrDir)) {
         Write-Error "ADR file does not exist: $adrDir`nRun '/architect.adlc' or '/architect.init' first"
@@ -646,7 +619,7 @@ function Invoke-Clarify {
     Write-Host "  4. Flag any inconsistencies or gaps"
     
     if ($Json) {
-        @{status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="clarify"; adr_dir=$adrDir; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
+        @{status="success"; workspace_repo_root=$WorkspaceRepoRoot; action="clarify"; adr_dir=$adrDir; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
     }
 }
 
@@ -654,8 +627,8 @@ function Invoke-Clarify {
 function Invoke-Implement {
     param($repoRoot, $contextArgs)
     
-    $adrDir = Join-Path $sddRoot ".adlc\memory\adr"
-    $adFile = Join-Path $sddRoot "AD.md"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\memory\adr"
+    $adFile = Join-Path $WorkspaceRepoRoot "AD.md"
     $adTemplate = Join-Path $repoRoot ".adlc\templates\AD-template.md"
     
     if (-not (Test-Path $adrDir)) {
@@ -694,21 +667,21 @@ function Invoke-Implement {
     Write-Host "  7. Clean up drafts if all ADRs are Accepted"
     
     if ($Json) {
-        @{status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="implement"; adr_dir=$adrDir; ad_file=$adFile; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
+        @{status="success"; workspace_repo_root=$WorkspaceRepoRoot; action="implement"; adr_dir=$adrDir; ad_file=$adFile; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
     }
 }
 
 # Initialize action (brownfield - reverse-engineer from codebase, ADRs only)
 function Invoke-Init {
-    param($repoRoot, $sddRoot, $contextArgs)
+    param($repoRoot, $WorkspaceRepoRoot, $contextArgs)
     
-    $adrDir = Join-Path $sddRoot ".adlc\memory\adr"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\memory\adr"
     $adrTemplate = Join-Path $repoRoot ".adlc\templates\adr-template.md"
     
     Write-Host "🔍 Initializing brownfield architecture discovery..." -ForegroundColor Cyan
     
     # Ensure memory directory exists
-    $memoryDir = Join-Path $sddRoot ".adlc\memory"
+    $memoryDir = Join-Path $WorkspaceRepoRoot ".adlc\memory"
     if (-not (Test-Path $memoryDir)) {
         New-Item -ItemType Directory -Path $memoryDir -Force | Out-Null
     }
@@ -799,7 +772,7 @@ function Invoke-Init {
     
     if ($Json) {
         @{
-            status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot
+            status="success"; workspace_repo_root=$WorkspaceRepoRoot
             action="init"
             adr_dir=$adrDir
             tech_stack=$techStack
@@ -841,7 +814,7 @@ function Invoke-Map {
     # Output structured data for AI agent to populate AD.md Section C
     if ($Json) {
         @{
-            status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot
+            status="success"; workspace_repo_root=$WorkspaceRepoRoot
             action="map"
             tech_stack=$techStack
             directory_structure=$dirStructure
@@ -895,7 +868,7 @@ function Invoke-Update {
     Write-Host "  - Add ADR if significant decision was made"
     
     if ($Json) {
-        @{status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="update"; file=$architectureFile} | ConvertTo-Json
+        @{status="success"; workspace_repo_root=$WorkspaceRepoRoot; action="update"; file=$architectureFile} | ConvertTo-Json
     }
 }
 
@@ -962,10 +935,10 @@ function Invoke-Review {
     }
     
     # Check constitution alignment (new path: memory/constitution.md)
-    $constitutionFile = Join-Path $sddRoot ".adlc\memory\constitution.md"
+    $constitutionFile = Join-Path $WorkspaceRepoRoot ".adlc\memory\constitution.md"
     if (-not (Test-Path $constitutionFile)) {
         # Fallback to legacy path
-        $constitutionFile = Join-Path $sddRoot ".adlc\memory\constitution.md"
+        $constitutionFile = Join-Path $WorkspaceRepoRoot ".adlc\memory\constitution.md"
     }
     if (Test-Path $constitutionFile) {
         Write-Host ""
@@ -976,9 +949,9 @@ function Invoke-Review {
     
     if ($Json) {
         if ($issues.Count -eq 0) {
-            @{status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="review"; issues=@()} | ConvertTo-Json
+            @{status="success"; workspace_repo_root=$WorkspaceRepoRoot; action="review"; issues=@()} | ConvertTo-Json
         } else {
-            @{status="warning"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="review"; issues=$issues} | ConvertTo-Json
+            @{status="warning"; workspace_repo_root=$WorkspaceRepoRoot; action="review"; issues=$issues} | ConvertTo-Json
         }
     }
 }
@@ -987,16 +960,16 @@ function Invoke-Review {
 function Invoke-Analyze {
     param(
         [string]$repoRoot,
-        [string]$sddRoot,
+        [string]$WorkspaceRepoRoot,
         [string[]]$contextArgs
     )
     
     Write-Host "🔍 Architecture Analysis Mode" -ForegroundColor Cyan
     Write-Host ""
     
-    $adFile = Join-Path $sddRoot "AD.md"
-    $adrDir = Join-Path $sddRoot ".adlc\memory\adr"
-    $constitutionFile = Join-Path $sddRoot ".adlc\memory\constitution.md"
+    $adFile = Join-Path $WorkspaceRepoRoot "AD.md"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\memory\adr"
+    $constitutionFile = Join-Path $WorkspaceRepoRoot ".adlc\memory\constitution.md"
     
     $adExists = Test-Path $adFile
     $adrExists = Test-Path $adrDir
@@ -1046,7 +1019,7 @@ function Invoke-Analyze {
     
     if ($Json) {
         @{
-            status = "success"; sdd_docs_location = $sddDocsLocation; sdd_root = $sddRoot
+            status = "success"; workspace_repo_root = $WorkspaceRepoRoot
             action = "analyze"
             ad_file = $adFile
             ad_exists = $adExists
@@ -1065,7 +1038,7 @@ function Invoke-Analyze {
 function Invoke-Validate {
     param($repoRoot, $contextArgs)
     
-    $adrDir = Join-Path $sddRoot ".adlc\memory\adr"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\memory\adr"
     
     Write-Host "🔍 Architecture Validation Mode (READ-ONLY)" -ForegroundColor Cyan
     Write-Host ""
@@ -1075,7 +1048,7 @@ function Invoke-Validate {
         Write-Host "⏭️  Architecture not found: $adrDir" -ForegroundColor Yellow
         Write-Host "     Skipping validation gracefully" -ForegroundColor Gray
         if ($Json) {
-            @{status="skipped"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="validate"; reason="architecture_not_found"} | ConvertTo-Json
+            @{status="skipped"; workspace_repo_root=$WorkspaceRepoRoot; action="validate"; reason="architecture_not_found"} | ConvertTo-Json
         }
         exit 0
     }
@@ -1093,7 +1066,7 @@ function Invoke-Validate {
     Write-Host "  4. Report findings (READ-ONLY, no modifications)"
     
     if ($Json) {
-        @{status="success"; sdd_docs_location=$sddDocsLocation; sdd_root=$sddRoot; action="validate"; adr_dir=$adrDir; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
+        @{status="success"; workspace_repo_root=$WorkspaceRepoRoot; action="validate"; adr_dir=$adrDir; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
     }
 }
 
@@ -1101,9 +1074,9 @@ function Invoke-Validate {
 function Invoke-PlanDag {
     param($repoRoot, $contextArgs)
     
-    $adrDir = Join-Path $sddRoot ".adlc\drafts\adr"
-    $stateFile = Join-Path $sddRoot ".adlc\architect\state.json"
-    $viewsDir = Join-Path $sddRoot ".adlc\architect\views"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\drafts\adr"
+    $stateFile = Join-Path $WorkspaceRepoRoot ".adlc\architect\state.json"
+    $viewsDir = Join-Path $WorkspaceRepoRoot ".adlc\architect\views"
     
     Write-Host "📐 DAG Planning Phase" -ForegroundColor Cyan
     Write-Host ""
@@ -1115,7 +1088,7 @@ function Invoke-PlanDag {
     }
     
     # Ensure directories exist
-    $architectDir = Join-Path $sddRoot ".adlc\architect"
+    $architectDir = Join-Path $WorkspaceRepoRoot ".adlc\architect"
     if (-not (Test-Path $architectDir)) {
         New-Item -ItemType Directory -Path $architectDir -Force | Out-Null
     }
@@ -1166,7 +1139,7 @@ function Invoke-PlanDag {
             }
         }
         @{
-            status = "success"; sdd_docs_location = $sddDocsLocation; sdd_root = $sddRoot
+            status = "success"; workspace_repo_root = $WorkspaceRepoRoot
             action = "plan-dag"
             adr_dir = $adrDir
             state_file = $stateFile
@@ -1182,8 +1155,8 @@ function Invoke-PlanDag {
 function Invoke-ExecuteDag {
     param($repoRoot, $contextArgs)
     
-    $stateFile = Join-Path $sddRoot ".adlc\architect\state.json"
-    $viewsDir = Join-Path $sddRoot ".adlc\architect\views"
+    $stateFile = Join-Path $WorkspaceRepoRoot ".adlc\architect\state.json"
+    $viewsDir = Join-Path $WorkspaceRepoRoot ".adlc\architect\views"
     
     Write-Host "🔧 DAG Execution Phase" -ForegroundColor Cyan
     Write-Host ""
@@ -1213,7 +1186,7 @@ function Invoke-ExecuteDag {
     if ($Json) {
         $stateContent = Get-Content $stateFile -Raw | ConvertFrom-Json
         @{
-            status = "success"; sdd_docs_location = $sddDocsLocation; sdd_root = $sddRoot
+            status = "success"; workspace_repo_root = $WorkspaceRepoRoot
             action = "execute-dag"
             state_file = $stateFile
             views_dir = $viewsDir
@@ -1226,10 +1199,10 @@ function Invoke-ExecuteDag {
 function Invoke-Summarize {
     param($repoRoot, $contextArgs)
     
-    $stateFile = Join-Path $sddRoot ".adlc\architect\state.json"
-    $viewsDir = Join-Path $sddRoot ".adlc\architect\views"
-    $adFile = Join-Path $sddRoot "AD.md"
-    $adrDir = Join-Path $sddRoot ".adlc\drafts\adr"
+    $stateFile = Join-Path $WorkspaceRepoRoot ".adlc\architect\state.json"
+    $viewsDir = Join-Path $WorkspaceRepoRoot ".adlc\architect\views"
+    $adFile = Join-Path $WorkspaceRepoRoot "AD.md"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\drafts\adr"
     
     Write-Host "📝 Summarization Phase" -ForegroundColor Cyan
     Write-Host ""
@@ -1274,7 +1247,7 @@ function Invoke-Summarize {
             }
         }
         @{
-            status = "success"; sdd_docs_location = $sddDocsLocation; sdd_root = $sddRoot
+            status = "success"; workspace_repo_root = $WorkspaceRepoRoot
             action = "summarize"
             state_file = $stateFile
             views_dir = $viewsDir
@@ -1291,23 +1264,36 @@ try {
     $repoRoot = Get-RepositoryRoot
     Seed-Templates -RepoRoot $repoRoot
 
-    # Resolve external SDD docs location
-    $sddDocsLocation = Resolve-SddDocsLocation -ProjectRoot $repoRoot
-    $sddRoot = if ($sddDocsLocation) {
-        Join-Path $sddDocsLocation (Get-SddProjectSubfolderName -ProjectRoot $repoRoot)
+    # Resolve WORKSPACE_REPO_ROOT via shared team-paths (no per-project subfolders)
+    $_scriptDir = $PSScriptRoot
+    if (-not $_scriptDir) { $_scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $_teamPaths = $null
+    foreach ($_cand in @(
+      (Join-Path $_scriptDir "../../../../team/team-paths.ps1"),
+      (Join-Path $_scriptDir "../../../team/team-paths.ps1"),
+      (Join-Path $_scriptDir "../../team/team-paths.ps1")
+    )) {
+      if (Test-Path $_cand) { $_teamPaths = $_cand; break }
+    }
+    if ($_teamPaths) {
+      . $_teamPaths
+      $_ws = Resolve-WorkspaceRepoRoot -ProjectRoot $repoRoot
+      $WorkspaceRepoRoot = $_ws.WorkspaceRepoRoot
+      $WorkspaceConfigured = $_ws.WorkspaceConfigured
     } else {
-        $repoRoot
+      $WorkspaceRepoRoot = $repoRoot
+      $WorkspaceConfigured = $false
     }
 
     # Ensure memory directory exists
-    $memoryDir = Join-Path $sddRoot ".adlc\memory"
+    $memoryDir = Join-Path $WorkspaceRepoRoot ".adlc\memory"
     if (-not (Test-Path $memoryDir)) {
         New-Item -ItemType Directory -Path $memoryDir -Force | Out-Null
     }
     
     # Architecture files (new structure: AD.md at root, ADRs in memory/)
-    $adFile = Join-Path $sddRoot "AD.md"
-    $adrDir = Join-Path $sddRoot ".adlc\memory\adr"
+    $adFile = Join-Path $WorkspaceRepoRoot "AD.md"
+    $adrDir = Join-Path $WorkspaceRepoRoot ".adlc\memory\adr"
     $templateFile = Join-Path $repoRoot ".adlc\templates\architecture-template.md"
     $adTemplateFile = Join-Path $repoRoot ".adlc\templates\AD-template.md"
     
@@ -1327,40 +1313,40 @@ try {
     # Execute action
     switch ($Action) {
         'specify' {
-            Invoke-Specify -repoRoot $sddRoot -contextArgs $Context
+            Invoke-Specify -repoRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'clarify' {
-            Invoke-Clarify -repoRoot $sddRoot -contextArgs $Context
+            Invoke-Clarify -repoRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'init' {
-            Invoke-Init -repoRoot $repoRoot -sddRoot $sddRoot -contextArgs $Context
+            Invoke-Init -repoRoot $repoRoot -sddRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'map' {
             Invoke-Map -repoRoot $repoRoot
         }
         'implement' {
-            Invoke-Implement -repoRoot $sddRoot -contextArgs $Context
+            Invoke-Implement -repoRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'analyze' {
-            Invoke-Analyze -repoRoot $repoRoot -sddRoot $sddRoot -contextArgs $Context
+            Invoke-Analyze -repoRoot $repoRoot -sddRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'validate' {
-            Invoke-Validate -repoRoot $sddRoot -contextArgs $Context
+            Invoke-Validate -repoRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'plan-dag' {
-            Invoke-PlanDag -repoRoot $sddRoot -contextArgs $Context
+            Invoke-PlanDag -repoRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'execute-dag' {
-            Invoke-ExecuteDag -repoRoot $sddRoot -contextArgs $Context
+            Invoke-ExecuteDag -repoRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'summarize' {
-            Invoke-Summarize -repoRoot $sddRoot -contextArgs $Context
+            Invoke-Summarize -repoRoot $WorkspaceRepoRoot -contextArgs $Context
         }
         'update' {
-            Invoke-Update -repoRoot $sddRoot -architectureFile $adFile
+            Invoke-Update -repoRoot $WorkspaceRepoRoot -architectureFile $adFile
         }
         'review' {
-            Invoke-Review -repoRoot $sddRoot -architectureFile $adFile
+            Invoke-Review -repoRoot $WorkspaceRepoRoot -architectureFile $adFile
         }
         default {
             Write-Error "Unknown action: $Action`nUse -Help for usage information"

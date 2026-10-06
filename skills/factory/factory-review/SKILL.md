@@ -46,9 +46,10 @@ When triggered with `--pr <id>` (without `--self-heal`):
 2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
 3. Fetch the PR diff and description.
 4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings`.
-5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP.
+5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP. The review comment MUST name the reviewed revision (head SHA in the marker `head=<sha>`).
 6. If findings contain `Important` issues, set PR label to `validation`. If clean, set to `validation` + advise code-owner of merge-readiness.
 7. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
+8. **Re-review after any fix push (mandatory)**: A fix commit — whether from babysit, self-heal, or a human addressing review feedback — invalidates the prior review verdict. The verdict applies to exactly one head SHA; once the head moves, it is stale. Before declaring merge-readiness (or letting a merged-state audit stand), re-run all REVIEW.md passes on the new head and post the updated verdict with the new `head=<sha>`. The merge-ready comment must name the head it certifies; a merge-ready claim on a superseded head is a contract violation. (Evidence: MR !21 — iter-1 verdict on `b1221aa` went stale after the babysit fix `913504a`; the merged head was never re-reviewed and carried 2 Important findings found only in a post-merge audit.)
 
 ### 3. Self-Heal Converge Loop (`--self-heal` mode)
 
@@ -149,6 +150,7 @@ factory-review --pr <id> --self-heal
 - **Babysit-to-Merge**: For PRs opened by the agent:
   - Sweep the PR regularly for new comments or failing CI checks.
   - Automatically fix failing checks or address review comments, pushing updates until the PR is green.
+  - **Every fix push invalidates the standing review verdict** — after pushing, re-run the review passes on the new head (§2 step 8) before re-declaring merge-readiness.
   - Leave the PR in a merge-ready state awaiting final human approval.
 
 ### 5. Findings to Directives Feedback Loop

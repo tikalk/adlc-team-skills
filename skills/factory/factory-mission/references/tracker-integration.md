@@ -9,9 +9,13 @@ This is the shared reference for all tracker-aware factory skills (`factory-miss
 ## Configuration & Discovery
 
 ### 1. Provider Resolution
-1. Read `.specify/taskstoissues-provider.yml` from the project root.
-2. Parse `provider: github | gitlab | linear | jira` (fall back to `github` if absent).
-3. Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`).
+Resolve the provider in this order (first hit wins):
+1. `{{params.tracker_provider}}` — explicit run override (hierarchical context parameters).
+2. `.adlc/issues-provider.yml` in the target repo (factory-canonical; the template ships in this release at `skills/factory/factory-mission/references/issues-provider.yml`).
+3. `.specify/taskstoissues-provider.yml` (legacy spec-kit path — read-only fallback; spec-kit owns and scaffolds it, the factory never writes it).
+4. None of the above resolves a provider: **halt with an error**. Never silently default (a wrong guess posts to the wrong tracker).
+Parse `provider: github | gitlab | linear | jira` from the winning source.
+Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, plus per-provider `remote_override`/`project_id`).
 
 ### 2. Credentials & Tools Discovery
 1. Check environment variables: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `LINEAR_API_KEY`, `JIRA_API_TOKEN` / `JIRA_URL` + `JIRA_EMAIL`.
@@ -247,7 +251,7 @@ the transition based on provider type:
 
 2. **State-Based (Jira/Linear/ClickUp)**:
    - Statuses mapped to native workflow states/columns (e.g. `executing` to `In Progress`, `validation` to `In Review`).
-   - Transitions must use the native transition/state update APIs (mapping custom column names via `.specify/taskstoissues-provider.yml`).
+   - Transitions must use the native transition/state update APIs (mapping custom column names via the resolved provider config — `.adlc/issues-provider.yml`, legacy fallback `.specify/taskstoissues-provider.yml`).
    - CLI/MCP commands:
      - Jira CLI: `jira issue transition <key> "In Progress"`
      - Linear CLI: `linear issue update <id> --status "In Progress"`

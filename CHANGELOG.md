@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Factory-owned `issues-provider.yml` tracker config** (ADR-427) — the factory release ships a canonical provider template (`skills/factory/factory-mission/references/issues-provider.yml`, rename-only from spec-kit's `taskstoissues-provider.yml` schema, never-tokens rule retained); target repos carry a committed copy at `.adlc/issues-provider.yml`. `tracker-integration.md` §1 now resolves `{{params.tracker_provider}}` → new path → legacy `.specify/taskstoissues-provider.yml` (read-only fallback, spec-kit untouched) → **loud halt**, deleting the silent `github` default that mis-targeted repos without spec-kit. Pinned by `tests/unit/test_issues_provider_contract.py`.
+
 ### Changed
 
 - **Single merged Team Context & Decisions table** (#56) — the per-response Team Context in Use section and Session Decision Ledger merge into one 6-column table; Status carries the accepted-vs-pending distinction (`in use` + `—` = grounding context, never drafts; `pending`/`captured`/`clarified`/`handed off` + skill = owed decisions); one counts line (`_Scope: … — J rows shown · Unrecorded: N pending · Unclarified: M captured drafts._`). Pending Decisions session-start inventory unchanged. Pinned by `test_single_response_table_contract` + `test_status_semantics_rule` + reshaped header-count assertions.

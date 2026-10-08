@@ -841,6 +841,22 @@ generate_and_insert_diagrams() {
     local system_name="${2:-System}"
     local views_list="${3:-$ARCHITECTURE_VIEWS}"
     
+    # Dirty-worktree guard (CDR-002): regeneration overwrites uncommitted
+    # AD.md/content changes. Read-only callers must never trigger it, and
+    # update actions refuse on a dirty worktree unless explicitly forced
+    # with FORCE_REGENERATE=1.
+    if [[ -d "$REPO_ROOT/.git" ]] && command -v git &> /dev/null; then
+        if ! git -C "$REPO_ROOT" diff --quiet -- "$arch_file" 2>/dev/null \
+           || ! git -C "$REPO_ROOT" diff --cached --quiet -- "$arch_file" 2>/dev/null; then
+            if [[ "${FORCE_REGENERATE:-0}" != "1" ]]; then
+                echo "❌ Refusing to regenerate diagrams: $arch_file has uncommitted changes." >&2
+                echo "   Commit or stash first, or re-run with FORCE_REGENERATE=1 to overwrite." >&2
+                return 1
+            fi
+            echo "⚠️  FORCE_REGENERATE=1: regenerating despite uncommitted changes to $arch_file" >&2
+        fi
+    fi
+    
     # Parse views
     local parsed_views
     parsed_views=$(parse_views "$views_list")

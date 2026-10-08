@@ -139,6 +139,10 @@ Reply with your choice (A/B/C/D/P).
 
 Wait for user input before proceeding. Update CDR file after each decision.
 
+## Absent Context
+
+If `team-boot` injected no team context this session (no Team Context & Decisions section in the first user message — unconfigured project or hook failure): say so in one line, maintain rows in Team Context & Decisions with a `0 CDRs matched (no team context injected — run /team-setup)` source line, and continue the task on directly-read CDR modules. Never treat a missing injection as an empty record set. Recovery: run `/team-diagnose`.
+
 ### Phase 4: Publish
 
 For accepted CDRs, create a draft PR to `team-ai-directives` main branch:

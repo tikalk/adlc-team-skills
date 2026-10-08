@@ -38,6 +38,8 @@ In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `
    - **Severity weights**: What constitutes an *Important* block (e.g., memory leak, security risk, spec deviation) vs. a *Nit* (formatting, style).
    - **Skip lists**: Generated paths, vendor files, and CI-validated paths.
 
+**Team index fallback:** when no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (ADR-401 dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line. Never block on the missing injection.
+
 ### 2. PR Review Pipeline (single review, no self-heal)
 
 When triggered with `--pr <id>` (without `--self-heal`):

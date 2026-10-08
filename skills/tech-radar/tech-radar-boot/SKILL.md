@@ -159,6 +159,10 @@ dataset supports:
 Do not hardcode substitutions beyond what the loaded dataset supports — derive
 alternatives from the radar's actual `Keep`/`Start` blips in that quadrant.
 
+## Absent Context
+
+If `team-boot` injected no team context this session (no Team Context & Decisions section in the first user message — unconfigured project or hook failure): say so in one line, emit the section heading with a `0 radar technologies matched (no team context injected — run /team-setup)` source line, and continue the task on the live radar lookup. Never treat a missing injection as an empty record set. Recovery: run `/team-diagnose`.
+
 ### Step 6: Inject Tech Radar Context (Output Contract)
 
 The script's stdout goes to the tool channel — invisible to the user. ALWAYS

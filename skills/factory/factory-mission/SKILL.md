@@ -53,6 +53,8 @@ It implements the following key factory platform capabilities:
 5. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
 6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
 
+**Team index fallback:** when no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (ADR-401 dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line. Never block on the missing injection.
+
 ### Phase 5: Executing the Converge Loop
 Execute steps sequentially. When reaching `implement` / `converge`:
 

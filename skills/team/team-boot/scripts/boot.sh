@@ -40,9 +40,16 @@ if [ ! -f "$INIT_FILE" ]; then
 fi
 
 # Extract team_ai_directives from JSON (pure shell, no runtime deps).
-TEAM_AI_DIRECTIVES=$(grep '"team_ai_directives"' "$INIT_FILE" \
+# `|| true` on the pipeline: grep exits 1 when init-options.json exists but
+# has no team_ai_directives key (e.g. /team-setup was never run) — under
+# set -euo pipefail that silently killed the whole script before it reached
+# the "not configured" fallback below. Confirmed live: adlc-mission pods
+# with only {"agent": "opencode"} in init-options.json never printed this
+# script's own intended message — every session_start hook invocation
+# just died with exit 1 and no output at all.
+TEAM_AI_DIRECTIVES=$( (grep '"team_ai_directives"' "$INIT_FILE" \
   | sed 's/.*"team_ai_directives"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' \
-  | head -1)
+  | head -1) || true)
 
 # Handle null marker (user opted out) or empty value.
 if [ -z "$TEAM_AI_DIRECTIVES" ] || [ "$TEAM_AI_DIRECTIVES" = "null" ]; then

@@ -19,7 +19,7 @@ line. Diagnose up to it, then route.
 
 ## When to Use
 
-- Team context missing at session start (no `Team Context in Use` section).
+- Team context missing at session start (no `Team Context & Decisions` section).
 - A rule that should have matched didn't load.
 - Install behaves unexpectedly after an update.
 

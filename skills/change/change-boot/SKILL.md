@@ -67,6 +67,10 @@ clarification — frontmatter `proposed`/`discovered` maps to ledger Status
 Type / Status / Date from each file.
 If the directory is empty or absent, report `0 pending drafts`.
 
+## Absent Context
+
+If `team-boot` injected no team context this session (no Team Context & Decisions section in the first user message — unconfigured project or hook failure): say so in one line, emit the section heading with a `0 ChDRs matched (no team context injected — run /team-setup)` source line, and continue the task on the directly-read ChDR index. Never treat a missing injection as an empty record set. Recovery: run `/team-diagnose`.
+
 ### Step 2: Inject ChDR Context (Output Contract)
 
 Emit before the task answer:

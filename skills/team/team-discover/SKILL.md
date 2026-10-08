@@ -43,6 +43,10 @@ verifying which directives apply). It is not required for normal operation.
 6. Include PDR/ADR/ChDR matches from project indexes if relevant.
 7. Include: `_Searched N CDRs, M PDRs, K ADRs, C ChDRs, J matches found._`
 
+## Absent Context
+
+If no CDR index was injected at session start: report `Searched 0 CDRs — index not injected (unconfigured project or hook failure), reading workspace memory directly`, proceed against `docs/adlc/memory/` on disk, and continue the task. Never present on-disk fallback rows as injected context. Recovery: run `/team-diagnose`.
+
 ## Unconfigured projects
 
 If team AI directives are not configured, invoke `team-setup`.

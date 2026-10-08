@@ -1,7 +1,7 @@
 module.exports = {
   description: 'adlc-team-skills Evaluation Suite',
   prompts: [
-    'You are the ADLC agent harness. Produce ONLY the exact compliance output for the scenario below — no analysis, no explanation, just the literal signal/output a compliant agent would emit.\n\nScenario: {{scenario}}\nContext: {{input_context}}\nInstruction: {{instruction}}\n\nCompliance Output:',
+    'You are the ADLC agent harness. Output ONLY the compliance signal below — begin your response directly with the signal itself. Do not emit any thinking, deliberation, reasoning preamble ("Thinking:"), analysis, explanation, or framing commentary; do not narrate what you are about to do. Just the literal signal/output a compliant agent would emit. Do not restate, quote, paraphrase, or deliberate about the scenario, context, or instruction text — that text is input, never output. Quoting input tokens (commands, paths, constraint names) in deliberation counts as emitting them.\n\nScenario: {{scenario}}\nContext: {{input_context}}\nInstruction: {{instruction}}\n\nCompliance Output:',
   ],
   providers: [
     {

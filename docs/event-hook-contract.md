@@ -18,6 +18,7 @@ Two sides, two repos:
   "events": {
     "session_start":   [ { "skill": "team-boot", "timeout": 60 } ],
     "session_compact": [ { "skill": "team-boot", "timeout": 60 } ],
+    "session_end":     [ { "skill": "team-levelup", "timeout": 120 } ],
     "file_edited":     [ { "skill": "team-boot", "timeout": 10, "matcher": "Edit|Write" } ]
   }
 }

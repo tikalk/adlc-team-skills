@@ -48,7 +48,7 @@ Operates on candidate issues (labeled `intent`) or local draft briefs:
 
 Operates post-lifecycle convergence to populate the backlog:
 
-1. **Load Artifacts**: Read accepted PDRs + ADRs and the generated `docs/adlc/product/PRD.md` / `docs/adlc/architect/AD.md`.
+1. **Load Artifacts**: Read accepted PDRs + ADRs and the generated `docs/adlc/product/PRD.md` / `docs/adlc/architect/AD.md`. When no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (ADR-401 dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line.
 2. **Generate Milestones & Epics**: Extract sequencing, requirement groupings, and "done-means" definitions into prioritized epics and milestones. **Gate/task issues MUST use the mission-brief format** — Goal / Constraints / Non-Goals / Success Criteria (each criterion with a measurement method) — per the canonical template in `factory-mission`'s `references/mission-brief-template.md`. Milestone descriptions carry the demo sentence + done-means (milestones are grouping containers, not executable units). Issue titles are short work-item names; `[Gx]`/`Mx:` prefixes are forbidden (milestone assignment carries grouping; descriptions carry references).
 3. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
 4. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.

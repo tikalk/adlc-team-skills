@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Factory-owned `issues-provider.yml` tracker config** (ADR-427) — the factory release ships a canonical provider template (`skills/factory/factory-mission/references/issues-provider.yml`, rename-only from spec-kit's `taskstoissues-provider.yml` schema, never-tokens rule retained); target repos carry a committed copy at `.adlc/issues-provider.yml`. `tracker-integration.md` §1 now resolves `{{params.tracker_provider}}` → new path → legacy `.specify/taskstoissues-provider.yml` (read-only fallback, spec-kit untouched) → **loud halt**, deleting the silent `github` default that mis-targeted repos without spec-kit. Pinned by `tests/unit/test_issues_provider_contract.py`.
+- **Factory-owned `issues-provider.yml` tracker config** (ADR-427) — the factory release ships a canonical provider template (`skills/factory/factory-mission/references/issues-provider.yml`, rename-only from spec-kit's `taskstoissues-provider.yml` schema, never-tokens rule retained); target repos carry a committed copy at `.adlc/issues-provider.yml`. `tracker-integration.md` §1 now resolves `{{params.tracker_provider}}` → new path → **loud halt**, deleting both the silent `github` default that mis-targeted repos without spec-kit and the legacy spec-kit path read (repos carrying only the old file must add the factory-canonical copy; spec-kit itself untouched). No shipped factory file references `.specify`. Pinned by `tests/unit/test_issues_provider_contract.py`.
 
 ### Changed
 

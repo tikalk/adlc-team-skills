@@ -12,8 +12,7 @@ This is the shared reference for all tracker-aware factory skills (`factory-miss
 Resolve the provider in this order (first hit wins):
 1. `{{params.tracker_provider}}` — explicit run override (hierarchical context parameters).
 2. `.adlc/issues-provider.yml` in the target repo (factory-canonical; the template ships in this release at `skills/factory/factory-mission/references/issues-provider.yml`).
-3. `.specify/taskstoissues-provider.yml` (legacy spec-kit path — read-only fallback; spec-kit owns and scaffolds it, the factory never writes it).
-4. None of the above resolves a provider: **halt with an error**. Never silently default (a wrong guess posts to the wrong tracker).
+3. Neither source resolves a provider: **halt with an error naming the expected locations** (`{{params.tracker_provider}}`, `.adlc/issues-provider.yml`). Never silently default (a wrong guess posts to the wrong tracker). Repos carrying only the legacy spec-kit provider file must add the factory-canonical copy — the factory no longer reads the spec-kit path.
 Parse `provider: github | gitlab | linear | jira` from the winning source.
 Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, plus per-provider `remote_override`/`project_id`).
 
@@ -251,7 +250,7 @@ the transition based on provider type:
 
 2. **State-Based (Jira/Linear/ClickUp)**:
    - Statuses mapped to native workflow states/columns (e.g. `executing` to `In Progress`, `validation` to `In Review`).
-   - Transitions must use the native transition/state update APIs (mapping custom column names via the resolved provider config — `.adlc/issues-provider.yml`, legacy fallback `.specify/taskstoissues-provider.yml`).
+   - Transitions must use the native transition/state update APIs (mapping custom column names via the resolved provider config, `.adlc/issues-provider.yml`).
    - CLI/MCP commands:
      - Jira CLI: `jira issue transition <key> "In Progress"`
      - Linear CLI: `linear issue update <id> --status "In Progress"`

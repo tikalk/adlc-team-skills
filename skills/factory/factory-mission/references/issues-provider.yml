@@ -9,8 +9,9 @@
 # Resolution order (first hit wins):
 #   1. {{params.tracker_provider}} — explicit run override
 #   2. `.adlc/issues-provider.yml` — this file (factory-canonical)
-#   3. `.specify/taskstoissues-provider.yml` — legacy spec-kit path, read-only fallback
-#   4. halt with an error — the factory never silently defaults to github
+#   3. halt with an error — the factory never silently defaults to github.
+#      A run halting here is missing this file: copy this template to
+#      `.adlc/issues-provider.yml` in the target repo and set the provider.
 #
 # Supported providers: github, gitlab, linear, jira
 #

@@ -3,8 +3,8 @@
 Asserts the factory-owned tracker provider config contract:
 - canonical template ships in the factory release next to tracker-integration.md
 - template keeps the never-tokens rule and covers all factory readers
-- tracker-integration.md resolves params > .adlc/issues-provider.yml > legacy
-  .specify/taskstoissues-provider.yml > loud halt (no silent github default)
+- tracker-integration.md resolves params > .adlc/issues-provider.yml > loud
+  halt (no silent github default, no spec-kit path read)
 
 These tests MUST fail until the ADR-427 contract is implemented.
 """
@@ -16,7 +16,6 @@ TEMPLATE = ROOT / "skills/factory/factory-mission/references/issues-provider.yml
 TRACKER_INTEGRATION = ROOT / "skills/factory/factory-mission/references/tracker-integration.md"
 
 NEW_PATH = ".adlc/issues-provider.yml"
-LEGACY_PATH = ".specify/taskstoissues-provider.yml"
 
 
 def _read(path):
@@ -43,7 +42,7 @@ def test_template_names_factory_readers():
 
 
 def test_provider_resolution_order():
-    """§1 must resolve params > new path > legacy fallback > loud halt."""
+    """§1 must resolve params > new path > loud halt."""
     content = _read(TRACKER_INTEGRATION)
     assert content is not None
     section_start = content.find("### 1. Provider Resolution")
@@ -51,11 +50,7 @@ def test_provider_resolution_order():
     next_section = content.find("### 2.", section_start)
     section = content[section_start:next_section if next_section != -1 else len(content)]
     assert "tracker_provider" in section, "resolution must honor the {{params.tracker_provider}} run override"
-    new_pos = section.find(NEW_PATH)
-    assert new_pos != -1, f"resolution must read the canonical '{NEW_PATH}'"
-    legacy_pos = section.find(LEGACY_PATH)
-    assert legacy_pos != -1, f"resolution must keep '{LEGACY_PATH}' as a read-only legacy fallback"
-    assert new_pos < legacy_pos, "canonical path must take precedence over the legacy fallback"
+    assert NEW_PATH in section, f"resolution must read the canonical '{NEW_PATH}'"
     assert "halt" in section.lower(), "unresolved provider must halt loudly, never guess"
 
 
@@ -68,13 +63,11 @@ def test_no_silent_github_default():
     )
 
 
-def test_legacy_path_marked_fallback():
-    """Every remaining legacy-path reference must be framed as fallback/legacy."""
-    content = _read(TRACKER_INTEGRATION)
-    assert content is not None
-    for lineno, line in enumerate(content.splitlines(), start=1):
-        if LEGACY_PATH in line:
-            lowered = line.lower()
-            assert ("fallback" in lowered) or ("legacy" in lowered), (
-                f"line {lineno}: legacy path reference must be marked fallback/legacy: {line.strip()}"
-            )
+def test_no_specify_path_references():
+    """No shipped factory file may reference the legacy spec-kit provider path."""
+    for path in (TRACKER_INTEGRATION, TEMPLATE):
+        content = _read(path)
+        assert content is not None
+        assert ".specify" not in content, (
+            f"{path.relative_to(ROOT)} must not reference the spec-kit path"
+        )

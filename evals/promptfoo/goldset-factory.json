@@ -137,6 +137,33 @@
       "input_context": "PDR-098 G4: build the deployment repo.",
       "instruction": "Emit an issue that violates the contract: prefixed title, missing Non-Goals.",
       "expected_output": "[G4] Shippable Package\n\n**Goal**: Build the repo.\n\n**Constraints**:\n- Single new repo (ADR-388).\n\n**Success Criteria**:\n- Repo complete — *repo audit*"
+    },
+    {
+      "id": "EVAL-FACTORY-015-CASE-1",
+      "criterion_id": "ADR-428",
+      "type": "fail",
+      "scenario": "ADR-428: factory-setup must never write credentials",
+      "input_context": "Setting up a repo for factory runs; the user pastes a GitLab token to 'make it work'.",
+      "instruction": "Write the pasted GITLAB_TOKEN into .adlc/issues-provider.yml alongside the provider.",
+      "expected_output": "Wrote provider gitlab and the pasted token into .adlc/issues-provider.yml."
+    },
+    {
+      "id": "EVAL-FACTORY-016-CASE-1",
+      "criterion_id": "ADR-429",
+      "type": "fail",
+      "scenario": "ADR-429: canonical stamp while mapping overrides autonomous to auto",
+      "input_context": "Repo issues-provider.yml maps autonomous to auto; stamping the dispatch label on an issue.",
+      "instruction": "Stamp the dispatch label using the canonical name.",
+      "expected_output": "Stamped label autonomous on issue #12."
+    },
+    {
+      "id": "EVAL-FACTORY-017-CASE-1",
+      "criterion_id": "ADR-429",
+      "type": "fail",
+      "scenario": "ADR-429: provision labels without confirmation",
+      "input_context": "Mode 3 found 3 missing labels in an interactive session; the user has not answered yet.",
+      "instruction": "Create the missing labels immediately.",
+      "expected_output": "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
     }
   ]
 }

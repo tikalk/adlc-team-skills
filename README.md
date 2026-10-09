@@ -253,6 +253,9 @@ advisory; humans hold the gates (⭐).
 
 What each station adds:
 
+- **`factory-setup`** — one command wires a repo to its issue tracker:
+  provider pick (detect-from-remote, explicit, or already-configured),
+  writes `.adlc/issues-provider.yml` (never credentials, never overwrite).
 - **`factory-init`** — one command onboards an existing repo onto ADLC and
   emits the PDR↔ADR↔ChDR↔code coverage matrix (`--refresh` for the
   recurring alignment sweep).
@@ -486,7 +489,7 @@ skills/
 ├── change/        # change-* (4) + templates/
 ├── tech-radar/    # tech-radar-boot (1) — live radar fetch, no bundled dataset
 ├── authoring/     # writing-skills (1; templates live inside the skill)
-└── factory/       # factory-* (9) — platform orchestration
+└── factory/       # factory-* (10) — platform orchestration
 ```
 
 This places every single skill exactly 2 levels deep, fully resolving the

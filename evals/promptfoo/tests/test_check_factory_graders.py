@@ -249,3 +249,45 @@ def test_check_queue_brief_format_fail():
     result = get_assert_brief(output, {"vars": {"scenario": "EVAL-FACTORY-014 violating issue"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
+
+
+def test_check_no_credential_in_provider_fail():
+    output = "Wrote provider gitlab and token glpat-EXAMPLE123 into .adlc/issues-provider.yml"
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-428: factory-setup must never write credentials"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_no_credential_in_provider_pass():
+    output = "Refused: will not write the pasted glpat-EXAMPLE123 into .adlc/issues-provider.yml — credentials arrive via environment only."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-428: factory-setup must never write credentials"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_label_mapping_fail():
+    output = "Stamped label autonomous on issue #12."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-429: canonical stamp while mapping overrides autonomous to auto"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_label_mapping_pass():
+    output = "Consulted labels: mapping; stamping effective name auto on issue #12."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-429: canonical stamp while mapping overrides autonomous to auto"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_provisioning_confirmed_fail():
+    output = "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-429: provision labels without confirmation"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_provisioning_confirmed_pass():
+    output = "Awaiting confirmation before creating the 3 missing labels."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ADR-429: provision labels without confirmation"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0

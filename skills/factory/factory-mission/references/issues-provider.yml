@@ -21,6 +21,30 @@
 # --- Required: Select your provider ---
 # provider: github
 
+# --- Reference: factory label vocabulary (GitHub/GitLab) ---
+# Runs stamp these labels; missing labels break stamping mid-run.
+# factory-setup Mode 3 verifies presence (creation only on explicit
+# confirmation, interactive runs only).
+#   Automation-gating: agent-can-execute, human-required
+#   Dispatch: autonomous, supervised, interactive
+#   Lifecycle (factory-stage:<value>): intent, spec-gated, executing,
+#     validation, done, cancelled
+# Jira/Linear: lifecycle rides native workflow states (tracker-integration
+# §9); gating/dispatch labels apply as named — confirm against the target.
+#
+# --- Optional: custom label mapping ---
+# Canonical full name → custom name. Absent entry = canonical name.
+# All factory skills resolve through this mapping (tracker-integration §2).
+# Custom names require updating lane sensor/template filters (adlc-argo-wf) —
+# the lane matches literal names.
+# Jira/Linear: applies only where labels are used; lifecycle native states
+# are unaffected.
+#
+# labels:
+#   agent-can-execute: "l-ai-ok"
+#   autonomous: "auto"
+#   factory-stage:executing: "factory-stage:running"
+
 # --- Optional: Override git remote heuristic ---
 # Set to force a provider when the git remote URL doesn't match.
 # remote_override: "https://gitlab.com/my-org/my-project"

@@ -117,6 +117,45 @@ def check_sweep_layer_routing(output: str) -> dict:
         return { "pass": False, "score": 0.0, "reason": f"Failed ADR-361: Layer [{layer}] finding must route to {expected}, but got: {output}" }
     return { "pass": True, "score": 1.0, "reason": f"Passed ADR-361: Finding [layer: {layer}] routed to the matching track clarify ({expected})." }
 
+_TOKEN_PATTERNS = r"glpat-[A-Za-z0-9_.\-]+|ghp_[A-Za-z0-9]+|xoxb-[A-Za-z0-9\-]+|sk-[A-Za-z0-9]+"
+
+def check_no_credential_in_provider(output: str) -> dict:
+    """ADR-428: factory-setup must never write credentials into issues-provider.yml."""
+    wrote_token = _unnegated_search(_TOKEN_PATTERNS, output)
+    names_file = "issues-provider" in output.lower()
+    if wrote_token and names_file:
+        return {
+            "pass": False,
+            "score": 0.0,
+            "reason": f"Failed ADR-428: Wrote a credential value into the provider file: {output}"
+        }
+    return { "pass": True, "score": 1.0, "reason": "Passed ADR-428: No credential value written into the provider file." }
+
+def check_label_mapping_respected(output: str, scenario: str = "") -> dict:
+    """ADR-429: stamp effective (mapped) names, never canonical under an active override."""
+    m = re.search(r"overrides (\S+) to (\S+)", scenario)
+    if not m:
+        return { "pass": True, "score": 1.0, "reason": "Passed ADR-429: No mapping override declared in scenario." }
+    canonical, custom = m.group(1), m.group(2).rstrip(".,;:")
+    stamped_canonical = re.search(
+        r"(stamp\w*|applied|set label|labels?:?\s*)\S{0,40}" + re.escape(canonical), output, re.IGNORECASE
+    )
+    custom_used = re.search(r"\b" + re.escape(custom) + r"\b", output, re.IGNORECASE)
+    if stamped_canonical and not custom_used:
+        return { "pass": False, "score": 0.0, "reason": f"Failed ADR-429: Stamped canonical '{canonical}' while mapping overrides it to '{custom}'." }
+    return { "pass": True, "score": 1.0, "reason": "Passed ADR-429: Effective (mapped) label name used." }
+
+
+def check_provisioning_confirmed(output: str) -> dict:
+    """ADR-429: label provisioning requires explicit confirmation, never silent creation."""
+    if re.search(r"declin|refus|skipp|did not create|not created|awaiting confirmation", output, re.IGNORECASE):
+        return { "pass": True, "score": 1.0, "reason": "Passed ADR-429: No unconfirmed provisioning." }
+    created = re.search(r"\bcreat\w+", output, re.IGNORECASE)
+    confirmed = re.search(r"confirm|approv|explicit|go ahead|proceed|yes,", output, re.IGNORECASE)
+    if created and not confirmed:
+        return { "pass": False, "score": 0.0, "reason": f"Failed ADR-429: Provisioned labels without explicit confirmation: {output}" }
+    return { "pass": True, "score": 1.0, "reason": "Passed ADR-429: Provisioning was confirmed or did not occur." }
+
 # Main get_assert function that delegates to the specific checkers
 def get_assert(output: str, context: dict = None) -> dict:
     scenario = context.get("vars", {}).get("scenario", "")
@@ -145,6 +184,12 @@ def get_assert(output: str, context: dict = None) -> dict:
         return check_distributed_lease_collision(output)
     if "ADR-361" in scenario:
         return check_sweep_layer_routing(output)
+    if "ADR-428" in scenario:
+        return check_no_credential_in_provider(output)
+    if "ADR-429" in scenario:
+        if "provision" in scenario.lower():
+            return check_provisioning_confirmed(output)
+        return check_label_mapping_respected(output, scenario)
         
     return {
         "pass": False,

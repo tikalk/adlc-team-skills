@@ -73,7 +73,12 @@ guard prevents double-injection. Agents whose adapters don't map
    file-search tool to locate it.
 2. If unconfigured (missing, `null`, or path doesn't exist): invoke the
    `team-setup` skill.
-3. If configured: assemble the context and follow the Class Boots catalog
+3. If the `factory-setup` skill is installed in this session and no
+   `.adlc/issues-provider.yml` resolves in the repo root: ask the user
+   whether to run `/factory-setup` now (provider pick is questions-driven,
+   same as `team-setup` modes). On decline, skip for this session — there is
+   deliberately no persistent opt-out marker.
+4. If configured: assemble the context and follow the Class Boots catalog
    above. Full walkthrough in `references/manual-fallback.md`.
 
 ## Decision Capture
@@ -153,3 +158,6 @@ analysis — but are not required for routine capture.
 ## Unconfigured projects
 
 Invoke `team-setup` to configure team AI directives for this project.
+
+If factory skills are installed but no provider config resolves, ask whether
+to run `factory-setup`.

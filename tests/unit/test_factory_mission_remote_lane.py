@@ -68,3 +68,21 @@ def test_env_sync_usage_error():
 def test_zero_secret_literals():
     text = "".join(p.read_text() for p in SCRIPTS.glob("remote-coder-*.sh"))
     assert not re.search(r"glpat-|ghp_|xoxb-|sk-|CODER_TOKEN=.|GITLAB_TOKEN=.", text)
+
+
+def test_lanes_developer_owned_tab():
+    text = LANES.read_text()
+    assert "NEVER opens a herdr tab" in text
+    assert "developer owns their tab" in text or "OWN herdr tab" in text
+
+
+def test_lanes_dispatch_matrix():
+    text = LANES.read_text()
+    assert "interactive" in text and "remote:coder" in text
+    assert "local CLI session, as today" in text
+
+
+def test_skill_issue_plus_provider():
+    skill = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
+    assert "--provider coder" in skill
+    assert "never opens tabs" in skill

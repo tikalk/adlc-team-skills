@@ -132,6 +132,18 @@ An `agent` lane dispatch:
 
 ## `remote:` lane dispatch contract (coder provider)
 
+The skill NEVER opens a herdr tab. The developer owns their tab: they open
+a herdr tab on their Mac (herdr client), then run factory-mission with the
+mission URL + `--provider coder`.
+
+Dispatch matrix:
+
+| Mode | Provider flag | Lane |
+|------|---------------|------|
+| interactive | `--provider coder` | `remote:coder` (provision → sync → print attach instructions → wait) |
+| interactive | (none) | local CLI session, as today |
+| autonomous / supervised | any | unchanged (`agent` lane; provider ignored) |
+
 A `remote:coder` lane dispatch:
 
 1. Create the workspace: `coder create <repo>-mission-<issue> --template
@@ -140,13 +152,16 @@ A `remote:coder` lane dispatch:
    never auto-delete a failed workspace.
 3. Sync env over `coder ssh`: clone repo at branch, install skills
    (`adlc-cli skills add`), wire `.events.json`, export env config,
-   place `runs/<run_id>/brief.md` on disk (see issue #7).
-4. Attach: herdr setup + `herdr attach` (remote-server mode); fallback
-   plain `coder ssh`; local `herdr --remote` opt-in (see issue #8).
-5. Launch the agent CLI (default `opencode`) on the brief in the shared
-   shell; the developer responds in place.
+   place `runs/<run_id>/brief.md` on disk.
+4. Print attach instructions for the developer's own herdr tab (do NOT
+   attach, do NOT open tabs):
+   - `herdr --remote coder.<workspace>.main`, or
+   - `coder ssh <workspace>` fallback.
+   Then wait — the developer drives; the lane resumes on `done`.
+5. The developer launches the agent CLI (default `opencode`) on the brief
+   in THEIR tab and responds in place. The lane never spawns the CLI.
 6. Teardown: developer types `done` → explicit confirm → `coder delete
-   <workspace> --yes` (see issue #8).
+   <workspace> --yes`.
 
 | Placeholder | Replaced with |
 |-------------|---------------|

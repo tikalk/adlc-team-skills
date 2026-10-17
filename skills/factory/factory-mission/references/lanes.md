@@ -15,6 +15,7 @@ independence.
 | `inline` | Orchestrator follows the skill in this session | None — shared context | Yes |
 | `agent` | Spawn a fresh session of same CLI (e.g., `opencode -p`) | Fresh context — no memory of previous steps | Yes |
 | `cli:<runtime>` | Spawn a different CLI (e.g., `claude --print`) | Fresh context + different model | Only if CLI on PATH (degrades to `agent`) |
+| `remote:<provider>` | Provision/attach a remote workspace and run the step there | Fresh context + remote runtime | N/A — the step leaves this machine |
 
 **The `agent` lane is the default for unattended stages.** It provides
 the maker/checker separation — the reviewer reads code from the
@@ -34,7 +35,7 @@ lanes:
     <runtime-key>:
       match: ["<case-insensitive substring of the label this runtime exposes>"]
       stages:
-        <step-name>: { lane: inline | agent | cli:<runtime>, model: "<id or null>", effort: "<tier or null>" }
+        <step-name>: { lane: inline | agent | cli:<runtime> | remote:<provider>, model: "<id or null>", effort: "<tier or null>" }
     default:
       stages:
         <step-name>: { lane: inline | agent }
@@ -43,6 +44,11 @@ lanes:
       command: ["<executable>", "<arg>", "{cwd}"]
       runtime_label: "<label that runtime exposes>"
       skills_root: "<absolute path to skills directory>"
+  remote:
+    <provider>:
+      command: ["<provision-script>", "{workspace}", "{cwd}"]
+      workspace_naming: "<pattern, e.g. <repo>-mission-<issue>>"
+      template: "<template name>"
 ```
 
 Without a `lanes` section, every stage runs `inline` (interactive stages)
@@ -57,15 +63,20 @@ or `agent` (unattended stages). This is the default — backward compatible.
 4. If no `lanes` section: interactive stages → `inline`, unattended
    stages → `agent`.
 5. Refuse a profile with a newer `schema_version`, an unknown stage, a
-   lane that names an undefined `cli`, or a command that is not a
+   lane that names an undefined `cli` or `remote` provider, an unknown
+   `--provider` value (known: `argo`, `coder`), or a command that is not a
    non-empty array of strings.
 6. Refuse an `invocation` key on any stage — the executor invokes one
    cycle at a time, no watchers.
+7. `--provider` selects the remote lane provider (`argo` default, `coder`
+   for Coder workspaces). Without the flag, no `remote:` lane resolves —
+   fully backward compatible.
 
 ## Degradation ladder
 
 ```
 cli:<runtime>  →  agent (this runtime)  →  inline
+remote:<provider>  →  agent (this runtime)  →  inline
 ```
 
 Each degradation step is:
@@ -77,6 +88,12 @@ A `cli:` lane degrades when:
 - The target CLI executable is not on PATH
 - The target CLI refuses to launch (quota, auth, error)
 - The target CLI exits abnormally twice in a row on a working lane
+
+A `remote:` lane degrades when:
+- Workspace creation fails (quota, auth, template missing)
+- The workspace never reaches Running within the timeout
+- SSH/herdr attach fails twice in a row (falls back to plain SSH first,
+  then to `agent`)
 
 When degradation happens mid-run, the same stage is spawned again on
 the new lane. The run continues — losing a lane is never a reason to
@@ -113,11 +130,49 @@ An `agent` lane dispatch:
 5. The fresh session has no memory of previous steps — it reads code
    from the worktree and findings from the comment bus.
 
+## `remote:` lane dispatch contract (coder provider)
+
+The skill NEVER opens a herdr tab. The developer owns their tab: they open
+a herdr tab on their Mac (herdr client), then run factory-mission with the
+mission URL + `--provider coder`.
+
+Dispatch matrix:
+
+| Mode | Provider flag | Lane |
+|------|---------------|------|
+| interactive | `--provider coder` | `remote:coder` (provision → sync → print attach instructions → wait) |
+| interactive | (none) | local CLI session, as today |
+| autonomous / supervised | any | unchanged (`agent` lane; provider ignored) |
+
+A `remote:coder` lane dispatch:
+
+1. Create the workspace: `coder create <repo>-mission-<issue> --template
+   <template>` (default `general`).
+2. Wait for Running: poll `coder list`/`coder show`, timeout with halt —
+   never auto-delete a failed workspace.
+3. Sync env over `coder ssh`: clone repo at branch, install skills
+   (`adlc-cli skills add`), wire `.events.json`, export env config,
+   place `runs/<run_id>/brief.md` on disk.
+4. Print attach instructions for the developer's own herdr tab (do NOT
+   attach, do NOT open tabs):
+   - `herdr --remote coder.<workspace>.main`, or
+   - `coder ssh <workspace>` fallback.
+   Then wait — the developer drives; the lane resumes on `done`.
+5. The developer launches the agent CLI (default `opencode`) on the brief
+   in THEIR tab and responds in place. The lane never spawns the CLI.
+6. Teardown: developer types `done` → explicit confirm → `coder delete
+   <workspace> --yes`.
+
+| Placeholder | Replaced with |
+|-------------|---------------|
+| `{workspace}` | The `<repo>-mission-<issue>` workspace name |
+
 ## Template substitution
 
 | Placeholder | Replaced with |
 |-------------|---------------|
 | `{cwd}` | The run's worktree path |
+| `{workspace}` | The `<repo>-mission-<issue>` workspace name (remote lanes) |
 | `{model}` | The stage's configured model (or dropped if null) |
 | `{effort}` | The stage's configured effort tier (or dropped if null) |
 
@@ -137,5 +192,7 @@ entirely).
 - Exactly one agent is live at a time. Never dispatch a second step
   while one is running.
 - A `cli:` lane that fails to launch degrades to `agent` and discloses.
+- A `remote:` lane that fails to provision/attach degrades to `agent`
+  and discloses; a failed workspace is never auto-deleted.
 - The profile has no say in how a stage is invoked — only which runtime
   and model.

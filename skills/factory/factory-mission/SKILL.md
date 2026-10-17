@@ -43,12 +43,17 @@ It implements the following key factory platform capabilities:
 
 ### Phase 0 to 4: Setup & Compilation
 1. Read the run's `mission.yml` (`.adlc/workflows/runs/<run_id>/mission.yml`). Resolve execution and supervision.
-2. If `--issue <ref>` is specified:
+2. If `--issue <ref>` (or a mission URL resolving to an issue) is specified:
    - Discover credentials and MCP/CLI tools (`references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
-   - Read the labels. If dispatch is `interactive` or gating is `human-required` -> **HALT execution** (hand back to interactive session).
+   - Read the labels. If dispatch is `interactive` or gating is `human-required`:
+     - With `--provider coder`: take the `remote:coder` lane — provision the
+       workspace, sync env, print attach instructions for the developer's
+       OWN herdr tab, then wait. The skill never opens tabs or spawns the CLI.
+     - Without `--provider`: local CLI session, as today (halt-and-hand-back
+       only when neither applies).
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
-3. If no issue: read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
+3. If no issue: read spec description from arguments. The comment bus is inactive — steps communicate through local files only. `--provider` without an issue is refused.
 4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.
 5. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
 6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.

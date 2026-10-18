@@ -11,8 +11,6 @@ BRANCH="${3:?missing branch}"
 BRIEF="${4:?missing brief_path}"
 DIRTY_OK="${5:-}"
 
-command -v coder >/dev/null || { echo "ERROR: coder CLI not found." >&2; exit 127; }
-
 REPO_DIR="$(basename "$REPO_URL" .git)"
 
 if [ -z "$DIRTY_OK" ]; then
@@ -32,6 +30,8 @@ if [ ! -s "$BRIEF" ]; then
   echo "ERROR: brief '$BRIEF' missing or empty — nothing to sync." >&2
   exit 2
 fi
+
+command -v coder >/dev/null || { echo "ERROR: coder CLI not found." >&2; exit 127; }
 
 coder_exec() { coder ssh "$WORKSPACE" -- "$@"; }
 

@@ -73,9 +73,13 @@ def test_teardown_requires_coder_cli(tmp_path):
 
 
 def test_env_sync_requires_coder_cli(tmp_path):
-    r = subprocess.run(["bash", str(ENV_SYNC), "ws", "url", "br", "brief"],
+    brief = tmp_path / "brief.md"
+    brief.write_text("# brief\n")
+    workdir = tmp_path / "clean"
+    workdir.mkdir()
+    r = subprocess.run(["bash", str(ENV_SYNC), "ws", "url", "br", str(brief)],
                        capture_output=True, text=True,
-                       env=_env_without_coder(tmp_path))
+                       env=_env_without_coder(tmp_path), cwd=workdir)
     assert r.returncode == 127
 
 

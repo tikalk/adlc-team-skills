@@ -15,7 +15,7 @@ independence.
 | `inline` | Orchestrator follows the skill in this session | None — shared context | Yes |
 | `agent` | Spawn a fresh session of same CLI (e.g., `opencode -p`) | Fresh context — no memory of previous steps | Yes |
 | `cli:<runtime>` | Spawn a different CLI (e.g., `claude --print`) | Fresh context + different model | Only if CLI on PATH (degrades to `agent`) |
-| `remote:<provider>` | Provision/attach a remote workspace and run the step there | Fresh context + remote runtime | N/A — the step leaves this machine |
+| `remote:<provider>` | Provision/attach a remote workspace and hand the session to the developer there | Fresh context + remote runtime + human driver | N/A — the step leaves this machine |
 
 **The `agent` lane is the default for unattended stages.** It provides
 the maker/checker separation — the reviewer reads code from the
@@ -64,19 +64,19 @@ or `agent` (unattended stages). This is the default — backward compatible.
    stages → `agent`.
 5. Refuse a profile with a newer `schema_version`, an unknown stage, a
    lane that names an undefined `cli` or `remote` provider, an unknown
-   `--provider` value (known: `argo`, `coder`), or a command that is not a
+   `--provider` value (known: `coder`), or a command that is not a
    non-empty array of strings.
 6. Refuse an `invocation` key on any stage — the executor invokes one
    cycle at a time, no watchers.
-7. `--provider` selects the remote lane provider (`argo` default, `coder`
-   for Coder workspaces). Without the flag, no `remote:` lane resolves —
+7. `--provider` selects the remote lane provider (`coder` for Coder
+   workspaces). Without the flag, no `remote:` lane resolves —
    fully backward compatible.
 
 ## Degradation ladder
 
 ```
 cli:<runtime>  →  agent (this runtime)  →  inline
-remote:<provider>  →  agent (this runtime)  →  inline
+remote:<provider>  →  HALT (hand back to developer; never agent/inline)
 ```
 
 Each degradation step is:
@@ -89,11 +89,18 @@ A `cli:` lane degrades when:
 - The target CLI refuses to launch (quota, auth, error)
 - The target CLI exits abnormally twice in a row on a working lane
 
-A `remote:` lane degrades when:
-- Workspace creation fails (quota, auth, template missing)
-- The workspace never reaches Running within the timeout
-- SSH/herdr attach fails twice in a row (falls back to plain SSH first,
-  then to `agent`)
+A `remote:` lane NEVER degrades to `agent` or `inline`:
+
+- Workspace creation fails (quota, auth, template missing) → halt,
+  keep the failed workspace (never auto-delete), hand back to developer.
+- The workspace never reaches Running within the timeout → halt, hand back.
+- SSH/herdr attach fails → halt, hand back.
+
+Rationale: this lane is only selected when dispatch is `interactive` or
+gating is `human-required`. Falling back to an unattended agent would
+violate the halt-and-refuse rule (`tracker-integration.md`): a
+human-required issue must never be executed by an unattended agent.
+Losing the lane is a stop condition — the developer re-runs or repairs.
 
 When degradation happens mid-run, the same stage is spawned again on
 the new lane. The run continues — losing a lane is never a reason to
@@ -147,14 +154,19 @@ Dispatch matrix:
 A `remote:coder` lane dispatch:
 
 1. Create the workspace: `coder create <repo>-mission-<issue> --template
-   <template>` (default `general`).
+   <template>` (default `general`). Workspace names follow Coder rules:
+   lowercase letters, digits, `-` only, max 32 chars.
 2. Wait for Running: poll `coder list`/`coder show`, timeout with halt —
    never auto-delete a failed workspace.
-3. Sync env over `coder ssh`: clone repo at branch, install skills
-   (`adlc-cli skills add`), wire `.events.json`, export env config,
-   place `runs/<run_id>/brief.md` on disk.
+3. Sync env over `coder ssh`: clone repo at branch (checkout `$BRANCH`
+   on reuse), install skills (`adlc-cli skills add <source> -a <agent>
+   -y`), check `.events.json` presence (warn only — wiring is manual),
+   report lane env config, place `.adlc/workflows/runs/<run_id>/brief.md`
+   on disk via stdin pipe (`coder ssh -- "cat > dest" < brief`; there is
+   no `coder scp` subcommand).
 4. Print attach instructions for the developer's own herdr tab (do NOT
-   attach, do NOT open tabs):
+   attach, do NOT open tabs). Prerequisites: herdr client installed on
+   the developer's Mac; address format `coder.<workspace>.main`:
    - `herdr --remote coder.<workspace>.main`, or
    - `coder ssh <workspace>` fallback.
    Then wait — the developer drives; the lane resumes on `done`.
@@ -192,7 +204,8 @@ entirely).
 - Exactly one agent is live at a time. Never dispatch a second step
   while one is running.
 - A `cli:` lane that fails to launch degrades to `agent` and discloses.
-- A `remote:` lane that fails to provision/attach degrades to `agent`
-  and discloses; a failed workspace is never auto-deleted.
+- A `remote:` lane NEVER degrades to `agent` or `inline` — it halts and
+  hands back to the developer (human-required gate); a failed workspace
+  is never auto-deleted.
 - The profile has no say in how a stage is invoked — only which runtime
   and model.

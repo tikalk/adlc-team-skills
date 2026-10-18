@@ -49,7 +49,7 @@ It implements the following key factory platform capabilities:
    - Read the labels. If dispatch is `interactive` or gating is `human-required`:
      - With `--provider coder`: take the `remote:coder` lane — provision the
        workspace, sync env, print attach instructions for the developer's
-       OWN herdr tab, then wait. The skill never opens tabs or spawns the CLI.
+       OWN tab, then wait. The skill never opens tabs or spawns the CLI.
      - Without `--provider`: local CLI session, as today (halt-and-hand-back
        only when neither applies).
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.

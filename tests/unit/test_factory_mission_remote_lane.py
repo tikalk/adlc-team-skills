@@ -154,8 +154,8 @@ def test_zero_secret_literals():
 
 def test_lanes_developer_owned_tab():
     text = LANES.read_text()
-    assert "NEVER opens a herdr tab" in text
-    assert "developer owns their tab" in text or "OWN herdr tab" in text
+    assert "NEVER opens tabs" in text
+    assert "developer owns their tab" in text or "OWN tab" in text
 
 
 def test_lanes_dispatch_matrix():
@@ -164,9 +164,12 @@ def test_lanes_dispatch_matrix():
     assert "local CLI session, as today" in text
 
 
-def test_lanes_herdr_prereqs():
+def test_lanes_attach_order():
     text = LANES.read_text()
-    assert "herdr" in text.lower() and "coder.<workspace>.main" in text
+    ssh_pos = text.find("coder ssh <workspace>` (primary)")
+    herdr_pos = text.find("herdr --remote coder.<workspace>.main` fallback")
+    assert ssh_pos != -1 and herdr_pos != -1 and ssh_pos < herdr_pos
+    assert 'opencode --prompt' in text
 
 
 def test_skill_issue_plus_provider():

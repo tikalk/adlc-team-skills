@@ -139,8 +139,8 @@ An `agent` lane dispatch:
 
 ## `remote:` lane dispatch contract (coder provider)
 
-The skill NEVER opens a herdr tab. The developer owns their tab: they open
-a herdr tab on their Mac (herdr client), then run factory-mission with the
+The skill NEVER opens tabs. The developer owns their tab: they open
+a terminal tab on their Mac, then run factory-mission with the
 mission URL + `--provider coder`.
 
 Dispatch matrix:
@@ -164,14 +164,15 @@ A `remote:coder` lane dispatch:
    report lane env config, place `.adlc/workflows/runs/<run_id>/brief.md`
    on disk via stdin pipe (`coder ssh -- "cat > dest" < brief`; there is
    no `coder scp` subcommand).
-4. Print attach instructions for the developer's own herdr tab (do NOT
-   attach, do NOT open tabs). Prerequisites: herdr client installed on
-   the developer's Mac; address format `coder.<workspace>.main`:
-   - `herdr --remote coder.<workspace>.main`, or
-   - `coder ssh <workspace>` fallback.
+4. Print attach instructions for the developer's own tab (do NOT
+   attach, do NOT open tabs). Primary path is plain SSH, which always works:
+   - `coder ssh <workspace>` (primary), then `cd <repo>`.
+   - `herdr --remote coder.<workspace>.main` fallback (requires herdr
+     client on the developer's Mac; address format `coder.<workspace>.main`).
    Then wait — the developer drives; the lane resumes on `done`.
-5. The developer launches the agent CLI (default `opencode`) on the brief
-   in THEIR tab and responds in place. The lane never spawns the CLI.
+5. The developer launches the agent CLI in THEIR tab on the brief:
+   `opencode --prompt "$(cat .adlc/workflows/runs/<run_id>/brief.md)"`
+   (the lane never spawns the CLI).
 6. Teardown: developer types `done` → explicit confirm → `coder delete
    <workspace> --yes`.
 

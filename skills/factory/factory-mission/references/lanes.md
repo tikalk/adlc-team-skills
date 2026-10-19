@@ -158,12 +158,12 @@ A `remote:coder` lane dispatch:
    lowercase letters, digits, `-` only, max 32 chars.
 2. Wait for Running: poll `coder list`/`coder show`, timeout with halt —
    never auto-delete a failed workspace.
-3. Sync env over `coder ssh`: clone repo at branch (checkout `$BRANCH`
-   on reuse), install skills (`adlc-cli skills add <source> -a <agent>
-   -y`), check `.events.json` presence (warn only — wiring is manual),
-   report lane env config, place `.adlc/workflows/runs/<run_id>/brief.md`
-   on disk via stdin pipe (`coder ssh -- "cat > dest" < brief`; there is
-   no `coder scp` subcommand).
+3. Sync env (ADR-006): render `remote-workspace.yml.template` per run
+   (repo/branch/ref/run_id), transfer workspace.yml + brief via stdin
+   pipes, run `adlc-cli workspace setup -a opencode -y` over `coder ssh`.
+   Non-zero exit → frozen `remote-coder-env-sync-fallback.sh`, logging
+   the taken path. Deploy-key + host-key bootstrap stays in the thin
+   script (chicken-egg: setup cannot clone before keys exist).
 4. Print attach instructions for the developer's own tab (do NOT
    attach, do NOT open tabs). Primary path is plain SSH, which always works:
    - `coder ssh <workspace>` (primary), then `cd <repo>`.

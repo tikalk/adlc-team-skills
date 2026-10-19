@@ -1,0 +1,19 @@
+# workspace.yml template for the remote:coder lane (ADR-006).
+# The harness renders this per run (repo/branch/ref/run_id substituted),
+# transfers it + the brief, and runs `adlc-cli workspace setup -a opencode -y`.
+schema_version: 1
+name: "remote-coder-lane {{run_id}}"
+agent: opencode
+workspace:
+  git:
+    - repo: "{{repo_url}}"
+      path: "{{repo_dir}}"
+      branch: "{{branch}}"
+  dirs:
+    - "{{repo_dir}}/.adlc/workflows/runs/{{run_id}}"
+skills:
+  sources:
+    - tikalk/adlc-team-skills
+commands:
+  - agent run "Verify toolchain: opencode, adlc-cli, glab, herdr all on PATH. Fail loudly listing any missing binary."
+goal: "Environment assembled for mission {{run_id}}: repo @ {{branch}}, skills installed, toolchain verified."

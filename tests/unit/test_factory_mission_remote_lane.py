@@ -15,7 +15,9 @@ ROOT = Path(__file__).parent.parent.parent
 LANES = ROOT / "skills/factory/factory-mission/references/lanes.md"
 SCRIPTS = ROOT / "skills/factory/factory-mission/scripts/bash"
 ENV_SYNC = SCRIPTS / "remote-coder-env-sync.sh"
+FALLBACK = SCRIPTS / "remote-coder-env-sync-fallback.sh"
 TEARDOWN = SCRIPTS / "remote-coder-teardown.sh"
+WS_TEMPLATE = ROOT / "skills/factory/factory-mission/references/remote-workspace.yml.template"
 
 
 def test_lanes_documents_remote_lane():
@@ -38,13 +40,32 @@ def test_lanes_degradation_ladder():
 
 
 def test_scripts_exist_syntax_clean_and_executable():
-    for p in (ENV_SYNC, TEARDOWN):
+    for p in (ENV_SYNC, FALLBACK, TEARDOWN):
         assert p.exists(), f"missing {p.name}"
         r = subprocess.run(["bash", "-n", str(p)], capture_output=True, text=True)
         assert r.returncode == 0, f"{p.name} syntax: {r.stderr}"
-    for p in (ENV_SYNC, TEARDOWN):
+    for p in (ENV_SYNC, FALLBACK, TEARDOWN):
         mode = oct(p.stat().st_mode & 0o777)
         assert mode == "0o755", f"{p.name} mode {mode}, want 0o755"
+
+
+def test_fallback_frozen():
+    text = FALLBACK.read_text()
+    assert "FROZEN fallback" in text
+
+
+def test_workspace_template_renders():
+    text = WS_TEMPLATE.read_text()
+    for key in ("{{run_id}}", "{{repo_url}}", "{{repo_dir}}", "{{branch}}"):
+        assert key in text
+    assert "schema_version" in text and "skills:" in text
+
+
+def test_primary_uses_workspace_setup():
+    text = ENV_SYNC.read_text()
+    assert "workspace setup" in text
+    assert "FALLBACK" in text or "fallback" in text.lower()
+    assert "coder scp" not in text
 
 
 def _fake_coder(tmp_path, behavior="missing"):

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# remote-coder-env-sync.sh — env sync for the remote:coder lane.
-# Order (deterministic): clone → skills → events → env → brief.
+# remote-coder-env-sync.sh — env sync for the remote:coder lane (ADR-006).
+# Primary: generated workspace.yml + `adlc-cli workspace setup` remotely.
+# Fallback: remote-coder-env-sync-fallback.sh (frozen) on non-zero exit.
 # Secrets travel env-only; never interpolated into remote commands.
 # Usage: remote-coder-env-sync.sh <workspace> <repo_url> <branch> <brief_path> [--dirty-ok]
 set -euo pipefail
@@ -11,46 +12,47 @@ BRANCH="${3:?missing branch}"
 BRIEF="${4:?missing brief_path}"
 DIRTY_OK="${5:-}"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TEMPLATE="$SCRIPT_DIR/../../references/remote-workspace.yml.template"
+FALLBACK="$SCRIPT_DIR/remote-coder-env-sync-fallback.sh"
+
 REPO_DIR="$(basename "$REPO_URL" .git)"
+RUN_ID="$(basename "$(dirname "$BRIEF")")"
 
 if [ -z "$DIRTY_OK" ]; then
   if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
     echo "WARN: local tree dirty — uncommitted changes will NOT be in workspace." >&2
-    echo "      commit/stash first, or re-run with --dirty-ok." >&2
     exit 2
   fi
   if [ -n "$(git rev-list '@{u}..HEAD' 2>/dev/null)" ]; then
     echo "WARN: local branch has unpushed commits — they will NOT be in workspace." >&2
-    echo "      push first, or re-run with --dirty-ok." >&2
     exit 2
   fi
 fi
 
-if [ ! -s "$BRIEF" ]; then
-  echo "ERROR: brief '$BRIEF' missing or empty — nothing to sync." >&2
-  exit 2
-fi
+for f in "$BRIEF" "$TEMPLATE"; do
+  if [ ! -s "$f" ]; then
+    echo "ERROR: '$f' missing or empty." >&2
+    exit 2
+  fi
+done
 
 command -v coder >/dev/null || { echo "ERROR: coder CLI not found." >&2; exit 127; }
+trap 'rm -f "$WORKSPACE_YML"' EXIT
+sed -e "s|{{run_id}}|$RUN_ID|g" -e "s|{{repo_url}}|$REPO_URL|g" \
+    -e "s|{{repo_dir}}|$REPO_DIR|g" -e "s|{{branch}}|$BRANCH|g" \
+    "$TEMPLATE" > "$WORKSPACE_YML"
 
-coder_exec() { coder ssh "$WORKSPACE" -- "$@"; }
+REMOTE_WS_YML=".adlc/workflows/runs/$RUN_ID/workspace.yml"
+REMOTE_BRIEF=".adlc/workflows/runs/$RUN_ID/brief.md"
 
-echo "==> [1/5] clone $REPO_URL@$BRANCH"
-coder_exec "if [ -d '$REPO_DIR'/.git ]; then git -C '$REPO_DIR' fetch origin && git -C '$REPO_DIR' checkout '$BRANCH'; else git clone --branch '$BRANCH' '$REPO_URL' '$REPO_DIR'; fi"
+coder ssh "$WORKSPACE" -- "mkdir -p '$REPO_DIR/$(dirname "$REMOTE_WS_YML")'" < /dev/null
+coder ssh "$WORKSPACE" -- "cat > '$REPO_DIR/$REMOTE_WS_YML'" < "$WORKSPACE_YML"
+coder ssh "$WORKSPACE" -- "cat > '$REPO_DIR/$REMOTE_BRIEF'" < "$BRIEF"
 
-echo "==> [2/5] skills install"
-coder_exec "cd '$REPO_DIR' && (command -v adlc-cli >/dev/null || npm i -g adlc-cli@2.3.0 --silent) && adlc-cli skills add tikalk/adlc-team-skills -a opencode -y"
-
-echo "==> [3/5] events check"
-coder_exec "cd '$REPO_DIR' && test -f .events.json && echo 'events present' || echo 'WARN: no .events.json (hooks inactive)'"
-
-echo "==> [4/5] env check (env-driven, never baked)"
-coder_exec "cd '$REPO_DIR' && printenv | grep -E '^(CODER_|GITLAB_|AGENT_|TASK_)' | sed 's/=.*/=<set>/' || echo 'no lane env set (expected pre-launch)'"
-
-echo "==> [5/5] brief on disk"
-REMOTE_BRIEF=".adlc/workflows/runs/$(basename "$(dirname "$BRIEF")")/brief.md"
-coder_exec "mkdir -p '$REPO_DIR/$(dirname "$REMOTE_BRIEF")'"
-coder_exec "cat > '$REPO_DIR/$REMOTE_BRIEF'" < "$BRIEF"
-coder_exec "test -s '$REPO_DIR/$REMOTE_BRIEF' && echo 'brief present'"
-
-echo "env-sync complete: $WORKSPACE / $REPO_DIR@$BRANCH"
+if coder ssh "$WORKSPACE" -- "cd '$REPO_DIR' && adlc-cli workspace setup .adlc/workflows/runs/$RUN_ID/workspace.yml -a opencode -y"; then
+  echo "env-sync complete (workspace-setup): $WORKSPACE / $REPO_DIR@$BRANCH"
+else
+  echo "WARN: workspace setup failed — falling back to legacy script." >&2
+  exec bash "$FALLBACK" "$WORKSPACE" "$REPO_URL" "$BRANCH" "$BRIEF" --dirty-ok
+fi

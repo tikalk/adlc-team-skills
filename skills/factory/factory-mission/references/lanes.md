@@ -162,8 +162,9 @@ A `remote:coder` lane dispatch:
    (repo/branch/ref/run_id), transfer workspace.yml + brief via stdin
    pipes, run `adlc-cli workspace setup -a opencode -y` over `coder ssh`.
    Non-zero exit → frozen `remote-coder-env-sync-fallback.sh`, logging
-   the taken path. Deploy-key + host-key bootstrap stays in the thin
-   script (chicken-egg: setup cannot clone before keys exist).
+   the taken path. Prerequisites (harness-side, before setup): workspace
+   SSH key registered as repo deploy key + `StrictHostKeyChecking=accept-new`
+   on first connect (chicken-egg: setup cannot clone before keys exist).
 4. Print attach instructions for the developer's own tab (do NOT
    attach, do NOT open tabs). Primary path is plain SSH, which always works:
    - `coder ssh <workspace>` (primary), then `cd <repo>`.

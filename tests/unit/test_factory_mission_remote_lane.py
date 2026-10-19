@@ -197,3 +197,25 @@ def test_skill_issue_plus_provider():
     skill = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
     assert "--provider coder" in skill
     assert "never opens tabs" in skill
+
+
+def test_primary_assigns_tmpfile():
+    text = ENV_SYNC.read_text()
+    assert 'WORKSPACE_YML="$(mktemp)"' in text
+
+
+def test_primary_no_hardcoded_repo_dir():
+    text = ENV_SYNC.read_text()
+    assert "'coder/.adlc/workflows" not in text
+    assert '"$REPO_DIR/$REMOTE_WS_YML"' in text or "'$REPO_DIR/$REMOTE_WS_YML'" in text
+
+
+def test_primary_escapes_sed_replacement():
+    text = ENV_SYNC.read_text()
+    assert "esc(" in text or "s|[\\\\/&]|" in text
+
+
+def test_taken_path_greppable():
+    text = ENV_SYNC.read_text()
+    assert "workspace-setup" in text
+    assert "falling back" in text

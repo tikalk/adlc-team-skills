@@ -38,9 +38,12 @@ for f in "$BRIEF" "$TEMPLATE"; do
 done
 
 command -v coder >/dev/null || { echo "ERROR: coder CLI not found." >&2; exit 127; }
+
+WORKSPACE_YML="$(mktemp)"
 trap 'rm -f "$WORKSPACE_YML"' EXIT
-sed -e "s|{{run_id}}|$RUN_ID|g" -e "s|{{repo_url}}|$REPO_URL|g" \
-    -e "s|{{repo_dir}}|$REPO_DIR|g" -e "s|{{branch}}|$BRANCH|g" \
+esc() { printf '%s' "$1" | sed -e 's|[\\/&]|\\&|g'; }
+sed -e "s|{{run_id}}|$(esc "$RUN_ID")|g" -e "s|{{repo_url}}|$(esc "$REPO_URL")|g" \
+    -e "s|{{repo_dir}}|$(esc "$REPO_DIR")|g" -e "s|{{branch}}|$(esc "$BRANCH")|g" \
     "$TEMPLATE" > "$WORKSPACE_YML"
 
 REMOTE_WS_YML=".adlc/workflows/runs/$RUN_ID/workspace.yml"
@@ -50,7 +53,7 @@ coder ssh "$WORKSPACE" -- "mkdir -p '$REPO_DIR/$(dirname "$REMOTE_WS_YML")'" < /
 coder ssh "$WORKSPACE" -- "cat > '$REPO_DIR/$REMOTE_WS_YML'" < "$WORKSPACE_YML"
 coder ssh "$WORKSPACE" -- "cat > '$REPO_DIR/$REMOTE_BRIEF'" < "$BRIEF"
 
-if coder ssh "$WORKSPACE" -- "cd ~ && adlc-cli workspace setup 'coder/.adlc/workflows/runs/$RUN_ID/workspace.yml' -a opencode -y"; then
+if coder ssh "$WORKSPACE" -- "cd ~ && adlc-cli workspace setup '$REPO_DIR/$REMOTE_WS_YML' -a opencode -y"; then
   echo "env-sync complete (workspace-setup): $WORKSPACE / $REPO_DIR@$BRANCH"
 else
   echo "WARN: workspace setup failed — falling back to legacy script." >&2

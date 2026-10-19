@@ -50,7 +50,7 @@ coder ssh "$WORKSPACE" -- "mkdir -p '$REPO_DIR/$(dirname "$REMOTE_WS_YML")'" < /
 coder ssh "$WORKSPACE" -- "cat > '$REPO_DIR/$REMOTE_WS_YML'" < "$WORKSPACE_YML"
 coder ssh "$WORKSPACE" -- "cat > '$REPO_DIR/$REMOTE_BRIEF'" < "$BRIEF"
 
-if coder ssh "$WORKSPACE" -- "cd '$REPO_DIR' && adlc-cli workspace setup .adlc/workflows/runs/$RUN_ID/workspace.yml -a opencode -y"; then
+if coder ssh "$WORKSPACE" -- "cd ~ && adlc-cli workspace setup 'coder/.adlc/workflows/runs/$RUN_ID/workspace.yml' -a opencode -y"; then
   echo "env-sync complete (workspace-setup): $WORKSPACE / $REPO_DIR@$BRANCH"
 else
   echo "WARN: workspace setup failed — falling back to legacy script." >&2

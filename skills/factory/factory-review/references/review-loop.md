@@ -54,7 +54,7 @@ The loop controller does **not** review, fix, or judge — it only orchestrates.
 
 **Marker:**
 ```
-<!-- factory-review:step=review run=<run_id> iter=<k> status=<completed|failed> findings=<count> important=<count> nits=<count> -->
+<!-- factory-review:step=review run=<run_id> iter=<k> status=<completed|failed> findings=<count> important=<count> nits=<count> head=<sha> -->
 ```
 
 **Returns to loop controller:**

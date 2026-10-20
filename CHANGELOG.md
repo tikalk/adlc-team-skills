@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A factory-review verdict is now checkable against the head it certifies** — the review marker carries `head=<sha>` (the skill mandated it in prose while the template omitted it, so a verdict written from the template certified nothing), and `skills/factory/factory-review/scripts/check-verdict-head.sh` reads the verdict back, compares the head it names with the head being merged, and fails when they differ. Wired into CI by `.github/workflows/verdict-head.yml`, which re-runs on every head move and on every review. A PR with no factory-review verdict passes; a verdict that names no head fails. Promotes the re-review-final-head rule from prose to a check — the rule went stale on adlc-cli #41 (a verdict for `003cf8a` across four fix commits) and on the approval of adlc-team-skills #78 (an approval for `9fbea54` against head `780fc54`). Pinned by `tests/unit/test_factory_review_verdict_head.py` (13).
+
 ## [0.31.0] - 2026-10-16
 
 ### Added

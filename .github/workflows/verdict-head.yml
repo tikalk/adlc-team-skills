@@ -1,0 +1,40 @@
+name: Verdict Head Binding
+
+# A factory-review verdict certifies exactly ONE head SHA — the one in its
+# `head=<sha>` marker. Any push after the verdict (a fix, a rebase, a
+# force-push) moves the head and invalidates it, so the review must run again
+# on the new head before merge-readiness can be claimed.
+#
+# The rule is stated in the factory-review skill. This job makes it
+# mechanical, so a stale verdict cannot quietly sit on a PR until someone
+# notices: the job reads the verdict back and compares the head it names with
+# the head being merged.
+#
+# Read-only token: the job only reads comments and the PR head.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted, edited]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  verdict-head:
+    name: Verdict names the current head
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compare the verdict's head with the PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bash skills/factory/factory-review/scripts/check-verdict-head.sh \
+            --repo "$GITHUB_REPOSITORY" \
+            --pr "$PR_NUMBER" \
+            --pr-head "$PR_HEAD"

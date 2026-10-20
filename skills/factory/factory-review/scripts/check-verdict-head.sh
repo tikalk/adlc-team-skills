@@ -59,7 +59,10 @@ fetch_bodies() {
         exit 2
     fi
     if [ -z "$REPO" ] || [ -z "$PR" ]; then
-        echo "check-verdict-head: --repo and --pr are required without --verdicts" >&2
+        missing=""
+        [ -z "$REPO" ] && missing="--repo"
+        [ -z "$PR" ] && missing="$missing --pr"
+        echo "check-verdict-head: $missing required without --verdicts" >&2
         exit 2
     fi
     # Issue comments and review bodies both carry the marker; inline review

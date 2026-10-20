@@ -33,6 +33,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           bash skills/factory/factory-review/scripts/check-verdict-head.sh \
             --repo "$GITHUB_REPOSITORY" \

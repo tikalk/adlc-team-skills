@@ -1,0 +1,54 @@
+# factory-deploy (workspace-side plan of record; mirrors the skill's workflow.yml)
+
+# Plan-of-record for the factory-deploy release orchestration.
+# Dual-executor: in-session the LLM executor drives these steps via
+# `workflow state` helpers (gates inline); headless `adlc-cli workflow run`
+# executes the same file inside the skill. Generated once here, rendered twice
+# (run home + skill copy) so prose and program never drift.
+schema_version: "1.0"
+workflow:
+  id: factory-deploy
+  name: Deploy Release Orchestration
+  version: "1.0.0"
+inputs:
+  route:
+    type: string
+    enum: ["", full, short, halt]
+    default: full
+  verdict:
+    type: string
+    enum: ["", approve, reject]
+steps:
+  - id: verify
+    type: command
+    command: verify-gates
+  - id: merge
+    type: command
+    command: gated-merge
+  - id: stage
+    type: command
+    command: staging-rollout
+  - id: gate-canary-expand
+    type: gate
+    message: "Authorize canary-expand: staging green, rollback plan exists, baseline frozen (or waiver granted). Start 5% prod canary?"
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: verdict
+  - id: canary
+    type: command
+    command: canary-rollout
+  - id: gate-full-expand
+    type: gate
+    message: "Authorize full-expand: canary verdicts green (or hold resolved). Start terminal expansion?"
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: verdict
+  - id: expand
+    type: command
+    command: staged-expansion
+  - id: full
+    type: command
+    command: terminal-verdict
+  - id: publish
+    type: command
+    command: release-cut

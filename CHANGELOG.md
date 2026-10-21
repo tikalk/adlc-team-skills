@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`factory-deploy`** (`skills/factory/factory-deploy/`) — post-merge release orchestration closing the factory loop: exact-head gated merge (both human gates green on the same SHA, head-moved discards evidence) → staged rollout with green/yellow/red threshold verdicts → SemVer-tagged, noted release cut in merge → tag → changelog order with a monitor handoff. No auto-approve tier; change records mint on non-obvious rationale only.
+
 - **`REVIEW.md` — the repository's review policy as code** — the factory-review skill reads its passes, severity weights and skip lists from the repository root, so every PR is reviewed against one written policy instead of an implicit one. Ships the standard passes (bugs · security · spec-compliance · quality) plus the two integrity passes the factory-review hardening record calls for — **test-integrity** (assertions rewritten or weakened so a change passes) and **ci-integrity** (guardrails removed, or a green check that never ran because its step was skipped) — the evidence intake bar (intent · execution evidence · size sanity), and the verdict contract: a verdict certifies exactly one head SHA, lists what was and was not checked, never attests that the requirements are correct, and never approves or merges.
 ### Changed
 

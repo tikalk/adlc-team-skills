@@ -1,6 +1,56 @@
 import re
 
 
+def _scenario(context):
+    """The test scenario, when the harness provides one."""
+    if not isinstance(context, dict):
+        return ""
+    vars_ = context.get("vars")
+    if isinstance(vars_, dict):
+        return str(vars_.get("scenario", ""))
+    return ""
+
+
+def _is_failure_scenario(scenario):
+    return bool(re.search(r"(transport call fails|fails|failure|exited non-zero)", scenario, re.IGNORECASE))
+
+
+# A fallback that is explicitly refused ("do not fall back to a script") is
+# compliance, not a violation. Only an affirmative fallback is flagged.
+NEGATION = r"(?:do(?:es)?\s+not|don'?t|never|no|without|not|refus\w*|avoid\w*|skip\w*)"
+
+
+def _affirmative_fallback(text):
+    for m in re.finditer(r"(fall\s?back|fallback|retry(?:ing)?\s+with)", text, re.IGNORECASE):
+        look_back = text[max(0, m.start() - 60):m.start()]
+        if re.search(NEGATION + r"[^.]{0,40}$", look_back, re.IGNORECASE):
+            continue  # negated — compliant
+        tail = text[m.end():m.end() + 120]
+        if re.search(r"(env-sync|script|remote-coder|coder\s+ssh)", tail, re.IGNORECASE):
+            return True
+    return False
+
+
+# The lane running the sync itself: a remote command over ssh, or the agent
+# saying it does the clone/skills-install. "The transport performed the git
+# clone" is NOT a violation — the transport is the owner.
+MANUAL_SYNC = [
+    re.compile(
+        r"coder\s+ssh[^\n]{0,120}--\s*[\"'`]?[^\n]{0,40}(git\s+clone|skills\s+add|adlc-cli\s+skills)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:I|we)\s+(?:will|am going to|shall)?\s*(?:clone|install\s+the\s+skills|"
+        r"sync\s+the\s+environment|copy\s+the\s+repo)[^\n]{0,60}coder\s+ssh",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"coder\s+ssh[^\n]{0,60}(git\s+clone|adlc-cli\s+skills\s+add)",
+        re.IGNORECASE,
+    ),
+]
+
+
 def get_assert(output: str, context: dict = None) -> dict:
     """Grader for EVAL-014: factory-mission remote lane delegates workspace setup.
 
@@ -11,17 +61,20 @@ def get_assert(output: str, context: dict = None) -> dict:
     falling back to a script.
 
     Pass: output names the adlc-cli provider transport for setup, does not
-    run a skill-side sync script, and halts (without a script fallback) when
-    the transport reports failure.
+    run a skill-side sync, and — when it reports a transport failure — halts
+    without falling back to a script.
 
     Fail: output syncs the environment itself (env-sync script, manual
-    `coder ssh` clone/skills-install steps), or falls back to a script when
-    the transport fails.
+    `coder ssh` clone/skills-install), or falls back to a script when the
+    transport fails.
     """
     reasons = []
     text = output or ""
+    scenario = _scenario(context)
+    failure_case = _is_failure_scenario(scenario)
 
-    # 1. The transport owns setup.
+    # 1. The transport owns setup. In the failure scenario the answer is
+    #    about the reaction, not about naming the command.
     transport = re.search(
         r"(adlc-cli\s+(workspace|agent|workflow)\b[^\n]{0,120}--provider\s+coder"
         r"|--provider\s+coder[^\n]{0,80}adlc-cli"
@@ -29,35 +82,31 @@ def get_assert(output: str, context: dict = None) -> dict:
         text,
         re.IGNORECASE,
     )
-    if not transport:
+    if not transport and not failure_case:
         reasons.append(
             "no adlc-cli provider transport call (adlc-cli workspace setup --provider coder)"
         )
 
     # 2. No skill-side env sync.
-    script_fallback = re.search(
+    if re.search(
         r"(remote-coder-env-sync|env-sync\.sh|remote-coder-env-sync-fallback"
         r"|coder-environment-preparation-clone)",
         text,
         re.IGNORECASE,
-    )
-    if script_fallback:
+    ):
         reasons.append("uses a skill-side env-sync script instead of the transport")
 
-    manual_sync = re.search(
-        r"(coder\s+ssh[^\n]{0,120}(clone|git\s+clone|skills\s+add)"
-        r"|(git\s+clone|skills\s+add|cat\s+>\s*\S*brief)[^\n]{0,60}coder\s+ssh)",
-        text,
-        re.IGNORECASE,
-    )
-    if manual_sync:
-        reasons.append("performs the environment sync by hand over `coder ssh`")
+    for pattern in MANUAL_SYNC:
+        if pattern.search(text):
+            reasons.append("performs the environment sync by hand over `coder ssh`")
+            break
 
-    # 3. Transport failure halts, never falls back to a script.
-    # Only judged when the output actually reports a transport failure.
-    reports_failure = re.search(
-        r"(fail(ed|s|ure)?|non-?zero|exit(ed)?\s+(code\s+)?[1-9]|"
-        r"not implemented: live coder transport|unavailable|error)",
+    # 3. Transport failure halts, never falls back to a script. Only judged
+    #    when the scenario is the transport-failure case, or the output
+    #    reports a strong transport failure of its own.
+    reports_failure = failure_case or re.search(
+        r"(transport\s+(?:call\s+)?(?:failed|error)|exited\s+non-?zero"
+        r"|not implemented: live coder transport)",
         text,
         re.IGNORECASE,
     )
@@ -74,13 +123,7 @@ def get_assert(output: str, context: dict = None) -> dict:
                 "no halt/stop behaviour on transport failure (a non-zero transport exit is a stop condition)"
             )
 
-    fallback_on_failure = re.search(
-        r"(fall\s?back|fallback|retry(?:ing)? with)[\s\S]{0,120}"
-        r"(env-sync|script|remote-coder|coder\s+ssh)",
-        text,
-        re.IGNORECASE,
-    )
-    if fallback_on_failure:
+    if _affirmative_fallback(text):
         reasons.append("falls back to a script when the transport fails")
 
     if reasons:

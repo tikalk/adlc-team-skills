@@ -14,6 +14,10 @@ sys.path.insert(0, str(graders_dir))
 from check_factory_mission_provider_transport import get_assert
 
 
+PROVISION_CTX = {"vars": {"scenario": "factory-mission remote lane provisions a Coder workspace"}}
+FAILURE_CTX = {"vars": {"scenario": "factory-mission remote lane transport call fails"}}
+
+
 # ---------------------------------------------------------------------------
 # Pass cases
 # ---------------------------------------------------------------------------
@@ -25,7 +29,7 @@ env setup — the lane runs no env-sync script of its own."""
 
 def test_pass_delegates_to_transport():
     """Delegating setup to the provider transport passes."""
-    result = get_assert(PASS_DELEGATES)
+    result = get_assert(PASS_DELEGATES, PROVISION_CTX)
     assert result["pass"] is True
     assert result["score"] == 1.0
 
@@ -37,7 +41,7 @@ the developer — no script fallback, the transport is the only owner of setup."
 
 def test_pass_halts_on_transport_failure():
     """Halting on a transport failure without a fallback passes."""
-    result = get_assert(PASS_HALTS_ON_FAILURE)
+    result = get_assert(PASS_HALTS_ON_FAILURE, FAILURE_CTX)
     assert result["pass"] is True
 
 
@@ -47,8 +51,64 @@ PASS_WORKFLOW_RUN = """Running the step remotely:
 
 def test_pass_workflow_run_through_transport():
     """Routing the step through the transport passes."""
-    result = get_assert(PASS_WORKFLOW_RUN)
+    result = get_assert(PASS_WORKFLOW_RUN, PROVISION_CTX)
     assert result["pass"] is True
+
+
+# --- regression cases: the contract's own wording must not fail ---
+
+PASS_REFUSED_FALLBACK = """Using `adlc-cli workspace setup --provider coder`. If it exits
+non-zero I do not fall back to a script — the transport is the only owner of
+workspace setup, and the lane halts."""
+
+
+def test_pass_refused_fallback_is_not_a_violation():
+    """'do not fall back to a script' is compliance, not a violation."""
+    result = get_assert(PASS_REFUSED_FALLBACK, FAILURE_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_NO_FALLBACK_SCRIPT = """There is no fallback script on this lane: the adlc-cli
+provider transport owns workspace setup (`adlc-cli workspace setup --provider
+coder`). A transport failure halts the run."""
+
+
+def test_pass_no_fallback_script_statement():
+    """'no fallback script' is compliance, not a violation."""
+    result = get_assert(PASS_NO_FALLBACK_SCRIPT, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_HAPPY_PATH_WITH_ZERO_ERRORS = """`adlc-cli workspace setup --provider coder` provisioned the
+workspace with 0 errors. Now running `adlc-cli workflow run factory --input
+run_id=r-7 --provider coder`."""
+
+
+def test_pass_happy_path_mentioning_zero_errors():
+    """A successful output that says '0 errors' must not demand halt language."""
+    result = get_assert(PASS_HAPPY_PATH_WITH_ZERO_ERRORS, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_TRANSPORT_DID_THE_CLONE = """Provisioned via `adlc-cli workspace setup --provider coder`;
+the transport performed the git clone and skills install. Now attach:
+coder ssh repo-mission-42"""
+
+
+def test_pass_transport_performed_the_sync():
+    """The transport doing the clone is not the lane doing it by hand."""
+    result = get_assert(PASS_TRANSPORT_DID_THE_CLONE, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_HALT_ONLY = """Halting the run and handing back to the developer — no script
+fallback."""
+
+
+def test_pass_halt_only_in_failure_scenario():
+    """In the failure scenario, halting alone is a compliant answer."""
+    result = get_assert(PASS_HALT_ONLY, FAILURE_CTX)
+    assert result["pass"] is True, result["reason"]
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +122,7 @@ workspace name and brief path."""
 
 def test_fail_uses_env_sync_script():
     """Using the deleted env-sync script fails."""
-    result = get_assert(FAIL_USES_SCRIPT)
+    result = get_assert(FAIL_USES_SCRIPT, PROVISION_CTX)
     assert result["pass"] is False
     assert "env-sync script" in result["reason"]
 
@@ -74,7 +134,7 @@ then installing the skills with adlc-cli skills add tikalk/adlc-team-skills."""
 
 def test_fail_manual_sync_over_ssh():
     """Hand-rolling the env sync over `coder ssh` fails."""
-    result = get_assert(FAIL_MANUAL_SYNC)
+    result = get_assert(FAIL_MANUAL_SYNC, PROVISION_CTX)
     assert result["pass"] is False
     assert "by hand" in result["reason"]
 
@@ -85,7 +145,7 @@ env-sync script and sync the environment manually."""
 
 def test_fail_falls_back_to_script():
     """Falling back to a script on transport failure fails."""
-    result = get_assert(FAIL_FALLBACK)
+    result = get_assert(FAIL_FALLBACK, FAILURE_CTX)
     assert result["pass"] is False
     assert "falls back to a script" in result["reason"]
 
@@ -96,6 +156,6 @@ reach Running before printing the attach instructions."""
 
 def test_fail_no_transport_call():
     """A run that never calls the transport fails."""
-    result = get_assert(FAIL_NO_TRANSPORT)
+    result = get_assert(FAIL_NO_TRANSPORT, PROVISION_CTX)
     assert result["pass"] is False
     assert "no adlc-cli provider transport call" in result["reason"]

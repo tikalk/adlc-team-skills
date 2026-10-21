@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Remote lane delegates workspace setup to the adlc-cli provider transport** (internal-app/coder ADR-007 / PDR-010, adlc-cli#47) — the `remote:coder` lane owns **no** env bootstrap: `skills/factory/factory-mission/scripts/bash/remote-coder-env-sync.sh` is deleted, and provision / workspace setup / input transfer / streaming belong to `adlc-cli workspace|agent|workflow … --provider coder`. A transport failure **halts** (no script fallback). The lane's per-mission workspace name travels as `WORKSPACE_NAME` (the repo's `.adlc/workspace.yml` declares `name: ${WORKSPACE_NAME}`), secrets stay env-only and are never inlined into the workspace config, and the developer keeps driving the agent in their own tab. `remote-coder-teardown.sh` stays (the transport has no delete op) and is now named in the contract, distinguishes a failed lookup from "nothing to delete", and accepts the lane's own `<repo>-mission-<id>` shape. Pinned by `tests/unit/test_factory_mission_remote_lane.py` (22 tests, incl. an integration test against a real adlc-cli) + goldset `EVAL-014` with grader `check_factory_mission_provider_transport`.
+
 ### Added
 
 - **Factory-owned `issues-provider.yml` tracker config** (ADR-427) — the factory release ships a canonical provider template (`skills/factory/factory-mission/references/issues-provider.yml`, rename-only from spec-kit's `taskstoissues-provider.yml` schema, never-tokens rule retained); target repos carry a committed copy at `.adlc/issues-provider.yml`. `tracker-integration.md` §1 now resolves `{{params.tracker_provider}}` → new path → **loud halt**, deleting both the silent `github` default that mis-targeted repos without spec-kit and the legacy spec-kit path read (repos carrying only the old file must add the factory-canonical copy; spec-kit itself untouched). No shipped factory file references `.specify`. Pinned by `tests/unit/test_issues_provider_contract.py`.

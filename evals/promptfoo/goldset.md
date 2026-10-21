@@ -264,6 +264,7 @@ The output offers generic advice (reinstall, restart, update) with no chain chec
 - **Input Context**: Same report.
 - **Agent Output**: "Looks like a bad install. Reinstall the skills, restart your agent, and try again — that usually fixes it."
 
+---
 
 ## Criterion EVAL-014: Factory-Mission Remote Lane Provider-Transport Delegation
 

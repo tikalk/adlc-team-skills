@@ -17,7 +17,7 @@ It implements the following key factory platform capabilities:
 5. **Worktree Isolation**: Each run gets its own git worktree. Never touches the user's main checkout. Cleaned up on exit (retained if unsaved work).
 6. **Lease-Based Liveness**: The state file carries a renewable lease with heartbeat + TTL. Resume can distinguish live, stale, and completed runs.
 7. **Stall Detection**: After dispatching a subagent, observable progress is checked at a configurable window (default 20 min). A hung agent that passes the circuit breaker is detected and killed.
-8. **Lane-Based Dispatch** (`references/lanes.md`): Steps can run on different lanes — `inline` (this session), `agent` (fresh session of same CLI for maker/checker separation), or `cli:<runtime>` (optional cross-vendor). The `agent` lane is the default for unattended stages.
+8. **Lane-Based Dispatch** (`references/lanes.md`): Steps can run on different lanes — `inline` (this session), `agent` (fresh session of same CLI for maker/checker separation), `cli:<runtime>` (optional cross-vendor), or `remote:<provider>` (a remote workspace; the provider transport owns its env setup). The `agent` lane is the default for unattended stages.
 9. **Scratchpad Tools**: Subagents share named, run-private scratchpads (`.adlc/workflows/runs/<run_id>/scratchpads/<name>.txt`) to compile notes, drafts, and reviews incrementally before publishing.
 10. **Workflow Memory & Self-Improvement**: Persistent JSONL database (`.adlc/workflows/memory.jsonl`, workspace-global) stores learnings across runs. `factory-learn` periodically runs retrospectives to prune/weight memories.
 11. **Hierarchical Context Parameters**: Workflows and agents reference parameters as `{{params.<key>}}`, resolved from most specific to least specific: `agent < workflow < repository < project < default`.
@@ -52,8 +52,9 @@ It implements the following key factory platform capabilities:
        owns all env setup and transfer (no skill-side sync script), then
        print attach instructions for the developer's OWN tab and wait.
        The skill never opens tabs or spawns the CLI.
-     - Without `--provider`: local CLI session, as today (halt-and-hand-back
-       only when neither applies).
+     - Without `--provider`: **HALT execution** (hand back to the
+       interactive session) — the human-required gate is never executed by
+       an unattended agent.
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue: read spec description from arguments. The comment bus is inactive — steps communicate through local files only. `--provider` without an issue is refused.
 4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.

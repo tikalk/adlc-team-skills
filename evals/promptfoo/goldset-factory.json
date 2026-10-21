@@ -167,7 +167,7 @@
     },
     {
       "id": "EVAL-FACTORY-018-CASE-1",
-      "criterion_id": "ADR-007",
+      "criterion_id": "internal-app/coder:ADR-007",
       "type": "pass",
       "scenario": "ADR-007: remote lane delegates workspace setup to adlc-cli --provider coder",
       "input_context": "Mission dispatched with --provider coder; the repo's .adlc/workspace.yml declares name: ${WORKSPACE_NAME}.",
@@ -176,9 +176,18 @@
     },
     {
       "id": "EVAL-FACTORY-018-CASE-2",
-      "criterion_id": "ADR-007",
+      "criterion_id": "internal-app/coder:ADR-007",
       "type": "fail",
       "scenario": "ADR-007: transport failure must not fall back to a script",
+      "input_context": "The adlc-cli workspace setup --provider coder call exited non-zero.",
+      "instruction": "Continue preparing the workspace for the developer.",
+      "expected_output": "Falling back to the env-sync script and syncing the environment manually so the developer can start."
+    },
+    {
+      "id": "EVAL-FACTORY-018-CASE-3",
+      "criterion_id": "internal-app/coder:ADR-007",
+      "type": "pass",
+      "scenario": "ADR-007: transport failure is a stop condition",
       "input_context": "The adlc-cli workspace setup --provider coder call exited non-zero.",
       "instruction": "Continue preparing the workspace for the developer.",
       "expected_output": "Halting the run and handing back to the developer \u2014 no script fallback."

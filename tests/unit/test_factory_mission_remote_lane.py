@@ -6,7 +6,6 @@ to the adlc-cli provider transport (ADR-007 / PDR-010), not skill-side scripts.
 import os
 import re
 import shutil
-import stat
 import subprocess
 from pathlib import Path
 
@@ -24,7 +23,7 @@ def test_lanes_documents_remote_lane():
     assert "`remote:<provider>`" in text
     assert "--provider" in text
     assert "known: `coder`" in text
-    assert "argo" not in text
+    assert not re.search(r"\bargo\b", text, re.IGNORECASE)
 
 
 def test_lanes_no_agent_fallback():
@@ -79,7 +78,8 @@ def test_lanes_secret_contract():
     text = LANES.read_text()
     assert "${VAR}" in text
     assert "fail-fast" in text
-    assert "redacted outbound" in text
+    assert "scrubs it" in text and "every output path" in text
+    assert "vars channel" in text
     assert "location-free" in text
 
 
@@ -92,13 +92,34 @@ def test_lanes_per_mission_workspace_name():
 
 
 def _fake_coder(tmp_path, behavior="missing"):
+    """A fake `coder` CLI.
+
+    behaviors:
+      missing  — the workspace list is empty (nothing to delete)
+      exists   — the workspace is in the list (the teardown gate asks first)
+      broken   — the list call itself fails (API error / expired token)
+    """
     bindir = tmp_path / "fakebin"
     bindir.mkdir(exist_ok=True)
     fake = bindir / "coder"
     if behavior == "missing":
-        fake.write_text("#!/usr/bin/env bash\necho 'fake coder: no such workspace' >&2\nexit 1\n")
+        body = (
+            "#!/usr/bin/env bash\n"
+            'if [ "$1" = "list" ]; then echo \'[{"name":"other-ws"}]\'; exit 0; fi\n'
+            "echo 'fake coder: workspace exists'\nexit 0\n"
+        )
+    elif behavior == "broken":
+        body = (
+            "#!/usr/bin/env bash\n"
+            "echo 'fake coder: unauthorized' >&2\nexit 1\n"
+        )
     else:
-        fake.write_text("#!/usr/bin/env bash\necho 'fake coder: workspace exists'\nexit 0\n")
+        body = (
+            "#!/usr/bin/env bash\n"
+            'if [ "$1" = "list" ]; then echo \'[{"name":"coder-mission-1"}]\'; exit 0; fi\n'
+            "echo 'fake coder: workspace exists'\nexit 0\n"
+        )
+    fake.write_text(body)
     fake.chmod(0o755)
     return bindir
 
@@ -143,6 +164,27 @@ def test_teardown_finds_workspace_via_show(tmp_path):
     assert "Teardown gate" in r.stdout + r.stderr
 
 
+def test_teardown_lookup_failure_is_not_reported_as_nothing_to_delete(tmp_path):
+    """A failed lookup (expired token, outage) must not read as 'deleted'."""
+    env = dict(os.environ)
+    env["PATH"] = str(_fake_coder(tmp_path, "broken")) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1", "--yes"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 4, "a failed lookup must exit non-zero"
+    out = r.stdout + r.stderr
+    assert "NOT deleted" in out
+    assert "nothing to delete" not in out
+
+
+def test_teardown_accepts_a_long_dashed_repo_name(tmp_path):
+    """The lane's own naming shape must pass the teardown gate."""
+    env = dict(os.environ)
+    env["PATH"] = str(_fake_coder(tmp_path, "exists")) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "engineering-internal-app-coder-mission-42", "--yes"],
+                       capture_output=True, text=True, env=env)
+    assert "REFUSE" not in (r.stdout + r.stderr), "a lane-shaped name must not be refused"
+
+
 def test_zero_secret_literals():
     text = TEARDOWN.read_text()
     assert not re.search(r"glpat-|ghp_|xoxb-|sk-|CODER_TOKEN=.|GITLAB_TOKEN=.", text)
@@ -157,7 +199,7 @@ def test_lanes_developer_owned_tab():
 def test_lanes_dispatch_matrix():
     text = LANES.read_text()
     assert "interactive" in text and "remote:coder" in text
-    assert "local CLI session, as today" in text
+    assert "HALT execution" in text, "the no-provider path must keep the halt-and-refuse rule"
 
 
 def test_lanes_attach_order():
@@ -203,8 +245,61 @@ def test_lane_setup_command_executes_via_adlc_cli(tmp_path):
     )
     out = r.stdout + r.stderr
     if "provider path: coder workspace" not in out:
-        pytest.skip(f"adlc-cli at {' '.join(cmd)} has no --provider coder surface: {out.strip()[:200]}")
-    assert r.returncode == 0, out
+        # The binary does not speak the provider surface at all (an adlc-cli
+        # older than the transport) — an environment mismatch, so skip. A
+        # binary that DOES speak the surface must make the command work: the
+        # marker is printed before anything can fail, so a broken command
+        # still reaches the assertion below and fails the test.
+        pytest.skip(f"adlc-cli at {' '.join(cmd)} has no --provider coder surface "
+                    f"(older CLI?): {out.strip()[:200]}")
+    assert r.returncode == 0, (
+        f"the documented command failed on a provider-capable CLI: {out.strip()[:300]}"
+    )
     handle = tmp_path / ".adlc" / "workspaces" / "lane-mission-test.json"
     assert handle.exists(), f"expected the handle at {handle}"
     assert not ENV_SYNC.exists(), "the lane must not need an env-sync script"
+
+
+def test_lanes_names_the_teardown_script():
+    """The kept teardown script must be named in the contract, or it is dead code."""
+    text = LANES.read_text()
+    assert "remote-coder-teardown.sh" in text, "the contract must name the teardown script"
+    assert "skills/factory/factory-mission/scripts/bash/remote-coder-teardown.sh" in text
+
+
+def test_lanes_keeps_the_halt_and_refuse_rule():
+    """The no-provider path must keep the halt-and-refuse rule (tracker-integration.md)."""
+    text = LANES.read_text()
+    assert "HALT execution" in text
+    skill = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
+    assert "HALT execution" in skill, "the skill must not weaken the human-required gate"
+
+
+def test_lanes_degradation_rule_excludes_remote_lanes():
+    """'losing a lane is never a reason to stop' must not license a remote downgrade."""
+    text = re.sub(r"\s+", " ", LANES.read_text())
+    assert "losing a lane is never a reason to stop" not in text, (
+        "the unqualified 'losing a lane is never a reason to stop' licenses a remote downgrade"
+    )
+    assert "losing a `cli:` lane is never a reason to stop" in text
+    assert "A `remote:` lane is exempt from this rule" in text
+
+
+def test_lanes_documents_the_brief_placement_gap():
+    """The brief must reach the remote — the open item must be documented, not hidden."""
+    text = LANES.read_text()
+    assert "Brief placement (open item)" in text
+    assert ".adlc/workflows/runs/<run_id>/brief.md" in text
+
+
+def test_lanes_uses_the_real_cli_version_command():
+    """`adlc-cli --version` does not exist — the contract must use `adlc-cli version`."""
+    text = LANES.read_text()
+    assert "adlc-cli --version" not in text, "the CLI has no --version flag"
+    assert "adlc-cli version" in text
+
+
+def test_lanes_remote_execution_targets_the_mission_workspace():
+    """A remote step must target the workspace the lane provisioned."""
+    text = LANES.read_text()
+    assert "--workspace <repo>-mission-<issue>" in text

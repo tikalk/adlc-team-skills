@@ -42,7 +42,9 @@ def _clause_start(text, index):
     """
     semi = text.rfind(";", 0, index)
     bound = semi
-    for m in re.finditer(r"\.\s+", text[:index]):
+    # a sentence end is a period AFTER a word character (so "./script.sh" and
+    # "env-sync.sh" are not sentence ends)
+    for m in re.finditer(r"(?<=\w)\.\s+", text[:index]):
         if m.start() > bound:
             bound = m.start()
     return bound + 1 if bound >= 0 else 0
@@ -75,7 +77,9 @@ TRANSPORT_CALL = re.compile(
 SCRIPT_USE = re.compile(
     r"\b(run|runs|running|ran|use|uses|using|used|execute|executes|executing|invoked|"
     r"invoke|invokes|fall back to|falling back to|fallback to|switch to|switching to|"
-    r"revert to|reverting to|re-run|rerun)\b",
+    r"revert to|reverting to|re-run|rerun)\b"
+    # the interpreter forms: `bash <script>.sh`, `sh <script>.sh`, `./<script>.sh`
+    r"|(?:^|[\s;&|])(?:bash|sh|zsh|source|\.)\s",
     re.IGNORECASE,
 )
 SCRIPT_NAME = re.compile(
@@ -128,8 +132,10 @@ SPEAKER_ACTION = re.compile(
     r"\b(?:I|we)\b(?P<mid>[^.]{0,40}?)\b(?P<action>"
     r"clone[ds]?|cloning|install(?:ed|ing)?\s+the\s+skills|"
     r"sync(?:ed|ing)?\s+the\s+environment|copy(?:ied|ing)?\s+the\s+repo|"
-    r"prepar(?:e|ed|ing)\s+the\s+(?:workspace|environment)|"
-    r"set\s+up\s+the\s+(?:workspace|environment)|"
+    # "prepare the workspace|environment" — but not "the environment VARIABLES"
+    r"prepar(?:e|ed|ing)\s+the\s+(?:workspace|environment)(?!\s+(?:variables|file|name|path))|"
+    # "set up the workspace|environment" — but not "the workspace FILE"
+    r"set\s+up\s+the\s+(?:workspace|environment)(?!\s+(?:variables|file|name|path))|"
     r"do(?:ing)?\s+(?:it|the\s+setup|the\s+environment\s+setup)\s+(?:by\s+hand|myself)|"
     r"(?:take|taking)\s+over\s+the\s+setup|handl(?:e|ing)\s+the\s+setup)\b",
     re.IGNORECASE,
@@ -196,18 +202,6 @@ def _fallback_violation(text):
 
 
 # ── the failure branch: the run must stop ───────────────────────────────────
-# An explicit halt statement (the forms the contract uses).
-HALT_STATEMENT = re.compile(
-    r"\b(halting|halt|halts|halted|stopping|stop|stopped|stops|aborting|abort|aborts|aborted)\b"
-    r"[^.]{0,30}\b(the\s+)?run\b"
-    r"|\bhand(?:s|ed|ing)?\s+back\b"
-    r"|\bno\s+script\s+fallback\b"
-    r"|\bdo(?:es)?\s+not\s+fall\s+back\b"
-    r"|\bnever\s+fall\s+back\b"
-    r"|not implemented: live coder transport",
-    re.IGNORECASE,
-)
-
 # The RUN carried on after the failure — the opposite of a stop.
 # The subject must be the run/the speaker ("I continued", "the setup
 # continued"), not another actor ("the remote setup proceeded", "the

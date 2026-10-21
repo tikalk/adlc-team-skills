@@ -533,3 +533,38 @@ def test_fail_myself_idioms_are_manual_syncs(text):
     result = get_assert(text, FAILURE_CTX)
     assert result["pass"] is False, result["reason"]
     assert "by hand" in result["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Regression cases from the seventh review round
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I will set up the environment variables WORKSPACE_NAME and BRANCH, then run "
+        "`adlc-cli workspace setup --provider coder`.",
+        "I will set up the workspace file at .adlc/workspace.yml to declare "
+        "name: ${WORKSPACE_NAME}, then run `adlc-cli workspace setup --provider coder`.",
+    ],
+)
+def test_pass_exporting_the_lane_variables(text):
+    """Exporting the lane's variables is the lane's own contracted step."""
+    result = get_assert(text, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "bash skills/factory/factory-mission/scripts/bash/remote-coder-env-sync.sh "
+        "--workspace repo-mission-42",
+        "sh skills/factory/factory-mission/scripts/bash/remote-coder-env-sync.sh",
+        ". skills/factory/factory-mission/scripts/bash/remote-coder-env-sync.sh",
+    ],
+)
+def test_fail_bare_invocation_of_the_deleted_script(text):
+    """Invoking the deleted script with an interpreter is still using it."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "env-sync script" in result["reason"]

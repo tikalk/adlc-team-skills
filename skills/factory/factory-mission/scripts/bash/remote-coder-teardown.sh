@@ -26,12 +26,21 @@ fi
 # --all matters: `coder list` defaults to owner:me, so a workspace owned by
 # another identity would be absent from the list and look "not found" while
 # it keeps running.
-if ! LIST_OUT="$(coder list --all --output json 2>&1)"; then
+# stdout and stderr are captured separately: a warning on stderr must not
+# turn a good JSON payload into a "lookup failed".
+LIST_ERR="$(mktemp)"
+if ! LIST_OUT="$(coder list --all --output json 2>"$LIST_ERR")"; then
   echo "ERROR: could not list workspaces (the lookup failed, not an empty result):" >&2
-  echo "$LIST_OUT" >&2
+  cat "$LIST_ERR" >&2
+  rm -f "$LIST_ERR"
   echo "Workspace '$WORKSPACE' NOT deleted — resolve the Coder API error and retry." >&2
   exit 4
 fi
+if [ -s "$LIST_ERR" ]; then
+  echo "Warning: the workspace lookup reported:" >&2
+  cat "$LIST_ERR" >&2
+fi
+rm -f "$LIST_ERR"
 
 # Parse the payload — a raw grep would treat a malformed/HTML response as an
 # empty list (and an unparseable payload as "nothing to delete").
@@ -65,9 +74,10 @@ case "$FOUND" in
     ;;
 esac
 
-# Exit codes: 0 deleted | 3 refused (not a lane workspace) | 4 lookup failed
-# (not deleted) | 5 delete failed | 6 gate waiting (not confirmed).
-# Only "deleted" exits 0 — an orchestrator must never read "waiting" as done.
+# Exit codes: 0 deleted, or nothing to delete | 3 refused (not a lane
+# workspace) | 4 lookup failed (not deleted) | 5 delete failed | 6 gate
+# waiting (not confirmed). Only "deleted" or "nothing to delete" exits 0 —
+# a waiting or failed teardown never does.
 if [ "$CONFIRM" != "--yes" ]; then
   echo "Teardown gate: type 'done' in the shared shell, then re-run with --yes."
   echo "Workspace '$WORKSPACE' left running."

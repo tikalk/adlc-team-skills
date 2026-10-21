@@ -443,3 +443,28 @@ def test_eval_criterion_is_consistent_across_the_goldset_files():
     assert "## Criterion EVAL-014:" in md
     grader = (evals / "graders" / "check_factory_mission_provider_transport.py").read_text()
     assert "EVAL-014" in grader
+
+
+def test_teardown_stderr_noise_is_not_a_lookup_failure(tmp_path):
+    """A warning on stderr must not turn a good JSON payload into a failure."""
+    bindir = tmp_path / "fakebin"
+    bindir.mkdir(exist_ok=True)
+    fake = bindir / "coder"
+    fake.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [ "$1" = "list" ]; then\n'
+        "  echo 'warning: using the default org' >&2\n"
+        "  echo '[{\"name\":\"coder-mission-1\"}]'\n"
+        "  exit 0\n"
+        "fi\n"
+        "echo 'fake coder: deleted'\nexit 0\n"
+    )
+    fake.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1", "--yes"],
+                       capture_output=True, text=True, env=env)
+    out = r.stdout + r.stderr
+    assert r.returncode == 0, out
+    assert "NOT deleted" not in out, f"stderr noise must not read as a failed lookup: {out}"
+    assert "deleted" in out

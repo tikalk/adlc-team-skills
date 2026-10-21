@@ -250,3 +250,108 @@ def test_pass_no_env_sync_script_mention():
     """A negated env-sync mention is compliance."""
     result = get_assert(PASS_NO_ENV_SYNC_SCRIPT, PROVISION_CTX)
     assert result["pass"] is True, result["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Regression cases from the third independent review
+# ---------------------------------------------------------------------------
+
+PASS_WAIT_FOR_CLONE = """Setup done via the transport (`adlc-cli workspace setup --provider coder`).
+We wait for the clone to finish before printing the attach instructions."""
+
+
+def test_pass_waiting_for_the_transport_clone():
+    """'We wait for the clone' is not the lane doing the clone."""
+    result = get_assert(PASS_WAIT_FOR_CLONE, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_TRANSPORT_CLONED = """I ran `adlc-cli workspace setup --provider coder`; it cloned the
+repo and installed the skills."""
+
+
+def test_pass_transport_cloned():
+    """'it cloned …' is the transport acting, not the lane."""
+    result = get_assert(PASS_TRANSPORT_CLONED, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_TRANSPORT_PERFORMED = """`adlc-cli workspace setup --provider coder` performed the git clone; I
+printed the attach instructions."""
+
+
+def test_pass_transport_performed_the_clone():
+    """The transport as subject is not a manual sync."""
+    result = get_assert(PASS_TRANSPORT_PERFORMED, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_WILL_NOT_CLONE = """`adlc-cli workspace setup --provider coder` owns the setup; I will not clone
+the repo myself — the lane never syncs the environment by hand."""
+
+
+def test_pass_negated_intent_to_clone():
+    """'I will not clone the repo myself' is compliance."""
+    result = get_assert(PASS_WILL_NOT_CLONE, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_INSTALL_THROUGH_TRANSPORT = """I am going to install the skills through the transport, not by hand —
+`adlc-cli workspace setup --provider coder` does the work."""
+
+
+def test_pass_install_through_the_transport():
+    """'install the skills through the transport' is compliance."""
+    result = get_assert(PASS_INSTALL_THROUGH_TRANSPORT, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_SCRIPT_NOT_USED = """The env-sync script is not used; `adlc-cli workspace setup --provider
+coder` owns the setup."""
+
+
+def test_pass_env_sync_script_not_used():
+    """A trailing negation on the script mention is compliance."""
+    result = get_assert(PASS_SCRIPT_NOT_USED, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+PASS_ENV_SYNC_HANDLED_BY_TRANSPORT = """Env-sync is handled by the transport, not by the lane:
+`adlc-cli workspace setup --provider coder` owns the setup."""
+
+
+def test_pass_env_sync_handled_by_the_transport():
+    """'handled by the transport' is compliance."""
+    result = get_assert(PASS_ENV_SYNC_HANDLED_BY_TRANSPORT, PROVISION_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+FAIL_CONTINUED_WITHOUT_HALTING = """The transport failed; I continued the setup without halting and cloned the
+repo by hand."""
+
+
+def test_fail_continued_without_halting():
+    """'without halting' must not satisfy the halt requirement."""
+    result = get_assert(FAIL_CONTINUED_WITHOUT_HALTING, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "halt/stop" in result["reason"]
+
+
+FAIL_NO_HALT = """The transport failed. There was no halt; I synced the environment by hand."""
+
+
+def test_fail_no_halt():
+    """'no halt' must not satisfy the halt requirement."""
+    result = get_assert(FAIL_NO_HALT, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "halt/stop" in result["reason"]
+
+
+FAIL_SET_UP_BY_HAND = """The transport call failed. I will set up the workspace by hand and hand back
+to the developer."""
+
+
+def test_fail_set_up_by_hand():
+    """'I will set up the workspace by hand' is a violation."""
+    result = get_assert(FAIL_SET_UP_BY_HAND, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]

@@ -48,14 +48,16 @@ lanes:
     <provider>:
       workspace: "<workspace name; default <repo>-mission-<issue>>"
       name_var: "<env var carrying the per-mission workspace name; default WORKSPACE_NAME>"
+      branch_var: "<env var carrying the branch to clone; default BRANCH>"
       template: "<template name>"
       workspace_file: "<path or URL to the repo's workspace file; default .adlc/workspace.yml>"
 ```
 
 The `remote:` keys are read by the remote dispatch contract below:
 `workspace` / `name_var` decide the provisioned workspace name,
-`workspace_file` is the file the CLI reads, `template` is the Coder
-template requested for the workspace. (The keys are the lane's
+`branch_var` is the branch the workspace clones, `workspace_file` is the
+file the CLI reads, `template` is the Coder template requested for the
+workspace. (The keys are the lane's
 *declarative* form: the contract's commands below show the resolved
 values — `<workspace>`, `<workspace_file>` — so a profile that sets them
 changes what the lane passes to the transport.)
@@ -187,7 +189,12 @@ A `remote:coder` lane dispatch:
    no marker. A missing marker means the transport is not there: halt, name
    the requirement, and never fall back to a script.
 2. Provision or reuse the workspace through the CLI:
-   `WORKSPACE_NAME=<repo>-mission-<issue> adlc-cli workspace setup [<workspace_file>] --provider coder`
+   `WORKSPACE_NAME=<repo>-mission-<issue> BRANCH=<mission branch> adlc-cli workspace setup [<workspace_file>] --provider coder`
+   - The repo's workspace file declares the per-run values it needs; the
+     lane supplies every `${VAR}` it references — `WORKSPACE_NAME` (the
+     workspace name) and `BRANCH` (the branch to clone). A variable the
+     file references and the lane does not supply fails the setup with its
+     name — the lane never invents a value for it.
    - The CLI loads the repo's `.adlc/workspace.yml` (or the configured
      path/URL), expands `${VAR}` fail-fast, and provisions or reuses the
      handle persisted at `.adlc/workspaces/<name>.json`.
@@ -233,9 +240,9 @@ A `remote:coder` lane dispatch:
    delete operation; it is the only remaining lane script. The gate
    refuses a name that is not lane-shaped (`<repo>-mission-<id>`), lists
    **all** workspaces (not just the caller's own) so an owned-elsewhere
-   workspace is not mistaken for "not found", and exits non-zero unless
-   the workspace was actually deleted (`6` = waiting for the `done`,
-   `4` = lookup failed, `5` = delete failed).
+   workspace is not mistaken for "not found", and exits non-zero unless the
+   workspace was deleted or there was nothing to delete (`6` = waiting for
+   the `done`, `4` = lookup failed, `5` = delete failed).
 
 ### Remote execution by the executor (not this lane)
 

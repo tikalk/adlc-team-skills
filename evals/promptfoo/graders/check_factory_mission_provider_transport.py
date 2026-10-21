@@ -40,20 +40,55 @@ def _affirmative_fallback(text):
 
 # The lane running the sync itself. The actor matters: "the transport
 # performed the git clone" is NOT a violation, "I will clone the repo" is.
-MANUAL_SYNC = [
-    # a remote command form: coder ssh <ws> -- "git clone ..." / "skills add"
-    re.compile(
-        r"coder\s+ssh[^\n]{0,120}--\s*[\"'`]?[^\n]{0,40}(git\s+clone|skills\s+add|adlc-cli\s+skills)",
-        re.IGNORECASE,
-    ),
-    # the speaker doing it: I/we + verb (+ optional "coder ssh" later)
-    re.compile(
-        r"\b(?:I|we)\b[^.]{0,40}\b(clone|cloning|install(?:ing)?\s+the\s+skills|"
-        r"install\s+the\s+skills|sync(?:ing)?\s+the\s+environment|copy(?:ing)?\s+the\s+repo|"
-        r"prepare\s+the\s+workspace\s+myself|set\s+up\s+the\s+workspace\s+myself)\b",
-        re.IGNORECASE,
-    ),
-]
+#
+# 1. the remote-command form: coder ssh <ws> -- "git clone ..." / "skills add"
+REMOTE_COMMAND_SYNC = re.compile(
+    r"coder\s+ssh[^\n]{0,120}--\s*[\"'`]?[^\n]{0,40}(git\s+clone|skills\s+add|adlc-cli\s+skills)",
+    re.IGNORECASE,
+)
+
+# 2. an INTENT by the speaker to do the sync itself
+SPEAKER_INTENT = re.compile(
+    r"\b(?:I|we)\b[^.]{0,20}?\b(will|am going to|going to|must|shall|need to|"
+    r"intend to|plan to)\b[^.]{0,40}?\b(clone|cloning|install(?:ing)?\s+the\s+skills|"
+    r"install\s+the\s+skills|sync(?:ing)?\s+the\s+environment|copy(?:ing)?\s+the\s+repo|"
+    r"prepare\s+the\s+workspace|set\s+up\s+the\s+workspace|do\s+it\s+by\s+hand|"
+    r"do\s+it\s+myself|do\s+the\s+setup\s+myself)\b",
+    re.IGNORECASE,
+)
+
+# phrases that hand the work to the transport (so the speaker is not doing it)
+TRANSPORT_EXCLUSION = re.compile(
+    r"(through|via|by|with)\s+the\s+(adlc-cli\s+)?(provider\s+)?transport"
+    r"|\bnot\s+by\s+hand\b|\bnot\s+myself\b|\bthe\s+transport\s+(owns|does|did|cloned|"
+    r"installed|performed|handled|ran)",
+    re.IGNORECASE,
+)
+
+
+def _manual_sync_violation(text):
+    """True when the output says the LANE performs the env sync itself."""
+    if REMOTE_COMMAND_SYNC.search(text):
+        return True
+    for m in SPEAKER_INTENT.finditer(text):
+        clause = _clause_around(text, m.start(), m.end())
+        if re.search(r"\b" + NEGATION + r"\b", clause, re.IGNORECASE):
+            continue  # "I will not clone …" — compliance
+        if TRANSPORT_EXCLUSION.search(clause):
+            continue  # "through the transport", "not by hand" — compliance
+        return True
+    return False
+
+
+def _clause_around(text, start, end):
+    """The clause containing a match: what precedes it, the match itself,
+    and a short tail (so "I will not clone" keeps its negation)."""
+    head = _clause_before(text, start)
+    tail = text[end:end + 60]
+    stop = re.search(r"[.;\n]", tail)
+    if stop:
+        tail = tail[:stop.start()]
+    return f"{head} {text[start:end]} {tail}"
 
 
 def _clause_before(text, index):
@@ -70,7 +105,9 @@ def _clause_before(text, index):
 def _affirmative_script_mention(text):
     """A skill-side env-sync script the output proposes to USE.
 
-    A negated mention ("the lane runs no env-sync script") is compliance.
+    A negated mention is compliance — in either direction: "the lane runs
+    no env-sync script" (before) and "the env-sync script is not used"
+    (after).
     """
     for m in re.finditer(
         r"(remote-coder-env-sync|env-sync|coder-environment-preparation-clone)",
@@ -79,7 +116,19 @@ def _affirmative_script_mention(text):
     ):
         look_back = _clause_before(text, m.start())
         if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
-            continue  # negated — compliant
+            continue  # negated before — compliant
+        trail = text[m.end():m.end() + 80]
+        if re.search(
+            r"\b(not|never|no|without)\b[^.]{0,40}?\b(used|run|executed|needed|required|"
+            r"invoked|touched|handled|owned|done)\b",
+            trail,
+            re.IGNORECASE,
+        ):
+            continue  # negated after — compliant
+        if re.search(
+            r"\b(is|are|was|were)\s+(handled|owned|done)\s+by\b", trail, re.IGNORECASE
+        ):
+            continue  # "env-sync is handled by the transport" — compliance
         return True
     return False
 
@@ -145,23 +194,29 @@ def get_assert(output: str, context: dict = None) -> dict:
     if _affirmative_script_mention(text):
         reasons.append("uses a skill-side env-sync script instead of the transport")
 
-    for pattern in MANUAL_SYNC:
-        if pattern.search(text):
-            reasons.append("performs the environment sync by hand over `coder ssh`")
-            break
+    if _manual_sync_violation(text):
+        reasons.append("performs the environment sync by hand over `coder ssh`")
 
     # 3. Transport failure halts, never falls back to a script. Only judged
     #    when the scenario is the transport-failure case, or the output
     #    reports a strong transport failure of its own.
     reports_failure = failure_case or _unnegated_failure(text)
     if reports_failure:
-        halts = re.search(
-            r"(halt|stop(ped)?\s+(the\s+)?run|hand\s+back|abort|non-?zero exit"
-            r"|do(es)?\s+not\s+(fall\s+back|fallback)|no\s+fallback"
-            r"|never\s+fall\s+back|not implemented: live coder transport)",
+        halts = False
+        for m in re.finditer(
+            r"\b(halt|halts|halted|halting|stop|stopped|stops|abort|aborts|aborted)\b"
+            r"|\bhand(?:s|ed)?\s+back\b"
+            r"|\bdo(?:es)?\s+not\s+(fall\s+back|fallback)\b"
+            r"|\bno\s+fallback\b|\bnever\s+fall\s+back\b"
+            r"|not implemented: live coder transport",
             text,
             re.IGNORECASE,
-        )
+        ):
+            look_back = _clause_before(text, m.start())
+            if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
+                continue  # "without halting", "no halt", "did not stop"
+            halts = True
+            break
         if not halts:
             reasons.append(
                 "no halt/stop behaviour on transport failure (a non-zero transport exit is a stop condition)"

@@ -19,7 +19,10 @@ def _is_failure_scenario(scenario):
 # compliance, not a violation. Only an affirmative fallback is flagged.
 # The negation must be a WORD and must bind to the fallback phrase — an
 # unanchored "no"/"not" would let "I cannot use it; I will fall back" pass.
-NEGATION = r"(?:do(?:es)?\s+not|don'?t|doesn'?t|never|no|without|not|refus\w*|avoid\w*|skip\w*)"
+NEGATION = (
+    r"(?:do(?:es)?\s+not|don'?t|doesn'?t|didn'?t|wasn'?t|isn'?t|won'?t|couldn'?t|"
+    r"shouldn'?t|wouldn'?t|never|no|without|not|refus\w*|avoid\w*|skip\w*)"
+)
 NEGATED_FALLBACK = re.compile(
     r"\b" + NEGATION + r"\b[^.]{0,30}?\b(fall\s?back|fallback|retry(?:ing)?\s+with)\b",
     re.IGNORECASE,
@@ -47,14 +50,27 @@ REMOTE_COMMAND_SYNC = re.compile(
     re.IGNORECASE,
 )
 
-# 2. an INTENT by the speaker to do the sync itself
-SPEAKER_INTENT = re.compile(
-    r"\b(?:I|we)\b[^.]{0,20}?\b(will|am going to|going to|must|shall|need to|"
-    r"intend to|plan to)\b[^.]{0,40}?\b(clone|cloning|install(?:ing)?\s+the\s+skills|"
-    r"install\s+the\s+skills|sync(?:ing)?\s+the\s+environment|copy(?:ing)?\s+the\s+repo|"
-    r"prepare\s+the\s+workspace|set\s+up\s+the\s+workspace|do\s+it\s+by\s+hand|"
-    r"do\s+it\s+myself|do\s+the\s+setup\s+myself)\b",
+# 2. the SPEAKER doing the sync itself ("I clone …", "I am cloning …",
+#    "I will clone …", "I cloned …"). The subject and the negation are
+#    checked between the speaker and the action — a negation elsewhere in
+#    the sentence must not excuse the action.
+SPEAKER_ACTION = re.compile(
+    r"\b(?:I|we)\b(?P<mid>[^.]{0,40}?)\b(?P<action>"
+    r"clone[ds]?|cloning|install(?:ed|ing)?\s+the\s+skills|"
+    r"sync(?:ed|ing)?\s+the\s+environment|copy(?:ied|ing)?\s+the\s+repo|"
+    r"prepar(?:e|ed|ing)\s+the\s+workspace|set\s+up\s+the\s+workspace|"
+    r"do(?:ing)?\s+it\s+by\s+hand|do(?:ing)?\s+it\s+myself|"
+    r"do(?:ing)?\s+the\s+setup\s+myself)\b",
     re.IGNORECASE,
+)
+
+# a determiner right before the action means the action word is a NOUN
+# ("we wait for the clone to finish"), not an act by the speaker.
+DETERMINER = re.compile(r"\b(the|a|an|that|this|its|their)\s*$", re.IGNORECASE)
+
+# another subject in between means someone else is acting
+OTHER_SUBJECT = re.compile(
+    r"\b(it|they|transport|cli|adlc-cli|provider|agent)\b", re.IGNORECASE
 )
 
 # phrases that hand the work to the transport (so the speaker is not doing it)
@@ -70,10 +86,21 @@ def _manual_sync_violation(text):
     """True when the output says the LANE performs the env sync itself."""
     if REMOTE_COMMAND_SYNC.search(text):
         return True
-    for m in SPEAKER_INTENT.finditer(text):
+    for m in SPEAKER_ACTION.finditer(text):
+        mid = m.group("mid")
+        # "I will not clone" / "I am not going to clone" — the negation binds
+        # to the action, so it is scoped to the text between the speaker and
+        # the action. A negation elsewhere ("the transport is not available
+        # so I will clone") must NOT excuse the action.
+        if re.search(r"\b" + NEGATION + r"\b", mid, re.IGNORECASE):
+            continue
+        # "we wait for the clone to finish" — the action word is a noun.
+        if DETERMINER.search(mid):
+            continue
+        # "I ran the transport; it cloned the repo" — someone else acted.
+        if OTHER_SUBJECT.search(mid):
+            continue
         clause = _clause_around(text, m.start(), m.end())
-        if re.search(r"\b" + NEGATION + r"\b", clause, re.IGNORECASE):
-            continue  # "I will not clone …" — compliance
         if TRANSPORT_EXCLUSION.search(clause):
             continue  # "through the transport", "not by hand" — compliance
         return True
@@ -215,6 +242,9 @@ def get_assert(output: str, context: dict = None) -> dict:
             look_back = _clause_before(text, m.start())
             if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
                 continue  # "without halting", "no halt", "did not stop"
+            # "nothing was stopped" — the subject is a negation, not the verb.
+            if re.search(r"\bnothing\b[^.]{0,20}$", look_back, re.IGNORECASE):
+                continue
             halts = True
             break
         if not halts:

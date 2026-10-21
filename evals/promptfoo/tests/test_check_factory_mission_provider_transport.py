@@ -6,6 +6,8 @@ delegates workspace setup to `adlc-cli ... --provider coder`, runs no
 skill-side env sync, and halts without a script fallback.
 """
 import sys
+
+import pytest
 from pathlib import Path
 
 graders_dir = Path(__file__).parent.parent / "graders"
@@ -355,3 +357,62 @@ def test_fail_set_up_by_hand():
     """'I will set up the workspace by hand' is a violation."""
     result = get_assert(FAIL_SET_UP_BY_HAND, FAILURE_CTX)
     assert result["pass"] is False, result["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Regression cases from the fourth review round (regressions of the third fix)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport is not available so I will clone the repo into the workspace with git clone. Halting the run and handing back to the developer.",
+        "Since the transport is not implemented, I will clone the repo myself. Halting the run and handing back to the developer.",
+        "There is no transport available, so I will set up the workspace by hand. Halting the run and handing back to the developer.",
+        "The transport failed; I will clone the repo myself because the transport never works. Halting the run and handing back to the developer.",
+    ],
+)
+def test_fail_negation_elsewhere_does_not_excuse_a_manual_sync(text):
+    """A negation about the transport must not excuse a manual sync."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "by hand" in result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "`adlc-cli workspace setup --provider coder` exited non-zero. I clone the repo into the workspace with git clone, then hand back to the developer.",
+        "`adlc-cli workspace setup --provider coder` exited non-zero. I am cloning the repo into the workspace, then hand back to the developer.",
+    ],
+)
+def test_fail_present_tense_manual_sync(text):
+    """A present-tense manual sync is a violation too."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "by hand" in result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport failed. The run didn't stop; the setup continued.",
+        "The transport failed. The run wasn't stopped; the setup continued.",
+        "The transport failed. Nothing was stopped; the setup continued.",
+    ],
+)
+def test_fail_contracted_negated_halt(text):
+    """'didn't stop' / 'wasn't stopped' / 'Nothing was stopped' are not halts."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "halt/stop" in result["reason"]
+
+
+def test_pass_waiting_for_the_clone_is_not_a_manual_sync():
+    """'we wait for the clone to finish' — the action word is a noun."""
+    result = get_assert(
+        "Setup done via the transport (`adlc-cli workspace setup --provider coder`). "
+        "We wait for the clone to finish before printing the attach instructions.",
+        PROVISION_CTX,
+    )
+    assert result["pass"] is True, result["reason"]

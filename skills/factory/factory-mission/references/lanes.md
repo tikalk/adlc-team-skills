@@ -236,6 +236,7 @@ A `remote:coder` lane dispatch:
    ```
    Connect:  coder ssh <workspace>
    Then:     cd <project root>          # where .agents/, AGENTS.md and .adlc/init-options.json live
+             . ~/.adlc/secrets.env     # the vars the workspace asked for (if the profile declared any)
              opencode                  # the interactive TUI (opencode run … for a headless step)
    Then in opencode:  /factory-mission --url <issue-url>
    ```
@@ -253,6 +254,12 @@ A `remote:coder` lane dispatch:
    - **The brief never crosses the transport.** The remote session compiles
      its own brief from the issue URL — there is no brief file to place on
      the remote and no transfer channel is needed.
+   - **The environment the workspace asked for is on the remote.** Every
+     `${VAR}` the workspace file references is forwarded by the transport
+     and persisted on the remote as `~/.adlc/secrets.env` (0600), so the
+     developer's later session sources the same environment the setup ran
+     with. A var the profile does not reference is not delivered — the
+     profile is where a workspace declares what it needs.
    - **The session runs in the workspace's project root**, not inside the
      cloned repository: the event hook, the installed skills and
      `AGENTS.md` are bound at the project root, and the hook resolves them
@@ -260,15 +267,31 @@ A `remote:coder` lane dispatch:
      hook (`Cannot find module '<clone>/.agents/dispatcher.mjs'`).
 5. Wait — the developer drives from here. The lane does not run the
    mission's steps itself, and it never spawns the agent CLI.
-6. Teardown: developer types `done` → the lane runs the teardown gate:
-   `bash skills/factory/factory-mission/scripts/bash/remote-coder-teardown.sh <workspace> --yes`
-   Teardown stays skill-side because the provider transport exposes no
-   delete operation; it is the only remaining lane script. The gate
-   refuses a name that is not lane-shaped (`<repo>-mission-<id>`), lists
-   **all** workspaces (not just the caller's own) so an owned-elsewhere
-   workspace is not mistaken for "not found", and exits non-zero unless the
-   workspace was deleted or there was nothing to delete (`6` = waiting for
-   the `done`, `4` = lookup failed, `5` = delete failed).
+6. **Teardown — the developer says "done", the lane tears down.** The
+   developer never types a path and never remembers one. When they say
+   `done` (or `mission done`, or ask to tear the workspace down), the lane
+   runs the teardown gate itself:
+
+   ```
+   bash <the skill's own directory>/scripts/bash/remote-coder-teardown.sh <workspace> --yes
+   ```
+
+   - The path is **resolved by the skill**, not remembered by the
+     developer: the installed skill's own directory
+     (`.agents/skills/factory-mission/scripts/bash/remote-coder-teardown.sh`
+     in the workspace, `skills/factory/factory-mission/scripts/bash/…` in
+     the skills repo). The lane knows its own skill directory; the
+     developer does not have to.
+   - The workspace name comes from the lane's own state — the handle the
+     transport persisted (`.adlc/workspaces/<name>.json`), not from
+     memory.
+   - Teardown stays skill-side because the provider transport exposes no
+     delete operation; it is the only remaining lane script. The gate
+     refuses a name that is not lane-shaped (`<repo>-mission-<id>`), lists
+     **all** workspaces (not just the caller's own) so an owned-elsewhere
+     workspace is not mistaken for "not found", and exits non-zero unless
+     the workspace was deleted or there was nothing to delete (`6` =
+     waiting for the `done`, `4` = lookup failed, `5` = delete failed).
 
 ### Remote execution by the executor (not this lane)
 

@@ -274,7 +274,8 @@ def test_lanes_names_the_teardown_script():
     """The kept teardown script must be named in the contract, or it is dead code."""
     text = LANES.read_text()
     assert "remote-coder-teardown.sh" in text, "the contract must name the teardown script"
-    assert "skills/factory/factory-mission/scripts/bash/remote-coder-teardown.sh" in text
+    assert "scripts/bash/remote-coder-teardown.sh" in text
+    assert ".agents/skills/factory-mission/scripts/bash/remote-coder-teardown.sh" in text
 
 
 def test_lanes_keeps_the_halt_and_refuse_rule():
@@ -527,3 +528,28 @@ def test_skill_pins_the_dispatch_rule():
     assert "The DISPATCH dimension picks the lane" in skill
     assert "dispatch is `interactive` or gating is `human-required`" not in skill
     assert "Gating `human-required` does not" in skill
+
+
+def test_lanes_teardown_is_triggered_by_the_developer_saying_done():
+    """'done' must run the teardown — the developer types no path."""
+    text = LANES.read_text()
+    assert "the developer says \"done\", the lane tears down" in text
+    assert "mission done" in text
+    assert "resolved by the skill" in text
+    assert "the skill's own directory" in text
+    assert ".adlc/workspaces/<name>.json" in text
+
+
+def test_skill_acts_on_done_without_asking_for_a_path():
+    """The skill must tear down on request, resolving its own script path."""
+    skill = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
+    assert "Teardown on request" in skill
+    assert "do NOT ask the developer for a path" in skill
+    assert "remote-coder-teardown.sh" in skill
+
+
+def test_lanes_delivers_the_workspace_environment_to_the_remote():
+    """The vars the profile references must reach the remote session."""
+    text = re.sub(r"\s+", " ", LANES.read_text())
+    assert ".adlc/secrets.env" in text
+    assert "the profile is where a workspace declares what it needs" in text

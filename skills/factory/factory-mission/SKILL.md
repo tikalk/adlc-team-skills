@@ -43,7 +43,8 @@ It implements the following key factory platform capabilities:
 
 ### Phase 0 to 4: Setup & Compilation
 1. Read the run's `mission.yml` (`.adlc/workflows/runs/<run_id>/mission.yml`). Resolve execution and supervision.
-2. If `--issue <ref>` (or a mission URL resolving to an issue) is specified:
+2. If `--issue <ref>` or `--url <issue-url>` is specified (a mission URL
+   resolving to an issue is accepted by either flag):
    - Discover credentials and MCP/CLI tools (`references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
    - Read the labels. The DISPATCH dimension picks the lane; the
@@ -51,9 +52,12 @@ It implements the following key factory platform capabilities:
      all (`tracker-integration.md` §2).
    - If dispatch is `interactive`:
      - With `--provider coder`: take the `remote:coder` lane — `adlc-cli
-       workspace setup --provider coder` provisions the workspace, the CLI
-       owns all env setup and transfer (no skill-side sync script), then
-       print attach instructions for the developer's OWN tab and wait.
+       workspace setup --provider coder` provisions the workspace and the
+       CLI owns all env setup and transfer (no skill-side sync script). The
+       lane then **hands the session to the developer**: it prints the
+       attach command, and the developer reconnects and re-runs the SAME
+       mission command (without `--provider`) inside the workspace, where
+       the mission runs locally (`references/lanes.md`).
        The skill never opens tabs or spawns the **agent** CLI.
      - Without `--provider`: **HALT execution** (hand back to the
        interactive session) — the human-required gate is never executed by

@@ -230,24 +230,36 @@ A `remote:coder` lane dispatch:
    `not implemented: live coder transport` (exit 1) — halt and hand back.
    Do not sync manually and do not fall back to a script: a non-zero exit
    is a stop condition.
-4. Print attach instructions for the developer's own tab (do NOT
-   attach, do NOT open tabs). Primary path is plain SSH, which always works:
-   - `coder ssh <workspace>` (primary), then `cd <repo>`.
-   - `herdr --remote coder.<workspace>.main` fallback (requires herdr
-     client on the developer's Mac; address format `coder.<workspace>.main`).
-   Then wait — the developer drives; the lane resumes on `done`.
-5. The developer launches the agent CLI in THEIR tab on the brief:
-   `opencode --prompt "$(cat .adlc/workflows/runs/<run_id>/brief.md)"`
-   (the lane never spawns the CLI).
-   - **Brief placement (open item):** the brief must exist on the remote
-     at `.adlc/workflows/runs/<run_id>/brief.md` — the run dir is
-     gitignored, so the clone does not carry it. Placing it is the
-     transport's job (the live SSH transport is not implemented yet, so the
-     mock path cannot place it). The lane never attaches to the remote, so
-     it cannot check the file either: the **developer** verifies it in
-     their own tab (`test -f .adlc/workflows/runs/<run_id>/brief.md`) before
-     launching the agent, and the lane tells them to do so. If the file is
-     missing there, the developer halts — the lane hands the decision back.
+4. **Hand the session to the developer.** The lane owns the WORKSPACE; the
+   developer owns the SESSION. Print the re-entry sequence, verbatim:
+
+   ```
+   Connect:  coder ssh <workspace>
+   Then:     cd <project root>          # where .agents/, AGENTS.md and .adlc/init-options.json live
+             opencode                  # the interactive TUI (opencode run … for a headless step)
+   Then in opencode:  /factory-mission --url <issue-url>
+   ```
+
+   The developer's command is the SAME mission, **without `--provider
+   coder`** — the workspace is already provisioned and set up, so the
+   mission runs locally in that session, in the cloned repository, with the
+   skills and the team context already bound. (The `herdr --remote
+   coder.<workspace>.main` path is the fallback for reaching that session
+   when `coder ssh` is unavailable; it requires the herdr client on the
+   developer's Mac.)
+
+   Two consequences worth stating:
+
+   - **The brief never crosses the transport.** The remote session compiles
+     its own brief from the issue URL — there is no brief file to place on
+     the remote and no transfer channel is needed.
+   - **The session runs in the workspace's project root**, not inside the
+     cloned repository: the event hook, the installed skills and
+     `AGENTS.md` are bound at the project root, and the hook resolves them
+     relative to the project. A session started inside the clone fails the
+     hook (`Cannot find module '<clone>/.agents/dispatcher.mjs'`).
+5. Wait — the developer drives from here. The lane does not run the
+   mission's steps itself, and it never spawns the agent CLI.
 6. Teardown: developer types `done` → the lane runs the teardown gate:
    `bash skills/factory/factory-mission/scripts/bash/remote-coder-teardown.sh <workspace> --yes`
    Teardown stays skill-side because the provider transport exposes no

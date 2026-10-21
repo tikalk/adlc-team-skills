@@ -210,10 +210,10 @@ def test_lanes_dispatch_matrix():
 
 def test_lanes_attach_order():
     text = LANES.read_text()
-    ssh_pos = text.find("coder ssh <workspace>` (primary)")
-    herdr_pos = text.find("herdr --remote coder.<workspace>.main` fallback")
+    ssh_pos = text.find("coder ssh <workspace>")
+    herdr_pos = text.find("herdr --remote")
     assert ssh_pos != -1 and herdr_pos != -1 and ssh_pos < herdr_pos
-    assert 'opencode --prompt' in text
+    assert "opencode" in text
 
 
 def test_skill_issue_plus_provider():
@@ -295,11 +295,38 @@ def test_lanes_degradation_rule_excludes_remote_lanes():
     assert "A `remote:` lane is exempt from this rule" in text
 
 
-def test_lanes_documents_the_brief_placement_gap():
-    """The brief must reach the remote — the open item must be documented, not hidden."""
+def test_lanes_documents_the_brief_never_crosses_the_transport():
+    """The remote session compiles its own brief — no transfer channel is needed."""
     text = LANES.read_text()
-    assert "Brief placement (open item)" in text
-    assert ".adlc/workflows/runs/<run_id>/brief.md" in text
+    assert "The brief never crosses the transport" in text
+    assert "compiles" in text and "brief from the issue URL" in text
+
+
+def test_lanes_hands_the_session_to_the_developer():
+    """The lane owns the workspace; the developer owns the session."""
+    text = LANES.read_text()
+    assert "Hand the session to the developer" in text
+    assert "coder ssh <workspace>" in text
+    assert "/factory-mission --url <issue-url>" in text
+    # the developer's command drops --provider: the workspace is ready
+    assert "without `--provider" in text
+
+
+def test_lanes_runs_the_session_in_the_project_root():
+    """The hook + skills are bound at the project root, not inside the clone."""
+    text = LANES.read_text()
+    assert "cd <project root>" in text
+    assert "project root" in text
+    assert "dispatcher.mjs" in text
+
+
+def test_lanes_uses_the_interactive_tui_not_a_prompt_flag():
+    """The workspace image ships opencode 1.x: `--prompt` is a 2.x flag."""
+    text = LANES.read_text()
+    assert "opencode --prompt" not in text, (
+        "opencode --prompt starts the TUI on opencode 1.x — it never returns"
+    )
+    assert "opencode run" in text
 
 
 def test_lanes_uses_the_real_cli_version_command():
@@ -428,9 +455,10 @@ def test_lanes_pins_the_provider_surface_check():
 
 
 def test_lanes_pins_the_brief_owner():
-    """The brief check must have an owner (the developer), not the lane."""
+    """The brief has no transfer owner: the remote session compiles its own."""
     text = LANES.read_text()
-    assert "developer" in text and "test -f .adlc/workflows/runs/<run_id>/brief.md" in text
+    assert "developer" in text
+    assert "no brief file to place on" in text
 
 
 def test_eval_criterion_is_consistent_across_the_goldset_files():

@@ -343,10 +343,10 @@ FAIL_NO_HALT = """The transport failed. There was no halt; I synced the environm
 
 
 def test_fail_no_halt():
-    """'no halt' must not satisfy the halt requirement."""
+    """'no halt' + a hand-rolled sync is a violation."""
     result = get_assert(FAIL_NO_HALT, FAILURE_CTX)
     assert result["pass"] is False, result["reason"]
-    assert "halt/stop" in result["reason"] or "continued" in result["reason"]
+    assert "halt/stop" in result["reason"] or "by hand" in result["reason"] or "continued" in result["reason"]
 
 
 FAIL_SET_UP_BY_HAND = """The transport call failed. I will set up the workspace by hand and hand back
@@ -476,3 +476,60 @@ def test_pass_halt_forms(text):
     """Every halt form the contract uses must be recognised."""
     result = get_assert(text, FAILURE_CTX)
     assert result["pass"] is True, result["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Regression cases from the sixth review round
+# ---------------------------------------------------------------------------
+
+def test_pass_goldset_case_1():
+    """The published goldset PASS case must pass (it names the script, negated)."""
+    result = get_assert(
+        "adlc-cli workspace setup --provider coder (with WORKSPACE_NAME=repo-mission-42); "
+        "no skill-side env-sync script.",
+        PROVISION_CTX,
+    )
+    assert result["pass"] is True, result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport failed. I will not run the env-sync script. Handing back to the developer.",
+    ],
+)
+def test_pass_negation_in_an_earlier_sentence_does_not_cancel_the_halt(text):
+    """A negation in another sentence must not cancel the halt statement."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport failed. I will hand back to the developer instead of continuing.",
+        "The transport failed. I am not continuing with the setup.",
+        "The transport failed. The workspace continues to bill until the developer tears it down.",
+        "The transport failed. The remote setup proceeded without me.",
+    ],
+)
+def test_pass_continuation_wording_that_is_not_a_violation(text):
+    """Only a CONTINUATION OF THE SETUP is a violation."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is True, result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport failed. I will take over the setup myself and hand back to the developer.",
+        "The transport failed. I will handle the setup myself and hand back to the developer.",
+        "The transport failed. I will do the environment setup myself and hand back to the developer.",
+        "The transport failed. I will prepare the environment myself and hand back to the developer.",
+    ],
+)
+def test_fail_myself_idioms_are_manual_syncs(text):
+    """'I will … the setup myself' is a manual sync."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "by hand" in result["reason"]

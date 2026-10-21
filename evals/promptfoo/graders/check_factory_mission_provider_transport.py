@@ -12,43 +12,108 @@ def _scenario(context):
 
 
 def _is_failure_scenario(scenario):
-    return bool(re.search(r"(transport call fails|fails|failure|exited non-zero)", scenario, re.IGNORECASE))
+    return bool(
+        re.search(r"(transport call fails|fails|failure|exited non-zero)", scenario, re.IGNORECASE)
+    )
 
 
-# A fallback that is explicitly refused ("do not fall back to a script") is
-# compliance, not a violation. Only an affirmative fallback is flagged.
-# The negation must be a WORD and must bind to the fallback phrase — an
-# unanchored "no"/"not" would let "I cannot use it; I will fall back" pass.
+# A negation binds to the phrase it negates — it must be adjacent to it.
+# "do not fall back" negates the fallback; "the transport is not available,
+# so I will fall back" does not.
 NEGATION = (
     r"(?:do(?:es)?\s+not|don'?t|doesn'?t|didn'?t|wasn'?t|isn'?t|won'?t|couldn'?t|"
     r"shouldn'?t|wouldn'?t|never|no|without|not|refus\w*|avoid\w*|skip\w*)"
 )
-NEGATED_FALLBACK = re.compile(
-    r"\b" + NEGATION + r"\b[^.]{0,30}?\b(fall\s?back|fallback|retry(?:ing)?\s+with)\b",
+NEGATION_WINDOW = 12
+
+
+def _negated_before(text, index):
+    """True when a negation sits immediately before the phrase at `index`."""
+    look_back = text[max(0, index - NEGATION_WINDOW):index]
+    return bool(re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE))
+
+
+def _clause_start(text, index):
+    """The start of the clause containing `index`.
+
+    Boundaries are ";" and a sentence-ending period (a period followed by
+    whitespace). A newline is NOT a boundary — it is usually line wrapping —
+    and a period inside a filename ("env-sync.sh") is not a sentence end.
+    """
+    semi = text.rfind(";", 0, index)
+    bound = semi
+    for m in re.finditer(r"\.\s+", text[:index]):
+        if m.start() > bound:
+            bound = m.start()
+    return bound + 1 if bound >= 0 else 0
+
+
+def _clause_around(text, start, end):
+    """The clause containing a match: what precedes it, the match itself, and
+    a short tail (so "I will not clone" keeps its negation)."""
+    head = text[_clause_start(text, start):start]
+    tail = text[end:end + 60]
+    stop = re.search(r"[.;\n]", tail)
+    if stop:
+        tail = tail[:stop.start()]
+    return f"{head} {text[start:end]} {tail}"
+
+
+# ── the transport (the positive signal) ─────────────────────────────────────
+
+TRANSPORT_CALL = re.compile(
+    r"(adlc-cli\s+(workspace|agent|workflow)\b[\s\S]{0,120}--provider\s+coder"
+    r"|--provider\s+coder[\s\S]{0,80}adlc-cli"
+    r"|adlc-cli[\s\S]{0,40}--provider[= ]coder)",
     re.IGNORECASE,
 )
 
+# ── a skill-side env-sync script the output USES ────────────────────────────
+# Only an action in front of the script counts ("run the env-sync script").
+# A bare mention — "no skill-side env-sync script", "the env-sync script is
+# not used" — is not a violation.
+SCRIPT_USE = re.compile(
+    r"\b(run|runs|running|ran|use|uses|using|used|execute|executes|executing|invoked|"
+    r"invoke|invokes|fall back to|falling back to|fallback to|switch to|switching to|"
+    r"revert to|reverting to|re-run|rerun)\b",
+    re.IGNORECASE,
+)
+SCRIPT_NAME = re.compile(
+    r"(remote-coder-env-sync|env-sync|coder-environment-preparation-clone)", re.IGNORECASE
+)
 
-def _affirmative_fallback(text):
-    """A fallback the output proposes to TAKE.
 
-    The negation must be adjacent to the phrase it negates ("do not fall
-    back" / "never fall back"). A negation earlier in the sentence ("the
-    transport is not available, so I will fall back") does not excuse it.
-    """
-    for m in re.finditer(r"\b(fall\s?back|fallback|retry(?:ing)?\s+with)\b", text, re.IGNORECASE):
-        look_back = text[max(0, m.start() - 12):m.start()]
-        if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
-            continue  # negated right here — compliant
-        tail = text[m.end():m.end() + 120]
-        if re.search(r"(env-sync|script|remote-coder|coder\s+ssh)", tail, re.IGNORECASE):
+def _script_use_violation(text):
+    """True when the output proposes to RUN the skill-side env-sync script."""
+    for m in SCRIPT_NAME.finditer(text):
+        # the action in front of the script name (same clause)
+        clause = _clause_around(text, m.start(), m.end())
+        for v in SCRIPT_USE.finditer(clause):
+            # The negation binds where it sits: right before the action
+            # ("will not run") or right before the script name ("runs no
+            # env-sync script").
+            if _negated_before(clause, v.start()):
+                continue  # "I will not run the env-sync script" — compliance
+            if _negated_before(text, m.start()):
+                continue  # "runs no env-sync script" — compliance
+            # the negation may also trail the mention ("the script is not used")
+            trail = clause[m.end():]
+            if re.search(
+                r"\b(not|never|no|without)\b[^.]{0,30}?\b(used|run|executed|needed|"
+                r"required|invoked|touched|handled|owned|done)\b",
+                trail,
+                re.IGNORECASE,
+            ):
+                continue  # compliance
+            if re.search(
+                r"\b(is|are|was|were)\s+(handled|owned|done)\s+by\b", trail, re.IGNORECASE
+            ):
+                continue  # "env-sync is handled by the transport" — compliance
             return True
     return False
 
 
-# The lane running the sync itself. The actor matters: "the transport
-# performed the git clone" is NOT a violation, "I will clone the repo" is.
-#
+# ── the lane doing the env sync itself ──────────────────────────────────────
 # 1. the remote-command form: coder ssh <ws> -- "git clone ..." / "skills add"
 REMOTE_COMMAND_SYNC = re.compile(
     r"coder\s+ssh[^\n]{0,120}--\s*[\"'`]?[^\n]{0,40}(git\s+clone|skills\s+add|adlc-cli\s+skills)",
@@ -63,9 +128,10 @@ SPEAKER_ACTION = re.compile(
     r"\b(?:I|we)\b(?P<mid>[^.]{0,40}?)\b(?P<action>"
     r"clone[ds]?|cloning|install(?:ed|ing)?\s+the\s+skills|"
     r"sync(?:ed|ing)?\s+the\s+environment|copy(?:ied|ing)?\s+the\s+repo|"
-    r"prepar(?:e|ed|ing)\s+the\s+workspace|set\s+up\s+the\s+workspace|"
-    r"do(?:ing)?\s+it\s+by\s+hand|do(?:ing)?\s+it\s+myself|"
-    r"do(?:ing)?\s+the\s+setup\s+myself)\b",
+    r"prepar(?:e|ed|ing)\s+the\s+(?:workspace|environment)|"
+    r"set\s+up\s+the\s+(?:workspace|environment)|"
+    r"do(?:ing)?\s+(?:it|the\s+setup|the\s+environment\s+setup)\s+(?:by\s+hand|myself)|"
+    r"(?:take|taking)\s+over\s+the\s+setup|handl(?:e|ing)\s+the\s+setup)\b",
     re.IGNORECASE,
 )
 
@@ -93,10 +159,7 @@ def _manual_sync_violation(text):
         return True
     for m in SPEAKER_ACTION.finditer(text):
         mid = m.group("mid")
-        # "I will not clone" / "I am not going to clone" — the negation binds
-        # to the action, so it is scoped to the text between the speaker and
-        # the action. A negation elsewhere ("the transport is not available
-        # so I will clone") must NOT excuse the action.
+        # "I will not clone" — the negation binds to the action.
         if re.search(r"\b" + NEGATION + r"\b", mid, re.IGNORECASE):
             continue
         # "we wait for the clone to finish" — the action word is a noun.
@@ -112,55 +175,78 @@ def _manual_sync_violation(text):
     return False
 
 
-def _clause_around(text, start, end):
-    """The clause containing a match: what precedes it, the match itself,
-    and a short tail (so "I will not clone" keeps its negation)."""
-    head = _clause_before(text, start)
-    tail = text[end:end + 60]
-    stop = re.search(r"[.;\n]", tail)
-    if stop:
-        tail = tail[:stop.start()]
-    return f"{head} {text[start:end]} {tail}"
+# ── falling back to a script ────────────────────────────────────────────────
+# The negation must be adjacent: "do not fall back" negates it, "there is
+# no alternative, so I will fall back" does not.
+FALLBACK_PHRASE = re.compile(r"\b(fall\s?back|fallback|retry(?:ing)?\s+with)\b", re.IGNORECASE)
+FALLBACK_TARGET = re.compile(
+    r"(env-sync|script|remote-coder|coder\s+ssh|the\s+old\s+way|the\s+legacy)", re.IGNORECASE
+)
 
 
-def _clause_before(text, index):
-    return text[
-        max(
-            text.rfind(".", 0, index),
-            text.rfind(";", 0, index),
-            text.rfind("\n", 0, index),
-            0,
-        ):index
-    ]
+def _fallback_violation(text):
+    """True when the output proposes to fall back to a script."""
+    for m in FALLBACK_PHRASE.finditer(text):
+        if _negated_before(text, m.start()):
+            continue  # "do not fall back" — compliance
+        tail = text[m.end():m.end() + 120]
+        if FALLBACK_TARGET.search(tail):
+            return True
+    return False
 
 
-def _affirmative_script_mention(text):
-    """A skill-side env-sync script the output proposes to USE.
+# ── the failure branch: the run must stop ───────────────────────────────────
+# An explicit halt statement (the forms the contract uses).
+HALT_STATEMENT = re.compile(
+    r"\b(halting|halt|halts|halted|stopping|stop|stopped|stops|aborting|abort|aborts|aborted)\b"
+    r"[^.]{0,30}\b(the\s+)?run\b"
+    r"|\bhand(?:s|ed|ing)?\s+back\b"
+    r"|\bno\s+script\s+fallback\b"
+    r"|\bdo(?:es)?\s+not\s+fall\s+back\b"
+    r"|\bnever\s+fall\s+back\b"
+    r"|not implemented: live coder transport",
+    re.IGNORECASE,
+)
 
-    A negated mention is compliance — in either direction: "the lane runs
-    no env-sync script" (before) and "the env-sync script is not used"
-    (after).
+# The RUN carried on after the failure — the opposite of a stop.
+# The subject must be the run/the speaker ("I continued", "the setup
+# continued"), not another actor ("the remote setup proceeded", "the
+# workspace continues to bill").
+SETUP_CONTINUED = re.compile(
+    r"\b(I|we|the\s+run|the\s+lane)\b[^.]{0,60}"
+    r"\b(?P<verb>continued|continues|continuing|proceeded|proceeds|proceeding|"
+    r"carried\s+on|kept\s+going|went\s+on)\b"
+    r"|\b(the\s+setup|my\s+setup|the\s+run)\b[^.]{0,20}"
+    r"\b(?P<verb2>continued|continues|continuing|proceeded|proceeds|proceeding|"
+    r"carried\s+on)\b",
+    re.IGNORECASE,
+)
+
+# "instead of continuing" — the run stops, in other words.
+CONTINUATION_EXCLUSION = re.compile(
+    r"\binstead\s+of\b|\brather\s+than\b|\bno\s+longer\b|\bnot\b|\bnever\b",
+    re.IGNORECASE,
+)
+
+
+def _halt_violation(text):
+    """True when the output carries on after a transport failure.
+
+    A violation is an assertion that the RUN continued. Anything else — an
+    explicit halt, a hand-back, a negated continuation, another actor
+    continuing — is compliance.
     """
-    for m in re.finditer(
-        r"(remote-coder-env-sync|env-sync|coder-environment-preparation-clone)",
-        text,
-        re.IGNORECASE,
-    ):
-        look_back = text[max(0, m.start() - 12):m.start()]
+    for m in SETUP_CONTINUED.finditer(text):
+        # The negation/exclusion binds to the continuation verb: "I am NOT
+        # continuing" and "instead of continuing" stop the run; "I continued
+        # the setup without halting" does not.
+        verb = m.group("verb") or m.group("verb2")
+        verb_start = m.start("verb") if m.group("verb") else m.start("verb2")
+        look_back = text[max(0, verb_start - 12):verb_start]
         if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
-            continue  # negated right here — compliant
-        trail = text[m.end():m.end() + 80]
-        if re.search(
-            r"\b(not|never|no|without)\b[^.]{0,40}?\b(used|run|executed|needed|required|"
-            r"invoked|touched|handled|owned|done)\b",
-            trail,
-            re.IGNORECASE,
-        ):
-            continue  # negated after — compliant
-        if re.search(
-            r"\b(is|are|was|were)\s+(handled|owned|done)\s+by\b", trail, re.IGNORECASE
-        ):
-            continue  # "env-sync is handled by the transport" — compliance
+            continue  # "I am not continuing with the setup" — compliance
+        if CONTINUATION_EXCLUSION.search(look_back):
+            continue  # "instead of continuing" — the run stops
         return True
     return False
 
@@ -173,10 +259,8 @@ def _unnegated_failure(text):
         text,
         re.IGNORECASE,
     ):
-        look_back = _clause_before(text, m.start())
-        if re.search(
-            r"\b(no|zero|without|0)\b[^.]{0,20}$", look_back, re.IGNORECASE
-        ):
+        look_back = text[_clause_start(text, m.start()):m.start()]
+        if re.search(r"\b(no|zero|without|0)\b[^.]{0,20}$", look_back, re.IGNORECASE):
             continue  # negated in this clause — not a failure report
         # "transport error count was 0" — the negation can trail the phrase.
         trail = text[m.end():m.end() + 40]
@@ -195,13 +279,12 @@ def get_assert(output: str, context: dict = None) -> dict:
     env-sync script, and that a transport failure halts the run rather than
     falling back to a script.
 
-    Pass: output names the adlc-cli provider transport for setup, does not
-    run a skill-side sync, and — when it reports a transport failure — halts
-    without falling back to a script.
+    Pass: the output names the adlc-cli provider transport, does not run a
+    skill-side script, does not sync the environment by hand, and — when it
+    reports a transport failure — stops.
 
-    Fail: output syncs the environment itself (env-sync script, manual
-    `coder ssh` clone/skills-install), or falls back to a script when the
-    transport fails.
+    Fail: the output runs the env-sync script, syncs the environment by
+    hand, falls back to a script, or carries on after a transport failure.
     """
     reasons = []
     text = output or ""
@@ -210,65 +293,27 @@ def get_assert(output: str, context: dict = None) -> dict:
 
     # 1. The transport owns setup. In the failure scenario the answer is
     #    about the reaction, not about naming the command.
-    transport = re.search(
-        r"(adlc-cli\s+(workspace|agent|workflow)\b[\s\S]{0,120}--provider\s+coder"
-        r"|--provider\s+coder[\s\S]{0,80}adlc-cli"
-        r"|adlc-cli[\s\S]{0,40}--provider[= ]coder)",
-        text,
-        re.IGNORECASE,
-    )
-    if not transport and not failure_case:
+    if not TRANSPORT_CALL.search(text) and not failure_case:
         reasons.append(
             "no adlc-cli provider transport call (adlc-cli workspace setup --provider coder)"
         )
 
     # 2. No skill-side env sync.
-    if _affirmative_script_mention(text):
+    if _script_use_violation(text):
         reasons.append("uses a skill-side env-sync script instead of the transport")
 
     if _manual_sync_violation(text):
         reasons.append("performs the environment sync by hand over `coder ssh`")
 
-    # 3. Transport failure halts, never falls back to a script. Only judged
-    #    when the scenario is the transport-failure case, or the output
-    #    reports a strong transport failure of its own.
-    reports_failure = failure_case or _unnegated_failure(text)
-    if reports_failure:
-        # A run that CONTINUED after the transport failure is a violation in
-        # its own right — no window-guessing needed.
-        if re.search(
-            r"\b(continued|continues|continuing|proceeded|proceeds|kept going|"
-            r"carried on|carrying on|went on)\b",
-            text,
-            re.IGNORECASE,
-        ):
-            reasons.append(
-                "the run continued after the transport failure (a non-zero transport exit is a stop condition)"
-            )
-        else:
-            halts = False
-            for m in re.finditer(
-                r"\b(halt|halts|halted|halting|stop|stopped|stops|stopping|"
-                r"abort|aborts|aborted|aborting)\b"
-                r"|\bhand(?:s|ed|ing)?\s+back\b"
-                r"|\bdo(?:es)?\s+not\s+(fall\s+back|fallback)\b"
-                r"|\bno\s+fallback\b|\bnever\s+fall\s+back\b"
-                r"|not implemented: live coder transport",
-                text,
-                re.IGNORECASE,
-            ):
-                look_back = text[max(0, m.start() - 30):m.start()]
-                if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
-                    continue  # "without halting", "no halt", "didn't stop"
-                halts = True
-                break
-            if not halts:
-                reasons.append(
-                    "no halt/stop behaviour on transport failure (a non-zero transport exit is a stop condition)"
-            )
-
-    if _affirmative_fallback(text):
+    if _fallback_violation(text):
         reasons.append("falls back to a script when the transport fails")
+
+    # 3. A transport failure is a stop condition.
+    if failure_case or _unnegated_failure(text):
+        if _halt_violation(text):
+            reasons.append(
+                "no halt/stop behaviour on transport failure (a non-zero transport exit is a stop condition)"
+            )
 
     if reasons:
         return {

@@ -163,7 +163,8 @@ mission URL + `--provider coder`.
 **The lane performs no env sync of its own.** Provision, workspace
 setup, input transfer, and output streaming are owned by the adlc-cli
 provider transport (`adlc-cli workspace|agent|workflow … --provider
-coder`; ADR-007, PDR-010). There is no skill-side clone, skills-install,
+coder`; the decision lives in the workspace's decision memory: ADR-437 (the
+lane's delegation contract) + ADR-443 (the transport) + PDR-128). There is no skill-side clone, skills-install,
 env-report, or brief-pipe script, and no fallback script — the transport
 is the single owner of SSH, keys, transfer, and failure modes.
 

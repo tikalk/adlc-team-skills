@@ -51,10 +51,14 @@ It implements the following key factory platform capabilities:
        workspace setup --provider coder` provisions the workspace, the CLI
        owns all env setup and transfer (no skill-side sync script), then
        print attach instructions for the developer's OWN tab and wait.
-       The skill never opens tabs or spawns the CLI.
+       The skill never opens tabs or spawns the **agent** CLI.
      - Without `--provider`: **HALT execution** (hand back to the
        interactive session) — the human-required gate is never executed by
        an unattended agent.
+   - If dispatch is `autonomous` or `supervised`: the `agent` lane runs the
+     steps. `--provider` is **refused** in these modes — a remote lane hands
+     an unattended run to a human, and the human-required gate must not be
+     executed by an unattended agent.
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue: read spec description from arguments. The comment bus is inactive — steps communicate through local files only. `--provider` without an issue is refused.
 4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.

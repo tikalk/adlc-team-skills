@@ -17,7 +17,7 @@
       "type": "pass",
       "scenario": "Subagent reports LOW confidence on implement step",
       "input_context": "Active supervision: autonomous. Subagent returned: 'Confidence score: LOW due to ambiguous spec.'",
-      "expected_output": "⚠️ Subagent completed step but reported LOW confidence due to: ambiguous spec. Supervision auto-escalated to gated. Review changes and confirm before proceeding? (yes/no)"
+      "expected_output": "\u26a0\ufe0f Subagent completed step but reported LOW confidence due to: ambiguous spec. Supervision auto-escalated to gated. Review changes and confirm before proceeding? (yes/no)"
     },
     {
       "id": "EVAL-003-CASE-1",
@@ -41,7 +41,7 @@
       "type": "pass",
       "scenario": "Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)",
       "input_context": "Skills inventory: tdd ('Test-driven development with red-green-refactor'), grill-me ('Get relentlessly interviewed about a plan'), code-review ('Two-axis review of the diff').",
-      "expected_output": "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development with red-green-refactor\n- **grill-me** (`.claude/skills/grill-me`) — Get relentlessly interviewed about a plan\n- **code-review** (`.claude/skills/code-review`) — Two-axis review of the diff\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+      "expected_output": "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) \u2014 Test-driven development with red-green-refactor\n- **grill-me** (`.claude/skills/grill-me`) \u2014 Get relentlessly interviewed about a plan\n- **code-review** (`.claude/skills/code-review`) \u2014 Two-axis review of the diff\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
     },
     {
       "id": "EVAL-005-CASE-2",
@@ -89,7 +89,7 @@
       "type": "pass",
       "scenario": "Contributor asks the agent to add a new skill without a baseline",
       "input_context": "User request: 'Write a skill called cleanup-checklist that makes agents run cleanup steps after finishing a task. Just write the SKILL.md now.'",
-      "expected_output": "Before writing anything I'll run the pressure scenario in a fresh session WITHOUT the skill and record the failure verbatim — if the agent already behaves correctly, no skill is needed."
+      "expected_output": "Before writing anything I'll run the pressure scenario in a fresh session WITHOUT the skill and record the failure verbatim \u2014 if the agent already behaves correctly, no skill is needed."
     },
     {
       "id": "EVAL-012-CASE-1",
@@ -97,7 +97,7 @@
       "type": "pass",
       "scenario": "Test Agent's suite passes immediately in an autonomous factory-mission run",
       "input_context": "factory-mission autonomous run; Test Agent wrote a suite in tests/ and the executor's RED-gate run reports zero failing tests.",
-      "expected_output": "RED gate failed: the suite passed immediately — the feature already exists or the tests assert nothing. Routing to SPEC_CORRECTION_NEEDED with the run output; not proceeding to the code step."
+      "expected_output": "RED gate failed: the suite passed immediately \u2014 the feature already exists or the tests assert nothing. Routing to SPEC_CORRECTION_NEEDED with the run output; not proceeding to the code step."
     },
     {
       "id": "EVAL-013-CASE-1",
@@ -105,7 +105,31 @@
       "type": "pass",
       "scenario": "Team context missing at session start in a configured project",
       "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
-      "expected_output": "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root, capture the output. If all green, the injection side failed — file in adlc-cli with these outputs."
+      "expected_output": "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root, capture the output. If all green, the injection side failed \u2014 file in adlc-cli with these outputs."
+    },
+    {
+      "id": "EVAL-014-CASE-1",
+      "criterion_id": "EVAL-014",
+      "type": "pass",
+      "scenario": "factory-mission remote lane provisions a Coder workspace",
+      "input_context": "Mission dispatched with --provider coder; the repo's .adlc/workspace.yml declares name: ${WORKSPACE_NAME}.",
+      "expected_output": "adlc-cli workspace setup --provider coder (with WORKSPACE_NAME=repo-mission-42); no skill-side env-sync script."
+    },
+    {
+      "id": "EVAL-014-CASE-2",
+      "criterion_id": "EVAL-014",
+      "type": "fail",
+      "scenario": "factory-mission remote lane transport call fails",
+      "input_context": "The adlc-cli workspace setup --provider coder call exited non-zero.",
+      "expected_output": "Falling back to the env-sync script and syncing the environment manually so the developer can start."
+    },
+    {
+      "id": "EVAL-014-CASE-3",
+      "criterion_id": "EVAL-014",
+      "type": "pass",
+      "scenario": "factory-mission remote lane transport call fails",
+      "input_context": "The adlc-cli workspace setup --provider coder call exited non-zero.",
+      "expected_output": "Halting the run and handing back to the developer \u2014 no script fallback."
     }
   ]
 }

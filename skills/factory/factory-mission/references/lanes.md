@@ -55,7 +55,10 @@ lanes:
 The `remote:` keys are read by the remote dispatch contract below:
 `workspace` / `name_var` decide the provisioned workspace name,
 `workspace_file` is the file the CLI reads, `template` is the Coder
-template requested for the workspace.
+template requested for the workspace. (The keys are the lane's
+*declarative* form: the contract's commands below show the resolved
+values — `<workspace>`, `<workspace_file>` — so a profile that sets them
+changes what the lane passes to the transport.)
 
 Without a `lanes` section, every stage runs `inline` (interactive stages)
 or `agent` (unattended stages). This is the default — backward compatible.
@@ -160,26 +163,29 @@ coder`; ADR-007, PDR-010). There is no skill-side clone, skills-install,
 env-report, or brief-pipe script, and no fallback script — the transport
 is the single owner of SSH, keys, transfer, and failure modes.
 
-Dispatch matrix:
+Dispatch matrix (one truth, read with SKILL.md §Phase 0):
 
-| Mode | Provider flag | Lane |
-|------|---------------|------|
-| interactive | `--provider coder` | `remote:coder` (CLI provisions/setups → print attach instructions → wait) |
-| interactive | (none) | **HALT execution** (hand back to the interactive session) |
-| autonomous / supervised | any | unchanged (`agent` lane; provider ignored) |
+| Dispatch / gating | Provider flag | Lane |
+|-------------------|---------------|------|
+| interactive, or gating human-required | `--provider coder` | `remote:coder` (CLI provisions/setups → print attach instructions → wait) |
+| interactive, or gating human-required | (none) | **HALT execution** (hand back to the interactive session) |
+| autonomous / supervised | any | the `agent` lane — `--provider` is **refused** in these modes (a remote lane would hand an unattended run to a human) |
 
 **One owner per step.** On the `remote:coder` lane the DEVELOPER drives the
-agent in their own tab; the lane never spawns the CLI. The transport's
-remote-execution commands (`workflow run` / `agent run … --provider coder`)
-are used when the *executor* owns a remote step (a non-interactive remote
-dispatch) — not by this developer-driven lane.
+agent in their own tab; the lane never spawns the **agent** CLI (it does
+invoke the adlc-cli transport to provision — that is the transport, not an
+agent). The transport's remote-execution commands (`workflow run` /
+`agent run … --provider coder`) belong to the executor when it owns a
+remote step — not to this developer-driven lane.
 
 A `remote:coder` lane dispatch:
 
-1. Verify the transport: `adlc-cli version` resolves AND the provider
-   surface exists (`adlc-cli workspace setup --help` lists `--provider`).
-   If the binary is missing or predates the provider surface, halt with the
-   version requirement — never fall back to a script.
+1. Verify the transport: `adlc-cli version` resolves. The setup call in
+   step 2 must print the provider-path marker on stderr —
+   `provider path: coder workspace` — because an adlc-cli older than the
+   transport ignores `--provider`, runs the LOCAL setup, exits 0 and prints
+   no marker. A missing marker means the transport is not there: halt, name
+   the requirement, and never fall back to a script.
 2. Provision or reuse the workspace through the CLI:
    `WORKSPACE_NAME=<repo>-mission-<issue> adlc-cli workspace setup [<workspace_file>] --provider coder`
    - The CLI loads the repo's `.adlc/workspace.yml` (or the configured
@@ -216,16 +222,20 @@ A `remote:coder` lane dispatch:
      at `.adlc/workflows/runs/<run_id>/brief.md` — the run dir is
      gitignored, so the clone does not carry it. Placing it is the
      transport's job (the live SSH transport is not implemented yet, so the
-     mock path cannot place it). Until it ships, the lane verifies the file
-     is present on the remote before printing the launch command and halts
-     (naming the missing file) if it is not.
-6. Teardown: developer types `done` → explicit confirm → run the lane's
-   teardown gate:
+     mock path cannot place it). The lane never attaches to the remote, so
+     it cannot check the file either: the **developer** verifies it in
+     their own tab (`test -f .adlc/workflows/runs/<run_id>/brief.md`) before
+     launching the agent, and the lane tells them to do so. If the file is
+     missing there, the developer halts — the lane hands the decision back.
+6. Teardown: developer types `done` → the lane runs the teardown gate:
    `bash skills/factory/factory-mission/scripts/bash/remote-coder-teardown.sh <workspace> --yes`
    Teardown stays skill-side because the provider transport exposes no
-   delete operation; it is the only remaining lane script. It refuses a
-   name that is not a lane workspace (`<name>-mission-<id>` shape) and it
-   never deletes a workspace it cannot find.
+   delete operation; it is the only remaining lane script. The gate
+   refuses a name that is not lane-shaped (`<repo>-mission-<id>`), lists
+   **all** workspaces (not just the caller's own) so an owned-elsewhere
+   workspace is not mistaken for "not found", and exits non-zero unless
+   the workspace was actually deleted (`6` = waiting for the `done`,
+   `4` = lookup failed, `5` = delete failed).
 
 ### Remote execution by the executor (not this lane)
 
@@ -244,8 +254,8 @@ workspace and never provisions a second one.
 
 | Placeholder | Replaced with |
 |-------------|---------------|
-| `{workspace}` | The `<repo>-mission-<issue>` workspace name |
-| `{workspace_file}` | The repo's workspace file path (default `.adlc/workspace.yml`) |
+| `{workspace}` | The `<repo>-mission-<issue>` workspace name (written `<workspace>` in the commands below) |
+| `{workspace_file}` | The repo's workspace file path (default `.adlc/workspace.yml`) (written `<workspace_file>` in the commands below) |
 
 ## Template substitution
 

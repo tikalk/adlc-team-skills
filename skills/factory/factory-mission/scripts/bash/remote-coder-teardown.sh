@@ -22,26 +22,61 @@ fi
 # "not found" and "the API call failed" must not look alike: a failed lookup
 # (expired token, wrong org, outage) would otherwise report "nothing to
 # delete" while the workspace keeps running and billing.
-if ! LIST_OUT="$(coder list --output json 2>&1)"; then
+#
+# --all matters: `coder list` defaults to owner:me, so a workspace owned by
+# another identity would be absent from the list and look "not found" while
+# it keeps running.
+if ! LIST_OUT="$(coder list --all --output json 2>&1)"; then
   echo "ERROR: could not list workspaces (the lookup failed, not an empty result):" >&2
   echo "$LIST_OUT" >&2
   echo "Workspace '$WORKSPACE' NOT deleted — resolve the Coder API error and retry." >&2
   exit 4
 fi
 
-if ! grep -q "\"name\": *\"$WORKSPACE\"" <<<"$LIST_OUT" && ! grep -q "\"name\":\"$WORKSPACE\"" <<<"$LIST_OUT"; then
-  echo "Workspace '$WORKSPACE' not found — nothing to delete."
-  exit 0
-fi
+# Parse the payload — a raw grep would treat a malformed/HTML response as an
+# empty list (and an unparseable payload as "nothing to delete").
+FOUND="$(printf '%s' "$LIST_OUT" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    print("PARSE_ERROR")
+    raise SystemExit(0)
+if not isinstance(data, list):
+    print("PARSE_ERROR")
+    raise SystemExit(0)
+target = sys.argv[1]
+for item in data:
+    if isinstance(item, dict) and item.get("name") == target:
+        print("FOUND")
+        raise SystemExit(0)
+print("ABSENT")
+' "$WORKSPACE" 2>/dev/null)"
 
+case "$FOUND" in
+  PARSE_ERROR)
+    echo "ERROR: could not parse the workspace list (the lookup failed, not an empty result)." >&2
+    echo "Workspace '$WORKSPACE' NOT deleted — resolve the Coder API error and retry." >&2
+    exit 4
+    ;;
+  ABSENT)
+    echo "Workspace '$WORKSPACE' not found — nothing to delete."
+    exit 0
+    ;;
+esac
+
+# Exit codes: 0 deleted | 3 refused (not a lane workspace) | 4 lookup failed
+# (not deleted) | 5 delete failed | 6 gate waiting (not confirmed).
+# Only "deleted" exits 0 — an orchestrator must never read "waiting" as done.
 if [ "$CONFIRM" != "--yes" ]; then
   echo "Teardown gate: type 'done' in the shared shell, then re-run with --yes."
   echo "Workspace '$WORKSPACE' left running."
-  exit 0
+  exit 6
 fi
 
-read -r -p "Delete workspace '$WORKSPACE'? [y/N] " answer || { echo "aborted — workspace left running."; exit 1; }
-case "$answer" in
-  [yY]*) coder delete "$WORKSPACE" --yes && echo "deleted: $WORKSPACE" ;;
-  *) echo "aborted — workspace left running." ;;
-esac
+if coder delete "$WORKSPACE" --yes; then
+  echo "deleted: $WORKSPACE"
+  exit 0
+fi
+echo "ERROR: coder delete failed — workspace '$WORKSPACE' may still be running." >&2
+exit 5

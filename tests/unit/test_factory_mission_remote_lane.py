@@ -113,6 +113,11 @@ def _fake_coder(tmp_path, behavior="missing"):
             "#!/usr/bin/env bash\n"
             "echo 'fake coder: unauthorized' >&2\nexit 1\n"
         )
+    elif behavior == "garbage":
+        body = (
+            "#!/usr/bin/env bash\n"
+            "echo '<html>502 Bad Gateway</html>'\nexit 0\n"
+        )
     else:
         body = (
             "#!/usr/bin/env bash\n"
@@ -160,8 +165,9 @@ def test_teardown_finds_workspace_via_show(tmp_path):
     env["PATH"] = str(_fake_coder(tmp_path, "exists")) + os.pathsep + env["PATH"]
     r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1"],
                        capture_output=True, text=True, env=env)
-    assert r.returncode == 0
+    assert r.returncode == 6, "the gate waits for the confirmation — it is not a done state"
     assert "Teardown gate" in r.stdout + r.stderr
+    assert "left running" in r.stdout + r.stderr
 
 
 def test_teardown_lookup_failure_is_not_reported_as_nothing_to_delete(tmp_path):
@@ -303,3 +309,137 @@ def test_lanes_remote_execution_targets_the_mission_workspace():
     """A remote step must target the workspace the lane provisioned."""
     text = LANES.read_text()
     assert "--workspace <repo>-mission-<issue>" in text
+
+
+def test_teardown_unparseable_payload_is_a_failed_lookup(tmp_path):
+    """A garbage payload is not an empty list — it is a failed lookup."""
+    env = dict(os.environ)
+    env["PATH"] = str(_fake_coder(tmp_path, "garbage")) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1", "--yes"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 4, "an unparseable payload must exit non-zero"
+    assert "NOT deleted" in r.stdout + r.stderr
+
+
+def test_teardown_lists_all_workspaces_not_only_owned(tmp_path):
+    """`coder list` defaults to owner:me — the teardown must pass --all."""
+    bindir = tmp_path / "fakebin"
+    bindir.mkdir(exist_ok=True)
+    fake = bindir / "coder"
+    fake.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [ "$1" = "list" ]; then\n'
+        '  case " $* " in\n'
+        '    *" --all "*) echo \'[{"name":"coder-mission-1"}]\' ;;\n'
+        "    *) echo '[]' ;;\n"
+        "  esac\n"
+        "  exit 0\n"
+        "fi\n"
+        "echo 'fake coder: deleted'\nexit 0\n"
+    )
+    fake.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = str(bindir) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1", "--yes"],
+                       capture_output=True, text=True, env=env)
+    out = r.stdout + r.stderr
+    assert "not found" not in out, f"the teardown must list all workspaces: {out}"
+    assert "deleted" in out
+
+
+def test_teardown_yes_deletes_without_a_prompt(tmp_path):
+    """--yes is the explicit confirmation — it must not block on stdin."""
+    env = dict(os.environ)
+    env["PATH"] = str(_fake_coder(tmp_path, "exists")) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1", "--yes"],
+                       capture_output=True, text=True, env=env, input="")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "deleted" in r.stdout + r.stderr
+
+
+def test_teardown_without_confirmation_never_reads_as_done(tmp_path):
+    """Only "deleted" exits 0 — an orchestrator must not read the gate as done."""
+    env = dict(os.environ)
+    env["PATH"] = str(_fake_coder(tmp_path, "exists")) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1"],
+                       capture_output=True, text=True, env=env, input="n\n")
+    assert r.returncode == 6, "the gate waits for the confirmation"
+    assert "deleted" not in r.stdout + r.stderr
+
+
+# --- contract pinning (second review: the ladder/matrix/owner were unpinned) ---
+
+def test_lanes_pins_the_degradation_ladder():
+    """The ladder itself must say a remote lane halts — not only the prose."""
+    text = LANES.read_text()
+    ladder = re.search(r"```\n(cli:<runtime>.*?remote:<provider>.*?)\n```", text, re.S)
+    assert ladder, "the degradation ladder block must exist"
+    block = ladder.group(1)
+    assert "remote:<provider>" in block
+    remote_line = [l for l in block.splitlines() if "remote:<provider>" in l][0]
+    target = remote_line.split("\u2192", 1)[-1].strip().lower()
+    assert target.startswith("halt"), (
+        f"the ladder must route a remote lane to HALT, not to another lane: {remote_line!r}"
+    )
+
+
+def test_lanes_pins_the_dispatch_matrix():
+    """The matrix row for the remote lane must name the remote lane."""
+    text = LANES.read_text()
+    row = re.search(r"\|[^\n]*`--provider coder`[^\n]*\|", text)
+    assert row, "the dispatch matrix must have a --provider coder row"
+    assert "remote:coder" in row.group(0), f"the row must name the remote lane: {row.group(0)!r}"
+
+
+def test_lanes_pins_one_owner_per_step():
+    """The developer/executor split must be stated, not implied."""
+    text = LANES.read_text()
+    assert "One owner per step" in text
+    assert "the DEVELOPER drives" in text
+    assert "never spawns the **agent** CLI" in text
+
+
+def test_lanes_pins_the_teardown_invocation():
+    """The teardown invocation must name the script AND its confirmation flag."""
+    text = LANES.read_text()
+    assert re.search(r"remote-coder-teardown\.sh\s+<workspace>\s+--yes", text), (
+        "the contract must show the teardown invocation with --yes"
+    )
+
+
+def test_lanes_pins_the_remote_placeholders():
+    """The remote placeholder table must define {workspace} and {workspace_file}."""
+    text = LANES.read_text()
+    assert "| `{workspace}` |" in text
+    assert "| `{workspace_file}` |" in text
+
+
+def test_lanes_pins_the_provider_surface_check():
+    """The provider check must look for the transport's marker, not a fake probe."""
+    text = LANES.read_text()
+    assert "provider path: coder workspace" in text
+    assert "workspace setup --help" not in text, (
+        "that command is not a help request — it runs the setup"
+    )
+
+
+def test_lanes_pins_the_brief_owner():
+    """The brief check must have an owner (the developer), not the lane."""
+    text = LANES.read_text()
+    assert "developer" in text and "test -f .adlc/workflows/runs/<run_id>/brief.md" in text
+
+
+def test_eval_criterion_is_consistent_across_the_goldset_files():
+    """One criterion, one name — the three goldset files must agree."""
+    import json
+    evals = ROOT / "evals/promptfoo"
+    goldset = json.loads((evals / "goldset.json").read_text())
+    factory = json.loads((evals / "goldset-factory.json").read_text())
+    ids_g = {c["id"] for c in goldset["cases"]}
+    ids_f = {c["id"] for c in factory["cases"]}
+    assert {"EVAL-014-CASE-1", "EVAL-014-CASE-2", "EVAL-014-CASE-3"} <= ids_g
+    assert {"EVAL-FACTORY-018-CASE-1", "EVAL-FACTORY-018-CASE-2", "EVAL-FACTORY-018-CASE-3"} <= ids_f
+    md = (evals / "goldset.md").read_text()
+    assert "## Criterion EVAL-014:" in md
+    grader = (evals / "graders" / "check_factory_mission_provider_transport.py").read_text()
+    assert "EVAL-014" in grader

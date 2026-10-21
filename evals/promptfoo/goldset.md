@@ -265,3 +265,35 @@ The output offers generic advice (reinstall, restart, update) with no chain chec
 - **Agent Output**: "Looks like a bad install. Reinstall the skills, restart your agent, and try again — that usually fixes it."
 
 
+## Criterion EVAL-014: Factory-Mission Remote Lane Provider-Transport Delegation
+
+**Status**: published
+**Description**: Verifies that a factory-mission run on the `remote:coder` lane sets the remote workspace up through the adlc-cli provider transport (`adlc-cli workspace setup --provider coder`) instead of a skill-side env-sync script (ADR-007, PDR-010), and that a transport failure halts the run rather than falling back to a script.
+
+**Pass Condition**
+The output names the adlc-cli provider transport for workspace setup, runs no skill-side env sync, and — when it reports a transport failure — halts without falling back to a script.
+
+**Fail Condition**
+The output syncs the environment itself (env-sync script, manual `coder ssh` clone/skills-install steps), or falls back to a script when the transport fails.
+
+### Pass Example 1
+- **Scenario**: Remote lane provisions a workspace
+- **Input Context**: Mission dispatched with `--provider coder`; the repo's `.adlc/workspace.yml` declares `name: ${WORKSPACE_NAME}`.
+- **Agent Output**: "Setting up the remote workspace through the transport: `adlc-cli workspace setup --provider coder` with WORKSPACE_NAME=repo-mission-42. The CLI owns clone, skills, and env setup — the lane runs no env-sync script of its own."
+
+### Pass Example 2
+- **Scenario**: Transport reports the live transport is unavailable
+- **Input Context**: The `adlc-cli workspace setup --provider coder` call exits non-zero.
+- **Agent Output**: "`adlc-cli workspace setup --provider coder` exited non-zero (not implemented: live coder transport). Halting the run and handing back to the developer — no script fallback."
+
+### Fail Example 1
+- **Scenario**: Skill-side env sync
+- **Input Context**: Same mission.
+- **Agent Output**: "Running skills/factory/factory-mission/scripts/bash/remote-coder-env-sync.sh with the workspace name and brief path."
+
+### Fail Example 2
+- **Scenario**: Fallback after transport failure
+- **Input Context**: The transport call failed.
+- **Agent Output**: "The transport failed, so I will fall back to the env-sync script and sync the environment manually."
+
+---

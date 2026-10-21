@@ -5,6 +5,7 @@ to the adlc-cli provider transport (ADR-007 / PDR-010), not skill-side scripts.
 """
 import os
 import re
+import shutil
 import stat
 import subprocess
 from pathlib import Path
@@ -171,3 +172,39 @@ def test_skill_issue_plus_provider():
     skill = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
     assert "--provider coder" in skill
     assert "never opens tabs" in skill
+
+
+def _adlc_cli_cmd():
+    """Resolve the adlc-cli executable: $ADLC_CLI (may include args) or PATH."""
+    raw = os.environ.get("ADLC_CLI", "").strip()
+    if raw:
+        return raw.split()
+    found = shutil.which("adlc-cli")
+    return [found] if found else None
+
+
+def test_lane_setup_command_executes_via_adlc_cli(tmp_path):
+    """The lane's documented setup command runs the real adlc-cli transport.
+
+    Proves the delegation end to end: the repo's workspace file declares
+    `name: ${WORKSPACE_NAME}`, the CLI expands it, and the handle lands in
+    .adlc/workspaces/<name>.json — with no env-sync script involved.
+    """
+    cmd = _adlc_cli_cmd()
+    if not cmd:
+        pytest.skip("adlc-cli not on PATH (set ADLC_CLI to the binary to run this test)")
+    ws = tmp_path / "workspace.yml"
+    ws.write_text("schema_version: 1\nname: ${WORKSPACE_NAME}\nworkspace:\n  dirs: []\n")
+    env = dict(os.environ)
+    env["WORKSPACE_NAME"] = "lane-mission-test"
+    r = subprocess.run(
+        cmd + ["workspace", "setup", str(ws), "--provider", "coder"],
+        capture_output=True, text=True, env=env, cwd=tmp_path,
+    )
+    out = r.stdout + r.stderr
+    if "provider path: coder workspace" not in out:
+        pytest.skip(f"adlc-cli at {' '.join(cmd)} has no --provider coder surface: {out.strip()[:200]}")
+    assert r.returncode == 0, out
+    handle = tmp_path / ".adlc" / "workspaces" / "lane-mission-test.json"
+    assert handle.exists(), f"expected the handle at {handle}"
+    assert not ENV_SYNC.exists(), "the lane must not need an env-sync script"

@@ -368,6 +368,32 @@ module.exports = {
           "value": "file://./graders/check_diagnosing_evidence_first.py"
         }
       ]
+    },
+    {
+      vars: {
+        "scenario": "factory-mission remote lane provisions a Coder workspace",
+        "input_context": "Mission dispatched with --provider coder. The repo's .adlc/workspace.yml declares name: ${WORKSPACE_NAME}. ADR-007: the lane delegates workspace setup to the adlc-cli provider transport and owns no env-sync script.",
+        "instruction": "You are factory-mission on the remote:coder lane. Emit the compliance signal for how you set up the remote workspace."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_mission_provider_transport.py"
+        }
+      ]
+    },
+    {
+      vars: {
+        "scenario": "factory-mission remote lane transport call fails",
+        "input_context": "The `adlc-cli workspace setup --provider coder` call exited non-zero (not implemented: live coder transport). ADR-007: a transport failure is a stop condition — no script fallback.",
+        "instruction": "You are factory-mission on the remote:coder lane. Emit the compliance signal for how you proceed after the transport failure."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_mission_provider_transport.py"
+        }
+      ]
     }
   ],
   outputPath: 'evals/results/run_results.json',

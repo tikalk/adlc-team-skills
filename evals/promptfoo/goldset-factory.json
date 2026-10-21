@@ -108,7 +108,7 @@
       "type": "pass",
       "scenario": "PDR-072: factory-init coverage matrix format",
       "input_context": "factory-init bootstrap completed with 5 PDRs, 8 ADRs, and 5 ChDRs across payments/users/notifications areas; a previous sweep exists.",
-      "instruction": "Emit the coverage matrix: a Pivot table with columns (Area, Feature-Area, Sub-System, PDRs, ADRs, ChDRs, Code Evidence, Coverage), then four relation sections titled PDR↔ADR, PDR↔code, ADR↔code, and ChDR↔code — each with a 'Coverage: N%' line and gap lines in the form '- Gap: <description citing record IDs (PDR-NNN/ADR-NNN/ChDR-NNN) or file paths> [layer: product|architecture|change|cross]'. End with a '## Drift vs <previous date> sweep' section (or '## Baseline' on first sweep) listing new gaps, closed gaps, and regressed areas.",
+      "instruction": "Emit the coverage matrix: a Pivot table with columns (Area, Feature-Area, Sub-System, PDRs, ADRs, ChDRs, Code Evidence, Coverage), then four relation sections titled PDR\u2194ADR, PDR\u2194code, ADR\u2194code, and ChDR\u2194code \u2014 each with a 'Coverage: N%' line and gap lines in the form '- Gap: <description citing record IDs (PDR-NNN/ADR-NNN/ChDR-NNN) or file paths> [layer: product|architecture|change|cross]'. End with a '## Drift vs <previous date> sweep' section (or '## Baseline' on first sweep) listing new gaps, closed gaps, and regressed areas.",
       "expected_output": "Matrix with pivot table (all layer columns), four relations each with Coverage: N%, layer-tagged and cited gap lines, and a Drift vs previous sweep section."
     },
     {
@@ -117,7 +117,7 @@
       "type": "pass",
       "scenario": "ADR-361: Sweep layer-tagged correction routing",
       "input_context": "Sweep found a CRITICAL finding [layer: architecture]: ADR-012 is contradicted by code in src/auth/.",
-      "instruction": "Route the CRITICAL finding to the matching track's clarify step — extract the [layer: ...] tag and name the paired clarify skill: product → product-clarify, architecture → architect-clarify, change → change-clarify (cross → the track owning the cited record).",
+      "instruction": "Route the CRITICAL finding to the matching track's clarify step \u2014 extract the [layer: ...] tag and name the paired clarify skill: product \u2192 product-clarify, architecture \u2192 architect-clarify, change \u2192 change-clarify (cross \u2192 the track owning the cited record).",
       "expected_output": "CRITICAL finding [layer: architecture]: ADR-012 contradicted by src/auth/. Routing correction to architect-clarify (correction 1/2)."
     },
     {
@@ -127,7 +127,7 @@
       "scenario": "ADR-389: factory-queue plan mode emits a conforming gate issue",
       "input_context": "PDR-098 G2: dashboards live, keys enforced, kill switch proven. Plan-mode contract: mission-brief format, no title prefixes.",
       "instruction": "Emit the G2 gate issue in mission-brief format.",
-      "expected_output": "## Mission Brief\n\n**Goal**: Make spend visible and controllable.\n\n**Constraints**:\n- Victoria Metrics stack with bundled Grafana (ADR-384-amendment).\n\n**Non-Goals**:\n- No Smart Router tuning (G3).\n\n**Success Criteria**:\n- FinOps dashboards live — *dashboard verification*\n- Kill switch fires on simulated spike — *G2 drill*"
+      "expected_output": "## Mission Brief\n\n**Goal**: Make spend visible and controllable.\n\n**Constraints**:\n- Victoria Metrics stack with bundled Grafana (ADR-384-amendment).\n\n**Non-Goals**:\n- No Smart Router tuning (G3).\n\n**Success Criteria**:\n- FinOps dashboards live \u2014 *dashboard verification*\n- Kill switch fires on simulated spike \u2014 *G2 drill*"
     },
     {
       "id": "EVAL-FACTORY-014-CASE-1B",
@@ -136,7 +136,7 @@
       "scenario": "ADR-389: factory-queue plan mode emits a prefixed, incomplete issue",
       "input_context": "PDR-098 G4: build the deployment repo.",
       "instruction": "Emit an issue that violates the contract: prefixed title, missing Non-Goals.",
-      "expected_output": "[G4] Shippable Package\n\n**Goal**: Build the repo.\n\n**Constraints**:\n- Single new repo (ADR-388).\n\n**Success Criteria**:\n- Repo complete — *repo audit*"
+      "expected_output": "[G4] Shippable Package\n\n**Goal**: Build the repo.\n\n**Constraints**:\n- Single new repo (ADR-388).\n\n**Success Criteria**:\n- Repo complete \u2014 *repo audit*"
     },
     {
       "id": "EVAL-FACTORY-015-CASE-1",
@@ -164,6 +164,24 @@
       "input_context": "Mode 3 found 3 missing labels in an interactive session; the user has not answered yet.",
       "instruction": "Create the missing labels immediately.",
       "expected_output": "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+    },
+    {
+      "id": "EVAL-FACTORY-018-CASE-1",
+      "criterion_id": "ADR-007",
+      "type": "pass",
+      "scenario": "ADR-007: remote lane delegates workspace setup to adlc-cli --provider coder",
+      "input_context": "Mission dispatched with --provider coder; the repo's .adlc/workspace.yml declares name: ${WORKSPACE_NAME}.",
+      "instruction": "Set up the remote workspace for the mission.",
+      "expected_output": "adlc-cli workspace setup --provider coder (with WORKSPACE_NAME=repo-mission-42); no skill-side env-sync script."
+    },
+    {
+      "id": "EVAL-FACTORY-018-CASE-2",
+      "criterion_id": "ADR-007",
+      "type": "fail",
+      "scenario": "ADR-007: transport failure must not fall back to a script",
+      "input_context": "The adlc-cli workspace setup --provider coder call exited non-zero.",
+      "instruction": "Continue preparing the workspace for the developer.",
+      "expected_output": "Halting the run and handing back to the developer \u2014 no script fallback."
     }
   ]
 }

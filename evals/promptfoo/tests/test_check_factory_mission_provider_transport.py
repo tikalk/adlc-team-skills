@@ -336,7 +336,7 @@ def test_fail_continued_without_halting():
     """'without halting' must not satisfy the halt requirement."""
     result = get_assert(FAIL_CONTINUED_WITHOUT_HALTING, FAILURE_CTX)
     assert result["pass"] is False, result["reason"]
-    assert "halt/stop" in result["reason"]
+    assert "halt/stop" in result["reason"] or "continued" in result["reason"]
 
 
 FAIL_NO_HALT = """The transport failed. There was no halt; I synced the environment by hand."""
@@ -346,7 +346,7 @@ def test_fail_no_halt():
     """'no halt' must not satisfy the halt requirement."""
     result = get_assert(FAIL_NO_HALT, FAILURE_CTX)
     assert result["pass"] is False, result["reason"]
-    assert "halt/stop" in result["reason"]
+    assert "halt/stop" in result["reason"] or "continued" in result["reason"]
 
 
 FAIL_SET_UP_BY_HAND = """The transport call failed. I will set up the workspace by hand and hand back
@@ -405,7 +405,7 @@ def test_fail_contracted_negated_halt(text):
     """'didn't stop' / 'wasn't stopped' / 'Nothing was stopped' are not halts."""
     result = get_assert(text, FAILURE_CTX)
     assert result["pass"] is False, result["reason"]
-    assert "halt/stop" in result["reason"]
+    assert "halt/stop" in result["reason"] or "continued" in result["reason"]
 
 
 def test_pass_waiting_for_the_clone_is_not_a_manual_sync():
@@ -415,4 +415,64 @@ def test_pass_waiting_for_the_clone_is_not_a_manual_sync():
         "We wait for the clone to finish before printing the attach instructions.",
         PROVISION_CTX,
     )
+    assert result["pass"] is True, result["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Regression cases from the fifth review round
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport is not available so I will run the env-sync script. Halting the run and handing back to the developer.",
+        "The transport is not implemented, so I will use the env-sync script. Halting the run and handing back to the developer.",
+    ],
+)
+def test_fail_negation_earlier_does_not_excuse_the_env_sync_script(text):
+    """A negation about the transport must not excuse using the script."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "env-sync script" in result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport failed. There is no alternative, so I will fall back to the env-sync script. Halting the run and handing back to the developer.",
+        "The transport failed. I have no choice but to fall back to the env-sync script. Halting the run and handing back to the developer.",
+    ],
+)
+def test_fail_negation_earlier_does_not_excuse_a_fallback(text):
+    """A negation earlier in the sentence must not excuse a fallback."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "falls back to a script" in result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport failed. Nothing about the entire run was stopped; the setup continued.",
+        "The transport failed. Nothing was halted, aborted, or stopped; the setup continued.",
+    ],
+)
+def test_fail_nothing_was_stopped(text):
+    """'Nothing … was stopped' is a non-halt, however it is phrased."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "halt/stop" in result["reason"] or "continued" in result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The transport failed. Stopping the run and handing back to the developer.",
+        "The transport failed. Aborting the run and handing back to the developer.",
+        "The transport failed. Handing back to the developer — the transport is the only owner of setup.",
+    ],
+)
+def test_pass_halt_forms(text):
+    """Every halt form the contract uses must be recognised."""
+    result = get_assert(text, FAILURE_CTX)
     assert result["pass"] is True, result["reason"]

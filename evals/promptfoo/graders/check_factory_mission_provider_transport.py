@@ -30,11 +30,16 @@ NEGATED_FALLBACK = re.compile(
 
 
 def _affirmative_fallback(text):
+    """A fallback the output proposes to TAKE.
+
+    The negation must be adjacent to the phrase it negates ("do not fall
+    back" / "never fall back"). A negation earlier in the sentence ("the
+    transport is not available, so I will fall back") does not excuse it.
+    """
     for m in re.finditer(r"\b(fall\s?back|fallback|retry(?:ing)?\s+with)\b", text, re.IGNORECASE):
-        # A negation anywhere in the SAME clause before the phrase binds to it.
-        look_back = _clause_before(text, m.start())
+        look_back = text[max(0, m.start() - 12):m.start()]
         if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
-            continue  # negated in this clause — compliant
+            continue  # negated right here — compliant
         tail = text[m.end():m.end() + 120]
         if re.search(r"(env-sync|script|remote-coder|coder\s+ssh)", tail, re.IGNORECASE):
             return True
@@ -141,9 +146,9 @@ def _affirmative_script_mention(text):
         text,
         re.IGNORECASE,
     ):
-        look_back = _clause_before(text, m.start())
+        look_back = text[max(0, m.start() - 12):m.start()]
         if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
-            continue  # negated before — compliant
+            continue  # negated right here — compliant
         trail = text[m.end():m.end() + 80]
         if re.search(
             r"\b(not|never|no|without)\b[^.]{0,40}?\b(used|run|executed|needed|required|"
@@ -229,27 +234,37 @@ def get_assert(output: str, context: dict = None) -> dict:
     #    reports a strong transport failure of its own.
     reports_failure = failure_case or _unnegated_failure(text)
     if reports_failure:
-        halts = False
-        for m in re.finditer(
-            r"\b(halt|halts|halted|halting|stop|stopped|stops|abort|aborts|aborted)\b"
-            r"|\bhand(?:s|ed)?\s+back\b"
-            r"|\bdo(?:es)?\s+not\s+(fall\s+back|fallback)\b"
-            r"|\bno\s+fallback\b|\bnever\s+fall\s+back\b"
-            r"|not implemented: live coder transport",
+        # A run that CONTINUED after the transport failure is a violation in
+        # its own right — no window-guessing needed.
+        if re.search(
+            r"\b(continued|continues|continuing|proceeded|proceeds|kept going|"
+            r"carried on|carrying on|went on)\b",
             text,
             re.IGNORECASE,
         ):
-            look_back = _clause_before(text, m.start())
-            if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
-                continue  # "without halting", "no halt", "did not stop"
-            # "nothing was stopped" — the subject is a negation, not the verb.
-            if re.search(r"\bnothing\b[^.]{0,20}$", look_back, re.IGNORECASE):
-                continue
-            halts = True
-            break
-        if not halts:
             reasons.append(
-                "no halt/stop behaviour on transport failure (a non-zero transport exit is a stop condition)"
+                "the run continued after the transport failure (a non-zero transport exit is a stop condition)"
+            )
+        else:
+            halts = False
+            for m in re.finditer(
+                r"\b(halt|halts|halted|halting|stop|stopped|stops|stopping|"
+                r"abort|aborts|aborted|aborting)\b"
+                r"|\bhand(?:s|ed|ing)?\s+back\b"
+                r"|\bdo(?:es)?\s+not\s+(fall\s+back|fallback)\b"
+                r"|\bno\s+fallback\b|\bnever\s+fall\s+back\b"
+                r"|not implemented: live coder transport",
+                text,
+                re.IGNORECASE,
+            ):
+                look_back = text[max(0, m.start() - 30):m.start()]
+                if re.search(r"\b" + NEGATION + r"\b", look_back, re.IGNORECASE):
+                    continue  # "without halting", "no halt", "didn't stop"
+                halts = True
+                break
+            if not halts:
+                reasons.append(
+                    "no halt/stop behaviour on transport failure (a non-zero transport exit is a stop condition)"
             )
 
     if _affirmative_fallback(text):

@@ -46,7 +46,10 @@ It implements the following key factory platform capabilities:
 2. If `--issue <ref>` (or a mission URL resolving to an issue) is specified:
    - Discover credentials and MCP/CLI tools (`references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
-   - Read the labels. If dispatch is `interactive` or gating is `human-required`:
+   - Read the labels. The DISPATCH dimension picks the lane; the
+     automation-gating dimension decides whether the agent may execute at
+     all (`tracker-integration.md` §2).
+   - If dispatch is `interactive`:
      - With `--provider coder`: take the `remote:coder` lane — `adlc-cli
        workspace setup --provider coder` provisions the workspace, the CLI
        owns all env setup and transfer (no skill-side sync script), then
@@ -58,7 +61,8 @@ It implements the following key factory platform capabilities:
    - If dispatch is `autonomous` or `supervised`: the `agent` lane runs the
      steps. `--provider` is **refused** in these modes — a remote lane hands
      an unattended run to a human, and the human-required gate must not be
-     executed by an unattended agent.
+     executed by an unattended agent. (Gating `human-required` does not
+     change this: it is the dispatch dimension that picks the lane.)
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue: read spec description from arguments. The comment bus is inactive — steps communicate through local files only. `--provider` without an issue is refused.
 4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.

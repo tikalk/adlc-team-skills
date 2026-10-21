@@ -84,7 +84,9 @@ or `agent` (unattended stages). This is the default — backward compatible.
    fully backward compatible. A stage that declares
    `lane: remote:<provider>` while `--provider` is absent is REFUSED:
    the profile does not silently resolve to another lane, it halts and
-   hands back to the developer.
+   hands back to the developer. The remote lane requires the `interactive`
+   dispatch label — in `autonomous`/`supervised` modes `--provider` is
+   refused.
 
 ## Degradation ladder
 
@@ -167,11 +169,22 @@ is the single owner of SSH, keys, transfer, and failure modes.
 
 Dispatch matrix (one truth, read with SKILL.md §Phase 0):
 
-| Dispatch / gating | Provider flag | Lane |
-|-------------------|---------------|------|
-| interactive, or gating human-required | `--provider coder` | `remote:coder` (CLI provisions/setups → print attach instructions → wait) |
-| interactive, or gating human-required | (none) | **HALT execution** (hand back to the interactive session) |
-| autonomous / supervised | any | the `agent` lane — `--provider` is **refused** in these modes (a remote lane would hand an unattended run to a human) |
+| Dispatch label | Provider flag | Lane |
+|----------------|---------------|------|
+| `interactive` | `--provider coder` | `remote:coder` (CLI provisions/setups → print attach instructions → wait) |
+| `interactive` | (none) | **HALT execution** (hand back to the interactive session) |
+| `autonomous` / `supervised` | any | the `agent` lane — `--provider` is **refused** in these modes (a remote lane would hand an unattended run to a human) |
+
+**The DISPATCH dimension alone picks the lane.** `interactive` is the
+dispatch label the remote lane requires: the lane is developer-driven (the
+human drives in their own tab), so it is an interactive-session lane. The
+automation-gating label (`human-required` vs `agent-can-execute`) is a
+*different* dimension and stays orthogonal here: it decides whether the
+agent may auto-execute at all (`tracker-integration.md` §2 — dispatch
+`interactive` **or** gating `human-required` → the agent halts and refuses
+auto-execution). A `human-required` + `supervised` issue therefore does
+NOT take the remote lane: `--provider` is refused, because the dispatch
+dimension says the run is supervised, not interactive.
 
 **One owner per step.** On the `remote:coder` lane the DEVELOPER drives the
 agent in their own tab; the lane never spawns the **agent** CLI (it does

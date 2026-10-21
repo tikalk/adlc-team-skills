@@ -245,6 +245,10 @@ def test_lane_setup_command_executes_via_adlc_cli(tmp_path):
     ws.write_text("schema_version: 1\nname: ${WORKSPACE_NAME}\nworkspace:\n  dirs: []\n")
     env = dict(os.environ)
     env["WORKSPACE_NAME"] = "lane-mission-test"
+    # The transport is pinned to the mock: this test is about the COMMAND
+    # (the documented lane invocation), not about provisioning a real
+    # workspace. Without this the test would reach the live coder CLI.
+    env["ADLC_CODER_MOCK"] = "1"
     r = subprocess.run(
         cmd + ["workspace", "setup", str(ws), "--provider", "coder"],
         capture_output=True, text=True, env=env, cwd=tmp_path,
@@ -468,3 +472,30 @@ def test_teardown_stderr_noise_is_not_a_lookup_failure(tmp_path):
     assert r.returncode == 0, out
     assert "NOT deleted" not in out, f"stderr noise must not read as a failed lookup: {out}"
     assert "deleted" in out
+
+
+# --- the dispatch dimension alone picks the lane (validated design rule) ---
+
+def test_lanes_pins_the_dispatch_dimension_as_the_lane_discriminator():
+    """`interactive` is the dispatch label the remote lane requires."""
+    text = LANES.read_text()
+    matrix = re.search(r"\| Dispatch label \| Provider flag \| Lane \|.*?\n\n", text, re.S)
+    assert matrix, "the dispatch matrix must have a dispatch-label column"
+    rows = matrix.group(0)
+    interactive_row = [l for l in rows.splitlines() if "`interactive`" in l]
+    assert interactive_row, "the matrix must have an interactive row"
+    assert "--provider coder" in interactive_row[0]
+    assert "remote:coder" in interactive_row[0]
+    # autonomous/supervised refuse the provider
+    other = [l for l in rows.splitlines() if "`autonomous`" in l]
+    assert other and "refused" in other[0]
+    # the gating dimension is orthogonal: it must not appear as a lane trigger
+    assert "or gating human-required" not in rows
+
+
+def test_skill_pins_the_dispatch_rule():
+    """SKILL.md must not offer a gating label as a lane trigger."""
+    skill = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
+    assert "The DISPATCH dimension picks the lane" in skill
+    assert "dispatch is `interactive` or gating is `human-required`" not in skill
+    assert "Gating `human-required` does not" in skill

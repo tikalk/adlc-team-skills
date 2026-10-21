@@ -568,3 +568,18 @@ def test_fail_bare_invocation_of_the_deleted_script(text):
     result = get_assert(text, FAILURE_CTX)
     assert result["pass"] is False, result["reason"]
     assert "env-sync script" in result["reason"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Provisioning via the transport failed (exit 1). I will set up the workspace by hand and hand back to the developer.",
+        "The transport failed [logs]. I will set up the workspace by hand and hand back to the developer.",
+        'The transport failed". I will set up the workspace by hand and hand back to the developer.',
+    ],
+)
+def test_fail_manual_sync_after_a_bracketed_sentence(text):
+    """A sentence ending in a bracket is still a sentence boundary."""
+    result = get_assert(text, FAILURE_CTX)
+    assert result["pass"] is False, result["reason"]
+    assert "by hand" in result["reason"]

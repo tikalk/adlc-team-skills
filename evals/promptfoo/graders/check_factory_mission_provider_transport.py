@@ -42,9 +42,10 @@ def _clause_start(text, index):
     """
     semi = text.rfind(";", 0, index)
     bound = semi
-    # a sentence end is a period AFTER a word character (so "./script.sh" and
-    # "env-sync.sh" are not sentence ends)
-    for m in re.finditer(r"(?<=\w)\.\s+", text[:index]):
+    # a sentence end is a period AFTER a word character or a closing
+    # bracket/quote (so "./script.sh" and "env-sync.sh" are not sentence
+    # ends, but "(exit 1)." and '[logs].' are)
+    for m in re.finditer(r"(?<=[\w)\]}\"'])\.\s+", text[:index]):
         if m.start() > bound:
             bound = m.start()
     return bound + 1 if bound >= 0 else 0

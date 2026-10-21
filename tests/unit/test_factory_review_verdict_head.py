@@ -11,6 +11,7 @@ both halves of it:
     into CI.
 """
 
+import json
 import os
 import re
 import shutil
@@ -175,6 +176,93 @@ def test_missing_pr_head_is_a_usage_error(tmp_path):
     assert proc.returncode == 2, proc.stdout + proc.stderr
 
 
+# ── fetch_bodies(): the real `gh api` path ─────────────────────────────────
+#
+# Every test above bypasses fetch_bodies() via --verdicts, which is exactly
+# how the original bug — all comments/reviews concatenating into one record
+# because the real `gh api --jq` path never emitted a %%% separator — went
+# untested. These stub `gh` so the checker exercises its actual production
+# code path (no --verdicts) and confirm the separator survives it.
+
+_FAKE_GH = """#!/usr/bin/env bash
+# Fake `gh` that applies the checker's own --jq filter to canned JSON, so the
+# test exercises the real jq construction in fetch_bodies(), not a bypass.
+set -u
+if [ "${1:-}" != "api" ]; then
+    echo "fake gh: unsupported subcommand '${1:-}'" >&2
+    exit 1
+fi
+path="$2"
+shift 2
+jq_filter=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --jq) jq_filter="$2"; shift 2 ;;
+        --paginate) shift ;;
+        *) shift ;;
+    esac
+done
+case "$path" in
+    */comments) data="$FAKE_GH_DATA_DIR/comments.json" ;;
+    */reviews) data="$FAKE_GH_DATA_DIR/reviews.json" ;;
+    *) echo "fake gh: unexpected path '$path'" >&2; exit 1 ;;
+esac
+exec jq -r "$jq_filter" "$data"
+"""
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="jq is required to run the fake gh stub")
+def test_fetch_bodies_real_gh_path_separates_records_newest_wins(tmp_path):
+    """fetch_bodies()'s production (`gh api`) path must emit %%% itself.
+
+    Without the separator, an old verdict followed by a newer one on the
+    same PR concatenates into one record and the FIRST ever-posted verdict
+    wins — reproducing the exact bug from the review. Here the checker runs
+    with --repo/--pr (no --verdicts), so it's exercising fetch_bodies()'s
+    real `gh api ... --jq ...` invocations, stubbed only at the `gh` binary.
+    """
+    old_head = "a" * 40
+    new_head = "b" * 40
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "comments.json").write_text(
+        json.dumps([{"body": verdict(old_head)}, {"body": verdict(new_head)}]),
+        encoding="utf-8",
+    )
+    (data_dir / "reviews.json").write_text("[]", encoding="utf-8")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_gh = bin_dir / "gh"
+    fake_gh.write_text(_FAKE_GH, encoding="utf-8")
+    fake_gh.chmod(0o755)
+
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
+    env["FAKE_GH_DATA_DIR"] = str(data_dir)
+
+    def run_real(pr_head):
+        return subprocess.run(
+            ["bash", str(CHECKER), "--repo", "owner/repo", "--pr", "42", "--pr-head", pr_head],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
+        )
+
+    proc = run_real(new_head)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "OK" in proc.stdout
+
+    proc = run_real(old_head)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert new_head in proc.stdout, (
+        "the newest verdict must win through the real gh fetch path, not just "
+        "the --verdicts fixture bypass"
+    )
+
+
 # ── CI wiring ─────────────────────────────────────────────────────────────
 
 def test_ci_workflow_runs_the_checker():
@@ -186,3 +274,12 @@ def test_ci_workflow_runs_the_checker():
         "the workflow must re-run when the head moves — that is the whole point"
     )
     assert "pull-requests: read" in content, "the workflow must stay read-only"
+    assert "github.event.number" not in content, (
+        "github.event.number is empty on pull_request_review events (that "
+        "payload has no top-level 'number' field) — PR_NUMBER must come from "
+        "github.event.pull_request.number instead"
+    )
+    assert "github.event.pull_request.number" in content, (
+        "PR_NUMBER must read github.event.pull_request.number, which is present "
+        "on both the pull_request and pull_request_review event payloads"
+    )

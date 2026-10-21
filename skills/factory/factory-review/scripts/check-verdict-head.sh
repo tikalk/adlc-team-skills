@@ -66,10 +66,14 @@ fetch_bodies() {
         exit 2
     fi
     # Issue comments and review bodies both carry the marker; inline review
-    # comments have no body, so the review body is what matters.
+    # comments have no body, so the review body is what matters. Each body
+    # becomes its own %%%-delimited record (the same format the --verdicts
+    # fixture files use) so latest_verdict_head() can tell records apart —
+    # without the sentinel, every comment/review would concatenate into one
+    # record and the first ever-posted verdict would shadow later ones.
     {
-        gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | .body // ""'
-        gh api "repos/$REPO/pulls/$PR/reviews" --paginate --jq '.[] | .body // ""'
+        gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | (.body // "") + "\n%%%"'
+        gh api "repos/$REPO/pulls/$PR/reviews" --paginate --jq '.[] | (.body // "") + "\n%%%"'
     } 2>/dev/null || {
         echo "check-verdict-head: could not read the PR's comments (gh api failed)" >&2
         exit 2

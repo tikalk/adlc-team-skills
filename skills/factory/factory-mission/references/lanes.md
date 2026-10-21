@@ -46,9 +46,10 @@ lanes:
       skills_root: "<absolute path to skills directory>"
   remote:
     <provider>:
-      command: ["<provision-script>", "{workspace}", "{cwd}"]
-      workspace_naming: "<pattern, e.g. <repo>-mission-<issue>>"
+      workspace: "<workspace name; default <repo>-mission-<issue>>"
+      name_var: "<env var carrying the per-mission workspace name; default WORKSPACE_NAME>"
       template: "<template name>"
+      workspace_file: "<path or URL to the repo's workspace file; default .adlc/workspace.yml>"
 ```
 
 Without a `lanes` section, every stage runs `inline` (interactive stages)
@@ -143,42 +144,68 @@ The skill NEVER opens tabs. The developer owns their tab: they open
 a terminal tab on their Mac, then run factory-mission with the
 mission URL + `--provider coder`.
 
+**The lane performs no env sync of its own.** Provision, workspace
+setup, input transfer, and output streaming are owned by the adlc-cli
+provider transport (`adlc-cli workspace|agent|workflow … --provider
+coder`; ADR-007, PDR-010). There is no skill-side clone, skills-install,
+env-report, or brief-pipe script, and no fallback script — the transport
+is the single owner of SSH, keys, transfer, and failure modes.
+
 Dispatch matrix:
 
 | Mode | Provider flag | Lane |
 |------|---------------|------|
-| interactive | `--provider coder` | `remote:coder` (provision → sync → print attach instructions → wait) |
+| interactive | `--provider coder` | `remote:coder` (CLI provisions/setups → print attach instructions → wait) |
 | interactive | (none) | local CLI session, as today |
 | autonomous / supervised | any | unchanged (`agent` lane; provider ignored) |
 
 A `remote:coder` lane dispatch:
 
-1. Create the workspace: `coder create <repo>-mission-<issue> --template
-   <template>` (default `general`). Workspace names follow Coder rules:
-   lowercase letters, digits, `-` only, max 32 chars.
-2. Wait for Running: poll `coder list`/`coder show`, timeout with halt —
-   never auto-delete a failed workspace.
-3. Sync env over `coder ssh`: clone repo at branch (checkout `$BRANCH`
-   on reuse), install skills (`adlc-cli skills add <source> -a <agent>
-   -y`), check `.events.json` presence (warn only — wiring is manual),
-   report lane env config, place `.adlc/workflows/runs/<run_id>/brief.md`
-   on disk via stdin pipe (`coder ssh -- "cat > dest" < brief`; there is
-   no `coder scp` subcommand).
-4. Print attach instructions for the developer's own tab (do NOT
+1. Verify the transport: `adlc-cli --version` resolves. If the binary is
+   missing or predates the `--provider` provider surface, halt with the
+   version requirement — never fall back to a script.
+2. Provision or reuse the workspace through the CLI:
+   `adlc-cli workspace setup [<workspace_file>] --provider coder`
+   - The CLI loads the repo's `.adlc/workspace.yml` (or the configured
+     path/URL), expands `${VAR}` fail-fast, and provisions or reuses the
+     handle persisted at `.adlc/workspaces/<name>.json`.
+   - Workspace files are location-free: a `provider:` key inside one is
+     rejected — the provider is selected only by the `--provider` flag.
+   - Per-mission names: the repo's workspace file declares
+     `name: ${WORKSPACE_NAME}`; the lane exports
+     `WORKSPACE_NAME=<repo>-mission-<issue>` before invoking the CLI. An
+     unset variable fails fast (the CLI names the missing var) — the lane
+     never invents a fallback name. The CLI normalizes the resolved name
+     to `[a-z0-9-]`, so the handle filename can never escape the
+     workspaces directory.
+   - Secrets resolve env-only (Docker secret → `secrets.env` → process
+     env), only for referenced vars, and are redacted outbound.
+3. Run the step through the transport:
+   `adlc-cli workflow run <source> --input run_id=<run_id> --provider coder`
+   (or `adlc-cli agent run "<instruction>" --provider coder` for a single
+   agent step). The CLI streams JSONL back and scrubs secrets from output.
+4. If the CLI reports the live transport as unavailable
+   (`not implemented: live coder transport`, exit 1), halt and hand back.
+   Do not sync manually and do not fall back to a script: a non-zero exit
+   is a stop condition.
+5. Print attach instructions for the developer's own tab (do NOT
    attach, do NOT open tabs). Primary path is plain SSH, which always works:
    - `coder ssh <workspace>` (primary), then `cd <repo>`.
    - `herdr --remote coder.<workspace>.main` fallback (requires herdr
      client on the developer's Mac; address format `coder.<workspace>.main`).
    Then wait — the developer drives; the lane resumes on `done`.
-5. The developer launches the agent CLI in THEIR tab on the brief:
+6. The developer launches the agent CLI in THEIR tab on the brief:
    `opencode --prompt "$(cat .adlc/workflows/runs/<run_id>/brief.md)"`
    (the lane never spawns the CLI).
-6. Teardown: developer types `done` → explicit confirm → `coder delete
-   <workspace> --yes`.
+7. Teardown: developer types `done` → explicit confirm → `coder delete
+   <workspace> --yes`. Teardown stays skill-side because the provider
+   transport exposes no delete operation; it is the only remaining lane
+   script.
 
 | Placeholder | Replaced with |
 |-------------|---------------|
 | `{workspace}` | The `<repo>-mission-<issue>` workspace name |
+| `{workspace_file}` | The repo's workspace file path (default `.adlc/workspace.yml`) |
 
 ## Template substitution
 
@@ -208,5 +235,8 @@ entirely).
 - A `remote:` lane NEVER degrades to `agent` or `inline` — it halts and
   hands back to the developer (human-required gate); a failed workspace
   is never auto-deleted.
+- A `remote:` lane NEVER carries its own env bootstrap. Provision, setup,
+  transfer, and streaming belong to the `adlc-cli` provider transport;
+  only teardown (no transport delete op) remains a lane script.
 - The profile has no say in how a stage is invoked — only which runtime
   and model.

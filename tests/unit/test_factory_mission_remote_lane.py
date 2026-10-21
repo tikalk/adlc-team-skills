@@ -1,7 +1,7 @@
 """Contract tests for factory-mission remote lane (remote:coder).
 
-Verifies lanes.md documents the remote lane + scripts behave:
-naming gate, dirty-tree gate, usage errors, zero secret literals.
+Verifies lanes.md documents the remote lane and that env setup is delegated
+to the adlc-cli provider transport (ADR-007 / PDR-010), not skill-side scripts.
 """
 import os
 import re
@@ -37,14 +37,57 @@ def test_lanes_degradation_ladder():
     assert "remote:<provider>" in text and "HALT" in text
 
 
-def test_scripts_exist_syntax_clean_and_executable():
-    for p in (ENV_SYNC, TEARDOWN):
-        assert p.exists(), f"missing {p.name}"
-        r = subprocess.run(["bash", "-n", str(p)], capture_output=True, text=True)
-        assert r.returncode == 0, f"{p.name} syntax: {r.stderr}"
-    for p in (ENV_SYNC, TEARDOWN):
-        mode = oct(p.stat().st_mode & 0o777)
-        assert mode == "0o755", f"{p.name} mode {mode}, want 0o755"
+def test_env_sync_script_removed():
+    assert not ENV_SYNC.exists(), (
+        "remote-coder-env-sync.sh must be deleted: env setup is owned by "
+        "adlc-cli --provider coder (ADR-007)"
+    )
+
+
+def test_teardown_script_syntax_clean_and_executable():
+    assert TEARDOWN.exists(), f"missing {TEARDOWN.name}"
+    r = subprocess.run(["bash", "-n", str(TEARDOWN)], capture_output=True, text=True)
+    assert r.returncode == 0, f"{TEARDOWN.name} syntax: {r.stderr}"
+    mode = oct(TEARDOWN.stat().st_mode & 0o777)
+    assert mode == "0o755", f"{TEARDOWN.name} mode {mode}, want 0o755"
+
+
+def test_lanes_delegates_setup_to_adlc_cli():
+    text = LANES.read_text()
+    assert "adlc-cli workspace setup" in text
+    assert "--provider coder" in text
+    assert "`.adlc/workspace.yml`" in text
+    assert ".adlc/workspaces/" in text
+
+
+def test_lanes_has_no_skill_side_env_sync():
+    text = LANES.read_text()
+    assert "Sync env over `coder ssh`" not in text
+    assert "adlc-cli skills add" not in text
+    assert "coder scp" not in text
+    assert "NEVER carries its own env bootstrap" in text
+
+
+def test_lanes_transport_failure_halts_without_fallback():
+    text = LANES.read_text()
+    assert "not implemented: live coder transport" in text
+    assert "do not fall back to a script" in text.lower()
+
+
+def test_lanes_secret_contract():
+    text = LANES.read_text()
+    assert "${VAR}" in text
+    assert "fail-fast" in text
+    assert "redacted outbound" in text
+    assert "location-free" in text
+
+
+def test_lanes_per_mission_workspace_name():
+    text = LANES.read_text()
+    assert "name: ${WORKSPACE_NAME}" in text
+    assert "WORKSPACE_NAME=<repo>-mission-<issue>" in text
+    assert "never invents a fallback name" in text
+    assert "name_var" in text
 
 
 def _fake_coder(tmp_path, behavior="missing"):
@@ -69,17 +112,6 @@ def test_teardown_requires_coder_cli(tmp_path):
     r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1"],
                        capture_output=True, text=True,
                        env=_env_without_coder(tmp_path))
-    assert r.returncode == 127
-
-
-def test_env_sync_requires_coder_cli(tmp_path):
-    brief = tmp_path / "brief.md"
-    brief.write_text("# brief\n")
-    workdir = tmp_path / "clean"
-    workdir.mkdir()
-    r = subprocess.run(["bash", str(ENV_SYNC), "ws", "url", "br", str(brief)],
-                       capture_output=True, text=True,
-                       env=_env_without_coder(tmp_path), cwd=workdir)
     assert r.returncode == 127
 
 
@@ -110,45 +142,8 @@ def test_teardown_finds_workspace_via_show(tmp_path):
     assert "Teardown gate" in r.stdout + r.stderr
 
 
-def test_env_sync_dirty_gate(sandbox_project):
-    p = ENV_SYNC
-    (sandbox_project / "README.md").write_text("dirty-test\n")
-    r = subprocess.run(["bash", str(p), "dummy", "dummy", "dummy", "dummy"],
-                       capture_output=True, text=True, cwd=sandbox_project)
-    assert r.returncode == 2
-    assert "dirty" in (r.stdout + r.stderr).lower()
-
-
-def test_env_sync_rejects_missing_brief(tmp_path):
-    env = dict(os.environ)
-    env["PATH"] = str(_fake_coder(tmp_path)) + os.pathsep + env["PATH"]
-    workdir = tmp_path / "clean"
-    workdir.mkdir()
-    r = subprocess.run(["bash", str(ENV_SYNC), "ws", "url", "br", "/nonexistent/brief.md"],
-                       capture_output=True, text=True, env=env, cwd=workdir)
-    assert r.returncode == 2
-    assert "brief" in (r.stdout + r.stderr).lower()
-
-
-def test_env_sync_usage_error():
-    p = ENV_SYNC
-    r = subprocess.run(["bash", str(p)], capture_output=True, text=True)
-    assert r.returncode != 0
-
-
-def test_env_sync_no_coder_scp():
-    text = ENV_SYNC.read_text()
-    assert "coder scp" not in text
-    assert 'cat > ' in text
-
-
-def test_env_sync_brief_path():
-    text = ENV_SYNC.read_text()
-    assert ".adlc/workflows/runs/" in text
-
-
 def test_zero_secret_literals():
-    text = "".join(p.read_text() for p in SCRIPTS.glob("remote-coder-*.sh"))
+    text = TEARDOWN.read_text()
     assert not re.search(r"glpat-|ghp_|xoxb-|sk-|CODER_TOKEN=.|GITLAB_TOKEN=.", text)
 
 

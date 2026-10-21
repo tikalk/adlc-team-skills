@@ -47,9 +47,11 @@ It implements the following key factory platform capabilities:
    - Discover credentials and MCP/CLI tools (`references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
    - Read the labels. If dispatch is `interactive` or gating is `human-required`:
-     - With `--provider coder`: take the `remote:coder` lane — provision the
-       workspace, sync env, print attach instructions for the developer's
-       OWN tab, then wait. The skill never opens tabs or spawns the CLI.
+     - With `--provider coder`: take the `remote:coder` lane — `adlc-cli
+       workspace setup --provider coder` provisions the workspace, the CLI
+       owns all env setup and transfer (no skill-side sync script), then
+       print attach instructions for the developer's OWN tab and wait.
+       The skill never opens tabs or spawns the CLI.
      - Without `--provider`: local CLI session, as today (halt-and-hand-back
        only when neither applies).
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.

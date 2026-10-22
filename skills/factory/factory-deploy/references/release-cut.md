@@ -4,7 +4,7 @@ Cut order is merge → tag → changelog → flag cleanup. Never reorder.
 
 ## Order
 
-1. **tag** — SemVer tag next; tag-as-truth (no tag = no release). Merge already completed at workflow step 2 (gate-merge + merge). The cut starts at tag after a verified merge, as the `--no-merge` path does.
+1. **merge (verify)** — confirm merge completed at workflow step 2 (gate-merge + merge). The cut starts at tag only after a verified merge, as the `--no-merge` path does.
 2. **tag** — SemVer tag next; tag-as-truth (no tag = no release).
 3. **changelog** — impact-grouped tracker notes (Added / Fixed / Deprecated /
    Removed / Security) generated after the tag, approved via dry-run preview.

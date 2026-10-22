@@ -34,10 +34,7 @@ steps:
     on_reject: abort
     verdict_input: verdict
     context:
-      records:
-        - PDR-113
-        - PDR-115
-        - ADR-422
+      decisions: "deploy gate checkpoints, exact-head gated merge, and release orchestration decisions"
       link: "https://gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-workspace/-/issues/17"
   - id: merge
     type: prompt

@@ -105,6 +105,7 @@ def _fake_coder(tmp_path, behavior="missing"):
     if behavior == "missing":
         body = (
             "#!/usr/bin/env bash\n"
+            'if [ "$1" = "show" ]; then echo "not found" >&2; exit 1; fi\n'
             'if [ "$1" = "list" ]; then echo \'[{"name":"other-ws"}]\'; exit 0; fi\n'
             "echo 'fake coder: workspace exists'\nexit 0\n"
         )
@@ -116,12 +117,25 @@ def _fake_coder(tmp_path, behavior="missing"):
     elif behavior == "garbage":
         body = (
             "#!/usr/bin/env bash\n"
+            'if [ "$1" = "show" ]; then echo "not found" >&2; exit 1; fi\n'
             "echo '<html>502 Bad Gateway</html>'\nexit 0\n"
+        )
+    elif behavior == "agent-token":
+        # The agent credentials can see and delete their OWN workspace, but not
+        # list them — the path the developer's in-workspace session uses.
+        body = (
+            "#!/usr/bin/env bash\n"
+            'if [ "$1" = "show" ]; then echo "coder-mission-1"; exit 0; fi\n'
+            'if [ "$1" = "list" ]; then echo "not authorised" >&2; exit 1; fi\n'
+            'if [ "$1" = "delete" ]; then echo "deleted: $2"; exit 0; fi\n'
+            "exit 0\n"
         )
     else:
         body = (
             "#!/usr/bin/env bash\n"
+            'if [ "$1" = "show" ]; then echo "coder-mission-1"; exit 0; fi\n'
             'if [ "$1" = "list" ]; then echo \'[{"name":"coder-mission-1"}]\'; exit 0; fi\n'
+            'if [ "$1" = "delete" ]; then echo "deleted: $2"; exit 0; fi\n'
             "echo 'fake coder: workspace exists'\nexit 0\n"
         )
     fake.write_text(body)
@@ -168,6 +182,18 @@ def test_teardown_finds_workspace_via_show(tmp_path):
     assert r.returncode == 6, "the gate waits for the confirmation — it is not a done state"
     assert "Teardown gate" in r.stdout + r.stderr
     assert "left running" in r.stdout + r.stderr
+
+
+def test_teardown_works_with_agent_credentials_that_cannot_list(tmp_path):
+    """The developer's in-workspace session has agent credentials: they can
+    see and delete their OWN workspace, but not list them."""
+    env = dict(os.environ)
+    env["PATH"] = str(_fake_coder(tmp_path, "agent-token")) + os.pathsep + env["PATH"]
+    r = subprocess.run(["bash", str(TEARDOWN), "coder-mission-1", "--yes"],
+                       capture_output=True, text=True, env=env)
+    out = r.stdout + r.stderr
+    assert r.returncode == 0, out
+    assert "deleted: coder-mission-1" in out
 
 
 def test_teardown_lookup_failure_is_not_reported_as_nothing_to_delete(tmp_path):

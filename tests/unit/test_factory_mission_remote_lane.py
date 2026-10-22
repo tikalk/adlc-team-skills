@@ -569,3 +569,12 @@ def test_teardown_removes_the_stale_handle(tmp_path):
     text = TEARDOWN.read_text()
     assert 'HANDLE=".adlc/workspaces/${WORKSPACE}.json"' in text
     assert 'rm -f "$HANDLE"' in text
+
+
+def test_lanes_states_that_the_variables_come_from_the_developer_environment():
+    """The lane supplies the profile's vars from the developer's env — and
+    names the missing one instead of inventing a value."""
+    text = re.sub(r"\s+", " ", LANES.read_text())
+    assert "from the developer's environment" in text
+    assert "Missing required workspace variable" in text
+    assert "never invents a value" in text

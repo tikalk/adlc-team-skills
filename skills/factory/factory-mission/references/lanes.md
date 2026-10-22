@@ -206,9 +206,14 @@ A `remote:coder` lane dispatch:
    `WORKSPACE_NAME=<repo>-mission-<issue> BRANCH=<mission branch> adlc-cli workspace setup [<workspace_file>] --provider coder`
    - The repo's workspace file declares the per-run values it needs; the
      lane supplies every `${VAR}` it references — `WORKSPACE_NAME` (the
-     workspace name) and `BRANCH` (the branch to clone). A variable the
-     file references and the lane does not supply fails the setup with its
-     name — the lane never invents a value for it.
+     workspace name) and `BRANCH` (the branch to clone) — **from the
+     developer's environment**. A variable the file references and the
+     environment does not carry fails the setup with its name ("Missing
+     required workspace variable: X"); the lane never invents a value for
+     it, and the developer gets the exact name to export. Credentials the
+     session needs (the tracker token, the forge tool's token) are
+     therefore declared in the profile and exported by the developer
+     before the lane runs.
    - The CLI loads the repo's `.adlc/workspace.yml` (or the configured
      path/URL), expands `${VAR}` fail-fast, and provisions or reuses the
      handle persisted at `.adlc/workspaces/<name>.json`.

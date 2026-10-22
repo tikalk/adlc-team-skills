@@ -20,7 +20,7 @@ and the release is cut merge → tag → changelog with a dry-run preview and a
 handoff packet. There is **no auto-approve** tier — never auto-approve,
 never auto-merge past a human gate.
 
-The 9-step program (`workflow.yml`) is the single source of truth; this prose
+The 10-step program (`workflow.yml`) is the single source of truth; this prose
 never overrides it. Heavy detail lives in `references/`.
 
 ## When to Use / When NOT Use
@@ -102,7 +102,7 @@ The 8 deploy invariants (preconditions on every mutating step):
 
 A run of this skill is done when:
 
-- [ ] `workflow.yml` validates and carries the 9 steps with the two named gates (`gate-canary-expand`, `gate-full-expand`).
+- [ ] `workflow.yml` validates and carries the 10 steps with the three named gates (`gate-merge`, `gate-canary-expand`, `gate-full-expand`).
 - [ ] Merge audit drill: both-gates-green merges happen only at the exact reviewed head; head-moved discards evidence and re-verifies.
 - [ ] Staged drill: green canary auto-advances; red triggers mechanical rollback.
 - [ ] Every release ships a SemVer tag + impact-grouped notes + handoff packet (tag, notes, and packet inspected).

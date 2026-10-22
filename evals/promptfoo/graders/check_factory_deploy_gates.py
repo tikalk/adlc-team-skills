@@ -63,7 +63,6 @@ def get_assert(output: str, context: dict = None) -> dict:
     # But NOT canary-expand / full-expand as the merge gates
     canary_expand = "canary-expand" in low
     full_expand = "full-expand" in low
-    rollout_gates_as_merge_gates = (canary_expand or full_expand) and not merge_gate and not deploy_gate_3
     
     green = bool(re.search(r"\bgreen\b|approv", low))
     human = bool(re.search(r"human|approver|approved by|authorized by|recorded", low))

@@ -1,4 +1,4 @@
-# factory-deploy (skill copy — plan of record for the skill's 9-stage pipeline)
+# factory-deploy (skill copy — plan of record for the skill's 10-step pipeline)
 
 # Plan-of-record for the factory-deploy release orchestration.
 # Dual-executor: in-session the LLM executor drives these steps via

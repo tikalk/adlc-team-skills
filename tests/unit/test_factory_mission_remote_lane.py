@@ -553,3 +553,19 @@ def test_lanes_delivers_the_workspace_environment_to_the_remote():
     text = re.sub(r"\s+", " ", LANES.read_text())
     assert ".adlc/secrets.env" in text
     assert "the profile is where a workspace declares what it needs" in text
+
+
+def test_lanes_pins_the_model_when_the_profile_delivers_a_token():
+    """A GITLAB_TOKEN in the session env hijacks opencode's model provider."""
+    text = re.sub(r"\s+", " ", LANES.read_text())
+    assert "opencode -m <model>" in text
+    assert "Pin the model when the profile delivers a token" in text
+    assert "401" in text
+
+
+def test_teardown_removes_the_stale_handle(tmp_path):
+    """A handle that outlives its workspace makes the next lane run reuse a
+    machine that no longer exists."""
+    text = TEARDOWN.read_text()
+    assert 'HANDLE=".adlc/workspaces/${WORKSPACE}.json"' in text
+    assert 'rm -f "$HANDLE"' in text

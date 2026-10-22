@@ -237,7 +237,7 @@ A `remote:coder` lane dispatch:
    Connect:  coder ssh <workspace>
    Then:     cd <project root>          # where .agents/, AGENTS.md and .adlc/init-options.json live
              . ~/.adlc/secrets.env     # the vars the workspace asked for (if the profile declared any)
-             opencode                  # the interactive TUI (opencode run … for a headless step)
+             opencode -m <model>       # the interactive TUI (opencode run … for a headless step)
    Then in opencode:  /factory-mission --url <issue-url>
    ```
 
@@ -254,6 +254,11 @@ A `remote:coder` lane dispatch:
    - **The brief never crosses the transport.** The remote session compiles
      its own brief from the issue URL — there is no brief file to place on
      the remote and no transfer channel is needed.
+   - **Pin the model when the profile delivers a token.** A `GITLAB_TOKEN` in
+     the session's env makes opencode prefer the GitLab Duo model provider,
+     whose model API that token cannot authorize (401) — the session then
+     fails before it starts. The handoff therefore pins the model
+     (`opencode -m <model>`), and the profile names the model it wants.
    - **The environment the workspace asked for is on the remote.** Every
      `${VAR}` the workspace file references is forwarded by the transport
      and persisted on the remote as `~/.adlc/secrets.env` (0600), so the

@@ -69,6 +69,7 @@ case "$FOUND" in
     exit 4
     ;;
   ABSENT)
+    rm -f ".adlc/workspaces/${WORKSPACE}.json"
     echo "Workspace '$WORKSPACE' not found — nothing to delete."
     exit 0
     ;;
@@ -84,7 +85,11 @@ if [ "$CONFIRM" != "--yes" ]; then
   exit 6
 fi
 
+# The lane's own handle is the workspace's identity — a handle that outlives
+# its workspace makes the next lane run reuse a machine that no longer exists.
+HANDLE=".adlc/workspaces/${WORKSPACE}.json"
 if coder delete "$WORKSPACE" --yes; then
+  rm -f "$HANDLE"
   echo "deleted: $WORKSPACE"
   exit 0
 fi

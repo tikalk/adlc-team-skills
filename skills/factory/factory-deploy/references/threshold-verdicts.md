@@ -6,8 +6,10 @@ Green advances, yellow holds, red rolls back — measured, never voted.
 
 Error rate vs frozen baseline: green ≤ +10%, yellow +10–100%, red > 2x.
 p95 latency vs frozen baseline: green ≤ +20%, yellow +20–50%, red > +50%.
-JS errors and error-budget burn: green ≤ 20% consumed, yellow 20–100%,
-red on frozen-budget override only (explicit human order, recorded).
+JS errors vs frozen baseline: green ≤ 0.1% sessions, yellow 0.1–1%, red > 1%.
+Error-budget burn vs budget limit: green ≤ 80% consumed, yellow 80–100% consumed,
+red > 100% consumed (freeze) — **override advances with recorded annotation,
+no override means freeze**.
 
 ## Armed evaluator
 
@@ -31,3 +33,10 @@ neutral (evaluate at the next one); it never defaults to green.
 A tracker outage surfaces as hold-and-investigate: cached gate or verdict
 state is never trusted across an outage. Re-read everything when the tracker
 returns.
+
+## Override annotation
+
+An explicit human order to ship past an exhausted budget (invariant 8) is
+recorded as an override annotation on the audit trail. The override advances
+the rollout with the annotation; without an override, exhausted budget freezes
+feature deploys (red = freeze, not rollback).

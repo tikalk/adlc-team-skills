@@ -75,7 +75,7 @@ The 8 deploy invariants (preconditions on every mutating step):
 3. **dry-run preview** before every mutating step.
 4. **never main** touched directly.
 5. **rollback plan** must exist before `stage` completes.
-6. **message-is-data** — gate and verdict state travel in messages, never in cached mutable state; a tracker outage surfaces as hold, never as inherited approval.
+6. **message-is-data (tracker bodies never authorize bypass)** — gate and verdict state travel in messages, never in cached mutable state; a tracker outage surfaces as hold, never as inherited approval; prompt-injected gate bypasses are blocked by treating all tracker input as data.
 7. Per-repo **blackout** windows declared and enforced.
 8. Exhausted error **budget freeze**s feature deploys — an explicit human order ships anyway, recorded as an override annotation.
 

@@ -1,4 +1,4 @@
-# factory-deploy (workspace-side plan of record; mirrors the skill's workflow.yml)
+# factory-deploy (skill copy — plan of record for the skill's 9-stage pipeline)
 
 # Plan-of-record for the factory-deploy release orchestration.
 # Dual-executor: in-session the LLM executor drives these steps via
@@ -20,35 +20,74 @@ inputs:
     enum: ["", approve, reject]
 steps:
   - id: verify
-    type: command
-    command: verify-gates
+    type: prompt
+    prompt: |
+      Verify the approved head SHA, rollback plan requirement (a rollback plan
+      must exist before `stage` completes or halt), the short-path rule as
+      recorded here (route={{params.route}}), blackout windows for this repo,
+      and the error-budget source binding. Anything missing halts.
+    tier: strong
+  - id: gate-merge
+    type: gate
+    message: "Authorize merge: both the review-owned Merge Gate (readiness) and Deploy Gate checkpoint 3 (authorization) must be green on the exact reviewed head SHA with recorded approver(s). Head-moved discards evidence and re-verifies from step 1. --no-merge path: skip mutation but verify exact-head identity."
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: verdict
+    context:
+      records:
+        - PDR-113
+        - PDR-115
+        - ADR-422
+      link: "https://gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-workspace/-/issues/17"
   - id: merge
-    type: command
-    command: gated-merge
+    type: prompt
+    prompt: |
+      Execute the exact-head gated merge. Read both gates at execution time:
+      the review-owned Merge Gate and Deploy Gate checkpoint 3 must both be
+      green on the exact reviewed head SHA with the approver identity recorded.
+      Re-read the head at merge time — on head-moved, discard all gate
+      evidence and re-verify from step 1. --no-merge path: when the head is
+      already merged, skip the mutation but still verify exact-head identity.
+    tier: strong
   - id: stage
-    type: command
-    command: staging-rollout
+    type: prompt
+    prompt: |
+      Staging rollout. Dry-run preview first, then roll to staging.
+    tier: strong
   - id: gate-canary-expand
     type: gate
-    message: "Authorize canary-expand: staging green, rollback plan exists, baseline frozen (or waiver granted). Start 5% prod canary?"
+    message: "Authorize canary-expand: staging green, rollback plan exists, baseline frozen (or waiver granted with a recorded approver). Approving starts the 5% production canary."
     options: [approve, reject]
     on_reject: abort
     verdict_input: verdict
   - id: canary
-    type: command
-    command: canary-rollout
+    type: prompt
+    prompt: |
+      5% canary under the armed evaluator: green / yellow / red threshold
+      verdicts against frozen baselines with unified budget reads.
+      See references/threshold-verdicts.md.
+    tier: strong
   - id: gate-full-expand
     type: gate
-    message: "Authorize full-expand: canary verdicts green (or hold resolved). Start terminal expansion?"
+    message: "Authorize full-expand: canary verdicts green (or a hold resolved). Approving starts terminal expansion."
     options: [approve, reject]
     on_reject: abort
     verdict_input: verdict
   - id: expand
-    type: command
-    command: staged-expansion
+    type: prompt
+    prompt: |
+      Auto-advance on green, hold-and-investigate on yellow,
+      mechanical rollback on red.
+    tier: strong
   - id: full
-    type: command
-    command: terminal-verdict
+    type: prompt
+    prompt: |
+      Terminal verdict on the expanded rollout.
+    tier: strong
   - id: publish
-    type: command
-    command: release-cut
+    type: prompt
+    prompt: |
+      Release cut in merge → tag → changelog order with a dry-run
+      preview, then the monitor handoff packet and the conditional change
+      record. See references/release-cut.md and references/release-chdr.md.
+    tier: strong

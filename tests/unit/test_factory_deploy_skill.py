@@ -1,7 +1,7 @@
-"""RED-gate tests for the future factory-deploy skill (issue #17).
+"""Contract tests for the factory-deploy skill (issue #17).
 
-The skill tree at skills/factory/factory-deploy/ does NOT exist yet, so
-every tree-contract test below must FAIL until the code step builds it.
+The skill tree at skills/factory/factory-deploy/ exists; these tests
+verify its contract against the plan of record.
 Grader-behavior coverage lives in
 evals/promptfoo/tests/test_check_factory_deploy_gates.py (pure-python,
 passes independently); the two wiring tests at the end of this file only
@@ -21,10 +21,10 @@ GRADER = ROOT / "evals" / "promptfoo" / "graders" / "check_factory_deploy_gates.
 GRADER_TEST = ROOT / "evals" / "promptfoo" / "tests" / "test_check_factory_deploy_gates.py"
 
 EXPECTED_STEPS = [
-    "verify", "merge", "stage", "gate-canary-expand", "canary",
+    "verify", "gate-merge", "merge", "stage", "gate-canary-expand", "canary",
     "gate-full-expand", "expand", "full", "publish",
 ]
-EXPECTED_GATES = ["gate-canary-expand", "gate-full-expand"]
+EXPECTED_GATES = ["gate-merge", "gate-canary-expand", "gate-full-expand"]
 
 MAX_DESCRIPTION_CHARS = 1024
 BODY_HARD_CAP_LINES = 500
@@ -81,7 +81,7 @@ def test_skill_body_lean_with_required_sections():
     assert ("red flag" in low) or ("rationalization" in low)
 
 
-def test_workflow_nine_steps_two_named_gates():
+def test_workflow_ten_steps_three_named_gates():
     assert WORKFLOW.exists(), f"missing {WORKFLOW.relative_to(ROOT)}"
     wf = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     steps = (wf.get("workflow") or {}).get("steps") or wf.get("steps") or []

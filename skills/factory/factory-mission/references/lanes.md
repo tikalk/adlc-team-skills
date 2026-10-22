@@ -277,10 +277,10 @@ A `remote:coder` lane dispatch:
      hook (`Cannot find module '<clone>/.agents/dispatcher.mjs'`).
 5. Wait — the developer drives from here. The lane does not run the
    mission's steps itself, and it never spawns the agent CLI.
-6. **Teardown — the developer says "done", the lane tears down.** The
-   developer never types a path and never remembers one. When they say
-   `done` (or `mission done`, or ask to tear the workspace down), the lane
-   runs the teardown gate itself:
+6. **Teardown — the developer says "done", the workspace is terminated.**
+   The developer never types a path and never remembers a name. When they
+   say `done` (or `mission done`, or ask to tear the workspace down), the
+   agent in **their** session runs the teardown gate itself:
 
    ```
    bash <the skill's own directory>/scripts/bash/remote-coder-teardown.sh <workspace> --yes
@@ -288,13 +288,18 @@ A `remote:coder` lane dispatch:
 
    - The path is **resolved by the skill**, not remembered by the
      developer: the installed skill's own directory
-     (`.agents/skills/factory-mission/scripts/bash/remote-coder-teardown.sh`
+     (`~/.agents/skills/factory-mission/scripts/bash/remote-coder-teardown.sh`
      in the workspace, `skills/factory/factory-mission/scripts/bash/…` in
-     the skills repo). The lane knows its own skill directory; the
-     developer does not have to.
-   - The workspace name comes from the lane's own state — the handle the
-     transport persisted (`.adlc/workspaces/<name>.json`), not from
-     memory.
+     the skills repo). The skill knows its own directory.
+   - The workspace name comes from the session itself, never from memory:
+     - in the **lane's** session (the one that prepared the workspace):
+       the handle the transport persisted
+       (`.adlc/workspaces/<name>.json`);
+     - in the **developer's** session (the remote one): `$WORKSPACE_NAME`
+       from the environment the transport delivered
+       (`~/.adlc/secrets.env` — the same var the profile declared).
+   - The gate deletes the workspace, removes the lane's handle with it, and
+     the developer's session then ends.
    - Teardown stays skill-side because the provider transport exposes no
      delete operation; it is the only remaining lane script. The gate
      refuses a name that is not lane-shaped (`<repo>-mission-<id>`), lists

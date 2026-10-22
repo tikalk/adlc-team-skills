@@ -65,10 +65,12 @@ It implements the following key factory platform capabilities:
      - **Teardown on request.** When the developer says `done`, `mission
        done`, or asks to tear the workspace down, run the teardown gate —
        do NOT ask the developer for a path or a workspace name:
-       `bash <the skill's own directory>/scripts/bash/remote-coder-teardown.sh <workspace> --yes`,
-       with the workspace name taken from the lane's own handle
-       (`.adlc/workspaces/<name>.json`). The developer never has to
-       remember where the script lives.
+       `bash <the skill's own directory>/scripts/bash/remote-coder-teardown.sh <workspace> --yes`.
+       The workspace name comes from the session itself: the lane's handle
+       (`.adlc/workspaces/<name>.json`) in the session that prepared the
+       workspace, or `$WORKSPACE_NAME` in the developer's own session. The
+       developer never has to remember where the script lives, and the
+       workspace is terminated as soon as they say "done".
    - If dispatch is `autonomous` or `supervised`: the `agent` lane runs the
      steps. `--provider` is **refused** in these modes — a remote lane hands
      an unattended run to a human, and the human-required gate must not be

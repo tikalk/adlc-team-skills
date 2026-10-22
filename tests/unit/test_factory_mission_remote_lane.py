@@ -533,7 +533,7 @@ def test_skill_pins_the_dispatch_rule():
 def test_lanes_teardown_is_triggered_by_the_developer_saying_done():
     """'done' must run the teardown — the developer types no path."""
     text = LANES.read_text()
-    assert "the developer says \"done\", the lane tears down" in text
+    assert "the developer says \"done\", the workspace is terminated" in text
     assert "mission done" in text
     assert "resolved by the skill" in text
     assert "the skill's own directory" in text
@@ -578,3 +578,20 @@ def test_lanes_states_that_the_variables_come_from_the_developer_environment():
     assert "from the developer's environment" in text
     assert "Missing required workspace variable" in text
     assert "never invents a value" in text
+
+
+def test_lanes_teardown_works_in_the_developers_session():
+    """"done" in the developer's remote session must tear the workspace down."""
+    text = re.sub(r"\s+", " ", LANES.read_text())
+    assert "the developer says \"done\", the workspace is terminated" in text
+    assert "in the **developer's** session" in text
+    assert "$WORKSPACE_NAME" in text
+    assert "the developer's session then ends" in text
+
+
+def test_skill_teardown_takes_the_name_from_the_session():
+    """The name comes from the handle or the env — never from the developer."""
+    skill = re.sub(r"\s+", " ", (ROOT / "skills/factory/factory-mission/SKILL.md").read_text())
+    assert "the lane's handle" in skill
+    assert "$WORKSPACE_NAME" in skill
+    assert "the workspace is terminated as soon as they say" in skill

@@ -1,0 +1,28 @@
+{
+  "title": "Explore the Tech Radar",
+  "quadrants": ["DevOps", "Backend", "AI/ML", "Web/Mobile"],
+  "rings": ["Try", "Start", "Keep", "Stop"],
+  "blips": [
+    {
+      "name": "Kubernetes",
+      "quadrant": "DevOps",
+      "ring": "Keep",
+      "description": "<p>Why?</p>\n<p>De facto container orchestration.</p>\n<p>Description</p>\n<p>An open-source container orchestration system.</p>",
+      "isNew": false
+    },
+    {
+      "name": "PostgreSQL",
+      "quadrant": "Backend",
+      "ring": "Keep",
+      "description": "<p>Why?</p>\n<p>Mature relational database.</p>\n<p>Description</p>\n<p>An open-source relational database.</p>",
+      "isNew": false
+    },
+    {
+      "name": "Jenkins",
+      "quadrant": "Backend",
+      "ring": "Stop",
+      "description": "<p>Why?</p>\n<p>Plugin hell + XML config; use managed CI instead.</p>\n<p>Description</p>\n<p>A self-hosted automation server.</p>",
+      "isNew": false
+    }
+  ]
+}

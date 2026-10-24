@@ -10,6 +10,20 @@ name: Verdict Head Binding
 # notices: the job reads the verdict back and compares the head it names with
 # the head being merged.
 #
+# It then asks the question a merge gate has to ask, which head-binding alone
+# does not answer: does the verdict say this PR may merge? A verdict can name
+# the current head and still be `outcome=not-merge-ready`, or report open
+# Important findings — both block a merge under this repository's review
+# policy, and neither may show a green check. `--require-outcome` turns that
+# question on: the job fails when there is no verdict, when the verdict omits
+# `outcome=` or `important=`, when it declares not-merge-ready, or when it
+# counts an open Important finding. It fails closed, so a verdict published
+# against the older marker schema cannot pass by silence.
+#
+# The job is advisory: it is not a required status check, so a red result
+# informs the code-owner rather than mechanically blocking a merge. Making it
+# required is a branch-protection decision for a human to take.
+#
 # The verdict is published as an ISSUE COMMENT (factory-review posts it with
 # `gh pr comment`), so the job listens for issue_comment as well as for
 # pull_request_review. Without it the check would never re-run after the
@@ -88,4 +102,5 @@ jobs:
           bash skills/factory/factory-review/scripts/check-verdict-head.sh \
             --repo "$GITHUB_REPOSITORY" \
             --pr "$PR_NUMBER" \
-            --pr-head "$PR_HEAD"
+            --pr-head "$PR_HEAD" \
+            --require-outcome

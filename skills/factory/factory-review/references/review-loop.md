@@ -54,11 +54,16 @@ The loop controller does **not** review, fix, or judge — it only orchestrates.
 
 **Marker:**
 ```
-<!-- factory-review:step=review run=<run_id> iter=<k> status=<completed|failed> findings=<count> important=<count> nits=<count> head=<sha> -->
+<!-- factory-review:step=review run=<run_id> iter=<k> status=<completed|failed> outcome=<merge-ready|not-merge-ready> findings=<count> important=<count> nits=<count> head=<sha> -->
 ```
 
 **Returns to loop controller:**
 - `verdict`: `all-pass` | `nits-only` | `important-found`
+- `outcome`: `merge-ready` when `verdict` is `all-pass`/`nits-only` **and**
+  `important_count` is 0; `not-merge-ready` when any Important finding is
+  open. This is the field the CI merge gate reads, so it is published in the
+  marker rather than left to prose — a `merge-ready` outcome with a nonzero
+  `important_count` fails the gate.
 - `findings_count`: total findings
 - `important_count`: Important findings count
 - `nits_count`: Nit findings count

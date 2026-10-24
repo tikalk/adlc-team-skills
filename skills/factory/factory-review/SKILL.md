@@ -49,7 +49,7 @@ When triggered with `--pr <id>` (without `--self-heal`):
 3. Fetch the PR diff and description.
 4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings`.
 5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP. The review comment MUST name the reviewed revision (head SHA in the marker `head=<sha>`). The `head=<sha>` field is what makes the verdict checkable: `scripts/check-verdict-head.sh` reads the verdict back, compares the head it names with the head being merged, and fails when they differ. Never post a verdict without it. Post the marker as ONE HTML comment at the top of the comment — the checker reads `head=` from inside that marker and requires the full 40-character SHA. Submit the verdict as a native Review-type COMMENT submission — never Approve: `create_pull_request_review(event=COMMENT)` (MCP) or `gh pr review <pr> --comment --body-file <file>` (CLI). Verdicts go through Review-type submissions; general comments stay reserved for status, lease, and decisions (tracker-integration.md Operation 4).
-6. If findings contain `Important` issues, set PR label to `validation`. If clean, set to `validation` + advise code-owner of merge-readiness.
+6. Set the PR label to `validation` in either case: it names the lifecycle stage the PR occupies, and a PR with open `Important` findings stays in that stage until they are resolved — the label is not a verdict. Merge-readiness is carried by the marker's `outcome=` (and enforced mechanically by the gate in §2 step 5), never by the label: advise the code-owner of merge-readiness only when the verdict is `merge-ready`, and say plainly that the PR is blocked when it is `not-merge-ready`.
 7. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
 8. **Re-review after any fix push (mandatory)**: A fix commit — whether from babysit, self-heal, or a human addressing review feedback — invalidates the prior review verdict. The verdict applies to exactly one head SHA; once the head moves, it is stale. Before declaring merge-readiness (or letting a merged-state audit stand), re-run all REVIEW.md passes on the new head and post the updated verdict with the new `head=<sha>`. The merge-ready comment must name the head it certifies; a merge-ready claim on a superseded head is a contract violation. (Evidence: MR !21 — iter-1 verdict on `b1221aa` went stale after the babysit fix `913504a`; the merged head was never re-reviewed and carried 2 Important findings found only in a post-merge audit.) **Enforced mechanically** by `scripts/check-verdict-head.sh` (see §2 step 5) — the same rule recurred on adlc-cli #41, where the verdict for `003cf8a` went stale across four fix commits and the PR merged carrying the finding.
 
@@ -83,7 +83,9 @@ factory-review --pr <id> --self-heal
        │  │         Important + Nit.                                       │
        │  │  Output type: findings (published to comment bus)            │
        │  │  Marker: <!-- factory-review:step=review run=<id>            │
-       │  │           iter=<k> status=<completed|failed> head=<sha> -->  │
+       │  │         iter=<k> status=<completed|failed>                   │
+       │  │         outcome=<merge-ready|not-merge-ready>                │
+       │  │         head=<sha> -->                                       │
        │  │  Returns: findings list + verdict                             │
        │  │                                                                │
        │  │  ┌── Verdict?                                                  │
@@ -149,7 +151,8 @@ factory-review --pr <id> --self-heal
 - **Comment bus only**: Sub-agents don't share session context. Each dispatch reads previous step's output via `reads_from` marker.
 - **Convergence detection**: Circuit breaker (default 3) + score-regression counter + finding-set comparison. Detects thrashing specifically — not an arbitrary iteration cap.
 - **SPEC_CORRECTION_NEEDED**: When the governing ticket/spec is wrong/ambiguous (not the code), converge routes back to factory-queue instead of burning iterations on an unfixable problem.
-- **One marker, one comment**: the review marker is ONE HTML comment — `<!-- factory-review:step=review run=<id> iter=<k> status=<completed|failed> findings=<n> important=<n> nits=<n> head=<sha> -->` — posted at the top of the review comment. The diagram above wraps it across two lines to fit the box; that is a diagram artifact, not a second marker. `scripts/check-verdict-head.sh` reads `head=` from inside that marker and requires the full 40-character SHA.
+- **One marker, one comment**: the review marker is ONE HTML comment — `<!-- factory-review:step=review run=<id> iter=<k> status=<completed|failed> outcome=<merge-ready|not-merge-ready> findings=<n> important=<n> nits=<n> head=<sha> -->` — posted at the top of the review comment. The diagram above wraps it across several lines to fit the box; that is a diagram artifact, not a second marker. `scripts/check-verdict-head.sh` reads `head=` from inside that marker and requires the full 40-character SHA.
+- **The marker carries the verdict's outcome, not just its head**: `outcome=` is `merge-ready` only when no Important finding is open, and `not-merge-ready` otherwise. The head alone cannot answer "may this merge?" — a verdict can name the current head and still block. Run the checker with `--require-outcome` (as CI does) to fail the gate on `not-merge-ready`, on `important=<n>` where n > 0, or on a marker that omits `outcome=` entirely — the gate fails closed, so a verdict posted against the older field set cannot pass by silence.
 
 ### 4. Agent Comment-Addressing & Babysitting
 

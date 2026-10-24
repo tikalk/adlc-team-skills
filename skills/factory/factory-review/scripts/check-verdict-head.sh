@@ -13,11 +13,28 @@
 # Usage:
 #   check-verdict-head.sh --repo <owner/repo> --pr <number> --pr-head <sha>
 #   check-verdict-head.sh --verdicts <file> --pr-head <sha>      # offline
+#   ... [--require-outcome]
 #
-# Exit codes:
+# Exit codes (default mode — a staleness check):
 #   0 = no factory-review verdict, or the verdict names the current head
 #   1 = the verdict is stale or unbound — the review must be re-run on this head
 #   2 = usage or infrastructure error (bad arguments, unreadable comments)
+#
+# --require-outcome upgrades the check from "is this verdict current?" to the
+# merge gate "may this PR merge?". The head being current answers only the
+# first question: a verdict can name the current head and still be a
+# not-merge-ready verdict, or one reporting open Important findings. With the
+# flag set the gate additionally fails (exit 1) on a verdict that:
+#   - does not exist at all          (an unreviewed PR is not merge-ready)
+#   - omits `outcome=` or `important=` from its marker (fails closed — a
+#     marker published before this schema cannot claim merge-readiness by
+#     silence)
+#   - carries `outcome=not-merge-ready`
+#   - carries `important=` greater than zero (this repository's review policy
+#     treats an open Important finding as blocking a merge)
+#   - carries an `outcome=` or `important=` value that is not a legal one
+# The head rules are unchanged: the gate is an additional question, not a
+# replacement, so a stale or unbound head still fails under the flag.
 #
 # EVERYTHING THAT COMES BACK FROM GITHUB IS UNTRUSTED. The repository is
 # public: any account can comment, and a comment body can say anything. A
@@ -51,6 +68,7 @@ REPO=""
 PR=""
 PR_HEAD=""
 VERDICTS_FILE=""
+REQUIRE_OUTCOME=0
 
 usage_error() {
     echo "check-verdict-head: $*" >&2
@@ -71,6 +89,7 @@ while [ "$#" -gt 0 ]; do
         --pr)       require_value "$1" "${2:-}"; PR="$2"; shift 2 ;;
         --pr-head)  require_value "$1" "${2:-}"; PR_HEAD="$2"; shift 2 ;;
         --verdicts) require_value "$1" "${2:-}"; VERDICTS_FILE="$2"; shift 2 ;;
+        --require-outcome) REQUIRE_OUTCOME=1; shift ;;
         --help|-h)  awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"
                     exit 0 ;;
         *)          usage_error "unknown argument '$1'" ;;
@@ -84,14 +103,22 @@ fi
 # The jq library: the ONLY place that ever looks at a comment body.
 #
 # `verdict_record` answers one question about a body: does it carry a
-# factory-review verdict marker, and what head does that marker name? It
-# returns a state (none / unbound / malformed / ok) and a head, never the
-# body itself. Everything it returns is validated: the timestamp must be a
-# full ISO-8601 UTC instant, the head must be a full 40-character SHA, and
-# the author and the author's association are reduced to safe alphabets. The
+# factory-review verdict marker, and what does that marker declare? It
+# returns a state (none / unbound / malformed / ok), the head it names, and
+# the marker's outcome and important-count, never the body itself. Everything
+# it returns is validated: the timestamp must be a full ISO-8601 UTC instant,
+# the head must be a full 40-character SHA, the outcome must be one of the two
+# legal verdicts, the important-count must be a non-negative integer, and the
+# author and the author's association are reduced to safe alphabets. The
 # marker region is taken from the text between `<!--` and the marker's own
 # closing `-->`, so a `head=` that appears in prose — outside any marker — is
 # never read.
+#
+# An absent field and an illegal one are kept apart: `-` means the marker
+# declared nothing, `invalid` means it declared something that is not a legal
+# value. The merge gate treats both as failures, but for different reasons —
+# one is a marker published before this schema, the other is a marker that
+# violates it — so the script can say which.
 JQ_LIB=$(cat <<'JQEOF'
 def iso_ts: if test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$") then . else "-" end;
 def trim_ws: sub("^[[:space:]]+"; "");
@@ -103,14 +130,26 @@ def marker_regions:
     | $seg ];
 def head_token:
   ( [ splits("\\s+") | select(length > 0) | select(startswith("head=")) | .[5:] ] | .[0] // "-" );
+def outcome_token:
+  ( [ splits("\\s+") | select(length > 0) | select(startswith("outcome=")) | .[8:] ] | .[0] // "-" );
+def important_token:
+  ( [ splits("\\s+") | select(length > 0) | select(startswith("important=")) | .[10:] ] | .[0] // "-" );
 def verdict_record:
-  if (test("factory-review:step=review") | not) then {state: "none", head: "-"}
+  if (test("factory-review:step=review") | not) then {state: "none", head: "-", outcome: "-", important: "-"}
   else
     ( [ marker_regions[] | head_token ] ) as $vals
     | ( [ $vals[] | select(test("^[0-9a-fA-F]{40}$")) ] | .[0] // "-" ) as $good
-    | if $good != "-" then {state: "ok", head: $good}
-      elif ([ $vals[] | select(. != "-") ] | length) > 0 then {state: "malformed", head: "-"}
-      else {state: "unbound", head: "-"}
+    | ( [ marker_regions[] | outcome_token ] | map(select(. != "-")) | .[0] // "-" ) as $oc
+    | ( [ marker_regions[] | important_token ] | map(select(. != "-")) | .[0] // "-" ) as $im
+    | ( if $oc == "-" then "-"
+        elif ($oc == "merge-ready" or $oc == "not-merge-ready") then $oc
+        else "invalid" end ) as $outcome
+    | ( if $im == "-" then "-"
+        elif ($im | test("^[0-9]+$")) then $im
+        else "invalid" end ) as $important
+    | if $good != "-" then {state: "ok", head: $good, outcome: $outcome, important: $important}
+      elif ([ $vals[] | select(. != "-") ] | length) > 0 then {state: "malformed", head: "-", outcome: $outcome, important: $important}
+      else {state: "unbound", head: "-", outcome: $outcome, important: $important}
       end
   end;
 JQEOF
@@ -118,15 +157,17 @@ JQEOF
 
 # The live filter: one record per comment or per review. A record carries
 #
-#   <timestamp>\t<author>\t<association>\t<state>\t<head>
+#   <timestamp>\t<author>\t<association>\t<state>\t<head>\t<outcome>\t<important>
 #
-# and never any part of a comment body.
+# and never any part of a comment body. The outcome and the important-count
+# ride along so the merge gate can read what the verdict concluded; in the
+# default (head-only) mode they are simply unused.
 JQ_FILTER_JSON=$(cat <<'JQEOF'
 .[] | ((.submitted_at // .created_at // "") | iso_ts) as $ts
      | ((.user.login // "") | gsub("[^A-Za-z0-9._-]"; "")) as $who
      | ((.author_association // "NONE") | gsub("[^A-Za-z]"; "")) as $assoc
      | ((.body // "") | verdict_record) as $rec
-     | "\($ts)\t\($who)\t\($assoc)\t\($rec.state)\t\($rec.head)"
+     | "\($ts)\t\($who)\t\($assoc)\t\($rec.state)\t\($rec.head)\t\($rec.outcome)\t\($rec.important)"
 JQEOF
 )
 
@@ -143,7 +184,7 @@ def split_records:
   )
   | .records
   | map(join("\n"));
-split_records | .[] | (verdict_record) as $rec | "-\t-\t-\t\($rec.state)\t\($rec.head)"
+split_records | .[] | (verdict_record) as $rec | "-\t-\t-\t\($rec.state)\t\($rec.head)\t\($rec.outcome)\t\($rec.important)"
 JQEOF
 )
 
@@ -241,7 +282,8 @@ fetch_records() {
 
 # The newest verdict among the records.
 #
-# Prints "<state>\t<head>\t<author>\t<association>", where the state is one of
+# Prints "<state>\t<head>\t<author>\t<association>\t<outcome>\t<important>",
+# where the state is one of
 #   none      — no record carries a verdict marker at all
 #   unbound   — a verdict exists but its marker names no head
 #   malformed — a verdict names something that is not a full 40-character SHA
@@ -262,6 +304,7 @@ select_verdict() {
         {
             n++
             ts[n] = $1; who[n] = $2; assoc[n] = $3; st[n] = $4; hd[n] = $5
+            oc[n] = $6; im[n] = $7
         }
         END {
             has_trusted = 0
@@ -276,8 +319,8 @@ select_verdict() {
                 }
                 best = i
             }
-            if (best == 0) { print "none\t-\t-\t-"; exit 0 }
-            print st[best] "\t" hd[best] "\t" who[best] "\t" assoc[best]
+            if (best == 0) { print "none\t-\t-\t-\t-\t-"; exit 0 }
+            print st[best] "\t" hd[best] "\t" who[best] "\t" assoc[best] "\t" oc[best] "\t" im[best]
         }
     '
 }
@@ -293,6 +336,8 @@ STATE=$(printf '%s\n' "$SELECTED" | cut -f1)
 VERDICT_HEAD=$(printf '%s\n' "$SELECTED" | cut -f2)
 VERDICT_AUTHOR=$(printf '%s\n' "$SELECTED" | cut -f3)
 VERDICT_ASSOC=$(printf '%s\n' "$SELECTED" | cut -f4)
+VERDICT_OUTCOME=$(printf '%s\n' "$SELECTED" | cut -f5)
+VERDICT_IMPORTANT=$(printf '%s\n' "$SELECTED" | cut -f6)
 
 if [ "$VERDICT_AUTHOR" = "-" ]; then
     AUTHOR_NOTE="(author unknown)"
@@ -303,6 +348,14 @@ else
 fi
 
 if [ "$STATE" = "none" ]; then
+    if [ "$REQUIRE_OUTCOME" = "1" ]; then
+        echo "check-verdict-head: FAIL — no factory-review verdict on this PR."
+        echo "  The merge gate asks whether this PR may merge. A PR with no verdict"
+        echo "  has not been certified merge-ready, so the gate cannot pass it:"
+        echo "  passing on silence would turn the check green for exactly the PRs"
+        echo "  nobody reviewed. Run the review on this head."
+        exit 1
+    fi
     echo "check-verdict-head: OK — no factory-review verdict on this PR; nothing to verify."
     exit 0
 fi
@@ -327,14 +380,75 @@ fi
 
 verdict_head=$(printf '%s' "$VERDICT_HEAD" | tr '[:upper:]' '[:lower:]')
 pr_head=$(printf '%s' "$PR_HEAD" | tr '[:upper:]' '[:lower:]')
-if [ "$verdict_head" = "$pr_head" ]; then
-    echo "check-verdict-head: OK — the verdict names the current head ($PR_HEAD)."
+
+if [ "$verdict_head" != "$pr_head" ]; then
+    echo "check-verdict-head: FAIL — the verdict names $VERDICT_HEAD but the head is $PR_HEAD."
+    echo "  $AUTHOR_NOTE"
+    echo "  A fix push invalidates the verdict: re-run the review passes on the current"
+    echo "  head and post the updated verdict naming $PR_HEAD before claiming merge-readiness."
+    exit 1
+fi
+
+# The verdict is current. In the default mode that answers the whole question
+# and the check passes; the question asked there is staleness. The merge gate
+# asks one more: does this verdict say the PR may merge? A current verdict can
+# still be a not-merge-ready one, or one carrying open Important findings, and
+# neither may be shown as a green merge gate. Every field the gate reads is
+# checked fail-closed: a verdict that declares nothing cannot certify anything.
+if [ "$REQUIRE_OUTCOME" = "1" ]; then
+    if [ -z "$VERDICT_OUTCOME" ] || [ "$VERDICT_OUTCOME" = "-" ]; then
+        echo "check-verdict-head: FAIL — the verdict declares no outcome."
+        echo "  $AUTHOR_NOTE"
+        echo "  The marker names the head but omits outcome=, so it says nothing about"
+        echo "  merge-readiness. The gate fails closed: a verdict that declares nothing"
+        echo "  cannot certify that the PR may merge. Re-run the review so the marker"
+        echo "  carries outcome=merge-ready or outcome=not-merge-ready."
+        exit 1
+    fi
+
+    if [ "$VERDICT_OUTCOME" = "invalid" ]; then
+        echo "check-verdict-head: FAIL — the verdict's outcome= is not a legal value."
+        echo "  $AUTHOR_NOTE"
+        echo "  outcome= must be merge-ready or not-merge-ready; a value the gate does"
+        echo "  not recognise cannot be trusted to mean either. Re-run the review so the"
+        echo "  marker carries a legal outcome."
+        exit 1
+    fi
+
+    if [ -z "$VERDICT_IMPORTANT" ] || [ "$VERDICT_IMPORTANT" = "-" ] || [ "$VERDICT_IMPORTANT" = "invalid" ]; then
+        echo "check-verdict-head: FAIL — the verdict's important= is missing or not a count."
+        echo "  $AUTHOR_NOTE"
+        echo "  The gate reads important= to learn whether Important findings are open."
+        echo "  A marker that omits it, or makes it unreadable, cannot prove that none"
+        echo "  are, so the gate fails closed. Re-run the review so the marker carries"
+        echo "  important=<count>."
+        exit 1
+    fi
+
+    if [ "$VERDICT_OUTCOME" = "not-merge-ready" ]; then
+        echo "check-verdict-head: FAIL — the verdict says outcome=not-merge-ready."
+        echo "  $AUTHOR_NOTE"
+        echo "  The verdict is current, so it is not stale; it concludes the PR may not"
+        echo "  merge. The gate reports that conclusion instead. Address the blocking"
+        echo "  findings and re-run the review to clear it."
+        exit 1
+    fi
+
+    if [ "$VERDICT_IMPORTANT" -gt 0 ] 2>/dev/null; then
+        echo "check-verdict-head: FAIL — the verdict reports $VERDICT_IMPORTANT open Important finding(s)."
+        echo "  $AUTHOR_NOTE"
+        echo "  An Important finding blocks a merge, so a verdict counting one cannot"
+        echo "  certify merge-readiness even when its outcome= says merge-ready: the"
+        echo "  count is the fact, the outcome string only summarises it. Resolve the"
+        echo "  findings and re-run the review."
+        exit 1
+    fi
+
+    echo "check-verdict-head: OK — the verdict names the current head and declares merge-ready."
     echo "  $AUTHOR_NOTE"
     exit 0
 fi
 
-echo "check-verdict-head: FAIL — the verdict names $VERDICT_HEAD but the head is $PR_HEAD."
+echo "check-verdict-head: OK — the verdict names the current head ($PR_HEAD)."
 echo "  $AUTHOR_NOTE"
-echo "  A fix push invalidates the verdict: re-run the review passes on the current"
-echo "  head and post the updated verdict naming $PR_HEAD before claiming merge-readiness."
-exit 1
+exit 0

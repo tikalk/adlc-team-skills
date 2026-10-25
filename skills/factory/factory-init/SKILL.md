@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 `factory-init` orchestrates the **unified brownfield bootstrap**: one command that reverse-engineers an existing codebase onto all three project-memory layers and measures how well they align with the code.
 
-It coordinates the leaf lifecycle skills directly — `product-init`, `product-clarify`, `product-implement`, `product-analyze`, `architect-init`, `architect-clarify`, `architect-implement`, `architect-analyze`, `change-init`, `change-clarify`, `change-publish` — **never** the peer orchestrators `factory-product` / `factory-architect` / `factory-learn`.
+It coordinates the leaf lifecycle skills directly — `product-init`, `product-clarify`, `product-implement`, `product-analyze`, `architect-init`, `architect-clarify`, `architect-implement`, `architect-analyze`, `change-init`, `change-clarify`, `change-publish` — **never** the peer orchestrators `factory-intent` / `factory-learn`.
 
 Its own final step, the **sweep**, is the only cross-layer analysis in the factory: it builds the **coverage matrix** (`.adlc/coverage/coverage.md`) — a feature-area pivot plus the four traceability relations PDR↔ADR, PDR↔code, ADR↔code, ChDR↔code — and diffs it against the previous sweep to detect drift.
 
@@ -26,8 +26,8 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 - You want a **recurring cross-layer alignment audit** (`--refresh`): which decisions are undocumented, which code is undecreed, where product and architecture disagree.
 
 **When NOT to use**:
-- Greenfield / empty project → run `factory-product` and `factory-architect` (specify routes) instead.
-- Single-layer work → `factory-product` / `factory-architect` / `factory-learn` directly.
+- Greenfield / empty project → run `factory-intent` (specify routes) instead.
+- Single-layer work → `factory-intent` / `factory-learn` directly.
 - CDR / team-directives contribution → `factory-learn`.
 - Feature implementation → `factory-mission`.
 
@@ -40,7 +40,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 | Code exists, no memory records | **Bootstrap** (full pipeline) |
 | `.adlc/coverage/coverage.md` exists, or `--refresh` | **Refresh** (sweep only) |
 | Partial state | Bootstrap with **per-layer skip** (below) |
-| No code | Halt: greenfield — use `factory-product` / `factory-architect` specify routes |
+| No code | Halt: greenfield — use `factory-intent` specify routes |
 
 **Per-layer skip** — each track classifies independently; a layer whose memory AND compiled artifact both exist skips its init/implement and runs only its analyze:
 
@@ -151,7 +151,7 @@ Every gap line uses the form:
 
 ## Deconfliction
 
-- **`factory-product` / `factory-architect`** brownfield routes remain the **single-layer** entry points; `factory-init` is the unified one. Per-layer skip keeps a re-run cheap on repos that already have one layer documented.
+- **`factory-intent`** lanes' brownfield routes remain the **single-layer** entry points; `factory-init` is the unified one. Per-layer skip keeps a re-run cheap on repos that already have one layer documented.
 - **`factory-learn`** Historical Mining route = **ongoing/incremental** ChDR mining (post-incident, pre-refactor); `factory-init` = **one-time deep bootstrap** (full window). Both reuse the same `change-*` leaf skills.
 - **`team-init`** (brownfield CDR) has no factory route today — a known gap in `factory-learn`, out of scope here.
 
@@ -194,4 +194,4 @@ Every gap line uses the form:
 - layer-tagged correction routing
 - Workflows as graphs — the fixed DAG is chosen; declarative graphs remain an option
 - the output-type classification (output type classification — draft/decision/findings/artifact-ref)
-- `factory-product/SKILL.md`, `factory-architect/SKILL.md`, `factory-learn/SKILL.md` — sibling orchestrators; single-layer entry points
+- `factory-intent/SKILL.md`, `factory-learn/SKILL.md` — sibling orchestrators; single-layer entry points

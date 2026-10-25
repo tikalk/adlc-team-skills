@@ -185,7 +185,7 @@ def test_commit_step_only_commits_its_paths(repo):
     head = git(w, "rev-parse", "HEAD")
     r = run(PS / "commit-step.ps1", w, *STEP_ARGS, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
     assert r.returncode == 0, r.stderr
-    assert git(w, "log", "-1", "--format=%B").startswith("docs(adlc): factory-product specify")
+    assert git(w, "log", "-1", "--format=%B").startswith("docs(adlc): factory-intent specify")
     # README.md changed but was not in the step's paths: still uncommitted
     # (git() strips output, so the leading unstaged-space marker is gone —
     # "M README.md" here means worktree-modified, index-clean).
@@ -252,7 +252,7 @@ def test_commit_step_rejects_a_multiline_summary_and_bad_output_type(repo):
     ml[ml.index("two PDR drafts")] = "line one\nSigned-off-by: someone"
     r = run(PS / "commit-step.ps1", w, *ml, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
     assert r.returncode == 0, r.stderr
-    assert git(w, "log", "-1", "--format=%s") == "docs(adlc): factory-product specify — line one Signed-off-by: someone"
+    assert git(w, "log", "-1", "--format=%s") == "docs(adlc): factory-intent specify — line one Signed-off-by: someone"
     assert "Signed-off-by" not in git(w, "log", "-1", "--format=%(trailers:only)")
 
 

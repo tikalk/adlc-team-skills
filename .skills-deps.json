@@ -14,12 +14,6 @@
     "architect-specify": [
       "architect-clarify"
     ],
-    "factory-architect": [
-      "factory-mission"
-    ],
-    "factory-product": [
-      "factory-mission"
-    ],
     "product-implement": [
       "product-clarify"
     ],
@@ -34,6 +28,9 @@
     ],
     "team-skills": [
       "team-setup"
+    ],
+    "factory-intent": [
+      "factory-mission"
     ]
   }
 }

@@ -21,7 +21,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 - You want to run "Build to Delete" (Harness Decay checks) to prune redundant rules.
 
 **When NOT to use**:
-- For product-level specification or development (use `factory-product` or `factory-mission` instead).
+- For product-level specification or development (use `factory-intent` or `factory-mission` instead).
 - If the team directives repository is completely unconfigured (run `/team-setup` first).
 
 ---
@@ -48,7 +48,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 2. **`clarify`⭐** -> Proposes the redundant rule's deprecation and the mechanical rule's promotion to `team-levelup` for human review. Promotions route to action **P — Promote to check** (team-levelup Phase 2b); once the check exists and runs in CI, the CDR is deprecated or reduced to a thin pointer. Both proposals publish as `findings`.
 
 ### Workflow Retrospective Route
-Runs periodically or on-demand to analyze past runs of other factory skills (e.g. `factory-mission`, `factory-product`) and generate workflow memories:
+Runs periodically or on-demand to analyze past runs of other factory skills (e.g. `factory-mission`, `factory-intent`) and generate workflow memories:
 1. **`analyze`** (`analyze` phase) -> Scan completed/failed runs' shared state (`.adlc/workflows/runs/<run_id>/state.json` via `adlc-cli workflow status`) and evidence files. Identify patterns, recurring errors, or successful corrections.
    - Also sweep `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/` for unclarified entries (frontmatter/heading status proposed/discovered/draft); surface each as a finding (Draft ID + type + age), independent of whether session_end/file_edited hooks ever fired.
 2. **`clarify`⭐** -> Present proposed memories (active vs tentative) to the user (in gated/hybrid modes) or auto-approve (in autonomous mode).

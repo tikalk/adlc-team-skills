@@ -186,7 +186,7 @@ def write(work, rel, text):
     p.write_text(text)
 
 
-STEP_ARGS = ["--orchestrator", "factory-product", "--step", "specify", "--output-type", "draft",
+STEP_ARGS = ["--orchestrator", "factory-intent", "--step", "specify", "--output-type", "draft",
              "--summary", "two PDR drafts", "--records", "PDR-127,PDR-128", "--"]
 
 
@@ -199,7 +199,7 @@ def test_commit_step_commits_with_trailers(repo):
     sha = git(w, "rev-parse", "HEAD")
     assert r.stdout.strip() == f"sha: {sha}"
     msg = git(w, "log", "-1", "--format=%B")
-    assert msg.splitlines()[0] == "docs(adlc): factory-product specify — two PDR drafts"
+    assert msg.splitlines()[0] == "docs(adlc): factory-intent specify — two PDR drafts"
     trailers = git(w, "log", "-1", "--format=%(trailers:only)").splitlines()
     assert trailers == ["Run-Id: r26", "Step: specify", "Output-Type: draft", "Records: PDR-127,PDR-128"]
     assert sorted(git(w, "show", "--name-only", "--format=", "HEAD").splitlines()) == [
@@ -294,7 +294,7 @@ def test_commit_step_rejects_a_multiline_summary_and_bad_output_type(repo):
     ml[ml.index("two PDR drafts")] = "line one\nSigned-off-by: someone"
     r = run(COMMIT_STEP, w, *ml, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
     assert r.returncode == 0, r.stderr
-    assert git(w, "log", "-1", "--format=%s") == "docs(adlc): factory-product specify — line one Signed-off-by: someone"
+    assert git(w, "log", "-1", "--format=%s") == "docs(adlc): factory-intent specify — line one Signed-off-by: someone"
     assert "Signed-off-by" not in git(w, "log", "-1", "--format=%(trailers:only)")
 
 
@@ -497,7 +497,7 @@ def test_open_mr_reuses_the_mr_when_a_redispatch_adds_nothing(repo, tmp_path):
     assert r.stdout.strip().endswith("/merge_requests/70")
 
 
-@pytest.mark.parametrize("skill", ["factory-product", "factory-architect"])
+@pytest.mark.parametrize("skill", ["factory-intent"])
 def test_orchestrators_always_call_open_mr_and_leave_approval_to_the_gate(skill):
     text = (ROOT / f"skills/factory/{skill}/SKILL.md").read_text()
     assert "**Before you return, always:**" in text
@@ -548,13 +548,13 @@ def test_commit_step_commits_a_deletion_alone(repo):
     assert git(w, "status", "--short") == ""
 
 
-@pytest.mark.parametrize("skill", ["factory-product", "factory-architect"])
+@pytest.mark.parametrize("skill", ["factory-intent"])
 def test_orchestrators_pass_moved_and_deleted_paths(skill):
     text = (ROOT / f"skills/factory/{skill}/SKILL.md").read_text()
     assert "every path the step wrote, moved or deleted" in text
 
 
-@pytest.mark.parametrize("skill", ["factory-product", "factory-architect"])
+@pytest.mark.parametrize("skill", ["factory-intent"])
 def test_factory_run_checklist_comes_first(skill):
     # Drill run b664753d: the architecture orchestrator had the rules but read
     # them too late; they now open the skill.

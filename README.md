@@ -272,7 +272,7 @@ What each station adds:
   (Review→Fix→Converge) with maker-checker separation and circuit breaker.
 - **`factory-learn`** — retrospectives into team-ai-directives:
   build-to-delete pruning, promote-to-check for mechanical rules.
-- **`factory-product` / `factory-architect`** — lifecycle coordinators
+- **`factory-intent`** — merged two-lane intent orchestrator
   maintaining PRD.md and AD.md with clarify⭐ gates.
 - **`factory-tickets`** — read-only worklist across trackers, classified by
   next actionable move.
@@ -350,7 +350,7 @@ each step. Works alongside:
 - **`factory-queue`** — queue intake, AI advisory triage scoring, intent gate, milestone generation.
 - **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, mandated TDD RED/GREEN gates (Test Agent writes failing tests first, Implement Agent writes code to pass them), circuit breaker.
 - **`factory-review`** — severity-ranked PR policy compliance against `REVIEW.md`; babysits agent PRs to merge.
-- **`factory-product`** / **`factory-architect`** — product/architecture lifecycle coordinators.
+- **`factory-intent`** — merged intent orchestrator (product + architecture lanes, two gates).
 - **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.
 - **`factory-clean`** — resource inventory and reclamation (approval-gated).

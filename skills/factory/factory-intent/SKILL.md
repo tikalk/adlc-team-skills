@@ -53,9 +53,9 @@ replaces the twin orchestrators with one two-lane DAG — no aliases.
 with one step per lane per phase:
 
 ### Greenfield Route (default on empty project)
-1. **`product-specify` / `architecture-specify`** (`generate`) — capture
+1. **`product-specify` / `architect-specify`** (`generate`) — capture
    drafts in `.adlc/drafts/pdr/` and `.adlc/drafts/adr/`.
-2. **`product-clarify` / `architecture-clarify`⭐** (`clarify`) — quality
+2. **`product-clarify` / `architect-clarify`⭐** (`clarify`) — quality
    checks; each lane marks its own drafts accepted at its own gate.
 3. **`gate-product-decisions` / `gate-architecture-decisions`** — separate
    scope-pinned human gates. Neither gate can accept the other lane's
@@ -68,7 +68,10 @@ with one step per lane per phase:
 ### Brownfield / Refresh Routes
 Per-lane route inputs (`product_route`, `architecture_route`) select
 greenfield / brownfield (`init`) / refresh (analyze-first) independently —
-one lane may refresh while the other runs greenfield.
+one lane may refresh while the other runs greenfield. The adaptive (LLM)
+executor resolves the routes at dispatch (choosing `init` vs `specify` vs
+analyze-first for each lane); the checked-in `workflow.yml` below encodes the
+greenfield default (`specify` lanes) for headless execution.
 
 ---
 
@@ -79,8 +82,10 @@ business metrics, NFR targets). Anything answering HOW (stack, pattern,
 interface, NFR mechanism) is recorded as a handoff note to the architecture
 lane, never as a product decision. Overlap disputes escalate to a named
 human; the ruling is posted to the comment bus as a `decision` output
-(human tiebreak — no auto-resolution). The joint implement waits until the
-human ruling lands.
+(human tiebreak — no auto-resolution). The adaptive executor must not run
+the joint implement until the human ruling lands (the checked-in
+`workflow.yml` encodes the greenfield two-gate default; the tiebreak wait is
+enforced at dispatch, not by a gate in that file).
 
 ---
 
@@ -91,7 +96,8 @@ human ruling lands.
    `implement` → `artifact-ref`; `analyze` → `findings`.
 3. **Correction Loop**: per-lane HIGH/CRITICAL routes that lane back to its
    clarify, bounded by `max_corrections` (default 2); if exceeded, halt for
-   human review.
+   human review. (Adaptive executor behavior — the checked-in `workflow.yml`
+   headless loop below is a bounded re-implementation only.)
 4. **Supervision Default**: `hybrid` — human gates at both clarifies and at
    final review. Merge sign-off is always human.
 5. **Pre-flight Check**: Verifies both `product-*` and `architect-*`
@@ -108,7 +114,7 @@ In a factory run (`ADLC_RUN_ID` set by the workflow engine) this orchestrator �
 1. **Before the first step:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/run-branch.sh` — checks out `factory/intent/<repo>-<iid>` (from `ADLC_ISSUE_REF`) in the project root, reusing it or continuing from `origin`. Shared by both lanes and with re-dispatches.
 2. **After each step** (`specify`/`init`, `clarify`, `implement`, `analyze` fixes):
    `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/commit-step.sh --orchestrator factory-intent --step <step> --output-type <draft|decision|artifact-ref|findings> --summary "<one line, no issue text>" --records <IDs> -- <paths the step wrote>`
-   Pass every path the step wrote, moved or deleted (a promoted draft's old path too; the helper also commits deletions inside the allowlist), and only paths inside the lifecycle write allowlists (`.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, `docs/adlc/product/PRD.md`, `.adlc/product/sections/`, `.adlc/product/state.json`, `.adlc/drafts/adr/`, `docs/adlc/memory/adr/`, `docs/adlc/architecture/AD.md`, `.adlc/architecture/sections/`, `.adlc/architecture/state.json`). It prints `sha: <sha>` or `sha: none`; put that `sha` in the step's bus marker (the bus carries pointers, not content). Never stage `.adlc/workflows/**`.
+   Pass every path the step wrote, moved or deleted (a promoted draft's old path too; the helper also commits deletions inside the allowlist), and only paths inside the lifecycle write allowlists (`.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, `docs/adlc/product/PRD.md`, `.adlc/product/sections/`, `.adlc/product/state.json`, `.adlc/drafts/adr/`, `docs/adlc/memory/adr/`, `docs/adlc/architect/AD.md`, `docs/adlc/architect/views/`, `.adlc/architect/state.json`). It prints `sha: <sha>` or `sha: none`; put that `sha` in the step's bus marker (the bus carries pointers, not content). Never stage `.adlc/workflows/**`.
 3. **Before you return, always:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/open-mr.sh` — pushes the run branch only, finds or opens one draft MR (merge commit, no squash; milestone/assignee per the MR-ownership decision) and writes `mr_url` to `ADLC_STEP_OUTPUT`, which the engines' gates link (`context.link`). Call it whatever the outcome — even when nothing was committed (`sha: none`, an analyze-only pass): with no commits on the run branch it opens nothing and the gate shows there is nothing to review. Also write a one-line `conclusion` into the same JSON object (the gates' intent-conclusion rule).
    In a factory run the engine's gate after this step **is** the approval: do not ask for approval yourself (no "approve `implement`?" question) — finish the steps the issue needs, run `open-mr.sh`, state the conclusion and return.
 

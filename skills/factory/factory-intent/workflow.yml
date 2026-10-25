@@ -7,12 +7,20 @@
 # Replaces the twin orchestrators (no aliases): lanes reuse the lifecycle
 # skills verbatim; only this orchestrator commits, pushes and opens the MR.
 #
+# Route inputs (`product_route`, `architecture_route`) are resolved by the
+# adaptive (LLM) executor at dispatch (init vs specify vs analyze-first per
+# lane). The steps below encode the greenfield default for headless runs.
+#
 # Correction loop: each lane's `analyze` ends with a terminal
 # `VERDICT: OK | HIGH | CRITICAL` line; HIGH/CRITICAL re-runs that lane's
 # bounded build-and-verify cycle (max_iterations = 1 + mission
 # max_corrections, default 2). The adaptive executor may route a correction
 # back through that lane's clarify before re-implementing; the headless loop
 # is a bounded re-implementation.
+#
+# Tiebreak note: overlap disputes escalate to a named human whose ruling is
+# posted to the comment bus as a `decision`. That wait is enforced at
+# dispatch by the adaptive executor; there is no tiebreak gate in this file.
 schema_version: "1.0"
 workflow:
   id: factory-intent
@@ -70,6 +78,9 @@ steps:
       since: "last_approved"
       link: "{{ inputs.mr_url }}"
   - id: build-and-verify
+    # Joint loop: the OR-condition re-runs both lanes' implement+analyze when
+    # either lane reports HIGH/CRITICAL (a one-lane HIGH rebuilds the healthy
+    # lane too — accepted coupling: commits are no-ops, `max_iterations` bounds it).
     type: do-while
     condition: "{{ steps.product-analyze.output.stdout | contains('VERDICT: CRITICAL') or steps.product-analyze.output.stdout | contains('VERDICT: HIGH') or steps.architecture-analyze.output.stdout | contains('VERDICT: CRITICAL') or steps.architecture-analyze.output.stdout | contains('VERDICT: HIGH') }}"
     max_iterations: 3

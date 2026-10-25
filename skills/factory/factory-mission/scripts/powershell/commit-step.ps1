@@ -76,7 +76,8 @@ foreach ($p in $paths) {
           ($rp -like 'docs/adlc/memory/pdr/*') -or ($rp -like 'docs/adlc/memory/adr/*') -or
           ($rp -eq 'docs/adlc/product/PRD.md') -or ($rp -eq 'docs/adlc/architect/AD.md') -or
           ($rp -like 'docs/adlc/architect/views/*') -or
-          ($rp -like '.adlc/product/sections/*') -or ($rp -eq '.adlc/product/state.json')
+          ($rp -like '.adlc/product/sections/*') -or ($rp -eq '.adlc/product/state.json') -or
+          ($rp -eq '.adlc/architect/state.json')
     if (-not $ok) { Die "path $rp is outside the ADR-433 lifecycle write allowlist" }
     $rel.Add($rp)
 }
@@ -86,7 +87,7 @@ foreach ($p in $paths) {
 # old draft stays an uncommitted deletion and the engine's gate refuses it.
 $allow = @('.adlc/drafts/pdr', '.adlc/drafts/adr', 'docs/adlc/memory/pdr', 'docs/adlc/memory/adr',
            'docs/adlc/product/PRD.md', 'docs/adlc/architect/AD.md', 'docs/adlc/architect/views',
-           '.adlc/product/sections', '.adlc/product/state.json')
+           '.adlc/product/sections', '.adlc/product/state.json', '.adlc/architect/state.json')
 $deleted = @(git ls-files --deleted -- $allow) + @(git diff --cached --name-only --diff-filter=D -- $allow)
 foreach ($d in $deleted) { if ($d -and -not $rel.Contains($d)) { $rel.Add($d) } }
 

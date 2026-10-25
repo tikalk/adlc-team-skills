@@ -221,8 +221,8 @@ advisory; humans hold the gates (⭐).
          │ PRD.md · AD.md · .adlc/memory/
          ▼
 ┌──────────────────────────┐  PDRs → PRD.md  ·  ADRs → AD.md
-│ factory-product /        │  (clarify⭐ human gates)
-│ factory-architect        │
+│ factory-intent           │  (two scope-pinned gates)
+│ (product + arch lanes)   │
 └────────┬─────────────────┘
          │ Mission Brief (goal + constraints + success criteria)
          ▼
@@ -284,8 +284,7 @@ What each station adds:
 ```mermaid
 flowchart LR
     FQ["factory-queue<br/>Ingestion & Triage"] ~~~ IG{"Intent Gate"}
-    FP["factory-product<br/>Product Lifecycle"] ~~~ CG1{"clarify⭐ Gate"}
-    FA["factory-architect<br/>Architecture Lifecycle"] ~~~ CG2{"clarify⭐ Gate"}
+    FI2["factory-intent<br/>Merged Two-Lane DAG"] ~~~ CG1{"product Gate"} & CG1 ~~~ CG2{"architecture Gate"}
     FM["factory-mission<br/>Execution Engine"] ~~~ CB{"Circuit Breaker"}
     FR["factory-review<br/>PR Compliance"] ~~~ MG{"Merge Gate"}
     FL["factory-learn<br/>Learning Loop"] ~~~ CG3{"clarify⭐ Gate"}

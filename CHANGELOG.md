@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`factory-product` and `factory-architect` skills** (`skills/factory/factory-product/`, `skills/factory/factory-architect/` — SKILL.md + workflow.yml each) with no aliases. Replacement: `skills/factory/factory-intent/` (merged two-lane DAG: one Mission Brief in, product + architecture lanes, two scope-pinned gates, joint build-and-verify). References in README, docs, executor/tracker prose, run-helper tests and the skills-deps closure map now name `factory-intent`; historical entries below are unchanged.
+
 ### Added
 
 - **`REVIEW.md` — the repository's review policy as code** — the factory-review skill reads its passes, severity weights and skip lists from the repository root, so every PR is reviewed against one written policy instead of an implicit one. Ships the standard passes (bugs · security · spec-compliance · quality) plus the two integrity passes the factory-review hardening record calls for — **test-integrity** (assertions rewritten or weakened so a change passes) and **ci-integrity** (guardrails removed, or a green check that never ran because its step was skipped) — the evidence intake bar (intent · execution evidence · size sanity), and the verdict contract: a verdict certifies exactly one head SHA, lists what was and was not checked, never attests that the requirements are correct, and never approves or merges.

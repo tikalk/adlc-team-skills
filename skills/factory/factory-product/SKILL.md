@@ -6,6 +6,19 @@ disable-model-invocation: true
 
 # factory-product
 
+## In a factory run — read this first
+
+When `ADLC_RUN_ID` is set, the workflow engine runs this step unattended and a gate follows it. Do exactly this:
+
+1. **Start:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/run-branch.sh` — on Windows, `pwsh {REPO_ROOT}/.agents/skills/factory-mission/scripts/powershell/run-branch.ps1` (every helper has a PowerShell twin under `scripts/powershell/`; use it instead of the bash one on Windows)
+2. Run the lifecycle steps the DAG resolves for the issue. After **each** step that changed files: `commit-step.sh` with every path it wrote, moved or deleted.
+3. **Before you return, always:** `open-mr.sh`, then write a one-line `conclusion` into `ADLC_STEP_OUTPUT`. Do this whatever the outcome, even when nothing changed.
+4. **Never ask for approval** or wait for an answer. The engine's gate after this step is the approval; a question here ends the step with nothing published.
+
+Only this orchestrator commits, pushes and opens the MR, and only through these helpers; `product-*` skills never do. Details: [Run Branch, Step Commits and Draft MR](#run-branch-step-commits-and-draft-mr).
+
+---
+
 ## What this skill does
 
 `factory-product` orchestrates the product-decisions lifecycle. It coordinates individual product-related skills (`product-init`, `product-specify`, `product-clarify`, `product-implement`, `product-analyze`) to maintain a consistent `PRD.md` at `docs/adlc/product/PRD.md` (the shared layout).
@@ -58,3 +71,20 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 3. **Correction Loop**: If `analyze` returns `CRITICAL` or `HIGH` consistency errors, the executor routes back to `clarify` with the analyze marker in `reads_from`. `clarify` reads the findings from the PR/MR/issue comment bus (or local fallback). This loop is bounded by `max_corrections` (default 2); if exceeded, the orchestrator halts for human review.
 4. **Supervision Default**: `hybrid`. A human gate is hard-enforced at `clarify`⭐ (for PDR approvals) and at final `PRD.md` review.
 5. **Pre-flight Check**: Verifies that the `product-*` lifecycle skills are installed in the workspace before beginning Phase 0.
+
+---
+
+## Run Branch, Step Commits and Draft MR
+
+**Requires:** the `factory-mission` skill (provides the run helpers): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-mission`
+
+In a factory run (`ADLC_RUN_ID` set by the workflow engine) this orchestrator — and only it, never the `product-*` lifecycle skills — commits, pushes the run branch and opens the draft MR, always through these three helpers:
+
+1. **Before the first step:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/run-branch.sh` — checks out `factory/intent/<repo>-<iid>` (from `ADLC_ISSUE_REF`) in the project root, reusing it or continuing from `origin`. Shared with the other intent lane and with re-dispatches.
+2. **After each step** (`specify`/`init`, `clarify`, `implement`, `analyze` fixes):
+   `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/commit-step.sh --orchestrator factory-product --step <step> --output-type <draft|decision|artifact-ref|findings> --summary "<one line, no issue text>" --records <IDs> -- <paths the step wrote>`
+   Pass every path the step wrote, moved or deleted (a promoted draft's old path too; the helper also commits deletions inside the allowlist), and only paths inside the lifecycle write allowlist (`.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, `docs/adlc/product/PRD.md`, `.adlc/product/sections/`, `.adlc/product/state.json`). It prints `sha: <sha>` or `sha: none`; put that `sha` in the step's bus marker (the bus carries pointers, not content). Never stage `.adlc/workflows/**`.
+3. **Before you return, always:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/open-mr.sh` — pushes the run branch only, finds or opens one draft MR (merge commit, no squash; milestone/assignee per the MR-ownership decision) and writes `mr_url` to `ADLC_STEP_OUTPUT`, which the engine's gate links (`context.link`). Call it whatever the outcome — even when nothing was committed (`sha: none`, an analyze-only pass): with no commits on the run branch it opens nothing and the gate shows there is nothing to review. Also write a one-line `conclusion` into the same JSON object (the gate's intent-conclusion rule).
+   In a factory run the engine's gate after this step **is** the approval: do not ask for approval yourself (no "approve `implement`?" question) — finish the steps the issue needs, run `open-mr.sh`, state the conclusion and return.
+
+Outside a factory run the helpers do nothing unless the user opted in (`adlc.commit_steps: true` in `.adlc/init-options.json`, or `--commit` passed to this skill, which you forward to `commit-step.sh`); `run-branch.sh` and `open-mr.sh` never act without `ADLC_RUN_ID`. A helper's non-zero exit (refused path, missing committer identity, tracker scope) stops the run — report it, do not work around it.

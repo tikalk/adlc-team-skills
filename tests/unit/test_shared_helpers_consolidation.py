@@ -21,11 +21,15 @@ CANONICAL = {
     "setup-architect.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/setup-architect.ps1",
     "common.sh": ROOT / "skills/architect/architect-clarify/scripts/bash/common.sh",
     "ascii-generator.sh": ROOT / "skills/architect/architect-clarify/scripts/bash/ascii-generator.sh",
-    "ASCII-Generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/ASCII-Generator.ps1",
+    "ascii-generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/ascii-generator.ps1",
     "mermaid-generator.sh": ROOT / "skills/architect/architect-clarify/scripts/bash/mermaid-generator.sh",
-    "Mermaid-Generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/Mermaid-Generator.ps1",
+    "mermaid-generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/mermaid-generator.ps1",
     "pdr-lib.sh": ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh",
     "pdr-lib.ps1": ROOT / "skills/product/product-clarify/scripts/powershell/pdr-lib.ps1",
+    # Intent run helpers (ADR-431-amendment C1, adlc-workspace#26).
+    "run-branch.sh": ROOT / "skills/factory/factory-mission/scripts/bash/run-branch.sh",
+    "commit-step.sh": ROOT / "skills/factory/factory-mission/scripts/bash/commit-step.sh",
+    "open-mr.sh": ROOT / "skills/factory/factory-mission/scripts/bash/open-mr.sh",
 }
 
 # (borrower script, expected canonical-relative snippet in its source line)
@@ -55,8 +59,8 @@ STALE_ARCHITECT_DIRS = [
 ]
 STALE_ARCHITECT_FILES = [
     "setup-architect.sh", "setup-architect.ps1", "common.sh",
-    "ascii-generator.sh", "ASCII-Generator.ps1",
-    "mermaid-generator.sh", "Mermaid-Generator.ps1",
+    "ascii-generator.sh", "ascii-generator.ps1",
+    "mermaid-generator.sh", "mermaid-generator.ps1",
 ]
 STALE_PRODUCT_DIRS = ["product-implement", "product-init", "product-specify"]
 
@@ -165,3 +169,31 @@ def test_skills_deps_manifest_valid():
         assert borrower not in homes, f"{borrower} lists itself"
         for home in homes:
             assert home in skill_dirs, f"unknown canonical home: {home} (required by {borrower})"
+
+
+# Intent orchestrators borrow the run helpers from factory-mission
+# (ADR-431-amendment C1): every SKILL.md names all three by mirror path, states
+# the Requires line, and the deps manifest records the dependency.
+INTENT_ORCHESTRATORS = [
+    ROOT / "skills/factory/factory-product/SKILL.md",
+    ROOT / "skills/factory/factory-architect/SKILL.md",
+]
+INTENT_HELPERS = ["run-branch.sh", "commit-step.sh", "open-mr.sh"]
+
+
+def test_intent_orchestrators_reference_the_run_helpers():
+    for doc in INTENT_ORCHESTRATORS:
+        content = doc.read_text(encoding="utf-8")
+        for helper in INTENT_HELPERS:
+            path = f"{{REPO_ROOT}}/.agents/skills/factory-mission/scripts/bash/{helper}"
+            assert path in content, f"{doc.parent.name}/SKILL.md: missing {path}"
+        assert "Requires" in content and "--skill factory-mission" in content, \
+            f"{doc.parent.name}/SKILL.md: no Requires line for factory-mission"
+
+
+def test_deps_manifest_records_intent_orchestrators():
+    import json
+    manifest = json.loads((ROOT / ".skills-deps.json").read_text(encoding="utf-8"))
+    for skill in ("factory-product", "factory-architect"):
+        assert "factory-mission" in manifest["requires"].get(skill, []), \
+            f".skills-deps.json: {skill} must require factory-mission"

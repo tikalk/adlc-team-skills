@@ -43,12 +43,12 @@ CLASS_BOOTS = {
 }
 
 BOOT = (ROOT / "skills/team/team-boot/SKILL.md").read_text(encoding="utf-8")
-BOOT_SH = (ROOT / "skills/team/team-boot/scripts/boot.sh").read_text(encoding="utf-8")
-BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/boot.ps1").read_text(encoding="utf-8")
+BOOT_SH = (ROOT / "skills/team/team-boot/scripts/bash/boot.sh").read_text(encoding="utf-8")
+BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1").read_text(encoding="utf-8")
 
 HELPER_TEMPLATES = {
-    "team-setup sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-    "team-setup ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+    "team-setup sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+    "team-setup ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
 }
 
 BORROWER_SKILLS = {
@@ -143,10 +143,10 @@ MERGED_SECTION_HEADING = "## Team Context & Decisions"
 
 def _emission_surfaces():
     return {
-        "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-        "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-        "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-        "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+        "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+        "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+        "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+        "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
         "team-boot/SKILL.md": ROOT / "skills/team/team-boot/SKILL.md",
     }
 
@@ -191,8 +191,8 @@ def test_architect_boot_references_tech_radar():
 def test_tech_radar_boot_keeps_machinery():
     """tech-radar-boot must keep the absorbed radar machinery (live-fetch scripts)."""
     spec = CLASS_BOOTS["tech-radar-boot"]
-    assert (spec["dir"] / "scripts" / "radar-search.sh").exists()
-    assert (spec["dir"] / "scripts" / "radar-search.ps1").exists()
+    assert (spec["dir"] / "scripts" / "bash" / "radar-search.sh").exists()
+    assert (spec["dir"] / "scripts" / "powershell" / "radar-search.ps1").exists()
     # Live-fetch contract (merged from main): no bundled snapshot.
     assert not (spec["dir"] / "resources" / "radar.json").exists()
     body = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
@@ -248,8 +248,8 @@ def test_helper_borrowers_reference_canonical():
         assert not (path.parent / "team-helpers.sh").exists(), f"{name}: stale local team-helpers.sh"
         assert not (path.parent / "team-helpers.ps1").exists(), f"{name}: stale local team-helpers.ps1"
         content = path.read_text(encoding="utf-8")
-        assert "../team-setup/team-helpers.sh" in content, f"{name}: no canonical sh reference"
-        assert "../team-setup/team-helpers.ps1" in content, f"{name}: no canonical ps1 reference"
+        assert "../team-setup/scripts/bash/team-helpers.sh" in content, f"{name}: no canonical sh reference"
+        assert "../team-setup/scripts/powershell/team-helpers.ps1" in content, f"{name}: no canonical ps1 reference"
 
 
 # ── team-boot file_edited payload mode ──────────────────────────────────────
@@ -266,7 +266,7 @@ DRAFT_NUDGES = {
     "evals": "/evals-clarify",
 }
 
-BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/boot.sh"
+BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/bash/boot.sh"
 
 
 def _run_boot_sh(env_event, payload):
@@ -336,7 +336,7 @@ def test_boot_ps1_file_edited_mode_parity():
 # mandatory clarify-skill column (no per-class sections, no divergent 4-col).
 
 UNIFIED_HEADER = "| ID | Name | Type | Rel | Status | Clarify |"
-BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/boot.sh"
+BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/bash/boot.sh"
 
 
 def test_unified_header_at_every_emission_site():
@@ -347,10 +347,10 @@ def test_unified_header_at_every_emission_site():
     the merged response table.
     """
     expected_counts = {
-        "boot.sh": (ROOT / "skills/team/team-boot/scripts/boot.sh", 2),
-        "boot.ps1": (ROOT / "skills/team/team-boot/scripts/boot.ps1", 2),
-        "team-helpers.sh": (ROOT / "skills/team/team-setup/team-helpers.sh", 1),
-        "team-helpers.ps1": (ROOT / "skills/team/team-setup/team-helpers.ps1", 1),
+        "boot.sh": (ROOT / "skills/team/team-boot/scripts/bash/boot.sh", 2),
+        "boot.ps1": (ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1", 2),
+        "team-helpers.sh": (ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh", 1),
+        "team-helpers.ps1": (ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1", 1),
     }
     for label, (path, expected) in expected_counts.items():
         content = path.read_text(encoding="utf-8")
@@ -360,10 +360,10 @@ def test_unified_header_at_every_emission_site():
     for stale in ("| Decision | Type | Captured? | Skill |",
                   "| Decision | Type | Captured? | Draft ID | Clarify |"):
         for label, path in {
-            "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-            "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-            "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-            "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+            "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+            "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+            "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+            "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
         }.items():
             assert stale not in path.read_text(encoding="utf-8"), f"{label}: stale ledger format"
 
@@ -419,10 +419,10 @@ EARLY_FIRE_MARKERS = (
 )
 
 TEAM_BOOT_CATALOG_SURFACES = {
-    "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-    "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-    "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-    "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+    "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+    "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+    "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+    "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
     "team-boot/SKILL.md": ROOT / "skills/team/team-boot/SKILL.md",
     "manual-fallback.md": ROOT / "skills/team/team-boot/references/manual-fallback.md",
 }
@@ -455,10 +455,10 @@ def test_zero_rows_drop_table_contract():
     markdown; it must not appear on any contract surface.
     """
     for label, path in {
-        "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-        "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-        "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-        "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+        "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+        "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+        "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+        "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
     }.items():
         content = path.read_text(encoding="utf-8")
         lowered = content.lower()

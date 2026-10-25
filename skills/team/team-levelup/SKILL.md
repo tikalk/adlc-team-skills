@@ -3,8 +3,8 @@ name: team-levelup
 description: Use when a session ends to extract CDRs, score confidence, batch review, and publish accepted CDRs to team-ai-directives. Auto-triggers on session_end event. Also invoked from team-boot's Class Boots catalog for CDR descriptor matches.
 disable-model-invocation: true
 scripts:
-  sh: scripts/team-levelup.sh
-  ps: scripts/team-levelup.ps1
+  sh: scripts/bash/team-levelup.sh
+  ps: scripts/powershell/team-levelup.ps1
 ---
 
 # team-levelup
@@ -65,7 +65,7 @@ Main branch has NO drafts directory — only accepted CDRs in `context_modules/`
 Run the setup script:
 
 ```bash
-scripts/team-levelup.sh --setup
+scripts/bash/team-levelup.sh --setup
 ```
 
 Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `NEXT_CDR`, `ADLC_BRANCH_EXISTS`.

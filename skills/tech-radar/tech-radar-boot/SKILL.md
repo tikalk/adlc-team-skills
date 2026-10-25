@@ -83,12 +83,12 @@ Execute the deterministic search helper script (relative to this skill directory
 
 POSIX (bash + jq):
 ```bash
-bash scripts/radar-search.sh <tech1> [tech2 ...]
+bash scripts/bash/radar-search.sh <tech1> [tech2 ...]
 ```
 
 Windows (PowerShell):
 ```powershell
-pwsh scripts/radar-search.ps1 <tech1> [tech2 ...]
+pwsh scripts/powershell/radar-search.ps1 <tech1> [tech2 ...]
 ```
 
 Or for JSON output (add `--json` for bash, `-Json` for PowerShell).

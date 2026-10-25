@@ -7,11 +7,11 @@ ROOT = Path(__file__).parent.parent.parent
 BOOT = (ROOT / "skills/team/team-boot/SKILL.md").read_text(encoding="utf-8")
 DISCOVER = (ROOT / "skills/team/team-discover/SKILL.md").read_text(encoding="utf-8")
 SETUP = (ROOT / "skills/team/team-setup/SKILL.md").read_text(encoding="utf-8")
-BOOT_SH = (ROOT / "skills/team/team-boot/scripts/boot.sh").read_text(encoding="utf-8")
-BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/boot.ps1").read_text(encoding="utf-8")
+BOOT_SH = (ROOT / "skills/team/team-boot/scripts/bash/boot.sh").read_text(encoding="utf-8")
+BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1").read_text(encoding="utf-8")
 EVENTS = (ROOT / ".events.json").read_text(encoding="utf-8")
-RADAR_SH = (ROOT / "skills/tech-radar/tech-radar-boot/scripts/radar-search.sh").read_text(encoding="utf-8")
-RADAR_PS1 = (ROOT / "skills/tech-radar/tech-radar-boot/scripts/radar-search.ps1").read_text(encoding="utf-8")
+RADAR_SH = (ROOT / "skills/tech-radar/tech-radar-boot/scripts/bash/radar-search.sh").read_text(encoding="utf-8")
+RADAR_PS1 = (ROOT / "skills/tech-radar/tech-radar-boot/scripts/powershell/radar-search.ps1").read_text(encoding="utf-8")
 TECH_RADAR = (ROOT / "skills/tech-radar/tech-radar-boot/SKILL.md").read_text(encoding="utf-8")
 # AGENTS.md is gitignored (machine-injected with local paths) — may not exist in CI.
 _AGENTS_PATH = ROOT / "AGENTS.md"
@@ -21,20 +21,20 @@ AGENTS = _AGENTS_PATH.read_text(encoding="utf-8") if _AGENTS_PATH.exists() else 
 def test_team_boot_has_scripts_frontmatter():
     """team-boot must declare scripts: so the dispatcher runs the script path."""
     assert "scripts:" in BOOT
-    assert "sh: scripts/boot.sh" in BOOT
-    assert "ps: scripts/boot.ps1" in BOOT
+    assert "sh: scripts/bash/boot.sh" in BOOT
+    assert "ps: scripts/powershell/boot.ps1" in BOOT
 
 
 def test_team_boot_script_files_exist():
     """Both boot.sh and boot.ps1 must exist."""
-    assert (ROOT / "skills/team/team-boot/scripts/boot.sh").exists()
-    assert (ROOT / "skills/team/team-boot/scripts/boot.ps1").exists()
+    assert (ROOT / "skills/team/team-boot/scripts/bash/boot.sh").exists()
+    assert (ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1").exists()
 
 
 def test_team_boot_sh_is_executable():
     """boot.sh must have execute permission."""
     import os
-    assert os.access(ROOT / "skills/team/team-boot/scripts/boot.sh", os.X_OK)
+    assert os.access(ROOT / "skills/team/team-boot/scripts/bash/boot.sh", os.X_OK)
 
 
 def test_team_boot_sh_has_extremely_important_marker():
@@ -191,8 +191,8 @@ def _ledger_todo_surfaces():
         "boot.ps1": BOOT_PS1,
         "team-boot SKILL.md": BOOT,
         "team-boot decision-capture.md": (ROOT / "skills/team/team-boot/references/decision-capture.md").read_text(encoding="utf-8"),
-        "team-helpers.sh": (ROOT / "skills/team/team-setup/team-helpers.sh").read_text(encoding="utf-8"),
-        "team-helpers.ps1": (ROOT / "skills/team/team-setup/team-helpers.ps1").read_text(encoding="utf-8"),
+        "team-helpers.sh": (ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh").read_text(encoding="utf-8"),
+        "team-helpers.ps1": (ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1").read_text(encoding="utf-8"),
         "architect-boot": (ROOT / "skills/architect/architect-boot/SKILL.md").read_text(encoding="utf-8"),
         "product-boot": (ROOT / "skills/product/product-boot/SKILL.md").read_text(encoding="utf-8"),
         "change-boot": (ROOT / "skills/change/change-boot/SKILL.md").read_text(encoding="utf-8"),
@@ -464,7 +464,7 @@ def _setup_boot_sandbox(tmp_path, skills_json_content):
     return project
 
 
-BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/boot.sh"
+BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/bash/boot.sh"
 
 # The exact corruption that caused the production incident: a duplicate
 # closing brace after the last external skill entry. jq exits 4 (parse

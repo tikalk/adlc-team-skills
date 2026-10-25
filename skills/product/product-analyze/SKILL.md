@@ -123,8 +123,8 @@ Requires the `architect-clarify` skill (`adlc-cli skills add tikalk/adlc-team-sk
 | `M004-empty-block` | the block carries no diagram content — comments and directives do not count |
 | `M005-empty-body` | a type is declared but no statement follows — mermaid renders it (an empty chart), so it is a MEDIUM style finding, never a syntax break; the finding sits on the type declaration |
 | `M006-malformed-gantt-header` | the gantt block's first statement (comments and directives skipped) is neither a gantt key nor a task line — a malformed first statement is a syntax break (HIGH); a task-line-shaped statement is at most MEDIUM, never a false HIGH |
-| `M007-malformed-sequence-diagram` | the sequenceDiagram's first statement (comments and directives skipped) is neither a participant nor a message — a malformed first statement is a syntax break (HIGH) |
-| `M008-malformed-entity-diagram` | the erDiagram's first statement (comments and directives skipped) is neither an entity nor a relation — a malformed first statement is a syntax break (HIGH) |
+| `M007-malformed-sequence-diagram` | the sequenceDiagram's first statement (comments and directives skipped) is not a documented sequence statement — a `participant`, a message, or a keyword such as `title`, `autonumber`, `box`, `critical` or `break`; a statement matching none of those is a syntax break (HIGH) |
+| `M008-malformed-entity-diagram` | the erDiagram's first statement (comments and directives skipped) carries a character mermaid's entity-name grammar rejects — a relation, an attribute block, or a bare name made of letters, digits, `_`, `-`, `.` and spaces is valid (mermaid parses a bare name as an isolated entity), so only an unparseable name is a syntax break (HIGH) |
 | `M009-non-mandated-keyword` | `graph` used where the product mandate requires `flowchart` |
 
 **Rules**:

@@ -340,8 +340,11 @@ fi
 
 if [[ -n "$EXTERNAL_LINKS_FILTERED" ]]; then
     warn "PRD contains reader-facing links to .adlc/ files (should be self-contained)"
+    # v1.5.7-style fix: the `[[ -n ]] && echo` list returned 1 on the
+    # trailing empty line, the while loop inherited it, and `set -e`
+    # aborted the script right after the last reported link.
     echo -e "$EXTERNAL_LINKS_FILTERED" | head -5 | while read line; do
-        [[ -n "$line" ]] && echo "  $line"
+        if [[ -n "$line" ]]; then echo "  $line"; fi
     done
     echo "  Use in-document anchors instead: [Section 1.1](#11-feature-hierarchy)"
 else

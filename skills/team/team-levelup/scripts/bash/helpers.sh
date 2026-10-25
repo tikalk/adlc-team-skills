@@ -205,8 +205,12 @@ signal_gate() {
 if [[ "${1:-}" == "--json" ]]; then
   output_json
 elif [[ "${1:-}" == "--next-cdr" ]]; then
+  # resolve first: the bare form reads $TEAM_AI_DIRECTIVES/$ADLC_BRANCH globals
+  # (they were unbound here — set -u aborted the bare call)
+  resolve_team_levelup_paths >/dev/null
   next_cdr_number "${2:-}"
 elif [[ "${1:-}" == "--index" ]]; then
+  resolve_team_levelup_paths >/dev/null
   regenerate_cdr_index "${2:-}"
 elif [[ "${1:-}" == "--signal-gate" ]]; then
   if [[ -z "${2:-}" ]]; then

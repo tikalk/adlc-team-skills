@@ -2,8 +2,8 @@
 name: team-boot
 description: Use when a session starts or resumes after compaction (auto via the session_start and session_compact event hooks) and the team AI directives context — constitution, CDR index, Class Boots catalog, skills registry — is not yet injected; also fires the session-end friction trigger for CDR/ADR/PDR capture with pending-decision safety nets.
 scripts:
-  sh: scripts/boot.sh
-  ps: scripts/boot.ps1
+  sh: scripts/bash/boot.sh
+  ps: scripts/powershell/boot.ps1
 ---
 
 # team-boot
@@ -55,8 +55,8 @@ its section heading + the searched line only — no table.
 ## Event hook (automatic)
 
 The `session_start` and `session_compact` event hooks (declared in
-`.events.json`, wired by adlc-cli) run `scripts/boot.sh` (POSIX) or
-`scripts/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
+`.events.json`, wired by adlc-cli) run `scripts/bash/boot.sh` (POSIX) or
+`scripts/powershell/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
 assembles the context block (constitution, CDR.md index table,
 `.skills.json`), and outputs it to stdout. The plugin caches the result
 and pushes it into the system prompt on every step (idempotent — same

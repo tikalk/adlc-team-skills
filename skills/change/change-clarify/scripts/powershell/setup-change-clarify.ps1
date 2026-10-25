@@ -36,8 +36,19 @@ $ExistingChdrs = @(Get-ChildItem -Path $ChdrDraftsDir -Filter "ChDR-*.md" -Error
 if ($ExistingChdrs -gt 0) {
     Get-ChildItem -Path $ChdrDraftsDir -Filter "ChDR-*.md" -ErrorAction SilentlyContinue | ForEach-Object {
         $content = Get-Content $_.FullName -Raw
-        if ($content -match '### Status: \*\*Accepted\*\*') { $AcceptedChdrs++ }
-        elseif ($content -match '### Status: \*\*(Discovered|Proposed)\*\*') { $PendingChdrs++ }
+        # A ChDR draft carries its status in YAML frontmatter (the canonical
+        # draft template) or, in a full record, in a "### Status: **X**"
+        # heading. Both forms count -- matching only the heading form hid
+        # every template-written draft.
+        $status = ""
+        if ($content -match '### Status: \*\*([A-Za-z]+)\*\*') {
+            $status = $Matches[1].ToLower()
+        }
+        elseif ($content -match '(?m)^status:[ \t]*([A-Za-z]+)[ \t]*(#[^\r\n]*)?[ \t]*\r?$') {
+            $status = $Matches[1].ToLower()
+        }
+        if ($status -eq "accepted" -or $status -eq "published") { $AcceptedChdrs++ }
+        elseif ($status -eq "discovered" -or $status -eq "proposed") { $PendingChdrs++ }
     }
 }
 

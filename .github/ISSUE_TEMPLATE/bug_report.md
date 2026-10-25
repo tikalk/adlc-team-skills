@@ -21,7 +21,7 @@ labels: bug
 **Evidence (paste what you can):**
 
 - `scripts/acceptance-test.sh` output (for session-start issues)
-- `bash .agents/skills/team-boot/scripts/boot.sh` output from the project root
+- `bash .agents/skills/team-boot/scripts/bash/boot.sh` output from the project root
 - The skill's output / `.adlc/` artifacts
 - If a skill silently failed to trigger: say what you asked and what happened instead
 

@@ -9,10 +9,10 @@ Shared context lives in `SKILL.md` (Goal, Input Validation, Mode Selection Flow,
 
 ```bash
 # Bash
-bash "$(dirname "$0")/team-helpers.sh" --inject-agents "{PROJECT_ROOT}"
+bash "$(dirname "$0")/scripts/bash/team-helpers.sh" --inject-agents "{PROJECT_ROOT}"
 
 # PowerShell
-pwsh "$(Split-Path $PSCommandPath -Parent)/team-helpers.ps1" -InjectAgents "{PROJECT_ROOT}"
+pwsh "$(Split-Path $PSCommandPath -Parent)/scripts/powershell/team-helpers.ps1" -InjectAgents "{PROJECT_ROOT}"
 ```
 
 This creates or updates the project's `AGENTS.md` with a managed section (between `<!-- TEAM_AI_DIRECTIVES START -->` and `<!-- TEAM_AI_DIRECTIVES END -->` markers) containing:

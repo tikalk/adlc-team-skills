@@ -17,6 +17,7 @@ RADAR_SEARCH_SCRIPT = (
     / "tech-radar"
     / "tech-radar-boot"
     / "scripts"
+    / "bash"
     / "radar-search.sh"
 )
 
@@ -211,13 +212,15 @@ def test_single_canonical_radar_search_script_pair():
 
   A second copy (observed live: a stale tech-radar-context alias copy
   emitting the old 0-match table) silently diverges. The canonical pair
-  lives under tech-radar-boot/scripts/.
+  lives under tech-radar-boot/scripts/{bash,powershell}/.
   """
   sh_scripts = _source_tree_scripts("radar-search.sh")
   ps1_scripts = _source_tree_scripts("radar-search.ps1")
   assert len(sh_scripts) == 1, f"expected 1 radar-search.sh, found: {sh_scripts}"
   assert len(ps1_scripts) == 1, f"expected 1 radar-search.ps1, found: {ps1_scripts}"
-  assert sh_scripts[0].parent.parent.name == "tech-radar-boot"
+  assert sh_scripts[0].parent.parent.parent.name == "tech-radar-boot"
+  assert sh_scripts[0].parent.name == "bash"
+  assert ps1_scripts[0].parent.name == "powershell"
 
 
 def test_radar_search_zero_match_has_no_table():
@@ -244,6 +247,7 @@ def test_radar_search_ps1_zero_match_has_no_table():
       / "tech-radar"
       / "tech-radar-boot"
       / "scripts"
+      / "powershell"
       / "radar-search.ps1"
   )
   result = subprocess.run(

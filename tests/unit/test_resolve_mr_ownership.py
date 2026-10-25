@@ -7,6 +7,7 @@ chain, preserve-only, block-on-error — plus the per-provider mapping.
 """
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,24 +15,50 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parent.parent.parent
-RESOLVER = ROOT / "skills/factory/factory-mission/scripts/resolve-mr-ownership.py"
+SCRIPTS = ROOT / "skills/factory/factory-mission/scripts"
+RESOLVER_BASH = SCRIPTS / "bash/resolve-mr-ownership.sh"
+RESOLVER_PWSH = SCRIPTS / "powershell/resolve-mr-ownership.ps1"
+HAVE_BASH = shutil.which("bash") is not None
+HAVE_PWSH = shutil.which("pwsh") is not None
 
 
-def resolve(**payload):
-    """Run the resolver over a payload; return the parsed result."""
-    proc = subprocess.run(
-        [sys.executable, str(RESOLVER)],
-        input=json.dumps(payload),
+def _run(script, payload_str=None, file_arg=None):
+    if script.suffix == ".sh":
+        cmd = ["bash", str(script)]
+    else:
+        cmd = ["pwsh", "-NoProfile", "-File", str(script)]
+    if file_arg is not None:
+        cmd.append(str(file_arg))
+    return subprocess.run(
+        cmd,
+        input=payload_str,
         capture_output=True,
         text=True,
         timeout=30,
     )
+
+
+def resolve(**payload):
+    """Run the resolver over a payload; return the parsed result.
+
+    Runs the bash twin, and the PowerShell twin too when pwsh is installed —
+    the twins must agree (CDR-022: one behavior, two platform scripts).
+    """
+    payload_str = json.dumps(payload)
+    proc = _run(RESOLVER_BASH, payload_str=payload_str)
     assert proc.returncode == 0, f"resolver failed: {proc.stderr}"
-    return json.loads(proc.stdout)
+    out = json.loads(proc.stdout)
+    if HAVE_PWSH:
+        proc2 = _run(RESOLVER_PWSH, payload_str=payload_str)
+        assert proc2.returncode == 0, f"pwsh resolver failed: {proc2.stderr}"
+        out2 = json.loads(proc2.stdout)
+        assert out == out2, f"twins disagree:\nbash : {out}\npwsh : {out2}"
+    return out
 
 
 def test_resolver_exists():
-    assert RESOLVER.exists(), f"resolver missing at {RESOLVER}"
+    assert RESOLVER_BASH.exists(), f"resolver missing at {RESOLVER_BASH}"
+    assert RESOLVER_PWSH.exists(), f"resolver twin missing at {RESOLVER_PWSH}"
 
 
 # ── per-provider milestone mapping (the MR-ownership decision "all providers") ───────────────
@@ -241,11 +268,10 @@ def test_resolver_accepts_a_payload_file(tmp_path):
         ),
         encoding="utf-8",
     )
-    proc = subprocess.run(
-        [sys.executable, str(RESOLVER), str(payload_file)],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
+    proc = _run(RESOLVER_BASH, file_arg=payload_file)
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["milestone"] == 7
+    if HAVE_PWSH:
+        proc2 = _run(RESOLVER_PWSH, file_arg=payload_file)
+        assert proc2.returncode == 0, proc2.stderr
+        assert json.loads(proc2.stdout)["milestone"] == 7

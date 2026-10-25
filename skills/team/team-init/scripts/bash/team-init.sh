@@ -3,8 +3,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Source team-levelup helpers (shared utilities)
-LEVELUP_HELPERS="${SCRIPT_DIR}/../team-levelup/scripts/helpers.sh"
+# Source team-levelup helpers (shared utilities).
+# (The pre-move path was one level short — it resolved inside team-init/ and
+# the script died at this very check on main; fixed with the move.)
+LEVELUP_HELPERS="${SCRIPT_DIR}/../../../team-levelup/scripts/bash/helpers.sh"
 if [[ -f "$LEVELUP_HELPERS" ]]; then
   source "$LEVELUP_HELPERS"
 else

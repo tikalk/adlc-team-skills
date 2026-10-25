@@ -1,4 +1,4 @@
-"""No file in this repository may cite a decision-record id.
+"""No file in this repository may cite a decision-record id it does not own.
 
 This repository holds **no decision records of its own** — the catalogue is
 centralized in the adlc-workspace (``docs/decision-memory.md`` records that
@@ -7,11 +7,19 @@ repository, and at an id that can move under the citation: a workspace
 record was renumbered while a branch here was open, which would have left
 the citation resolving to a different decision.
 
-So a shipped skill names the *decision* in prose, never by id. What is
-allowed is the **local example namespace** — the ids used when illustrating
-a record the skills create in a consumer's own workspace, and the fixtures
-the tests write to exercise the id parsers. Those are part of this
-repository's own output contract, not citations of a record it does not own.
+Two namespaces may be named:
+
+* the **local example** namespace — ids for records the skills or a test
+  *create* (the templates' worked examples, the id-parser fixtures). These
+  are this repository's own output contract.
+* the **governing records** this repository implements. They may be cited
+  **in implementation files and tests**, where the citation is traceability
+  rather than a pointer elsewhere. They must **not** appear in shipped
+  skill prose (``skills/**/SKILL.md``, ``docs/``, the root documents):
+  that is what a consumer reads, and a consumer has no such record. Name
+  the decision in words there.
+
+Every other id is banned. The rule is mirrored in ``REVIEW.md``.
 """
 
 import re
@@ -27,13 +35,30 @@ ID_RE = re.compile(r"\b(?:ADR|PDR)-\d{3,4}(?:-[a-z0-9-]+)?\b")
 # write; ADR-001..ADR-009 and PDR-001..PDR-012 are the worked examples in
 # the templates and docs; ADR-012 / PDR-009 are examples in the eval
 # scenarios; ADR-0123 / PDR-0123 are the status-vocabulary placeholders; the
-# "-amendment-2" forms are the suffixed ids the parser fixtures use.
+# "-amendment-2" forms are the suffixed ids the parser fixtures use; PDR-127
+# and PDR-128 are the drafts the intent-run helpers' fixtures create.
 LOCAL_EXAMPLE_IDS = {
     "ADR-000", "ADR-001", "ADR-002", "ADR-003", "ADR-003-amendment-2",
     "ADR-004", "ADR-005", "ADR-006", "ADR-007", "ADR-008", "ADR-009",
     "ADR-012", "ADR-0123",
     "PDR-000", "PDR-001", "PDR-002", "PDR-002-amendment-2", "PDR-003",
     "PDR-004", "PDR-005", "PDR-008", "PDR-009", "PDR-012", "PDR-0123",
+    "PDR-127", "PDR-128",
+}
+
+# The governing records this repository implements. Citing one in code or a
+# test is traceability; each id names a record in the adlc-workspace:
+#   ADR-339            committer identity validation
+#   ADR-391-amendment-2 gates show pending and governing decisions
+#   ADR-393            run state on git refs
+#   ADR-431            lifecycle steps commit per step on the run branch
+#   ADR-431-amendment  one intent run branch and draft MR per issue
+#   ADR-432            MR/PR milestone + assignee propagation
+#   ADR-433            lifecycle write scope (the staging allowlist)
+#   ADR-444            agent step run context and step output
+GOVERNING_RECORDS = {
+    "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
+    "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444",
 }
 
 # The surfaces the rule covers.
@@ -45,13 +70,24 @@ SUFFIXES = (".md", ".sh", ".ps1", ".yml", ".yaml", ".py", ".json", ".js")
 # Generated or vendored trees: not source, not policed.
 SKIP_DIRS = {".git", ".agents", ".opencode", "node_modules", "results", "__pycache__"}
 
+# The prose surface: what a consumer (and the agent) reads as instructions.
+# The governing namespace is banned here.
+PROSE_FILES = {
+    "README.md", "AGENTS.md", "CHANGELOG.md", "CONTRIBUTING.md", "RELEASE.md",
+}
+
+
+def is_prose(path):
+    rel = path.relative_to(ROOT).as_posix()
+    return rel in PROSE_FILES or rel.endswith("/SKILL.md") or rel.startswith("docs/")
+
 
 def repo_files():
     for target in SCANNED:
         path = ROOT / target
         if not path.exists():
             continue
-        files = [path] if path.is_file() else [f for f in path.rglob("*") if f.is_file()]
+        files = [path] if path.is_file() else [p for p in path.rglob("*") if p.is_file()]
         for f in files:
             if f.suffix not in SUFFIXES:
                 continue
@@ -70,24 +106,30 @@ def cited_ids():
             continue
         for lineno, line in enumerate(text.splitlines(), 1):
             for match in ID_RE.finditer(line):
-                found.setdefault(match.group(0), []).append(
-                    f"{path.relative_to(ROOT)}:{lineno}"
-                )
+                found.setdefault(match.group(0), []).append((path, lineno))
     return found
 
 
 def test_no_workspace_record_citations():
-    offenders = {
-        cid: where
-        for cid, where in cited_ids().items()
-        if cid not in LOCAL_EXAMPLE_IDS
-    }
+    offenders = {}
+    for cid, where in cited_ids().items():
+        for path, lineno in where:
+            if cid in LOCAL_EXAMPLE_IDS:
+                continue
+            if cid in GOVERNING_RECORDS and not is_prose(path):
+                continue
+            offenders.setdefault(cid, []).append(
+                f"{path.relative_to(ROOT)}:{lineno}"
+            )
     assert not offenders, (
         "this repository owns no decision records — do not cite their ids:\n"
         + "\n".join(f"  {cid}: {len(where)} occurrence(s), e.g. {where[0]}"
                     for cid, where in sorted(offenders.items()))
-        + "\nFix: name the decision in prose; keep ids only in the local "
-          "example namespace (see LOCAL_EXAMPLE_IDS in this test)."
+        + "\nFix: name the decision in prose. Ids are allowed only in the local "
+          "example namespace (LOCAL_EXAMPLE_IDS), or for a governing record "
+          "this repository implements (GOVERNING_RECORDS) — and the latter "
+          "only in implementation files and tests, never in shipped skill "
+          "prose."
     )
 
 
@@ -114,6 +156,17 @@ def test_decision_memory_states_the_centralization():
     )
 
 
+def test_the_rule_is_stated_in_the_review_policy():
+    """The rule belongs in the policy, not only in this test."""
+    text = (ROOT / "REVIEW.md").read_text(encoding="utf-8")
+    assert "Decision-record ids" in text, (
+        "REVIEW.md must state the decision-record id rule"
+    )
+    assert "Governing records" in text, (
+        "REVIEW.md must name the governing-records namespace"
+    )
+
+
 def test_the_installed_mirror_obeys_the_same_rule():
     """The mirror is what consumers actually install — it must obey too."""
     mirror = ROOT / ".agents/skills"
@@ -123,7 +176,16 @@ def test_the_installed_mirror_obeys_the_same_rule():
     for path in mirror.rglob("*"):
         if not path.is_file() or path.suffix not in SUFFIXES:
             continue
-        for match in ID_RE.finditer(path.read_text(encoding="utf-8", errors="replace")):
-            if match.group(0) not in LOCAL_EXAMPLE_IDS:
-                offenders.append(f"{path.relative_to(ROOT)}: {match.group(0)}")
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        prose = path.name == "SKILL.md"
+        for match in ID_RE.finditer(text):
+            cid = match.group(0)
+            if cid in LOCAL_EXAMPLE_IDS:
+                continue
+            if cid in GOVERNING_RECORDS and not prose:
+                continue
+            offenders.append(f"{path.relative_to(ROOT)}: {cid}")
     assert not offenders, f"the installed mirror cites record ids: {offenders[:10]}"

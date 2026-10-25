@@ -2,14 +2,38 @@
   "version": "1.0.0",
   "description": "Selective-install closure map for adlc-team-skills. npx/adlc-cli `skills add --skill X` installs exactly X; borrowers that reference a canonical helper in another skill list that skill here so installers can auto-include it (adlc-cli expands --skill from this file). Keys and values are skill directory names under skills/<group>/<skill>/ (mirror: .agents/skills/<skill>/).",
   "requires": {
-    "architect-analyze": ["architect-clarify"],
-    "architect-implement": ["architect-clarify"],
-    "architect-init": ["architect-clarify"],
-    "architect-specify": ["architect-clarify"],
-    "product-implement": ["product-clarify"],
-    "product-init": ["product-clarify"],
-    "product-specify": ["product-clarify"],
-    "team-repair": ["team-setup"],
-    "team-skills": ["team-setup"]
+    "architect-analyze": [
+      "architect-clarify"
+    ],
+    "architect-implement": [
+      "architect-clarify"
+    ],
+    "architect-init": [
+      "architect-clarify"
+    ],
+    "architect-specify": [
+      "architect-clarify"
+    ],
+    "factory-architect": [
+      "factory-mission"
+    ],
+    "factory-product": [
+      "factory-mission"
+    ],
+    "product-implement": [
+      "product-clarify"
+    ],
+    "product-init": [
+      "product-clarify"
+    ],
+    "product-specify": [
+      "product-clarify"
+    ],
+    "team-repair": [
+      "team-setup"
+    ],
+    "team-skills": [
+      "team-setup"
+    ]
   }
 }

@@ -54,16 +54,52 @@ The loop controller does **not** review, fix, or judge — it only orchestrates.
 
 **Marker:**
 ```
-<!-- factory-review:step=review run=<run_id> iter=<k> status=<completed|failed> findings=<count> important=<count> nits=<count> head=<sha> -->
+<!-- factory-review:step=review run=<run_id> iter=<k> status=<completed|failed> outcome=<merge-ready|not-merge-ready> findings=<count> important=<count> nits=<count> head=<sha> -->
 ```
 
 **Returns to loop controller:**
 - `verdict`: `all-pass` | `nits-only` | `important-found`
+- `outcome`: `merge-ready` when `verdict` is `all-pass`/`nits-only` **and**
+  `important_count` is 0; `not-merge-ready` when any Important finding is
+  open. This is the field the CI merge gate reads, so it is published in the
+  marker rather than left to prose — a `merge-ready` outcome with a nonzero
+  `important_count` fails the gate.
 - `findings_count`: total findings
 - `important_count`: Important findings count
 - `nits_count`: Nit findings count
 - `head_sha`: the reviewed head SHA
 - If `verdict` is `all-pass` or `nits-only` → skip to Step 3 (converge) with `DONE`.
+
+**Adversarial depth (Auditor / Adversary / Pragmatist):** the `review` step runs an
+adverse-style three-persona pass before compiling the report:
+
+- **Round 1 (parallel, stay-in-lane):** Auditor owns correctness and logic; Adversary
+  owns security and abuse cases; Pragmatist owns maintainability and design. Each persona
+  reports its own findings without crossing into another lane.
+- **Round 2 (cross-exam):** each persona re-reads the other two reports and for each
+  finding emits **validate** (independent confirmation), **challenge** (counter-evidence),
+  or **add** (new angle the first report missed — recorded as a separate finding with the
+  adder in `reports`, so the synthesis input needs no separate schema slot).
+- **Synthesis:** the `synthesize-findings` twins — `scripts/bash/synthesize-findings.sh`
+  (bash) and `scripts/powershell/synthesize-findings.ps1` (PowerShell), one behavior per
+  platform — tag every finding deterministically
+  (same input → byte-identical output, exit 0; accepts a findings JSON file arg or stdin):
+  `cross-validated` (≥2 reporters), `consensus` (1 report + ≥1 validate, no challenge),
+  `disputed` (1 report + ≥1 challenge), `solo` (everything else). Every Important finding
+  is reported with its `tag=` status; `fix` is gated on synthesis-tagged Important
+  findings — cross-validated + consensus always actionable, `solo` actionable only in
+  `--single-round` mode (a degraded pass, disclosed), and `disputed` Important findings
+  are held for converge adjudication, never silently dropped.
+- **Adversary lane:** the Adversary prefers the `cli:<other-runtime>` lane for true
+  runtime independence; any lane degradation is disclosed in the loop status output.
+- **`--single-round` fallback:** skips Round 2 — every finding is tagged `solo` and the
+  `fix` gate treats `solo` Important findings as actionable (a degraded pass, disclosed) —
+  the single-round carve-out in the synthesis rule above. Every finding (including
+  `disputed`/`solo`) is reported with its `tag=` status; `disputed` Important findings
+  skip `fix` and go straight to converge adjudication.
+
+**Converge reads synthesis:** the converge step (Step 3) reads the synthesis output —
+not single-agent findings — when it verifies which Important findings are resolved.
 
 ---
 
@@ -71,7 +107,10 @@ The loop controller does **not** review, fix, or judge — it only orchestrates.
 
 **Purpose:** Fix each Important finding from the review step. Push.
 
-**Dispatched only if** review verdict is `important-found`.
+**Dispatched only if** review verdict is `important-found` — i.e. at least one
+synthesis-tagged *actionable* Important finding exists (cross-validated + consensus, or
+`solo` in `--single-round` mode). `disputed` Important findings never dispatch `fix` on
+their own; they are held for converge adjudication.
 
 **Lane:** `agent` (fresh session of same CLI).
 
@@ -129,17 +168,26 @@ The loop controller does **not** review, fix, or judge — it only orchestrates.
 | READ-ONLY | READ-ONLY | READ-ONLY | READ-ONLY | No | No |
 
 **Input (`reads_from`):**
-- `factory-review:step=review:run=<run_id> iter=<k>` (what was found)
+- `factory-review:step=review:run=<run_id> iter=<k>` (what was found — findings JSON + synthesis tags)
 - `factory-review:step=fix:run=<run_id> iter=<k>` (what was fixed)
 - `factory-review:step=converge:run=<run_id> iter=<k-1>` (previous iteration's finding set — for convergence comparison)
 
 **Action:**
-1. Read the review step's findings from the comment bus.
-2. Read the fix step's artifact-ref from the comment bus.
-3. For each Important finding from the review step:
+1. Read the review step's findings **and synthesis output** from the comment bus.
+2. Re-run the synthesis gate locally to verify the tags — never trust the
+   review step's claimed tags:
+   ```bash
+   skills/factory/factory-review/scripts/bash/synthesize-findings.sh <findings.json>
+   # PowerShell twin: scripts/powershell/synthesize-findings.ps1 <findings.json>
+   ```
+   The gate is: cross-validated + consensus Important findings are actionable
+   (fix-verified here); `solo` actionable only in `--single-round` mode;
+   `disputed` Important findings go to adjudication in action 6, never to fix.
+3. Read the fix step's artifact-ref from the comment bus.
+4. For each Important finding from the review step:
    - Verify the fix addresses the finding (read the code at the new head SHA).
    - Independently reproduce the fix — do not trust the Fix Agent's claim.
-4. Check for **new issues** introduced by the fix (run REVIEW.md passes again at the new head SHA).
+5. Check for **new issues** introduced by the fix (run REVIEW.md passes again at the new head SHA).
 5. **Compare finding set** to the previous iteration's unresolved finding set (from `reads_from` converge marker at `iter=<k-1>`):
    - If new finding set ⊂ previous → progress (findings shrinking).
    - If new finding set == previous → stuck (identical across cycles).

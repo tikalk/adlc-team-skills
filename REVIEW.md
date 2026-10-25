@@ -119,6 +119,30 @@ Paths validated by CI and not re-checked by the review:
 - `.github/workflows/` — **workflow syntax only**; the *behaviour* of a
   workflow change is reviewed under the `ci-integrity` pass
 
+## Decision-record ids
+
+This repository owns **no decision records** — the catalogue is centralized in
+the adlc-workspace (`docs/decision-memory.md` records that centralization). A
+cited id therefore points at a file in another repository, and at an id that
+can move under the citation: a workspace record was renumbered while a
+branch here was open, which left a citation resolving to a different
+decision.
+
+Two namespaces may be named:
+
+- **Local examples** — ids for records the skills or a test *create* (the
+  templates' worked examples, the id-parser fixtures). These are this
+  repository's own output contract.
+- **Governing records** — the records this repository implements. They may
+  be cited **in implementation files and tests**, where the citation is
+  traceability rather than a pointer elsewhere. They must **not** appear in
+  shipped skill prose (`skills/**/SKILL.md`, `docs/`, the root documents):
+  that is what a consumer reads, and a consumer has no such record. Name
+  the decision in words there.
+
+Every other id is banned. `tests/unit/test_no_record_id_citations.py`
+enforces this over the whole repository and over the installed mirror.
+
 ## Verdict contract
 
 A verdict is a sensor reading, not an attestation:

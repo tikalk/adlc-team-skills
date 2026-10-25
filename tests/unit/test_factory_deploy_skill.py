@@ -91,6 +91,45 @@ def test_workflow_ten_steps_three_named_gates():
     assert gates == EXPECTED_GATES, f"expected gates {EXPECTED_GATES}, got {gates}"
 
 
+def test_workflow_parses_in_execution_engine():
+    """The execution engine (adlc-cli subset parser) must read all 10 steps.
+
+    PyYAML reads files the engine cannot (flush-left lists, folded
+    single-quoted multi-line scalars silently truncate). A green PyYAML check
+    over a file the executor rejects is a ci-integrity violation, so this
+    test pins engine-parseability: 10 steps, 3 gates, inputs intact.
+    """
+    import json
+    import os
+    import subprocess
+
+    cli_dir = os.environ.get(
+        "ADLC_CLI_DIR",
+        str(ROOT.parent / "adlc-cli"),
+    )
+    r = subprocess.run(
+        ["node", "--input-type=module", "-e",
+         "import('./src/workflow/engine.mjs').then(m => {"
+         " const eng = new m.WorkflowEngine(process.argv[1]);"
+         " const def = eng.loadWorkflow(process.argv[2]);"
+         " console.log(JSON.stringify({steps: def.steps.map(s => s.id),"
+         " inputs: Object.keys(def.inputs || {}),"
+         " validate: m.validateWorkflow(def, eng.registry),"
+         " gateErrors: m.headlessGateErrors(def)})); });",
+         "--", str(ROOT), str(WORKFLOW)],
+        capture_output=True, text=True,
+        cwd=cli_dir,
+    )
+    assert r.returncode == 0, f"engine probe failed: {r.stderr[-500:]}"
+    report = json.loads(r.stdout.strip())
+    assert report["steps"] == EXPECTED_STEPS, (
+        f"engine reads {report['steps']}, expected {EXPECTED_STEPS}")
+    assert set(report["inputs"]) >= {"route", "verdict", "mr_url"}, (
+        f"engine inputs {report['inputs']} missing declared inputs")
+    assert report["validate"] == [], f"engine validation: {report['validate']}"
+    assert report["gateErrors"] == [], f"engine gates: {report['gateErrors']}"
+
+
 def test_skill_both_gates_green_same_sha_no_autoapprove():
     low = _read_skill().lower()
     assert "both gates green" in low

@@ -297,8 +297,7 @@ flowchart LR
 
     FQ -->|"spec-gated labels"| TR
     TR -->|"--issue ref"| FM
-    FP -->|"PRD.md"| FQ
-    FA -->|"AD.md"| FQ
+    FI2 -->|"PRD.md + AD.md"| FQ
     FM -->|"agent-authored PRs"| TR
     TR -->|"PR diff + checks"| FR
     FR -->|"twice-mistake rule"| FL
@@ -306,9 +305,7 @@ flowchart LR
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
     FT -.->|"read-only"| TR
-    FI -.->|"via product-* leaves"| FP
-    FI -.->|"via architect-* leaves"| FA
-    FI -.->|"via change-* leaves (one-time deep)"| FL
+    FI -.->|"via intent lanes"| FI2
 ```
 
 </details>

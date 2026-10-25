@@ -536,9 +536,9 @@ function New-ArchitectureDiagrams {
     # Source diagram generators
     $scriptDir = Split-Path $PSCommandPath -Parent
     if ($diagramFormat -eq 'mermaid') {
-        . "$scriptDir\Mermaid-Generator.ps1"
+        . "$scriptDir\mermaid-generator.ps1"
     } else {
-        . "$scriptDir\ASCII-Generator.ps1"
+        . "$scriptDir\ascii-generator.ps1"
     }
     
     # Determine which views to generate (use env var if ViewsList not provided)
@@ -566,7 +566,7 @@ function New-ArchitectureDiagrams {
                 # Validate Mermaid syntax
                 if (-not (Test-MermaidSyntax -MermaidCode $diagramCode)) {
                     Write-Host "   ⚠️  Mermaid validation failed for $view view, using ASCII fallback" -ForegroundColor Yellow
-                    . "$scriptDir\ASCII-Generator.ps1"
+                    . "$scriptDir\ascii-generator.ps1"
                     New-AsciiDiagram -ViewType $view -SystemName $SystemName
                 }
                 else {

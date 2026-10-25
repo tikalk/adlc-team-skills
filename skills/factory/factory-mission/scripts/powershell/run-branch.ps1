@@ -71,8 +71,12 @@ if ($localExists) {
         if ($LASTEXITCODE -ne 0) { Die "fast-forward from origin/$branch failed (diverged?)" }
     }
 } elseif ($onOrigin) {
-    git switch -q -c $branch --track "origin/$branch"
-    if ($LASTEXITCODE -ne 0) { Die "git switch --track failed" }
+    # No --track: a single-branch clone (the runner's `git clone --branch main
+    # --single-branch`) has no fetch refspec covering the run branch, and git
+    # refuses to track a ref outside it. Nothing needs the upstream: open-mr
+    # pushes with an explicit refspec.
+    git switch -q -c $branch "refs/remotes/origin/$branch"
+    if ($LASTEXITCODE -ne 0) { Die "git switch -c from origin/$branch failed" }
 } else {
     git switch -q -c $branch
     if ($LASTEXITCODE -ne 0) { Die "git switch -c failed" }

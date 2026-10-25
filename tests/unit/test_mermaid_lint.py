@@ -16,6 +16,8 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 LINTER = ROOT / "skills/architect/architect-clarify/scripts/bash/mermaid-lint.sh"
+LINTER_PS = ROOT / "skills/architect/architect-clarify/scripts/powershell/mermaid-lint.ps1"
+HAVE_PWSH = shutil.which("pwsh") is not None
 
 pytestmark = pytest.mark.skipif(
     shutil.which("bash") is None, reason="bash not available"
@@ -26,7 +28,9 @@ def run_linter(tmp_path, text, *args):
     """Run the linter over one artifact; return (exit_code, findings).
 
     The machine channel is tab-separated: severity, rule, file, line, fence,
-    message, offending line, suggested patch.
+    message, offending line, suggested patch. When pwsh is installed the
+    PowerShell twin runs too and must agree byte-for-byte (CDR-022: one
+    behavior, two platform scripts).
     """
     artifact = tmp_path / "artifact.md"
     artifact.write_text(text, encoding="utf-8")
@@ -36,6 +40,21 @@ def run_linter(tmp_path, text, *args):
         text=True,
         timeout=30,
     )
+    if HAVE_PWSH:
+        proc_ps = subprocess.run(
+            ["pwsh", "-NoProfile", "-File", str(LINTER_PS), "--tsv", str(artifact), *args],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert proc_ps.returncode == proc.returncode, (
+            f"twins disagree on exit code: bash={proc.returncode} pwsh={proc_ps.returncode}\n"
+            f"bash: {proc.stdout}\npwsh: {proc_ps.stdout}"
+        )
+        assert proc_ps.stdout == proc.stdout, (
+            "twins disagree on findings:\n"
+            f"bash: {proc.stdout}\npwsh: {proc_ps.stdout}"
+        )
     fields = ("severity", "rule", "file", "line", "fence", "message", "offending", "suggestion")
     findings = []
     for line in proc.stdout.splitlines():
@@ -58,6 +77,7 @@ def rules(findings):
 
 def test_linter_is_present():
     assert LINTER.exists(), f"canonical mermaid linter missing at {LINTER}"
+    assert LINTER_PS.exists(), f"mermaid linter twin missing at {LINTER_PS}"
 
 
 # ── broken corpus: one finding per broken block, with location + patch ─────
@@ -467,7 +487,12 @@ def test_a_trailing_blank_line_does_not_silence_the_empty_body_finding(tmp_path)
     ("type_line", "statement", "rule"),
     [
         ("sequenceDiagram", "this is not a participant", "M007-malformed-sequence-diagram"),
-        ("erDiagram", "this is not an entity", "M008-malformed-entity-diagram"),
+        # `this is not an entity` was pinned here as HIGH M008, but mermaid
+        # parses it as five isolated entities and renders it — so it was a
+        # false positive, not a malformed block. The er case now uses a shape
+        # mermaid genuinely rejects: a name carrying `!`, outside the
+        # entity-name grammar.
+        ("erDiagram", "not an entity at all!!!", "M008-malformed-entity-diagram"),
     ],
     ids=["sequence", "er"],
 )
@@ -482,6 +507,114 @@ def test_a_malformed_first_statement_keeps_the_per_type_rule_at_high(
     assert [f["rule"] for f in findings] == [rule]
     assert findings[0]["severity"] == "HIGH"
     assert findings[0]["line"] == 3, "the finding sits on the offending statement"
+    assert code == 1
+
+
+# ── shapes mermaid ACCEPTS must never be HIGH (the parser is the ground truth) ──
+#
+# Every shape below was fed to mermaid 12.2.0's own `mermaid.parse()`; the
+# verdicts are recorded in the review evidence. A static validator that calls
+# a parseable block a syntax break is a worse defect than the break it hunts:
+# it trains authors to ignore the pass. So the contract asserted here is
+# one-directional — mermaid accepts ⇒ the linter never says HIGH — and it is
+# checked across the types the per-type rules cover.
+
+# mermaid accepts each of these as a first statement (or as a whole block).
+PARSEABLE_BUT_ONES_LINTER_FLAGGED = [
+    # sequenceDiagram: documented statements missing from the keyword table.
+    ("sequenceDiagram", "title My chart", "R5: `title` is a sequence statement"),
+    ("sequenceDiagram", "autonumber", "R5: `autonumber` is a sequence statement"),
+    (
+        "sequenceDiagram",
+        "box Grey Group\n    participant A\n  end",
+        "`box` opens a participant group",
+    ),
+    (
+        "sequenceDiagram",
+        "critical\n    A->>B: x\n  end",
+        "`critical` opens a critical block",
+    ),
+    (
+        "sequenceDiagram",
+        "break\n    A->>B: x\n  end",
+        "`break` opens a break block",
+    ),
+    # erDiagram: a bare identifier list is not a relation, but it parses —
+    # mermaid reads each identifier as an isolated entity and renders it.
+    ("erDiagram", "CUSTOMER", "R4: a bare entity is a valid erDiagram"),
+    ("erDiagram", "CUSTOMER ORDER", "several isolated entities"),
+    ("erDiagram", "this is not an entity", "parsed as five isolated entities"),
+    ("erDiagram", "customer_order-2.b", "the entity-name grammar allows these"),
+]
+
+
+@pytest.mark.parametrize(
+    ("type_line", "statement", "why"),
+    PARSEABLE_BUT_ONES_LINTER_FLAGGED,
+    ids=[
+        "seq-title",
+        "seq-autonumber",
+        "seq-box",
+        "seq-critical",
+        "seq-break",
+        "er-bare-entity",
+        "er-two-entities",
+        "er-words-as-entities",
+        "er-entity-name-grammar",
+    ],
+)
+def test_a_block_mermaid_parses_is_never_reported_high(tmp_path, type_line, statement, why):
+    """The direction that matters: mermaid accepts ⇒ never HIGH.
+
+    The per-type rules may still describe the shape at MEDIUM (an erDiagram of
+    bare entities is renderable but has no relation), but calling it a syntax
+    break is false, and a false HIGH is what made the pass untrustworthy.
+    """
+    text = f"```mermaid\n{type_line}\n  {statement}\n```\n"
+    _, findings = run_linter(tmp_path, text)
+    highs = [f for f in findings if f["severity"] == "HIGH"]
+    assert not highs, (
+        f"mermaid parses this block, so HIGH is false ({why}): "
+        f"{[(f['rule'], f['severity']) for f in findings]}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("type_line", "statement", "rule"),
+    [
+        ("sequenceDiagram", "title My chart", "M007-malformed-sequence-diagram"),
+        ("sequenceDiagram", "autonumber", "M007-malformed-sequence-diagram"),
+        ("erDiagram", "CUSTOMER", "M008-malformed-entity-diagram"),
+        ("erDiagram", "this is not an entity", "M008-malformed-entity-diagram"),
+    ],
+    ids=["seq-title", "seq-autonumber", "er-bare", "er-multi"],
+)
+def test_a_parseable_first_statement_is_silenced_at_the_keyword_level(
+    tmp_path, type_line, statement, rule
+):
+    """The shape is not merely downgraded — the per-type rule must not fire at
+    all once the statement's head is a documented keyword for that type.
+
+    A downgrade still leaves a finding an author has to triage; a documented
+    `title`/`autonumber`/bare-entity statement is simply valid, so the pass
+    has nothing to say about it."""
+    text = f"```mermaid\n{type_line}\n  {statement}\n```\n"
+    _, findings = run_linter(tmp_path, text)
+    assert rule not in rules(findings), (
+        f"{rule} must not fire on a shape mermaid parses: {findings}"
+    )
+
+
+# ── the shape that DOES stay HIGH (the other direction) ─────────────────────
+
+def test_an_entity_name_outside_the_grammar_stays_high(tmp_path):
+    """`!` is rejected by mermaid's entity-name grammar, so `not an entity at
+    all!!!` is a genuine parse error even though it has no relation connector.
+    Removing the bare-entity HIGH must not blanket-silence this."""
+    text = "```mermaid\nerDiagram\n  not an entity at all!!!\n```\n"
+    code, findings = run_linter(tmp_path, text)
+    assert rules(findings) == ["M008-malformed-entity-diagram"]
+    assert findings[0]["severity"] == "HIGH"
     assert code == 1
 
 

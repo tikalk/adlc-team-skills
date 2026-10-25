@@ -5,6 +5,17 @@ description: Use when executing a spec-gated mission from the queue — inner lo
 
 # factory-mission
 
+## In a factory run — read this first
+
+When `ADLC_RUN_ID` is set, the workflow engine runs this skill unattended as its `execute` step, and the completion gate follows it. Do exactly this:
+
+1. **The mission is the run's issue.** Take it from `--issue <ref>` in the arguments; when that is missing or empty, use `ADLC_ISSUE_REF`. With neither, do not ask: write `{"conclusion":"blocked: factory run without an issue"}` into `ADLC_STEP_OUTPUT` and return.
+2. Run the mission for that issue end to end (Phases 0–6 below): brief, test (RED), code (GREEN), converge, then open or reuse the draft code MR/PR in the repository the change belongs to.
+3. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
+4. **Never ask a question or wait for an answer.** The completion gate after this step is the approval; a question here ends the step with nothing implemented.
+
+---
+
 ## What this skill does
 
 `factory-mission` is the execution-harness orchestrator of the software factory. It takes a feature description, structures it into a **Mission Brief** (goal, constraints, non-goals, success criteria), generates an ordered **step list**, and executes those steps via sequential subagent runs. 
@@ -43,12 +54,12 @@ It implements the following key factory platform capabilities:
 
 ### Phase 0 to 4: Setup & Compilation
 1. Read the run's `mission.yml` (`.adlc/workflows/runs/<run_id>/mission.yml`). Resolve execution and supervision.
-2. If `--issue <ref>` is specified:
+2. If `--issue <ref>` is specified (in a factory run, `ADLC_ISSUE_REF` when it is not):
    - Discover credentials and MCP/CLI tools (`references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
    - Read the labels. If dispatch is `interactive` or gating is `human-required` -> **HALT execution** (hand back to interactive session).
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
-3. If no issue: read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
+3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
 4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.
 5. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
 6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
@@ -88,5 +99,6 @@ In `autonomous` and `supervised` modes, the `implement` step is split into two s
    - Post completion summary as a ticket comment (marker: `factory-mission:status=completed:run=<run_id>`).
    - Transition lifecycle label from `executing` to `validation` (or `done` if merged).
    - Stamp `agent-authored` on opened PRs.
+   - In a factory run, write the code MR/PR URL as `mr_url` into `ADLC_STEP_OUTPUT` (see "In a factory run" above).
    - Defer PR merge to code-owner approval (never auto-merge without approval).
 5. Output the complete audit summary.

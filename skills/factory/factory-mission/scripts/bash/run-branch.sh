@@ -50,7 +50,11 @@ if git show-ref --verify --quiet "refs/heads/$branch"; then
   # Continue from origin: fast-forward when origin is ahead (no-op otherwise).
   [ "$on_origin" = 0 ] || git merge -q --ff-only "origin/$branch"
 elif [ "$on_origin" = 1 ]; then
-  git switch -q -c "$branch" --track "origin/$branch"
+  # No --track: a single-branch clone (the runner's `git clone --branch main
+  # --single-branch`) has no fetch refspec covering the run branch, and git
+  # refuses to track a ref outside it. Nothing needs the upstream: open-mr
+  # pushes with an explicit refspec.
+  git switch -q -c "$branch" "refs/remotes/origin/$branch"
 else
   git switch -q -c "$branch"
 fi

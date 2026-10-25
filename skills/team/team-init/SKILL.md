@@ -3,8 +3,8 @@ name: team-init
 description: Use when bootstrapping team knowledge from a brownfield codebase — reverse-engineers CDRs for contribution to team-ai-directives adlc branch.
 disable-model-invocation: true
 scripts:
-  sh: scripts/team-init.sh
-  ps: scripts/team-init.ps1
+  sh: scripts/bash/team-init.sh
+  ps: scripts/powershell/team-init.ps1
 ---
 
 # team-init
@@ -33,7 +33,7 @@ orphan branch of `team-ai-directives` (not project-local `.adlc/drafts/`).
 
 ### Phase 0: Environment Setup
 
-Run: `scripts/team-init.sh --setup`
+Run: `scripts/bash/team-init.sh --setup`
 
 Resolves `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `NEXT_CDR`, `ADLC_BRANCH`.
 

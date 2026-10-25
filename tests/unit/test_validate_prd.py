@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -5,6 +6,8 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 VALIDATOR = ROOT / "skills/product/product-implement/scripts/bash/validate-prd.sh"
+VALIDATOR_PS = ROOT / "skills/product/product-implement/scripts/powershell/validate-prd.ps1"
+HAVE_PWSH = shutil.which("pwsh") is not None
 
 PASSING_PRD = """# Sample Product PRD
 
@@ -159,12 +162,30 @@ Summary of product decisions.
 
 
 def _run_validator(prd_dir, *args):
-    return subprocess.run(
+    result = subprocess.run(
         ["bash", str(VALIDATOR), "PRD.md", *args],
         cwd=prd_dir,
         capture_output=True,
         text=True,
     )
+    # CDR-022 twin parity: when pwsh is installed the PowerShell twin runs
+    # too and must agree on stdout, stderr and exit code.
+    if HAVE_PWSH:
+        twin = subprocess.run(
+            ["pwsh", "-NoProfile", "-File", str(VALIDATOR_PS), "PRD.md", *args],
+            cwd=prd_dir,
+            capture_output=True,
+            text=True,
+        )
+        assert twin.returncode == result.returncode, (
+            "validate-prd twins disagree on exit code:\n"
+            f"bash: {result.stdout}{result.stderr}\npwsh: {twin.stdout}{twin.stderr}"
+        )
+        assert twin.stdout == result.stdout, (
+            "validate-prd twins disagree on stdout:\n"
+            f"bash: {result.stdout}\npwsh: {twin.stdout}"
+        )
+    return result
 
 
 @pytest.fixture

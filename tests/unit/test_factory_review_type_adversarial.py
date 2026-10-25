@@ -16,6 +16,7 @@ the Implement Agent lands the skill changes.
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import time
@@ -31,8 +32,11 @@ LOOP_MD = SKILL / "references/review-loop.md"
 TRACKER_MD = (
     ROOT / "skills/factory/factory-mission/references/tracker-integration.md"
 )
-SYNTH_PY = SKILL / "scripts/synthesize-findings.py"
-SYNTH_JS = SKILL / "scripts/synthesize-findings.mjs"
+SYNTH_SH = SKILL / "scripts/bash/synthesize-findings.sh"
+SYNTH_PS = SKILL / "scripts/powershell/synthesize-findings.ps1"
+SYNTH_TWINS = [(("bash"), SYNTH_SH)] + (
+    [(("pwsh"), SYNTH_PS)] if shutil.which("pwsh") else []
+)
 
 REVIEW_MARKER = "factory-review:step=review"
 
@@ -227,26 +231,28 @@ def test_review_loop_documents_synthesis_counting_rule():
     )
 
 
-def _synth_script():
-    if SYNTH_PY.exists():
-        return SYNTH_PY
-    if SYNTH_JS.exists():
-        return SYNTH_JS
-    return None
-
-
-def test_synthesize_findings_script_exists():
-    script = _synth_script()
-    assert script is not None, (
-        f"the deterministic synthesis script is missing: expected "
-        f"{SYNTH_PY} or {SYNTH_JS}"
+def _run_synth(script, input_str=None, file_arg=None):
+    """Run one synthesis twin; `-` or no arg reads stdin (python parity)."""
+    if script.suffix == ".sh":
+        cmd = ["bash", str(script)]
+    else:
+        cmd = ["pwsh", "-NoProfile", "-File", str(script)]
+    if file_arg is not None:
+        cmd.append(str(file_arg))
+    elif input_str is not None:
+        cmd.append("-")
+    return subprocess.run(
+        cmd, input=input_str, capture_output=True, text=True, timeout=30
     )
 
 
+def test_synthesize_findings_script_exists():
+    assert SYNTH_SH.exists(), f"the synthesis script is missing: {SYNTH_SH}"
+    assert SYNTH_PS.exists(), f"the synthesis twin is missing: {SYNTH_PS}"
+
+
 def test_synthesize_findings_is_deterministic(tmp_path):
-    """Same findings JSON in → same tags out, across runs."""
-    script = _synth_script()
-    assert script is not None, "synthesis script is missing (see prior test)"
+    """Same findings JSON in → same tags out, across runs and across twins."""
     findings = {
         "findings": [
             {
@@ -271,28 +277,27 @@ def test_synthesize_findings_is_deterministic(tmp_path):
     }
     src = tmp_path / "findings.json"
     src.write_text(json.dumps(findings), encoding="utf-8")
-    outs = []
-    for _ in range(2):
-        if script.suffix == ".py":
-            cmd = ["python3", str(script), str(src)]
-        else:
-            cmd = ["node", str(script), str(src)]
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=30
+    outs = {}
+    for name, script in SYNTH_TWINS:
+        runs = []
+        for _ in range(2):
+            proc = _run_synth(script, file_arg=src)
+            assert proc.returncode == 0, proc.stdout + proc.stderr
+            runs.append(proc.stdout)
+        assert runs[0] == runs[1], f"{name} twin must be deterministic"
+        outs[name] = runs[0]
+    if len(outs) == 2:
+        assert json.loads(outs["bash"]) == json.loads(outs["pwsh"]), (
+            "the twins must agree on every tag"
         )
-        assert proc.returncode == 0, proc.stdout + proc.stderr
-        outs.append(proc.stdout)
-    assert outs[0] == outs[1], "synthesis must be deterministic"
     for tag in ("cross-validated", "consensus", "disputed"):
-        assert tag in outs[0].lower(), (
-            f"synthesis output must tag findings (missing '{tag}'): {outs[0]}"
+        assert tag in outs["bash"].lower(), (
+            f"synthesis output must tag findings (missing '{tag}'): {outs['bash']}"
         )
 
 
 def test_synthesize_findings_records_round2_add_as_finding():
     """A Round-2 `add` is a separate finding with the adder in `reports`."""
-    script = _synth_script()
-    assert script is not None, "synthesis script is missing (see prior test)"
     findings = {
         "findings": [
             {
@@ -303,18 +308,13 @@ def test_synthesize_findings_records_round2_add_as_finding():
             },
         ]
     }
-    if script.suffix == ".py":
-        cmd = ["python3", str(script), "-"]
-    else:
-        cmd = ["node", str(script), "-"]
-    proc = subprocess.run(
-        cmd, input=json.dumps(findings), capture_output=True, text=True, timeout=30
-    )
-    assert proc.returncode == 0, proc.stdout + proc.stderr
-    tags = json.loads(proc.stdout)["tags"]
-    assert tags == [{"id": "F1a", "tag": "solo"}], (
-        f"a lone Round-2 add must tag as solo: {proc.stdout}"
-    )
+    for name, script in SYNTH_TWINS:
+        proc = _run_synth(script, input_str=json.dumps(findings))
+        assert proc.returncode == 0, f"{name}: {proc.stdout + proc.stderr}"
+        tags = json.loads(proc.stdout)["tags"]
+        assert tags == [{"id": "F1a", "tag": "solo"}], (
+            f"{name}: a lone Round-2 add must tag as solo: {proc.stdout}"
+        )
 
 
 def test_review_loop_documents_adversary_lane_preference():
@@ -351,6 +351,9 @@ def test_converge_reads_synthesis_output():
         content,
         re.IGNORECASE | re.DOTALL,
     ), "converge must read the synthesis output, not single-agent findings"
-    assert "synthesize-findings.py" in content, (
+    assert "synthesize-findings.sh" in content, (
         "converge must name the synthesis script it re-runs to verify tags"
+    )
+    assert "synthesize-findings.ps1" in content, (
+        "converge must name the PowerShell synthesis twin too"
     )

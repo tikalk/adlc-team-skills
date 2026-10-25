@@ -65,11 +65,14 @@ calculate_confidence() {
     cdr_id=$(basename "$cdr_file" .md)
     # Parse success_rate from JSON using grep/sed (no python3)
     # Expected format: "CDR-001": { "success_rate": 0.75, ... }
+    # (|| true guards the pipeline: an id with no entry makes the first
+    # grep exit 1, and under pipefail + set -e that used to abort the
+    # script before the documented 1.0 default could apply.)
     local success_rate
     success_rate=$(grep -A5 "\"$cdr_id\"" "$confidence_file" 2>/dev/null \
       | grep 'success_rate' \
       | sed 's/.*"success_rate"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/' \
-      | head -1)
+      | head -1 || true)
     [[ -z "$success_rate" ]] && success_rate="1.0"
 
     if gt "$success_rate" "0.8"; then

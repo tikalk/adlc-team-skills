@@ -2,6 +2,12 @@
 #
 # migrate-pdr-frontmatter.sh — One-time instance repair script for adlc-workspace/.adlc/
 #
+# CDR-022 exemption (no PowerShell twin): this script already executed on the
+# adlc-workspace instance it was written for (it hardcodes that workspace's
+# historical PDR number range and layout bugs). It will never run again, so a
+# PowerShell twin would be dead weight; the case-by-case twin gate in CDR-022
+# leaves completed one-time repairs bash-only.
+#
 # This script performs a one-time repair of the adlc-workspace/.adlc/ directory:
 # 1. Migrates all PDR files in memory/pdr/ to YAML frontmatter (from heading-based metadata)
 # 2. Generates the new memory/pdr/pdr.md index (INSIDE the pdr/ directory)

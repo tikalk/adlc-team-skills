@@ -21,9 +21,9 @@ CANONICAL = {
     "setup-architect.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/setup-architect.ps1",
     "common.sh": ROOT / "skills/architect/architect-clarify/scripts/bash/common.sh",
     "ascii-generator.sh": ROOT / "skills/architect/architect-clarify/scripts/bash/ascii-generator.sh",
-    "ASCII-Generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/ASCII-Generator.ps1",
+    "ascii-generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/ascii-generator.ps1",
     "mermaid-generator.sh": ROOT / "skills/architect/architect-clarify/scripts/bash/mermaid-generator.sh",
-    "Mermaid-Generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/Mermaid-Generator.ps1",
+    "mermaid-generator.ps1": ROOT / "skills/architect/architect-clarify/scripts/powershell/mermaid-generator.ps1",
     "pdr-lib.sh": ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh",
     "pdr-lib.ps1": ROOT / "skills/product/product-clarify/scripts/powershell/pdr-lib.ps1",
     # Intent run helpers (ADR-431-amendment C1, adlc-workspace#26).
@@ -59,8 +59,8 @@ STALE_ARCHITECT_DIRS = [
 ]
 STALE_ARCHITECT_FILES = [
     "setup-architect.sh", "setup-architect.ps1", "common.sh",
-    "ascii-generator.sh", "ASCII-Generator.ps1",
-    "mermaid-generator.sh", "Mermaid-Generator.ps1",
+    "ascii-generator.sh", "ascii-generator.ps1",
+    "mermaid-generator.sh", "mermaid-generator.ps1",
 ]
 STALE_PRODUCT_DIRS = ["product-implement", "product-init", "product-specify"]
 

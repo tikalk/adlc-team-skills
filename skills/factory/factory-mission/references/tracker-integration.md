@@ -323,7 +323,8 @@ pre-flight scope check.
 anything:
 
 ```bash
-python3 {REPO_ROOT}/.agents/skills/factory-mission/scripts/resolve-mr-ownership.py <payload.json>
+bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/resolve-mr-ownership.sh <payload.json>
+# PowerShell: pwsh -NoProfile -File {REPO_ROOT}/.agents/skills/factory-mission/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
 ```
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and
@@ -360,7 +361,7 @@ never an error, never a guess.
    milestone or an assignee it could not verify).
 2. **Read** the Issue's `milestone`/`milestone_id` and `assignees` via the
    connector (use the cached payload when the brief already carries it).
-3. **Resolve** with `resolve-mr-ownership.py`.
+3. **Resolve** with the resolver twins — `scripts/bash/resolve-mr-ownership.sh` (bash) or `scripts/powershell/resolve-mr-ownership.ps1` (PowerShell); one behavior, two platform scripts.
 4. **Create or reuse** the draft MR, passing the resolved milestone and
    assignee. On reuse, read the MR's current fields first — the preserve-only
    guard depends on them.

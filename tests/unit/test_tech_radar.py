@@ -16,8 +16,8 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 SKILL_DIR = ROOT / "skills" / "tech-radar" / "tech-radar-boot"
-RADAR_SH = SKILL_DIR / "scripts" / "radar-search.sh"
-RADAR_PS1 = SKILL_DIR / "scripts" / "radar-search.ps1"
+RADAR_SH = SKILL_DIR / "scripts" / "bash" / "radar-search.sh"
+RADAR_PS1 = SKILL_DIR / "scripts" / "powershell" / "radar-search.ps1"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 FIXTURE_TREE = ROOT / "tests" / "fixtures" / "radar-okf"
 FALLBACK_JSON = ROOT / "tests" / "fixtures" / "radar-fallback.json"
@@ -258,12 +258,19 @@ def _source_tree_scripts(pattern):
 
 
 def test_single_canonical_radar_search_script_pair():
-  """Source tree must carry exactly one radar-search.sh + one radar-search.ps1."""
+  """Source tree must carry exactly one radar-search.sh + one radar-search.ps1.
+
+  A second copy (observed live: a stale tech-radar-context alias copy
+  emitting the old 0-match table) silently diverges. The canonical pair
+  lives under tech-radar-boot/scripts/{bash,powershell}/.
+  """
   sh_scripts = _source_tree_scripts("radar-search.sh")
   ps1_scripts = _source_tree_scripts("radar-search.ps1")
   assert len(sh_scripts) == 1, f"expected 1 radar-search.sh, found: {sh_scripts}"
   assert len(ps1_scripts) == 1, f"expected 1 radar-search.ps1, found: {ps1_scripts}"
-  assert sh_scripts[0].parent.parent.name == "tech-radar-boot"
+  assert sh_scripts[0].parent.parent.parent.name == "tech-radar-boot"
+  assert sh_scripts[0].parent.name == "bash"
+  assert ps1_scripts[0].parent.name == "powershell"
 
 
 def test_ps1_parity_zero_match():

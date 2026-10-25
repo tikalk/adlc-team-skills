@@ -37,7 +37,7 @@ CLASS_BOOTS = {
     },
     "tech-radar-boot": {
         "dir": ROOT / "skills" / "tech-radar" / "tech-radar-boot",
-        "index": "https://tikalk.com/radar.json",
+        "index": "gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-radar",
         "capture": "/architect-specify",
     },
 }
@@ -189,14 +189,15 @@ def test_architect_boot_references_tech_radar():
 
 
 def test_tech_radar_boot_keeps_machinery():
-    """tech-radar-boot must keep the absorbed radar machinery (live-fetch scripts)."""
+    """tech-radar-boot must keep the absorbed radar machinery (OKF reader scripts)."""
     spec = CLASS_BOOTS["tech-radar-boot"]
     assert (spec["dir"] / "scripts" / "bash" / "radar-search.sh").exists()
     assert (spec["dir"] / "scripts" / "powershell" / "radar-search.ps1").exists()
-    # Live-fetch contract (merged from main): no bundled snapshot.
+    # No bundled snapshot: the OKF knowledge tree is cloned and cached.
     assert not (spec["dir"] / "resources" / "radar.json").exists()
     body = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
-    assert "https://tikalk.com/radar.json" in body
+    assert "gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-radar" in body
+    assert "knowledge/technologies/" in body
     content = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
     assert "radar-search.sh" in content
     assert "radar-search.ps1" in content

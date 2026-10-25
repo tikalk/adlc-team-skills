@@ -392,7 +392,7 @@ each step. Works alongside:
 
 ### Tech selection
 
-- **`tech-radar-boot`** — class boot: injects Tikal Tech Radar context (adoption ring, quadrant, opinion) for tech selection + ADR capture pairing. Auto-triggered. The radar dataset is fetched live from `https://tikalk.com/radar.json` on every invocation — no bundled snapshot to go stale.
+- **`tech-radar-boot`** — class boot: injects Tikal Tech Radar context (adoption ring, quadrant, opinion) for tech selection + ADR capture pairing. Auto-triggered. The radar is read from the **adlc-radar OKF knowledge repository** (`gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-radar`, `knowledge/technologies/`) through a cached shallow clone refreshed every 3 days; when the repository is unreachable it says so and falls back to the stale clone, then to the public `https://tikalk.com/radar.json` — always announcing which source answered.
 
 ### Workspace
 
@@ -488,7 +488,7 @@ skills/
 ├── product/       # product-* (7) + product-templates/ + templates/ (pdr-lib canonical in product-clarify)
 ├── architect/     # architect-* (6) + templates/ (setup-architect + generators canonical in architect-clarify)
 ├── change/        # change-* (4) + templates/
-├── tech-radar/    # tech-radar-boot (1) — live radar fetch, no bundled dataset
+├── tech-radar/    # tech-radar-boot (1) — OKF knowledge repo reader (cached clone + public-JSON fallback)
 ├── authoring/     # writing-skills (1; templates live inside the skill)
 └── factory/       # factory-* (10) — platform orchestration
 ```

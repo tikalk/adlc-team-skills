@@ -34,8 +34,9 @@ steps:
     on_reject: abort
     verdict_input: verdict
     context:
-      decisions: "deploy gate checkpoints, exact-head gated merge, and release orchestration decisions"
-      link: "https://gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-workspace/-/issues/17"
+      records: [".adlc/drafts/pdr/*.md", ".adlc/drafts/adr/*.md"]
+      since: "last_approved"
+      link: "{{ inputs.mr_url }}"
   - id: merge
     type: prompt
     prompt: |
@@ -57,6 +58,10 @@ steps:
     options: [approve, reject]
     on_reject: abort
     verdict_input: verdict
+    context:
+      records: [".adlc/drafts/pdr/*.md", ".adlc/drafts/adr/*.md"]
+      since: "last_approved"
+      link: "{{ inputs.mr_url }}"
   - id: canary
     type: prompt
     prompt: |
@@ -70,6 +75,10 @@ steps:
     options: [approve, reject]
     on_reject: abort
     verdict_input: verdict
+    context:
+      records: [".adlc/drafts/pdr/*.md", ".adlc/drafts/adr/*.md", ".adlc/drafts/chdr/*.md"]
+      since: "last_approved"
+      link: "{{ inputs.mr_url }}"
   - id: expand
     type: prompt
     prompt: |

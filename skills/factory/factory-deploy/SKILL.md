@@ -40,31 +40,34 @@ Use when:
 
 ## Core Process
 
-The 9 stages run in order; gates halt, never warn.
+The 10 steps run in order; gates halt, never warn.
 
 1. **verify** — Halt-first entry checks. Confirm the approved head SHA, the
    rollback plan requirement (a rollback plan must exist before `stage`
    completes or halt), the short-path rule as recorded here, blackout windows
    for this repo, and the error-budget source binding. Anything missing halts.
-2. **merge** — Gated exact-head merge executor. Read both gates at execution
-   time: the review-owned Merge Gate and Deploy Gate checkpoint 3 must both be
-   green on the **same SHA** with the approver identity recorded. Re-read the
-   head at merge time — on **head-moved**, discard all gate evidence and
-   **re-verify** from step 1. `--no-merge` path: when the head is already
-   merged, skip the mutation but still verify exact-head identity.
-3. **stage** — Staging rollout. Dry-run preview first, then roll to staging.
-4. **gate-canary-expand** — Deploy Gate checkpoint 1 (human): staging green,
+2. **gate-merge** — Deploy Gate checkpoint 3 (human): both the review-owned
+   Merge Gate and Deploy Gate checkpoint 3 must both be green on the
+   **same SHA** with the approver identity recorded. Re-read the head at
+   execution time — on **head-moved**, discard all gate evidence and
+   **re-verify** from step 1.
+3. **merge** — Gated exact-head merge executor. Execute the merge when both
+   gates are green on the **exact reviewed head SHA**. `--no-merge` path:
+   when the head is already merged, skip the mutation but still verify
+   exact-head identity.
+4. **stage** — Staging rollout. Dry-run preview first, then roll to staging.
+5. **gate-canary-expand** — Deploy Gate checkpoint 1 (human): staging green,
    rollback plan exists, baseline frozen (or a waiver granted with a recorded
    approver). Approving starts the 5% production canary.
-5. **canary** — 5% canary under the armed evaluator: green / yellow / red
+6. **canary** — 5% canary under the armed evaluator: green / yellow / red
    threshold verdicts against frozen baselines with unified budget reads.
    See `references/threshold-verdicts.md`.
-6. **gate-full-expand** — Deploy Gate checkpoint 2 (human): canary verdicts
+7. **gate-full-expand** — Deploy Gate checkpoint 2 (human): canary verdicts
    green (or a hold resolved). Approving starts terminal expansion.
-7. **expand** — Auto-advance on green, hold-and-investigate on yellow,
+8. **expand** — Auto-advance on green, hold-and-investigate on yellow,
    mechanical rollback on red.
-8. **full** — Terminal verdict on the expanded rollout.
-9. **publish** — Release cut in merge → tag → changelog order with a dry-run
+9. **full** — Terminal verdict on the expanded rollout.
+10. **publish** — Release cut in merge → tag → changelog order with a dry-run
    preview, then the monitor handoff packet and the conditional change
    record. See `references/release-cut.md` and `references/release-chdr.md`.
 

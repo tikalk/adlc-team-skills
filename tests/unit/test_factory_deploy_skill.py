@@ -101,12 +101,19 @@ def test_workflow_parses_in_execution_engine():
     """
     import json
     import os
+    import shutil
     import subprocess
 
     cli_dir = os.environ.get(
         "ADLC_CLI_DIR",
         str(ROOT.parent / "adlc-cli"),
     )
+    engine = os.path.join(cli_dir, "src", "workflow", "engine.mjs")
+    if shutil.which("node") is None or not os.path.isfile(engine):
+        pytest.skip(
+            f"execution engine not available (ADLC_CLI_DIR={cli_dir}); "
+            "PyYAML contract test above still guards step/gate shape"
+        )
     r = subprocess.run(
         ["node", "--input-type=module", "-e",
          "import('./src/workflow/engine.mjs').then(m => {"

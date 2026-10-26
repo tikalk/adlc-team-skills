@@ -1012,11 +1012,20 @@ action_specify() {
     echo "" >&2
     echo "After completion, run '/architect-implement' to generate full AD.md" >&2
 
+    # Ledger slot allocation: hand callers the next free slot (leading digits
+    # of the filename stem, max across drafts AND published memory -- see
+    # next_adr_number). Leaving "the highest existing number" to the agent
+    # reissued taken slots.
+    local next_adr
+    next_adr=$(next_adr_number "$REPO_ROOT")
+    echo "" >&2
+    echo "Next free ADR slot: ADR-$next_adr" >&2
+
     if $JSON_MODE; then
-        python3 - "$adr_dir" "${ARGS[*]}" "$DECOMPOSE" <<'PY'
+        python3 - "$adr_dir" "${ARGS[*]}" "$DECOMPOSE" "$next_adr" <<'PY'
 import json, sys
-adr_dir, context, decompose = sys.argv[1:4]
-print(json.dumps({"status": "success", "action": "specify", "adr_dir": adr_dir, "context": context, "decomposition": decompose}))
+adr_dir, context, decompose, next_adr = sys.argv[1:5]
+print(json.dumps({"status": "success", "action": "specify", "adr_dir": adr_dir, "context": context, "decomposition": decompose, "next_adr": next_adr}))
 PY
     fi
 }

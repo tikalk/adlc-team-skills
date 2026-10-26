@@ -191,12 +191,15 @@ function Generate-PdrIndex {
         $category = Parse-PdrField -File $f.FullName -Field "category"
         $featureArea = Parse-PdrField -File $f.FullName -Field "feature-area"
 
-        if (-not $status) { $status = "Unknown"; $warnings += "PDR-$paddedId: Status" }
-        if (-not $date) { $date = "YYYY-MM-DD"; $warnings += "PDR-$paddedId: Date" }
-        if (-not $owner) { $owner = "Unknown"; $warnings += "PDR-$paddedId: Owner" }
-        if (-not $category) { $category = "Unknown"; $warnings += "PDR-$paddedId: Category" }
-        if (-not $featureArea) { $featureArea = "system"; $warnings += "PDR-$paddedId: Feature-Area" }
-        if (-not $title) { $title = "PDR-$paddedId"; $warnings += "PDR-$paddedId: Title" }
+        # ${paddedId} must stay brace-delimited: "$var:" in a double-quoted
+        # string is a PowerShell ParserError ("Variable reference is not
+        # valid"), and one such line made this whole file refuse to load.
+        if (-not $status) { $status = "Unknown"; $warnings += "PDR-${paddedId}: Status" }
+        if (-not $date) { $date = "YYYY-MM-DD"; $warnings += "PDR-${paddedId}: Date" }
+        if (-not $owner) { $owner = "Unknown"; $warnings += "PDR-${paddedId}: Owner" }
+        if (-not $category) { $category = "Unknown"; $warnings += "PDR-${paddedId}: Category" }
+        if (-not $featureArea) { $featureArea = "system"; $warnings += "PDR-${paddedId}: Feature-Area" }
+        if (-not $title) { $title = "PDR-${paddedId}"; $warnings += "PDR-${paddedId}: Title" }
 
         $body += "| PDR-$paddedId | $featureArea | $category | $status | $date | $owner | $title |`n"
     }

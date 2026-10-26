@@ -537,3 +537,33 @@ count_pdr_accepted() {
     done
     echo "$count"
 }
+
+###############################################################################
+# Ledger slot allocation
+###############################################################################
+
+# next_record_number PREFIX DIR [DIR...]
+#
+# The next free ledger slot for records named PREFIX-*.md.
+#
+# A record's number is the LEADING DIGITS of its filename stem: PDR-002-amendment-2.md
+# is record 002. Suffixes are preserved and never arithmetically parsed -- the
+# same rule generate_adr_index pins in tests/unit/test_index_id_parsing.py.
+#
+# The maximum is taken across EVERY directory given. Scanning drafts alone
+# reissues a slot that a published record still holds in docs/adlc/memory/.
+next_record_number() {
+  local prefix="$1"
+  shift
+  local max=0 f num
+  for dir in "$@"; do
+    [ -d "$dir" ] || continue
+    for f in "$dir"/"${prefix}"-*.md; do
+      [ -f "$f" ] || continue
+      num=$(basename "$f" .md | sed -n "s/^${prefix}-\([0-9]\{1,\}\).*/\1/p")
+      [ -n "$num" ] || continue
+      ((10#$num > max)) && max=$((10#$num))
+    done
+  done
+  printf '%03d' "$((max + 1))"
+}

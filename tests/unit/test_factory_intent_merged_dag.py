@@ -17,6 +17,8 @@ ROOT = Path(__file__).parent.parent.parent
 SKILL = ROOT / "skills/factory/factory-intent"
 SKILL_MD = SKILL / "SKILL.md"
 WORKFLOW = SKILL / "workflow.yml"
+WORKFLOW_PRODUCT = SKILL / "workflow-product.yml"
+WORKFLOW_ARCHITECTURE = SKILL / "workflow-architecture.yml"
 
 OLD_PRODUCT = ROOT / "skills/factory/factory-product"
 OLD_ARCHITECT = ROOT / "skills/factory/factory-architect"
@@ -167,6 +169,167 @@ def test_skill_documents_boundary_and_bounded_loop():
     )
     assert "max_corrections" in text or "max 2" in low or "bounded" in low, (
         "SKILL.md must state the bounded correction loop"
+    )
+
+
+# ── Lane activation: thin per-lane entry workflows ──────────────────────────
+
+LANE_FILES = {
+    "product": WORKFLOW_PRODUCT,
+    "architecture": WORKFLOW_ARCHITECTURE,
+}
+
+LANE_COMMAND_PREFIX = {
+    "product": "product",
+    "architecture": "architect",
+}
+
+
+def load_lane(lane):
+    path = LANE_FILES[lane]
+    assert path.exists(), f"skills/factory/factory-intent/{path.name} must exist"
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def test_lane_entry_workflows_exist():
+    """Each lane has a thin entry workflow (prompt-driven lane activation)."""
+    for lane, path in LANE_FILES.items():
+        assert path.exists(), (
+            f"{lane} lane entry workflow missing: {path.name}"
+        )
+
+
+def test_lane_entry_covers_single_lane_steps():
+    """Each lane entry runs specify → clarify → gate → build-and-verify for
+    its own lane only (no cross-lane steps)."""
+    for lane, path in LANE_FILES.items():
+        doc = load_lane(lane)
+        steps = steps_by_id(doc)
+        ids = list(steps)
+        prefix = LANE_COMMAND_PREFIX[lane]
+        other = "architect" if lane == "product" else "product"
+        assert any("specify" in k for k in steps), f"{lane}: specify missing in {ids}"
+        assert any("clarify" in k for k in steps), f"{lane}: clarify missing in {ids}"
+        assert any("gate" in k for k in steps), f"{lane}: gate missing in {ids}"
+        assert any("build" in k and "verify" in k for k in steps), (
+            f"{lane}: build-and-verify missing in {ids}"
+        )
+        for sid in steps:
+            assert other not in sid, (
+                f"{lane} entry must not run the other lane: {sid}"
+            )
+
+
+def test_lane_entry_gates_are_scope_pinned():
+    """Lane-entry gates keep the scope-pinned contract: product entry reads
+    the PDR drafts dir only, architecture entry reads the ADR drafts dir
+    only; context holds only records/since/link."""
+    for lane, path in LANE_FILES.items():
+        doc = load_lane(lane)
+        steps = steps_by_id(doc)
+        gates = [s for s in steps.values() if s.get("type") == "gate"]
+        assert gates, f"{lane} entry must have a gate"
+        for g in gates:
+            ctx = g.get("context", {})
+            assert ctx, f"{lane} entry gate should carry a context block"
+            for ck in ctx.keys():
+                assert ck in ALLOWED_CONTEXT_KEYS, (
+                    f"{lane} entry gate: unknown context key {ck!r}"
+                )
+            recs = " ".join(ctx.get("records", []))
+            assert "*" in recs, f"{lane} entry gate records must be globs"
+            if lane == "product":
+                assert "pdr" in recs.lower(), f"product entry gate: {recs}"
+                assert "adr" not in recs.lower(), f"product entry must not read adr: {recs}"
+            else:
+                assert "adr" in recs.lower(), f"arch entry gate: {recs}"
+                assert "pdr" not in recs.lower(), f"arch entry must not read pdr: {recs}"
+
+
+def test_lane_entry_inputs_are_declared():
+    """Every {{ inputs.* }} a lane entry references is a declared input."""
+    for lane, path in LANE_FILES.items():
+        doc = load_lane(lane)
+        inputs = doc.get("inputs", {}) or {}
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(r"\{\{\s*inputs\.([A-Za-z0-9_]+)", text):
+            assert m.group(1) in inputs, (
+                f"{lane} entry references undeclared input: {m.group(1)}"
+            )
+
+
+def test_lane_entry_matches_twin_structure():
+    """Each lane entry mirrors the removed twin's step shape: specify →
+    clarify → gate-decisions → build-and-verify(implement → analyze), with
+    the lane's own commands and no twin-skill invokables."""
+    for lane, path in LANE_FILES.items():
+        doc = load_lane(lane)
+        steps = steps_by_id(doc)
+        prefix = LANE_COMMAND_PREFIX[lane]
+        assert "specify" in steps, f"{lane}: specify missing"
+        assert "clarify" in steps, f"{lane}: clarify missing"
+        assert "gate-decisions" in steps, f"{lane}: gate-decisions missing"
+        assert "build-and-verify" in steps, f"{lane}: build-and-verify missing"
+        assert steps["specify"].get("command") == f"{prefix}-specify"
+        assert steps["clarify"].get("command") == f"{prefix}-clarify"
+        joint = steps["build-and-verify"]
+        nested = {s.get("id"): s for s in joint.get("steps", [])}
+        assert nested.get("implement", {}).get("command") == f"{prefix}-implement"
+        assert nested.get("analyze", {}).get("command") == f"{prefix}-analyze"
+        text = path.read_text(encoding="utf-8")
+        assert not re.search(r"command:\s*factory-product", text)
+        assert not re.search(r"command:\s*factory-architect", text)
+
+
+def test_lane_entry_engine_valid():
+    """Each lane entry parses in the workflow engine with no validation
+    errors and no headless gate errors."""
+    import json
+    import os
+    import shutil
+    import subprocess
+
+    cli_dir = os.environ.get(
+        "ADLC_CLI_DIR",
+        str(ROOT.parent / "adlc-cli"),
+    )
+    engine = os.path.join(cli_dir, "src", "workflow", "engine.mjs")
+    if shutil.which("node") is None or not os.path.isfile(engine):
+        pytest.skip(
+            f"execution engine not available (ADLC_CLI_DIR={cli_dir})"
+        )
+    for lane, path in LANE_FILES.items():
+        rel = str(path.relative_to(ROOT))
+        r = subprocess.run(
+            ["node", "--input-type=module", "-e",
+             "import('./src/workflow/engine.mjs').then(m => {"
+             " const eng = new m.WorkflowEngine(process.argv[1]);"
+             " const def = eng.loadWorkflow(process.argv[2]);"
+             " console.log(JSON.stringify({"
+             " validate: m.validateWorkflow(def, eng.registry),"
+             " gateErrors: m.headlessGateErrors(def)})); });",
+             "--", str(ROOT), rel],
+            capture_output=True, text=True,
+            cwd=cli_dir,
+        )
+        assert r.returncode == 0, f"{lane} entry engine probe failed: {r.stderr[-500:]}"
+        report = json.loads(r.stdout.strip())
+        assert report["validate"] == [], (
+            f"{lane} entry engine validation: {report['validate']}"
+        )
+        assert report["gateErrors"] == [], (
+            f"{lane} entry engine gates: {report['gateErrors']}"
+        )
+
+
+def test_skill_documents_lane_entries():
+    """SKILL.md names the per-lane entry workflows for single-lane runs."""
+    text = SKILL_MD.read_text(encoding="utf-8")
+    assert "workflow-product.yml" in text, (
+        "SKILL.md must name the product lane entry workflow"
+    )
+    assert "workflow-architecture.yml" in text, (
+        "SKILL.md must name the architecture lane entry workflow"
     )
 
 

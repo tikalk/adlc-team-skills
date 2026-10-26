@@ -45,6 +45,20 @@ replaces the twin orchestrators with one two-lane DAG — no aliases.
 - For software implementation task execution (use `factory-mission` instead).
 - For single-lane follow-ups already past intent (invoke the lane skill directly).
 
+### Single-lane runs (lane activation)
+
+When the brief needs one lane only, run that lane's entry workflow instead
+of the both-lanes `workflow.yml`:
+
+- Product only → `workflow-product.yml` (`specify` → `clarify` →
+  `gate-decisions` → `build-and-verify`, product commands, PDR-scoped gate).
+- Architecture only → `workflow-architecture.yml` (same shape, architecture
+  commands, ADR-scoped gate).
+
+Each entry mirrors the removed twin's step shape with the gate-context
+contract (records/since/link); the adaptive executor resolves its `route`
+input at dispatch the same way.
+
 ---
 
 ## Lifecycle DAG & Step Resolution

@@ -58,7 +58,7 @@ def test_lanes_use_same_step_shape_as_twins():
         if "product" in sid and cmd:
             assert "architect" not in cmd, f"{sid} mixes lanes: {cmd}"
         if "architect" in sid and cmd:
-            assert cmd.startswith("architect") or "product" not in cmd, (
+            assert cmd.startswith("architect") and "product" not in cmd, (
                 f"{sid} mixes lanes: {cmd}"
             )
 

@@ -345,8 +345,8 @@ each step. Works alongside:
 - **`factory-init`** — unified brownfield bootstrap + PDR↔ADR↔ChDR↔code coverage matrix (`--refresh`).
 - **`factory-queue`** — queue intake, AI advisory triage scoring, intent gate, milestone generation.
 - **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, mandated TDD RED/GREEN gates (Test Agent writes failing tests first, Implement Agent writes code to pass them), circuit breaker.
-- **`factory-review`** — severity-ranked PR policy compliance against `REVIEW.md`; babysits agent PRs to merge.
 - **`factory-intent`** — merged intent orchestrator (product + architecture lanes, two gates).
+- **`factory-deploy`** — post-merge release orchestration: exact-head gated merge → staged rollout with threshold verdicts → SemVer-tagged, noted release with monitor handoff.
 - **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.
 - **`factory-clean`** — resource inventory and reclamation (approval-gated).

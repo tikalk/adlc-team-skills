@@ -124,6 +124,36 @@ def test_run_branch_continues_from_origin(repo, tmp_path):
     assert git(repo["work"], "log", "-1", "--format=%s") == "from another pod"
 
 
+def test_run_branch_continues_from_origin_in_a_single_branch_clone(repo, tmp_path):
+    # The runner clones the workspace with `git clone --branch main
+    # --single-branch`: its fetch refspec covers only main, and
+    # `git switch --track origin/<run branch>` failed with "cannot set up
+    # tracking information" (adlc-workspace#12 M9 pilot, run 4ead8524).
+    other = tmp_path / "other"
+    subprocess.run(["git", "clone", "-q", str(repo["bare"]), str(other)], check=True)
+    git(other, "config", "user.email", "o@t.local")
+    git(other, "config", "user.name", "o")
+    git(other, "switch", "-q", "-c", "factory/intent/adlc-workspace-12")
+    (other / "y.txt").write_text("2\n")
+    git(other, "add", "-A")
+    git(other, "commit", "-q", "-m", "from another pod")
+    git(other, "push", "-q", "origin", "factory/intent/adlc-workspace-12")
+    pod = tmp_path / "pod"
+    subprocess.run(["git", "clone", "-q", "--branch", "main", "--single-branch", str(repo["bare"]), str(pod)], check=True)
+    assert git(pod, "config", "--get-all", "remote.origin.fetch") == "+refs/heads/main:refs/remotes/origin/main"
+    git(pod, "config", "remote.origin.url", "https://gl.test/g/adlc-workspace.git")
+    git(pod, "config", f"url.{repo['bare']}.insteadOf", "https://gl.test/g/adlc-workspace.git")
+    r = run(RUN_BRANCH, pod, env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "factory/intent/adlc-workspace-12"
+    assert git(pod, "rev-parse", "--abbrev-ref", "HEAD") == "factory/intent/adlc-workspace-12"
+    assert git(pod, "log", "-1", "--format=%s") == "from another pod"
+    # A second call (the orchestrator's own) is an idempotent no-op.
+    r2 = run(RUN_BRANCH, pod, env=RUN_ENV)
+    assert r2.returncode == 0, r2.stderr
+    assert git(pod, "log", "-1", "--format=%s") == "from another pod"
+
+
 def _push_from_other_pod(repo, tmp_path, msg):
     other = tmp_path / "other"
     if not other.exists():
@@ -552,6 +582,19 @@ def test_commit_step_commits_a_deletion_alone(repo):
 def test_orchestrators_pass_moved_and_deleted_paths(skill):
     text = (ROOT / f"skills/factory/{skill}/SKILL.md").read_text()
     assert "every path the step wrote, moved or deleted" in text
+
+
+def test_factory_mission_checklist_takes_the_issue_and_reports_the_mr():
+    # adlc-workspace#12 M9 pilot, run 84412db5: the engine's execute step ran
+    # factory-mission without --issue; the skill asked for a mission and
+    # returned, and the completion gate had nothing to link.
+    text = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
+    head = "## In a factory run — read this first"
+    assert head in text
+    assert text.index(head) < text.index("## What this skill does")
+    block = text[text.index(head):text.index("## What this skill does")]
+    for needle in ("--issue <ref>", "ADLC_ISSUE_REF", "ADLC_STEP_OUTPUT", "mr_url", "conclusion", "Never ask a question"):
+        assert needle in block, needle
 
 
 @pytest.mark.parametrize("skill", ["factory-intent"])

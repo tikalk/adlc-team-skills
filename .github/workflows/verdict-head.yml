@@ -55,12 +55,18 @@ concurrency:
 jobs:
   verdict-head:
     name: Verdict names the current head
-    # An issue_comment event also fires for plain issues, which never carry a
-    # verdict, and for every ordinary comment, which is noise. Re-check when a
-    # verdict lands on the PR.
+    # Every human review and every comment used to execute the checker; most
+    # carry no verdict, which is noise. The re-check happens only when a
+    # factory-review verdict lands on the PR — a review (or comment) whose
+    # body carries the marker. Head moves are always checked, whatever the
+    # event that reports them.
     if: >-
-      ${{ github.event_name != 'issue_comment' ||
-          (github.event.issue.pull_request != null &&
+      ${{ github.event_name == 'pull_request' ||
+          (github.event_name == 'pull_request_review' &&
+           github.event.review.body != null &&
+           contains(github.event.review.body, 'factory-review:step=review')) ||
+          (github.event_name == 'issue_comment' &&
+           github.event.issue.pull_request != null &&
            contains(github.event.comment.body, 'factory-review:step=review')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

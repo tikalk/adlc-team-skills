@@ -76,14 +76,20 @@ def _allowlist_block(text, opener):
     """Return the entries of a bash array / PowerShell array literal.
 
     Line-based on purpose: the entries carry parenthesised comments, so
-    scanning for the first ")" truncates the block at prose.
+    scanning for the first ")" truncates the block at prose. The opener is
+    anchored to a whole line (after strip) so a line that merely *contains*
+    the opener (e.g. the assignment GITIGNORE_RULES=("${...[@]}")) cannot
+    shadow the intended array literal, and comment lines are skipped so a
+    quoted token in a comment never becomes a phantom entry.
     """
     lines = text.splitlines()
-    start = next(i for i, l in enumerate(lines) if opener in l)
+    start = next(i for i, l in enumerate(lines) if l.strip() == opener)
     entries = []
     for line in lines[start + 1:]:
         if line.strip() == ")":
             break
+        if line.strip().startswith("#"):
+            continue
         entries.extend(re.findall(r'[\'"]([^\'"]+)[\'"]', line))
     return entries
 

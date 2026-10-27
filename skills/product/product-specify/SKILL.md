@@ -1,6 +1,6 @@
 ---
 name: product-specify
-description: Use when you want guided trade-off analysis, multi-option comparison, or structured product decision facilitation before documenting. Optional for routine capture — team-boot writes lightweight PDR drafts directly.
+description: Use when you want guided trade-off analysis, multi-option comparison, or structured product decision facilitation before documenting. Class boots only suggest capture — they never write drafts; running this skill writes the lightweight PDR draft.
 disable-model-invocation: true
 ---
 
@@ -16,9 +16,9 @@ Transforms a high-level product idea into documented Product Decision Records (P
 
 ## When to use
 
-> **Note**: Routine decision capture is handled by team-boot's continuous
-> capture mechanism, which writes lightweight drafts directly to
-> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> **Note**: Class boots detect decisions and **suggest this skill** — running
+> it is how the capture happens (it writes the lightweight draft to
+> `.adlc/drafts/`). Use it for **interactive deep-dive exploration**
 > — when you want guided trade-off analysis, multi-option comparison, or
 > structured decision facilitation before documenting.
 

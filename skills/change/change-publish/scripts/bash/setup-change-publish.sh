@@ -30,7 +30,7 @@ CHDR_DRAFTS_DIR="${PROJECT_ROOT}/${ADLC_DRAFTS:-.adlc/drafts}/chdr"
 #  published ChDRs live under docs/adlc/memory — promotion writes the
 # new path only; legacy .adlc/memory/chdr stays read-compatible (dual-read).
 MEMORY_DIR="${PROJECT_ROOT}/docs/adlc/memory/chdr"
-MEMORY_INDEX="${PROJECT_ROOT}/docs/adlc/memory/chdr.md"
+MEMORY_INDEX="${PROJECT_ROOT}/docs/adlc/memory/chdr/chdr.md"
 LEGACY_MEMORY_DIR="${PROJECT_ROOT}/.adlc/memory/chdr"
 
 mkdir -p "$MEMORY_DIR" 2>/dev/null || true

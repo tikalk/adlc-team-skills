@@ -1,5 +1,5 @@
 ---
-# Lightweight ChDR draft — written by team-boot continuous capture.
+# Lightweight ChDR draft — written by the capture skill (/change-specify, or /change-init for mined history).
 # Enriched to full ChDR format by /change-clarify before promotion to docs/adlc/memory/.
 status: proposed
 date: YYYY-MM-DD

@@ -388,7 +388,7 @@ instead (the dual-read order applies: \`docs/adlc/memory\` first, legacy
 |--|--|--|--|
 | architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
 | product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
-| change-boot | ChDR index (docs/adlc/memory/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-init |
+| change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-specify (mining: /change-init) |
 | team-levelup | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-levelup |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
 
@@ -409,18 +409,19 @@ Render the section as markdown blocks — heading, table (when rows exist), and 
 
 ## Decision Capture
 
-Detect decisions as they emerge; full detection and capture guidance lives in the matching class boot:
+Detect decisions as they emerge and suggest the matching capture skill — never write drafts or touch \`.adlc/drafts/\`; the capture skill writes the draft when the user runs it. Full detection and capture guidance lives in the matching class boot:
 
 - Tech stack / pattern choice → ADR → /architect-specify (pull tech-radar-boot context first for tech selection)
 - Feature scope / persona / monetization → PDR → /product-specify
 - Reusable team rule / pattern → CDR → /team-levelup
-- Revert/hotfix rationale / issue-linked commit → ChDR → /change-init
+- Revert/hotfix rationale / issue-linked commit → ChDR → /change-specify (mined history: /change-init)
+- Eval criterion discovered → Eval → /evals-specify
 
 Maintain the decision rows in the same table above (Status pending/captured/clarified/handed off + Clarify skill); with no pending decisions, emit the heading + the counts line only — no table.
 
-At session end, deliver the clarify prompt naming each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Only suggest capture when genuinely warranted.
+At session end, deliver the clarify prompt naming each uncaptured decision (ID + capture skill) and each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Only suggest capture when genuinely warranted.
 
-Surface each detected decision as a task-list todo (write the draft to \`.adlc/drafts/{type}/\`, then run the matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
+Surface each detected decision as a task-list todo (suggest the capture skill — never write the draft yourself; the capture skill writes to \`.adlc/drafts/{type}/\` when the user runs it — then run the matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
 ${marker_end}
 SECTION
 )

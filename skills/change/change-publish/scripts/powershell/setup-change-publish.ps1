@@ -27,7 +27,7 @@ $ChdrDraftsDir = Join-Path $projectRoot ".adlc/drafts/chdr"
 #  published ChDRs live under docs/adlc/memory — promotion writes the
 # new path only; legacy .adlc/memory/chdr stays read-compatible (dual-read).
 $MemoryDir = Join-Path $projectRoot "docs/adlc/memory/chdr"
-$MemoryIndex = Join-Path $projectRoot "docs/adlc/memory/chdr.md"
+$MemoryIndex = Join-Path $projectRoot "docs/adlc/memory/chdr/chdr.md"
 $LegacyMemoryDir = Join-Path $projectRoot ".adlc/memory/chdr"
 
 if (-not (Test-Path $MemoryDir)) { New-Item -ItemType Directory -Path $MemoryDir -Force | Out-Null }

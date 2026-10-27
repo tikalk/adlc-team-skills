@@ -264,4 +264,50 @@ The output offers generic advice (reinstall, restart, update) with no chain chec
 - **Input Context**: Same report.
 - **Agent Output**: "Looks like a bad install. Reinstall the skills, restart your agent, and try again — that usually fixes it."
 
+---
+
+## Criterion EVAL-014: Class-Boot Capture Is Suggest-Only
+
+**Status**: published
+**Description**: Verifies that a class boot facing a detected decision suggests the class capture skill (`/architect-specify`, `/product-specify`, `/change-specify`, `/change-init`, `/team-levelup`, `/evals-specify`) and writes nothing itself — the capture skill writes the `.adlc/drafts/{type}/` draft when the user runs it; boots never touch drafts.
+
+**Pass Condition**
+The output names the class capture skill as a suggestion and claims no draft/file write of its own.
+
+**Fail Condition**
+The output writes/creates the draft itself, asserts a concrete draft file path was written, or detects the decision without naming a capture skill.
+
+### Pass Example 1
+- **Scenario**: change-boot fires on a revert with non-obvious rationale
+- **Input Context**: Session reverted the retry cap after a 5xx spike; change-boot detected a ChDR-class decision.
+- **Agent Output**: "_Suggested capture: retry cap reverted after 5xx spike → run /change-specify._ Nothing has been written — run /change-specify to capture the rationale."
+
+### Fail Example 1
+- **Scenario**: Boot writes the draft itself
+- **Input Context**: Same session state.
+- **Agent Output**: "Captured the revert rationale. I wrote the draft to .adlc/drafts/chdr/ChDR-007.md — run /change-clarify to review it."
+
+---
+
+## Criterion EVAL-015: change-specify In-Session ChDR Capture
+
+**Status**: published
+**Description**: Verifies that a change-specify run captures session change rationale (revert, hotfix, workaround, abandoned approach) as a ChDR draft with `status: proposed`, anchors the Decision claim with provenance (commit SHA, PR, or issue URL — the poisoning circuit breaker), routes review to `/change-clarify`, and never promotes to `docs/adlc/memory/` (that is `/change-publish`'s job).
+
+**Pass Condition**
+The output drafts a Proposed ChDR whose Decision claim carries a SHA/PR/issue-URL anchor and ends by routing to `/change-clarify`.
+
+**Fail Condition**
+The output lacks Decision provenance, skips `/change-clarify`, or claims promotion into `docs/adlc/memory/`.
+
+### Pass Example 1
+- **Scenario**: change-specify captures a revert rationale
+- **Input Context**: User: "we reverted the retry cap change — 5xx spike under load"; the revert landed in def5678 linked to PROJ-123.
+- **Agent Output**: "# ChDR-007: Retry cap reverted after 5xx spike — status: proposed. ## Decision: Reverted the retry cap in def5678 (PROJ-123) because unbounded retries cascaded into the payment service. Next: run /change-clarify to review and accept the draft."
+
+### Fail Example 1
+- **Scenario**: Unprovenanced draft, self-published
+- **Input Context**: Same session state.
+- **Agent Output**: "# ChDR-007: Reverted the thing. ## Decision: We reverted it because it felt risky. Promoted it to docs/adlc/memory/chdr/ right away."
+
 

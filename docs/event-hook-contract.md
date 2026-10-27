@@ -54,7 +54,8 @@ emitted index).
 
 ## `file_edited`: the draft-nudge contract
 
-Boot skills already capture decisions as drafts in `.adlc/drafts/{type}/`.
+Capture skills write decisions as drafts in `.adlc/drafts/{type}/` (class
+boots only suggest the capture skill — they never write).
 `file_edited` is only the **timely nudge toward the existing clarify skill**
 — no counters, no state files, no new capture logic:
 

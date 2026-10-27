@@ -195,14 +195,14 @@ def test_roadmap_output_target_repointed():
 
 
 def test_change_publish_memory_repointed():
-    """change-publish memory must live under docs/adlc/memory (chdr dir + chdr.md index)."""
+    """change-publish memory must live under docs/adlc/memory/chdr (records + chdr/chdr.md index)."""
     content = _read(SETUP_CHANGE_PUBLISH_SH)
     assert content is not None
     assert re.search(r"MEMORY_DIR=[^\n]*docs/adlc/memory/chdr(?!\.md)", content), (
         "MEMORY_DIR must point at docs/adlc/memory/chdr"
     )
-    assert re.search(r"MEMORY_INDEX=[^\n]*docs/adlc/memory/chdr\.md", content), (
-        "MEMORY_INDEX must point at docs/adlc/memory/chdr.md"
+    assert re.search(r"MEMORY_INDEX=[^\n]*docs/adlc/memory/chdr/chdr\.md", content), (
+        "MEMORY_INDEX must point at docs/adlc/memory/chdr/chdr.md (inside the class dir)"
     )
 
 

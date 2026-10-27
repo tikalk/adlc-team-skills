@@ -50,3 +50,32 @@ $GITIGNORE_RULES_ALLOWLIST = @(
     # Knowledge graph (generated)
     "graphify-out/"
 )
+
+# --- Ledger base staleness -----------------------------------------------
+# A slot number computed from a stale base is still wrong even when the
+# helper computes it correctly. Run BEFORE allocating any ledger slot.
+# Reports ONE number: `git rev-list --left-right --count A...B` reports
+# "left right" and the columns are trivial to transpose.
+function Get-LedgerBaseBehind {
+    param([string]$Target = "origin/main")
+    $n = git rev-list --count "HEAD..$Target" 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not ($n -match '^\d+$')) { return -1 }
+    return [int]$n
+}
+
+# Assert-CurrentBase [TARGET] - refuse to proceed on a stale base.
+function Assert-CurrentBase {
+    param([string]$Target = "origin/main")
+    $behind = Get-LedgerBaseBehind $Target
+    if ($behind -lt 0) {
+        Write-Warning "cannot read $Target to check the base; continuing unverified."
+        return $true
+    }
+    if ($behind -gt 0) {
+        [Console]::Error.WriteLine("ERROR: this checkout is $behind commit(s) behind $Target.")
+        [Console]::Error.WriteLine("       A slot number read from this base may already be taken.")
+        [Console]::Error.WriteLine("       Rebase or merge $Target before claiming ledger slots.")
+        return $false
+    }
+    return $true
+}

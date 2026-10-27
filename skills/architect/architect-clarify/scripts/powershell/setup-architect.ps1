@@ -1363,7 +1363,10 @@ function Invoke-Summarize {
     }
 }
 
-# Main execution
+# Main execution -- runs when the file is executed. Dot-sourcing this file
+# (the documented way to reach Get-NextAdrNumber / Get-NextAdDeltaVersion)
+# must define helpers without running the action dispatch below.
+if ($MyInvocation.InvocationName -ne '.') {
 try {
     $repoRoot = Get-RepositoryRoot
     Seed-Templates -RepoRoot $repoRoot
@@ -1440,4 +1443,29 @@ try {
 } catch {
     Write-Error $_.Exception.Message
     exit 1
+}
+}  # end execution-only guard (see the sourcing contract above)
+
+# Get-NextAdDeltaVersion AD_FILE - the next `## vN.N.N Delta:` heading version.
+#
+# Deltas bump the MINOR and reset the patch: v13.18.0 -> v13.19.0. A patch bump
+# means amending the delta already there, which is a deliberate act, not the
+# next free slot -- so this never emits one.
+function Get-NextAdDeltaVersion {
+    param([string]$File)
+    $major = 0; $minor = 0; $patch = 0
+    if (Test-Path $File) {
+        $best = $null
+        foreach ($m in [regex]::Matches((Get-Content $File -Raw),
+                                        '(?m)^## v(\d+)\.(\d+)\.(\d+) Delta')) {
+            $v = @([int]$m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value)
+            if ($null -eq $best -or ($v[0] -gt $best[0]) -or
+                ($v[0] -eq $best[0] -and $v[1] -gt $best[1]) -or
+                ($v[0] -eq $best[0] -and $v[1] -eq $best[1] -and $v[2] -gt $best[2])) {
+                $best = $v
+            }
+        }
+        if ($null -ne $best) { $major = $best[0]; $minor = $best[1]; $patch = $best[2] }
+    }
+    return "v$major.$($minor + 1).0"
 }

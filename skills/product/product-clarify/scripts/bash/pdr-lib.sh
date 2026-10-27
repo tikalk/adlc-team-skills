@@ -567,3 +567,51 @@ next_record_number() {
   done
   printf '%03d' "$((max + 1))"
 }
+
+###############################################################################
+# Document-internal ledger slots (PRD.md)
+###############################################################################
+#
+# Record ids are allocated by next_record_number above. PRD.md carries three
+# further numbered slots that nothing allocated before: the delta SECTION
+# number (`## 26.`), the REQ id (`REQ-216`), and the Feature number (`| 69 |`).
+# An intent run used to pick these by eyeballing the document, and claimed
+# numbers the merge target already used.
+#
+# Each scan is deliberately OVER-inclusive: a match anywhere in the document
+# raises the result. That is the safe failure direction -- an unused number is
+# harmless, a reissued one collides.
+
+# next_prd_section PRD_FILE - the next `## N.` delta heading number (no padding).
+next_prd_section() {
+  local f="${1:-}"
+  local max=0
+  if [ -f "$f" ]; then
+    max=$(awk '/^## [0-9]+\. / { n=$2; sub(/\.$/, "", n); if (n+0 > m) m=n+0 }
+               END { print m+0 }' "$f")
+  fi
+  printf '%s' "$((max + 1))"
+}
+
+# next_req_id PRD_FILE - the next REQ-NNN. Printed unpadded (217, not 0217).
+next_req_id() {
+  local f="${1:-}"
+  local max=0
+  if [ -f "$f" ]; then
+    max=$(grep -oE 'REQ-[0-9]+' "$f" | sed 's/^REQ-//' | sort -n | tail -1)
+  fi
+  printf '%s' "$((${max:-0} + 1))"
+}
+
+# next_feature_number PRD_FILE - the next `| N |` Feature row number.
+# Every numbered table row in PRD.md is a Feature row today; scanning them all
+# is over-inclusive and therefore safe.
+next_feature_number() {
+  local f="${1:-}"
+  local max=0
+  if [ -f "$f" ]; then
+    max=$(awk -F'|' '/^\| [0-9]+ \| / { gsub(/ /, "", $2); if ($2+0 > m) m=$2+0 }
+                   END { print m+0 }' "$f")
+  fi
+  printf '%s' "$((max + 1))"
+}

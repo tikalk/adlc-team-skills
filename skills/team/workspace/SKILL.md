@@ -181,7 +181,8 @@ The setup script checks `.gitignore` for workspace conventions and reports missi
 .tabnine/
 skills-lock.json
 .skills.json
-.mcp.json
+# .mcp.json is deliberately ABSENT: it is committed project source
+# (human-edited, never generated), not a derived artifact.
 .events.json
 .pytest_cache/
 .ruff_cache/

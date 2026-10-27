@@ -154,9 +154,22 @@ Write-Output ""
 $AdrCount = @(Get-ChildItem "docs/adlc/memory/adr/ADR-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/adr/ADR-*.md" -ErrorAction SilentlyContinue).Count
 $PdrCount = @(Get-ChildItem "docs/adlc/memory/pdr/PDR-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/pdr/PDR-*.md" -ErrorAction SilentlyContinue).Count
 $ChdrCount = 0
-foreach ($chdrIndex in @("docs/adlc/memory/chdr/chdr.md", "docs/adlc/memory/chdr.md", ".adlc/memory/chdr.md")) {
+# Index rows count at most one index per memory root — first found wins within
+# each root (docs: canonical chdr/chdr.md, then the older root-level chdr.md;
+# legacy: .adlc/memory/chdr.md), matching the dual-read readers. Rows still
+# sum across the docs and legacy roots (migration overlap tolerated, as above)
+# — but never within one root: a migrated repo's stale root chdr.md would
+# otherwise double-count every row alongside the canonical chdr/chdr.md.
+foreach ($chdrIndex in @("docs/adlc/memory/chdr/chdr.md", "docs/adlc/memory/chdr.md")) {
     if (Test-Path $chdrIndex) {
         $ChdrCount += @(Select-String -Path $chdrIndex -Pattern '^\| ChDR' -ErrorAction SilentlyContinue).Count
+        break
+    }
+}
+foreach ($chdrIndex in @(".adlc/memory/chdr.md")) {
+    if (Test-Path $chdrIndex) {
+        $ChdrCount += @(Select-String -Path $chdrIndex -Pattern '^\| ChDR' -ErrorAction SilentlyContinue).Count
+        break
     }
 }
 $ChdrCount += @(Get-ChildItem "docs/adlc/memory/chdr/ChDR-*.md" -ErrorAction SilentlyContinue).Count

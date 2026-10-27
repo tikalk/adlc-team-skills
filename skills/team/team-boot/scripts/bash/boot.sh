@@ -154,13 +154,28 @@ echo ""
 ADR_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/adr/ADR-*.md .adlc/memory/adr/ADR-*.md 2>/dev/null | wc -l || true); ADR_COUNT=$((ADR_COUNT))
 PDR_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/pdr/PDR-*.md .adlc/memory/pdr/PDR-*.md 2>/dev/null | wc -l || true); PDR_COUNT=$((PDR_COUNT))
 _CHDR_FILE=0
-for _chdr_index in "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr/chdr.md" "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr.md" ".adlc/memory/chdr.md"; do
+# Index rows count at most one index per memory root — first found wins within
+# each root (docs: canonical chdr/chdr.md, then the older root-level chdr.md;
+# legacy: .adlc/memory/chdr.md), matching the dual-read readers. Rows still
+# sum across the docs and legacy roots (migration overlap tolerated, as above)
+# — but never within one root: a migrated repo's stale root chdr.md would
+# otherwise double-count every row alongside the canonical chdr/chdr.md.
+for _chdr_index in "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr/chdr.md" "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr.md"; do
   if [ -f "$_chdr_index" ]; then
     # grep -c prints the count even on exit 1 (no match) — capture it, and map
     # every other failure shape (empty, multi-line) to 0 via case validation.
     _chdr_rows=$(grep -c '^\| ChDR' "$_chdr_index" 2>/dev/null || true)
     case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
     _CHDR_FILE=$((_CHDR_FILE + _chdr_rows))
+    break
+  fi
+done
+for _chdr_index in ".adlc/memory/chdr.md"; do
+  if [ -f "$_chdr_index" ]; then
+    _chdr_rows=$(grep -c '^\| ChDR' "$_chdr_index" 2>/dev/null || true)
+    case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
+    _CHDR_FILE=$((_CHDR_FILE + _chdr_rows))
+    break
   fi
 done
 _CHDR_DIR=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/chdr/ChDR-*.md .adlc/memory/chdr/ChDR-*.md 2>/dev/null | wc -l || true); _CHDR_DIR=$((_CHDR_DIR))

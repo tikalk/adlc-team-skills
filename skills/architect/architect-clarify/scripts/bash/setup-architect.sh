@@ -657,6 +657,31 @@ next_adr_number() {
     printf '%03d' "$((max + 1))"
 }
 
+# next_ad_delta_version AD_FILE - the next `## vN.N.N Delta:` heading version.
+#
+# Deltas bump the MINOR and reset the patch: v13.18.0 -> v13.19.0. A patch
+# bump (v13.3.1) means amending the delta that is already there, which is a
+# deliberate act, not the next free slot -- so this never emits one.
+#
+# Companion to next_prd_section/next_req_id/next_feature_number in
+# product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split for
+# the same reason the index generators are -- the source tree is
+# skills/<group>/<skill>/ while the installed mirror is flat
+# .agents/skills/<skill>/, so no one relative source path resolves in both.
+next_ad_delta_version() {
+    local f="${1:-}"
+    local major=0 minor=0 patch=0 max=""
+    if [[ -f "$f" ]]; then
+        max=$(grep -oE '^## v[0-9]+\.[0-9]+\.[0-9]+ Delta' "$f" \
+            | sed -E 's/^## v([0-9]+)\.([0-9]+)\.([0-9]+) Delta/\1 \2 \3/' \
+            | sort -k1,1n -k2,2n -k3,3n | tail -1)
+    fi
+    if [[ -n "$max" ]]; then
+        read -r major minor patch <<< "$max"
+    fi
+    printf 'v%s.%s.0' "$major" "$((minor + 1))"
+}
+
 # Generate adr.md index from individual ADR files
 generate_adr_index() {
     local scope="${1:-drafts}"

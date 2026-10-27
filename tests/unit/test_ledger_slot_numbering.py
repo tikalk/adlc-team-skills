@@ -205,3 +205,186 @@ def test_powershell_setup_scripts_have_no_local_numbering(script):
         "Get-NextRecordNumber instead")
     assert "Get-NextRecordNumber" in text
     assert "pdr-lib.ps1" in text
+
+
+# ── document-internal slots: PRD section, REQ id, Feature #, AD delta version ─
+
+PRD_FIXTURE = """# Product Requirements Document
+
+## 25. Agentic Verification Delta (v2.22.0)
+
+| REQ ID | Title | Source PDR | Priority |
+|--------|-------|-----------|----------|
+| REQ-216 | Day-one agents | PDR-001 | P1 |
+
+### 25.3 New Features (v2.22.0 Delta)
+
+| Feature # | Name | Source PDRs |
+|-----------|------|-------------|
+| 69 | Multi-Agent MCP Declaration | PDR-001, PDR-002, PDR-003 |
+
+## 26. Multi-Agent MCP Declaration Delta (v2.23.0)
+"""
+
+AD_FIXTURE = """# Architecture Description
+
+## v13.18.0 Delta: Agentic Verification
+
+## v13.19.0 Delta: Multi-Agent MCP Materialization
+"""
+
+
+@pytest.fixture()
+def docs_tree(tree):
+    (tree / "docs/adlc/product").mkdir(parents=True, exist_ok=True)
+    (tree / "docs/adlc/architect").mkdir(parents=True, exist_ok=True)
+    (tree / "docs/adlc/product/PRD.md").write_text(PRD_FIXTURE, encoding="utf-8")
+    (tree / "docs/adlc/architect/AD.md").write_text(AD_FIXTURE, encoding="utf-8")
+    return tree
+
+
+def test_next_prd_section_reads_the_document(docs_tree):
+    r = _run(f'source "{PDR_LIB}"; next_prd_section "{docs_tree}/docs/adlc/product/PRD.md"',
+             docs_tree)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "27"
+
+
+def test_next_req_id_reads_the_document(docs_tree):
+    r = _run(f'source "{PDR_LIB}"; next_req_id "{docs_tree}/docs/adlc/product/PRD.md"',
+             docs_tree)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "217"
+
+
+def test_next_feature_number_reads_the_document(docs_tree):
+    r = _run(f'source "{PDR_LIB}"; next_feature_number "{docs_tree}/docs/adlc/product/PRD.md"',
+             docs_tree)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "70"
+
+
+def test_next_ad_delta_version_bumps_the_minor(docs_tree):
+    harness = _extract_func(docs_tree, SETUP_ARCH, "next_ad_delta_version")
+    r = _run(f'source "{harness}"; next_ad_delta_version "{docs_tree}/docs/adlc/architect/AD.md"',
+             docs_tree)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "v13.20.0"
+
+
+# ── the staleness precondition: a slot read from a stale base is still wrong ─
+
+PATHS_SH = ROOT / "skills/team/workspace/scripts/bash/paths.sh"
+
+
+def _git(repo, *args):
+    subprocess.run(["git", *args], cwd=repo, capture_output=True, check=True)
+
+
+@pytest.fixture()
+def stale_repo(tmp_path):
+    """`feature` sits one commit behind `main`.
+
+    Built without a remote on purpose: the guard names its target, so a local
+    ref exercises the same code path.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.name", "T")
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "commit.gpgsign", "false")
+    (repo / "a.txt").write_text("a\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "a")
+    # Name the base explicitly: `git init` may default to `master`, and the
+    # tests target `main`.
+    _git(repo, "branch", "-M", "main")
+    _git(repo, "branch", "feature")
+    (repo / "b.txt").write_text("b\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "b")
+    _git(repo, "checkout", "-q", "feature")
+    return repo
+
+
+def test_ledger_base_behind_counts_only_the_commits_you_lack(stale_repo):
+    """`git rev-list --left-right --count A...B` reports "left right" and the
+    columns are trivial to transpose -- that misread is what let an intent run
+    claim slots main already used. This reports ONE number."""
+    r = _run(f'source "{PATHS_SH}"; ledger_base_behind main', stale_repo)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "1"
+
+
+def test_ledger_base_behind_is_zero_when_current(stale_repo):
+    r = _run(f'source "{PATHS_SH}"; ledger_base_behind HEAD', stale_repo)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "0"
+
+
+def test_require_current_base_refuses_a_stale_base(stale_repo):
+    r = _run(f'source "{PATHS_SH}"; require_current_base main; echo "rc=$?"', stale_repo)
+    assert "rc=1" in r.stdout, f"must refuse a stale base: {r.stdout} {r.stderr}"
+    assert "behind" in r.stderr, "the refusal must say what is wrong"
+
+
+def test_require_current_base_passes_when_current(stale_repo):
+    r = _run(f'source "{PATHS_SH}"; require_current_base HEAD; echo "rc=$?"', stale_repo)
+    assert "rc=0" in r.stdout, f"must accept a current base: {r.stdout} {r.stderr}"
+
+
+# ── PowerShell twins of the document slots and the staleness guard ──────────
+
+PATHS_PS1 = ROOT / "skills/team/workspace/scripts/powershell/paths.ps1"
+SETUP_ARCH_PS1 = ROOT / "skills/architect/architect-clarify/scripts/powershell/setup-architect.ps1"
+
+
+def _pwsh(script: str):
+    return subprocess.run(["pwsh", "-NoProfile", "-Command", script],
+                          capture_output=True, text=True, timeout=60)
+
+
+@needs_pwsh
+def test_powershell_document_slots_match_the_bash_contract(docs_tree):
+    r = _pwsh(
+        f'. "{PDR_LIB_PS1}"; '
+        f'Get-NextPrdSection "{docs_tree}/docs/adlc/product/PRD.md"; '
+        f'Get-NextReqId "{docs_tree}/docs/adlc/product/PRD.md"; '
+        f'Get-NextFeatureNumber "{docs_tree}/docs/adlc/product/PRD.md"')
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split() == ["27", "217", "70"]
+
+
+@needs_pwsh
+def test_powershell_ad_delta_version_matches_the_bash_contract(docs_tree):
+    r = _pwsh(f'. "{SETUP_ARCH_PS1}"; '
+              f'Get-NextAdDeltaVersion "{docs_tree}/docs/adlc/architect/AD.md"')
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "v13.20.0"
+
+
+@needs_pwsh
+def test_powershell_staleness_guard_refuses_a_stale_base(stale_repo):
+    ok = _pwsh(f'cd "{stale_repo}"; . "{PATHS_PS1}"; Assert-CurrentBase main')
+    assert ok.stdout.strip() == "False", f"must refuse: {ok.stdout} {ok.stderr}"
+    assert "behind" in ok.stderr
+    cur = _pwsh(f'cd "{stale_repo}"; . "{PATHS_PS1}"; Assert-CurrentBase HEAD')
+    assert cur.stdout.strip() == "True", f"must accept: {cur.stdout} {cur.stderr}"
+
+
+def test_powershell_twins_are_declared_for_the_new_helpers():
+    """Text-level twin check: runs without pwsh, so the contract holds locally.
+
+    The runtime cases above skip where pwsh is absent; this still fails if a
+    twin goes missing entirely.
+    """
+    for label, path, names in [
+        ("paths.ps1", PATHS_PS1, ["Get-LedgerBaseBehind", "Assert-CurrentBase"]),
+        ("pdr-lib.ps1", PDR_LIB_PS1,
+         ["Get-NextPrdSection", "Get-NextReqId", "Get-NextFeatureNumber"]),
+        ("setup-architect.ps1", SETUP_ARCH_PS1, ["Get-NextAdDeltaVersion"]),
+    ]:
+        text = Path(path).read_text(encoding="utf-8-sig")
+        for name in names:
+            assert f"function {name}" in text, f"{label} must define {name}"

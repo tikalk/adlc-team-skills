@@ -59,3 +59,40 @@ GITIGNORE_RULES_ALLOWLIST=(
   # Knowledge graph (generated)
   "graphify-out/"
 )
+
+# --- Ledger base staleness -----------------------------------------------
+# A slot number computed from a stale base is still wrong even when the
+# helper computes it correctly: the working tree simply does not know about
+# the numbers the merge target already uses. Run this BEFORE allocating any
+# ledger slot (record ids, PRD section numbers, REQ ids, Feature numbers, AD
+# delta versions).
+#
+# Reports ONE number. `git rev-list --left-right --count A...B` reports "left
+# right" and the two columns are trivial to transpose -- that misread is
+# exactly how an intent run claimed PRD/ADR slots the merge target had
+# already taken.
+ledger_base_behind() {
+  local target="${1:-origin/main}"
+  git rev-list --count "HEAD..${target}" 2>/dev/null || echo -1
+}
+
+# require_current_base [TARGET] - refuse to proceed on a stale base.
+# Returns 1 and explains, naming the target and how many commits are missing.
+# A target that cannot be read at all (-1) is not proof of staleness: warn and
+# continue rather than blocking a repo that has no such ref.
+require_current_base() {
+  local target="${1:-origin/main}"
+  local behind
+  behind=$(ledger_base_behind "$target")
+  if ! [[ "$behind" =~ ^[0-9]+$ ]]; then
+    echo "WARN: cannot read $target to check the base; continuing unverified." >&2
+    return 0
+  fi
+  if [ "$behind" -gt 0 ]; then
+    echo "ERROR: this checkout is ${behind} commit(s) behind ${target}." >&2
+    echo "       A slot number read from this base may already be taken." >&2
+    echo "       Rebase or merge ${target} before claiming ledger slots." >&2
+    return 1
+  fi
+  return 0
+}

@@ -328,3 +328,52 @@ function Get-NextRecordNumber {
   }
   '{0:D3}' -f ($max + 1)
 }
+
+###############################################################################
+# Document-internal ledger slots (PRD.md)
+###############################################################################
+#
+# Record ids are allocated by Get-NextRecordNumber above. PRD.md carries three
+# further numbered slots: the delta SECTION number, the REQ id, and the Feature
+# number. Each scan is deliberately OVER-inclusive -- an unused number is
+# harmless, a reissued one collides.
+
+function Get-NextPrdSection {
+    param([string]$File)
+    $max = 0
+    if (Test-Path $File) {
+        foreach ($line in (Get-Content $File)) {
+            if ($line -cmatch '^## (\d+)\. ') {
+                $n = [int]$Matches[1]
+                if ($n -gt $max) { $max = $n }
+            }
+        }
+    }
+    return ($max + 1)
+}
+
+function Get-NextReqId {
+    param([string]$File)
+    $max = 0
+    if (Test-Path $File) {
+        foreach ($m in [regex]::Matches((Get-Content $File -Raw), 'REQ-(\d+)')) {
+            $n = [int]$m.Groups[1].Value
+            if ($n -gt $max) { $max = $n }
+        }
+    }
+    return ($max + 1)
+}
+
+function Get-NextFeatureNumber {
+    param([string]$File)
+    $max = 0
+    if (Test-Path $File) {
+        foreach ($line in (Get-Content $File)) {
+            if ($line -cmatch '^\|\s*(\d+)\s*\|') {
+                $n = [int]$Matches[1]
+                if ($n -gt $max) { $max = $n }
+            }
+        }
+    }
+    return ($max + 1)
+}

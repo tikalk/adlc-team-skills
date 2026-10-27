@@ -19,6 +19,7 @@ ROOT = Path(__file__).parent.parent.parent
 PATHS_SH = ROOT / "skills/team/workspace/scripts/bash/paths.sh"
 PATHS_PS1 = ROOT / "skills/team/workspace/scripts/powershell/paths.ps1"
 SETUP_WORKSPACE_SH = ROOT / "skills/team/workspace/scripts/bash/setup-workspace.sh"
+SETUP_WORKSPACE_PS1 = ROOT / "skills/team/workspace/scripts/powershell/setup-workspace.ps1"
 BOOT_SH = ROOT / "skills/team/team-boot/scripts/bash/boot.sh"
 SETUP_PRODUCT_SH = ROOT / "skills/product/product-implement/scripts/bash/setup-product-implement.sh"
 SETUP_ARCHITECT_SH = ROOT / "skills/architect/architect-clarify/scripts/bash/setup-architect.sh"
@@ -69,6 +70,50 @@ def test_paths_sh_defines_constants():
     assert "!.adlc/init-options.json" in ps1, (
         "paths.ps1 GITIGNORE_RULES_ALLOWLIST must un-ignore .adlc/init-options.json"
     )
+
+
+def _allowlist_block(text, opener):
+    """Return the entries of a bash array / PowerShell array literal.
+
+    Line-based on purpose: the entries carry parenthesised comments, so
+    scanning for the first ")" truncates the block at prose.
+    """
+    lines = text.splitlines()
+    start = next(i for i, l in enumerate(lines) if opener in l)
+    entries = []
+    for line in lines[start + 1:]:
+        if line.strip() == ")":
+            break
+        entries.extend(re.findall(r'[\'"]([^\'"]+)[\'"]', line))
+    return entries
+
+
+def test_mcp_json_is_tracked_source_not_a_generated_artifact():
+    """`.mcp.json` is the project-owned standard declaration, not a derived file.
+
+    Decision: `.mcp.json` at the project root is human-edited and committed;
+    the tool never rewrites it. Only the four agent config directories are
+    derived and may stay ignored. Ignoring `.mcp.json` itself means a fresh
+    clone silently re-copies it from the team and every project-level decision
+    in it (a `disabled` override, a local server) vanishes.
+    """
+    derived = (".cursor/", ".codex/", ".claude/", ".opencode/")
+    for label, path, opener in [
+        ("paths.sh", PATHS_SH, "GITIGNORE_RULES_ALLOWLIST=("),
+        ("paths.ps1", PATHS_PS1, "$GITIGNORE_RULES_ALLOWLIST = @("),
+        # setup-workspace.{sh,ps1} carry a fallback copy of the same list for
+        # when paths.* is unavailable. Duplicated lists drift; test both.
+        ("setup-workspace.sh", SETUP_WORKSPACE_SH, "GITIGNORE_RULES=("),
+        ("setup-workspace.ps1", SETUP_WORKSPACE_PS1, "$GitignoreRules = @("),
+    ]:
+        text = _read(path)
+        assert text is not None, f"missing {label}"
+        entries = _allowlist_block(text, opener)
+        assert ".mcp.json" not in entries, (
+            f"{label} ignores .mcp.json; it is committed project source, not a "
+            "generated artifact")
+        for d in derived:
+            assert d in entries, f"{label} must still ignore the derived agent dir {d}"
 
 
 def test_setup_workspace_gitignore_allowlist():

@@ -142,8 +142,11 @@ never leave a wholesale `.adlc/` ignore in place (it would hide the tracked
    mirrored in `scripts/powershell/paths.ps1`).
 2. Also verify the agent-install surface rules are ignored (`.agents/`,
    `.opencode/`, `.claude/`, `.cursor/`, `.codex/`, `.gemini/`, `.qwen/`,
-   `.devin/`, `.tabnine/`, `skills-lock.json`, `.skills.json`, `.mcp.json`,
-   `.events.json`, `.pytest_cache/`, `.ruff_cache/`).
+   `.devin/`, `.tabnine/`, `skills-lock.json`, `.skills.json`,
+   `.events.json`, `.pytest_cache/`, `.ruff_cache/`). Note that `.mcp.json`
+   is deliberately **not** in this list: it is committed project source —
+   human-edited, never generated — so a `.gitignore` entry for it is a defect
+   to report, not a missing rule to add.
 3. Never remove unrelated (non-ADLC) rules; only add missing allowlist rules.
 4. Tracked legacy files keep working — the allowlist gates only untracked
    files, so no migration is required before the switch.

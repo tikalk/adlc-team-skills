@@ -29,7 +29,8 @@ $GITIGNORE_RULES_ALLOWLIST = @(
     ".tabnine/"
     "skills-lock.json"
     ".skills.json"
-    ".mcp.json"
+    # .mcp.json is deliberately ABSENT: it is committed project source (human-edited,
+    # never generated), so it must not be gitignored. Only the agent dirs above are derived.
     ".events.json"
     ".pytest_cache/"
     ".ruff_cache/"

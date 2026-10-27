@@ -13,14 +13,24 @@ $PdrDraftsDir = Join-Path $RepoRoot ".adlc/drafts/pdr"
 $PrdFile = Join-Path $RepoRoot "docs/adlc/product/PRD.md"
 New-Item -ItemType Directory -Force -Path $PdrDraftsDir | Out-Null
 
-$max = 0
-if (Test-Path $PdrDraftsDir) {
-  Get-ChildItem -Path $PdrDraftsDir -Filter 'PDR-*.md' | ForEach-Object {
-    $num = $_.Name -replace 'PDR-','' -replace '\.md',''
-    if ($num -match '^\d+$') { $n = [int]$num; if ($n -gt $max) { $max = $n } }
-  }
+# Ledger slot allocation lives in pdr-lib.ps1 (Get-NextRecordNumber): leading
+# digits of the filename stem, max across drafts AND published memory. This
+# script previously carried its own copy, which silently skipped stemmed
+# records (PDR-002-amendment-2.md) and scanned drafts alone.
+$PdrLibPs1 = "$PSScriptRoot/../../../product-clarify/scripts/powershell/pdr-lib.ps1"
+if (-not (Test-Path $PdrLibPs1)) {
+    $PdrLibPs1 = "$PSScriptRoot/../product-clarify/pdr-lib.ps1"
 }
-$nextPdr = '{0:D3}' -f ($max + 1)
+if (-not (Test-Path $PdrLibPs1)) {
+    Write-Error "pdr-lib.ps1 not loaded - install the product-clarify skill: adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify"
+    exit 1
+}
+. $PdrLibPs1
+
+$nextPdr = Get-NextRecordNumber -Prefix 'PDR' -Dirs @(
+  $PdrDraftsDir,
+  (Join-Path $RepoRoot "docs/adlc/memory/pdr")
+)
 $pdrCount = if (Test-Path $PdrDraftsDir) { (Get-ChildItem -Path $PdrDraftsDir -Filter 'PDR-*.md').Count } else { 0 }
 
 if ($Json) {

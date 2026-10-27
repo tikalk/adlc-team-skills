@@ -630,6 +630,33 @@ parse_fm_title() {
     awk '/^---[[:space:]]*$/ { fm++; next } fm >= 2 && /^#[[:space:]]+/ { sub(/^#[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print; exit }' "$1"
 }
 
+# next_adr_number [ROOT] - the next free ADR ledger slot.
+#
+# Same contract as next_record_number in product-clarify's pdr-lib.sh: the
+# number is the LEADING DIGITS of the filename stem (ADR-003-amendment-2.md is record
+# 003; suffixes are never arithmetically parsed), and the maximum spans drafts
+# AND published memory so a promoted record's slot is not reissued.
+#
+# Deliberately not one shared implementation: the source tree is
+# skills/<group>/<skill>/ while the installed mirror is flat
+# .agents/skills/<skill>/, so no single relative source path resolves in both --
+# which is why parse_fm_field is duplicated here and in pdr-lib.sh too.
+# tests/unit/test_ledger_slot_numbering.py pins the behaviour in both homes.
+next_adr_number() {
+    local root="${1:-$REPO_ROOT}"
+    local max=0 f num dir
+    for dir in "$root/.adlc/drafts/adr" "$root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/adr"; do
+        [[ -d "$dir" ]] || continue
+        for f in "$dir"/ADR-*.md; do
+            [[ -f "$f" ]] || continue
+            num=$(basename "$f" .md | sed -n 's/^ADR-\([0-9]\{1,\}\).*/\1/p')
+            [[ -n "$num" ]] || continue
+            ((10#$num > max)) && max=$((10#$num))
+        done
+    done
+    printf '%03d' "$((max + 1))"
+}
+
 # Generate adr.md index from individual ADR files
 generate_adr_index() {
     local scope="${1:-drafts}"
@@ -985,11 +1012,20 @@ action_specify() {
     echo "" >&2
     echo "After completion, run '/architect-implement' to generate full AD.md" >&2
 
+    # Ledger slot allocation: hand callers the next free slot (leading digits
+    # of the filename stem, max across drafts AND published memory -- see
+    # next_adr_number). Leaving "the highest existing number" to the agent
+    # reissued taken slots.
+    local next_adr
+    next_adr=$(next_adr_number "$REPO_ROOT")
+    echo "" >&2
+    echo "Next free ADR slot: ADR-$next_adr" >&2
+
     if $JSON_MODE; then
-        python3 - "$adr_dir" "${ARGS[*]}" "$DECOMPOSE" <<'PY'
+        python3 - "$adr_dir" "${ARGS[*]}" "$DECOMPOSE" "$next_adr" <<'PY'
 import json, sys
-adr_dir, context, decompose = sys.argv[1:4]
-print(json.dumps({"status": "success", "action": "specify", "adr_dir": adr_dir, "context": context, "decomposition": decompose}))
+adr_dir, context, decompose, next_adr = sys.argv[1:5]
+print(json.dumps({"status": "success", "action": "specify", "adr_dir": adr_dir, "context": context, "decomposition": decompose, "next_adr": next_adr}))
 PY
     fi
 }

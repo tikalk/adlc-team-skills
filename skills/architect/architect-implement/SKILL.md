@@ -392,6 +392,28 @@ Located in the skill's `templates/` directory:
 > Directory tree listings (code organization) may use plain `text`
 > code blocks — these are not architectural diagrams.
 
+### Claiming Ledger Slots (do this before writing any numbered id)
+
+A number computed from a stale base is wrong even when you compute it
+correctly. Check first, then read the number from the document; never eyeball
+it.
+
+```bash
+# 1. Refuse to proceed on a stale base (returns 1 and explains).
+source {REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh
+require_current_base "${MERGE_TARGET:-origin/main}"   # from paths.sh, already sourced
+
+# 2. Read the next free number for each slot type.
+next_adr_number                              # record id  -> 455 (drafts + memory)
+next_ad_delta_version "{AD_FILE}"            # `## v13.19.0 Delta:` -> v13.20.0
+```
+
+Delta versions bump the **minor** and reset the patch (`v13.18.0` →
+`v13.19.0`). A patch bump (`v13.3.1`) means amending the delta already there —
+a deliberate act, never the next free slot. The PRD.md counterparts
+(`next_prd_section`, `next_req_id`, `next_feature_number`) live in
+`product-clarify`'s `pdr-lib.sh` and belong to `product-implement`.
+
 ### PHASE 1: PLAN (Plan Agent)
 
 **Objective**: Analyze ADRs, detect sub-systems, generate customized DAG, get user approval

@@ -69,6 +69,17 @@ _adlc_memory_path() {
     fi
 }
 
+# Sourcing contract: `source setup-architect.sh` must define helpers and
+# constants ONLY -- the SKILL.md flows source this file and then call
+# next_adr_number / next_ad_delta_version / generate_adr_index. The argument
+# parse, the default action and the dispatch run only when the file is
+# executed (before this guard, a bare source ran the whole default action).
+SETUP_ARCHITECT_EXECUTED=1
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    SETUP_ARCHITECT_EXECUTED=0
+fi
+
+if [[ "$SETUP_ARCHITECT_EXECUTED" == 1 ]]; then
 # Parse arguments (run after common.sh to have REPO_ROOT defined)
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -163,6 +174,7 @@ fi
 mkdir -p "$REPO_ROOT/.adlc/memory"
 mkdir -p "$REPO_ROOT/${ADLC_DRAFTS:-.adlc/drafts}"
 mkdir -p "$REPO_ROOT/${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+fi  # end SETUP_ARCHITECT_EXECUTED (parse + defaults + directory seeding)
 
 # Architecture files (ADR Lifecycle)
 AD_FILE="$REPO_ROOT/docs/adlc/architect/AD.md"
@@ -655,6 +667,31 @@ next_adr_number() {
         done
     done
     printf '%03d' "$((max + 1))"
+}
+
+# next_ad_delta_version AD_FILE - the next `## vN.N.N Delta:` heading version.
+#
+# Deltas bump the MINOR and reset the patch: v13.18.0 -> v13.19.0. A patch
+# bump (v13.3.1) means amending the delta that is already there, which is a
+# deliberate act, not the next free slot -- so this never emits one.
+#
+# Companion to next_prd_section/next_req_id/next_feature_number in
+# product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split for
+# the same reason the index generators are -- the source tree is
+# skills/<group>/<skill>/ while the installed mirror is flat
+# .agents/skills/<skill>/, so no one relative source path resolves in both.
+next_ad_delta_version() {
+    local f="${1:-}"
+    local major=0 minor=0 patch=0 max=""
+    if [[ -f "$f" ]]; then
+        max=$(grep -oE '^## v[0-9]+\.[0-9]+\.[0-9]+ Delta' "$f" \
+            | sed -E 's/^## v([0-9]+)\.([0-9]+)\.([0-9]+) Delta/\1 \2 \3/' \
+            | sort -k1,1n -k2,2n -k3,3n | tail -1)
+    fi
+    if [[ -n "$max" ]]; then
+        read -r major minor patch <<< "$max"
+    fi
+    printf 'v%s.%s.0' "$major" "$((minor + 1))"
 }
 
 # Generate adr.md index from individual ADR files
@@ -1811,7 +1848,8 @@ PY
     fi
 }
 
-# Execute action
+# Execute action (execution only -- see the sourcing contract above)
+if [[ "$SETUP_ARCHITECT_EXECUTED" == 1 ]]; then
 case "$ACTION" in
     specify)
         action_specify
@@ -1852,3 +1890,4 @@ case "$ACTION" in
         exit 1
         ;;
 esac
+fi  # end SETUP_ARCHITECT_EXECUTED (dispatch)

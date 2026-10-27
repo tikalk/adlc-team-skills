@@ -534,7 +534,7 @@ Chosen option: "{title option 1}", because {justification}.
 {Additional evidence, links, when/how to re-visit}
 ```
 
-3. **Number ADRs sequentially**: Start from ADR-001 for new projects, or continue from highest existing number
+3. **Number ADRs sequentially**: Start from ADR-001 for new projects, or continue from the **next free slot** the setup script computes (`next_adr` in its JSON/status output) — never from "the highest existing number" guessed by inspection: a stemmed record (e.g. an amendment) is easy to miss, and its slot is still taken
 
 #### Phase 4: ADR Output
 
@@ -543,6 +543,7 @@ Chosen option: "{title option 1}", because {justification}.
 1. **Run Setup Script**:
    - Execute `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists
    - Script creates from template if directory is empty
+   - Script reports `next_adr` — the next free ADR slot (status line `Next free ADR slot: ADR-{NNN}`); number the new ADRs from it
    - Pass `--no-decompose` if decomposition was disabled
 
 2. **Write ADRs**:

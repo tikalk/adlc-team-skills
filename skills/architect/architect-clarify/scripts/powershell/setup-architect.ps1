@@ -40,6 +40,30 @@ function Get-AdlcMemoryPath {
     return $legacyPath
 }
 
+# Get-NextAdrNumber [ROOT] - the next free ADR ledger slot.
+#
+# PowerShell twin of next_adr_number in setup-architect.sh, same contract as
+# Get-NextRecordNumber in product-clarify's pdr-lib.ps1: a record's number is
+# the LEADING DIGITS of its filename stem (an amendment stem still counts as
+# its base record; suffixes are never arithmetically parsed), and the maximum
+# spans drafts AND published memory so a promoted record's slot is not reissued.
+function Get-NextAdrNumber {
+    param([string]$Root = (Get-RepositoryRoot))
+    $max = 0
+    $docsBase = $DOCS_ADLC_MEMORY
+    if (-not $docsBase) { $docsBase = "docs/adlc/memory" }
+    foreach ($dir in @((Join-Path $Root ".adlc/drafts/adr"), (Join-Path $Root (Join-Path $docsBase "adr")))) {
+        if (-not (Test-Path $dir)) { continue }
+        foreach ($f in @(Get-ChildItem -Path $dir -Filter 'ADR-*.md' -File -ErrorAction SilentlyContinue)) {
+            if ($f.BaseName -cmatch '^ADR-(\d+)') {
+                $num = [int]$Matches[1]
+                if ($num -gt $max) { $max = $num }
+            }
+        }
+    }
+    return ('{0:d3}' -f ($max + 1))
+}
+
 
 if ($Help) {
     Write-Output "Usage: ./setup-architect.ps1 [action] [context] [-Views VIEWS] [-AdrHeuristic HEURISTIC] [-Json] [-Help]"
@@ -284,7 +308,7 @@ function Get-Subsystems {
     
     if ($composeFile) {
         $composeContent = Get-Content $composeFile -Raw
-        $services = [regex]::Matches($composeContent, '^\s*([a-zA-Z0-9_-]+):\s*$' | ForEach-Object { $_.Groups[1].Value } | Where-Object { @("version", "services", "networks", "volumes") -notcontains $_ })
+        $services = [regex]::Matches($composeContent, '^\s*([a-zA-Z0-9_-]+):\s*$') | ForEach-Object { $_.Groups[1].Value } | Where-Object { @("version", "services", "networks", "volumes") -notcontains $_ }
         foreach ($svc in $services) {
             $found = $false
             foreach ($d in $dirs) {
@@ -402,7 +426,7 @@ function Scan-ExistingDocs {
     $findings = @()
     
     # Check for existing architecture docs
-    if (Test-Path "$RepoRoot\docs/adlc/architect/AD.md") -or (Test-Path "$RepoRoot\AD.md") {
+    if ((Test-Path "$RepoRoot\docs/adlc/architect/AD.md") -or (Test-Path "$RepoRoot\AD.md")) {
         $findings += "EXISTING_AD: $RepoRoot\AD.md"
     }
     
@@ -656,8 +680,16 @@ function Invoke-Specify {
     Write-Host ""
     Write-Host "After completion, run '/architect-implement' to generate full AD.md"
     
+    # Ledger slot allocation: hand callers the next free slot (leading digits
+    # of the filename stem, max across drafts AND published memory -- see
+    # Get-NextAdrNumber). Leaving "the highest existing number" to the agent
+    # reissued taken slots.
+    $nextAdr = Get-NextAdrNumber -Root $repoRoot
+    Write-Host ""
+    Write-Host "Next free ADR slot: ADR-$nextAdr"
+    
     if ($Json) {
-        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose} | ConvertTo-Json
+        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose; next_adr=$nextAdr} | ConvertTo-Json
     }
 }
 

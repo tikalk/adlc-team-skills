@@ -27,8 +27,8 @@ CLASS_BOOTS = {
     },
     "change-boot": {
         "dir": ROOT / "skills" / "change" / "change-boot",
-        "index": ".adlc/memory/chdr.md",
-        "capture": "/change-init",
+        "index": "docs/adlc/memory/chdr/chdr.md",
+        "capture": "/change-specify",
     },
     "team-levelup": {
         "dir": ROOT / "skills" / "team" / "team-levelup",
@@ -86,12 +86,15 @@ def test_change_boot_git_command_trigger():
     messages (plus authored PRs and CHANGELOG edits) — the trigger belongs in
     its description and in the Invoke When cell on all four catalog surfaces.
     The description must also name the /change-clarify clarify gate alongside
-    the pinned /change-init mining pairing."""
+    the pinned /change-specify capture pairing and the /change-init mining
+    pairing."""
     change_desc = (CLASS_BOOTS["change-boot"]["dir"] / "SKILL.md").read_text(
         encoding="utf-8"
     ).split("description:", 1)[1].split("\n---", 1)[0]
     assert "human-authored messages" in change_desc
     assert "/change-clarify" in change_desc
+    assert "/change-specify" in change_desc
+    assert "/change-init" in change_desc
     catalog_sources = {
         "boot.sh": BOOT_SH,
         "boot.ps1": BOOT_PS1,
@@ -109,6 +112,38 @@ def test_class_boot_index_sources():
     for name, spec in CLASS_BOOTS.items():
         content = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
         assert spec["index"] in content, f"{name}: body lacks index source {spec['index']}"
+
+
+def test_chdr_index_canonical_path_parity():
+    """The ChDR memory index lives inside the class dir (chdr/chdr.md), like
+    adr/adr.md and pdr/pdr.md. Every surface that resolves it must agree, and
+    the legacy placements stay named as dual-read fallbacks."""
+    canonical = "docs/adlc/memory/chdr/chdr.md"
+    surfaces = {
+        "change-boot": CLASS_BOOTS["change-boot"]["dir"] / "SKILL.md",
+        "change-publish": ROOT / "skills/change/change-publish/SKILL.md",
+        "setup-change-publish.sh": ROOT / "skills/change/change-publish/scripts/bash/setup-change-publish.sh",
+        "setup-change-publish.ps1": ROOT / "skills/change/change-publish/scripts/powershell/setup-change-publish.ps1",
+        "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+        "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+        "team-boot/SKILL.md": ROOT / "skills/team/team-boot/SKILL.md",
+    }
+    for label, path in surfaces.items():
+        content = path.read_text(encoding="utf-8")
+        assert canonical in content, f"{label}: missing canonical index path {canonical}"
+    for label in ("change-boot", "boot.sh", "boot.ps1"):
+        content = surfaces[label].read_text(encoding="utf-8")
+        assert ".adlc/memory/chdr.md" in content, (
+            f"{label}: legacy fallback .adlc/memory/chdr.md no longer named"
+        )
+    # The lookup lists must try the canonical path before the legacy ones.
+    for label in ("boot.sh", "boot.ps1"):
+        content = surfaces[label].read_text(encoding="utf-8")
+        canon_at = content.find("chdr/chdr.md")
+        legacy_at = content.find(".adlc/memory/chdr.md")
+        assert 0 <= canon_at < legacy_at, (
+            f"{label}: canonical chdr/chdr.md must precede legacy fallback in lookup"
+        )
 
 
 def test_class_boot_searched_line_contract():

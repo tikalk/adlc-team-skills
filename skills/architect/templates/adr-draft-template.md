@@ -1,5 +1,5 @@
 ---
-# Lightweight ADR draft — written by team-boot continuous capture.
+# Lightweight ADR draft — written by the capture skill (/architect-specify).
 # Enriched to full MADR format by /architect-clarify before promotion to docs/adlc/memory/.
 status: proposed  # proposed | accepted | rejected | deprecated | superseded by ADR-0123 | discovered
 date: YYYY-MM-DD

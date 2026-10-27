@@ -1,6 +1,6 @@
 ---
 name: architect-specify
-description: Use when you want guided trade-off analysis, multi-option comparison, or structured architectural decision facilitation before documenting. Optional for routine capture — team-boot writes lightweight ADR drafts directly.
+description: Use when you want guided trade-off analysis, multi-option comparison, or structured architectural decision facilitation before documenting. Class boots only suggest capture — they never write drafts; running this skill writes the lightweight ADR draft.
 disable-model-invocation: true
 ---
 
@@ -21,9 +21,9 @@ You act as a **Solutions Architect** facilitating an architectural discovery ses
 
 ## When to use
 
-> **Note**: Routine decision capture is handled by team-boot's continuous
-> capture mechanism, which writes lightweight drafts directly to
-> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> **Note**: Class boots detect decisions and **suggest this skill** — running
+> it is how the capture happens (it writes the lightweight draft to
+> `.adlc/drafts/`). Use it for **interactive deep-dive exploration**
 > — when you want guided trade-off analysis, multi-option comparison, or
 > structured decision facilitation before documenting.
 

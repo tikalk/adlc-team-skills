@@ -393,7 +393,7 @@ source {REPO_ROOT}/.agents/skills/product-clarify/scripts/bash/pdr-lib.sh
 require_current_base "${MERGE_TARGET:-origin/main}"
 
 # 2. Read the next free number for each slot type.
-next_pdr_number      # record id        -> 138   (drafts + docs/adlc/memory/pdr)
+next_record_number PDR "{REPO_ROOT}/.adlc/drafts/pdr" "{REPO_ROOT}/docs/adlc/memory/pdr"  # record id -> 138 (drafts + published)
 next_prd_section  "{PRD_FILE}"   # `## 26.` heading  -> 27
 next_req_id       "{PRD_FILE}"   # `REQ-216`         -> 217
 next_feature_number "{PRD_FILE}" # `| 69 |` row      -> 70

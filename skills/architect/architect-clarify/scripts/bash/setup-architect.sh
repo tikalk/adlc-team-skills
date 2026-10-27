@@ -69,6 +69,17 @@ _adlc_memory_path() {
     fi
 }
 
+# Sourcing contract: `source setup-architect.sh` must define helpers and
+# constants ONLY -- the SKILL.md flows source this file and then call
+# next_adr_number / next_ad_delta_version / generate_adr_index. The argument
+# parse, the default action and the dispatch run only when the file is
+# executed (before this guard, a bare source ran the whole default action).
+SETUP_ARCHITECT_EXECUTED=1
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    SETUP_ARCHITECT_EXECUTED=0
+fi
+
+if [[ "$SETUP_ARCHITECT_EXECUTED" == 1 ]]; then
 # Parse arguments (run after common.sh to have REPO_ROOT defined)
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -163,6 +174,7 @@ fi
 mkdir -p "$REPO_ROOT/.adlc/memory"
 mkdir -p "$REPO_ROOT/${ADLC_DRAFTS:-.adlc/drafts}"
 mkdir -p "$REPO_ROOT/${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+fi  # end SETUP_ARCHITECT_EXECUTED (parse + defaults + directory seeding)
 
 # Architecture files (ADR Lifecycle)
 AD_FILE="$REPO_ROOT/docs/adlc/architect/AD.md"
@@ -1836,7 +1848,8 @@ PY
     fi
 }
 
-# Execute action
+# Execute action (execution only -- see the sourcing contract above)
+if [[ "$SETUP_ARCHITECT_EXECUTED" == 1 ]]; then
 case "$ACTION" in
     specify)
         action_specify
@@ -1877,3 +1890,4 @@ case "$ACTION" in
         exit 1
         ;;
 esac
+fi  # end SETUP_ARCHITECT_EXECUTED (dispatch)

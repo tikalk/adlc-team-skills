@@ -102,8 +102,9 @@ def test_product_setup_scripts_have_no_local_numbering(script):
 def _extract_func(dest: Path, source: Path, *funcs: str) -> Path:
     """Extract functions into a source-safe harness file.
 
-    setup-architect.sh runs a case-dispatch on source, so tests source an
-    extracted copy instead (same pattern as test_index_id_parsing.py). Fails
+    setup-architect.sh is execution-guarded now, but extracting the one
+    function under test keeps the harness minimal (same pattern as
+    test_index_id_parsing.py). Fails
     loudly if a range can't be found, so a refactor can't silently empty it.
     """
     src = source.read_text(encoding="utf-8").split("\n")
@@ -388,3 +389,26 @@ def test_powershell_twins_are_declared_for_the_new_helpers():
         text = Path(path).read_text(encoding="utf-8-sig")
         for name in names:
             assert f"function {name}" in text, f"{label} must define {name}"
+
+
+# ── the sourcing contract: `source setup-architect.sh` defines helpers only ──
+
+
+def test_setup_architect_sh_is_source_safe(docs_tree):
+    """The SKILL.md "Claiming Ledger Slots" flow sources setup-architect.sh
+    and then calls its helpers, so a source must run no action: the argument
+    parse, the default action and the dispatch belong to execution only.
+    Before the guard, a bare source picked the default action and ran the
+    whole update/init flow -- banner on stderr, `.adlc/` directories seeded
+    into the caller's repo."""
+    r = _run(f'source "{SETUP_ARCH}"; '
+             f'next_ad_delta_version "{docs_tree}/docs/adlc/architect/AD.md"',
+             docs_tree)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "v13.20.0", (
+        f"sourcing setup-architect.sh must define helpers and run nothing "
+        f"else; got stdout={r.stdout!r}")
+    assert r.stderr == "", (
+        f"sourcing setup-architect.sh must run no action; got stderr={r.stderr!r}")
+    assert not (docs_tree / ".adlc" / "memory").exists(), (
+        "sourcing setup-architect.sh must not seed directories")

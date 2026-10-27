@@ -1363,7 +1363,10 @@ function Invoke-Summarize {
     }
 }
 
-# Main execution
+# Main execution -- runs when the file is executed. Dot-sourcing this file
+# (the documented way to reach Get-NextAdrNumber / Get-NextAdDeltaVersion)
+# must define helpers without running the action dispatch below.
+if ($MyInvocation.InvocationName -ne '.') {
 try {
     $repoRoot = Get-RepositoryRoot
     Seed-Templates -RepoRoot $repoRoot
@@ -1441,6 +1444,7 @@ try {
     Write-Error $_.Exception.Message
     exit 1
 }
+}  # end execution-only guard (see the sourcing contract above)
 
 # Get-NextAdDeltaVersion AD_FILE - the next `## vN.N.N Delta:` heading version.
 #

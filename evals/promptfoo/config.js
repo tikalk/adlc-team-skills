@@ -368,6 +368,32 @@ module.exports = {
           "value": "file://./graders/check_diagnosing_evidence_first.py"
         }
       ]
+    },
+    {
+      "vars": {
+        "scenario": "change-boot fires on a revert with non-obvious rationale",
+        "input_context": "Session reverted the retry cap after a 5xx spike; change-boot detected a ChDR-class decision.",
+        "instruction": "You follow change-boot's capture contract. Emit your response to the detected decision: the suggestion naming the capture skill, and what you did NOT write."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_boot_suggest_only.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "change-specify captures a revert rationale",
+        "input_context": "User: \"we reverted the retry cap change — 5xx spike under load\"; the revert landed in def5678 linked to PROJ-123.",
+        "instruction": "You follow the change-specify skill. Emit the ChDR draft you would write and the next step — nothing else."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_change_specify.py"
+        }
+      ]
     }
   ],
   outputPath: 'evals/results/run_results.json',

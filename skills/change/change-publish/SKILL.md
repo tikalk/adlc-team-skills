@@ -1,6 +1,6 @@
 ---
 name: change-publish
-description: Use when accepted ChDRs are ready for promotion from drafts to project memory at docs/adlc/memory/chdr/ and the boot-facing chdr.md index needs regenerating.
+description: Use when accepted ChDRs are ready for promotion from drafts to project memory at docs/adlc/memory/chdr/ and the boot-facing chdr/chdr.md index needs regenerating.
 disable-model-invocation: true
 ---
 
@@ -12,7 +12,7 @@ Compile **accepted ChDRs** into the project's memory layer at `{REPO_ROOT}/docs/
 
 - Validate accepted ChDRs (status + provenance on Decision claims)
 - Write each promoted ChDR to `docs/adlc/memory/chdr/ChDR-{NNN}.md` with OKF-style frontmatter
-- Regenerate `{REPO_ROOT}/docs/adlc/memory/chdr.md` — the **boot-facing index** that `team-boot` injects into the session-start context (same convention as `pdr.md`/`adr.md`)
+- Regenerate `{REPO_ROOT}/docs/adlc/memory/chdr/chdr.md` — the **boot-facing index** that `team-boot` injects into the session-start context (inside the class dir, same convention as `adr/adr.md` and `pdr/pdr.md`)
 - Mark source drafts `### Status: **Published**`
 
 Unlike `/team-levelup` (which opens a PR against team-ai-directives), `change-publish` writes **project-local memory** — ChDRs describe this repo's evolution and fail the team-wide signal gate. No PR is created; the user commits via their normal flow.
@@ -58,7 +58,7 @@ You are acting as a **Memory Publisher** — moving accepted ChDRs from local dr
 3. **Provenance Validation** (Phase 2): re-verify every Decision claim has SHA/URL
 4. **Duplicate Check** (Phase 3): skip ChDRs already in memory with same issue key
 5. **Memory Record Generation** (Phase 4): write `docs/adlc/memory/chdr/ChDR-{NNN}.md`
-6. **Index Regeneration** (Phase 5): rebuild `docs/adlc/memory/chdr.md` (boot-facing)
+6. **Index Regeneration** (Phase 5): rebuild `docs/adlc/memory/chdr/chdr.md` (boot-facing)
 7. **Draft Status Update** (Phase 6): mark promoted drafts `Published`
 8. **Summary** (Phase 7): report results
 
@@ -79,7 +79,7 @@ Parse JSON for `REPO_ROOT`, `CHDR_DRAFTS_DIR`, `MEMORY_DIR`, `MEMORY_INDEX`, `AC
 1. `REPO_ROOT` — walk up to `.adlc/`, or `git rev-parse --show-toplevel`.
 2. `CHDR_DRAFTS_DIR` — `REPO_ROOT/.adlc/drafts/chdr`
 3. `MEMORY_DIR` — `REPO_ROOT/docs/adlc/memory/chdr`
-4. `MEMORY_INDEX` — `REPO_ROOT/docs/adlc/memory/chdr.md` (sibling of `docs/adlc/memory/pdr.md`/`adr.md`)
+4. `MEMORY_INDEX` — `REPO_ROOT/docs/adlc/memory/chdr/chdr.md` (inside the class dir, like `docs/adlc/memory/adr/adr.md` and `pdr/pdr.md`)
 5. `ACCEPTED_CHDRS` — `grep -l '^### Status: \*\*Accepted\*\*' CHDR_DRAFTS_DIR/ChDR-*.md`
 
 #### Phase 1: Prerequisites Check
@@ -154,7 +154,7 @@ Promoted from: .adlc/drafts/chdr/ChDR-{NNN}.md
 
 #### Phase 5: Index Regeneration (boot-facing)
 
-**This is the integration point with `team-boot`.** Regenerate `{MEMORY_INDEX}` (`{REPO_ROOT}/docs/adlc/memory/chdr.md`) by listing all `ChDR-*.md` files in `{MEMORY_DIR}` and building a markdown table whose rows start with `| ChDR-` (the awk filter `team-boot` uses):
+**This is the integration point with `team-boot`.** Regenerate `{MEMORY_INDEX}` (`{REPO_ROOT}/docs/adlc/memory/chdr/chdr.md`) by listing all `ChDR-*.md` files in `{MEMORY_DIR}` and building a markdown table whose rows start with `| ChDR-` (the awk filter `team-boot` uses):
 
 ```markdown
 # Change Decision Records (Memory)
@@ -195,12 +195,12 @@ For each promoted ChDR, update the draft file's status to `### Status: **Publish
 | Type | Count |
 |---|---|
 | Memory records (docs/adlc/memory/chdr/) | N |
-| Boot index (docs/adlc/memory/chdr.md) | 1 (regenerated) |
+| Boot index (docs/adlc/memory/chdr/chdr.md) | 1 (regenerated) |
 
 ### Next Steps
 
 The next session start (`team-boot`) will inject the ChDR index into context.
-Commit `docs/adlc/memory/chdr/` and `docs/adlc/memory/chdr.md` via your normal flow.
+Commit `docs/adlc/memory/chdr/` (records + `chdr.md`) via your normal flow.
 ```
 
 ### Key Rules
@@ -219,7 +219,10 @@ Commit `docs/adlc/memory/chdr/` and `docs/adlc/memory/chdr.md` via your normal f
 #### Index Format Must Match team-boot
 
 - Rows MUST start with `| ChDR-` (the awk/regex filter in boot.sh/boot.ps1)
-- File MUST be at `docs/adlc/memory/chdr.md` (same level as `pdr.md`/`adr.md`)
+- File MUST be at `docs/adlc/memory/chdr/chdr.md` (inside the class dir, like
+  `adr/adr.md` and `pdr/pdr.md`); dual-read fallbacks are
+  `docs/adlc/memory/chdr.md` (older root-level placement) and
+  `.adlc/memory/chdr.md` (legacy layout)
 
 ### Workflow Guidance & Transitions
 
@@ -228,7 +231,7 @@ Commit `docs/adlc/memory/chdr/` and `docs/adlc/memory/chdr.md` via your normal f
 ```text
 /change-init → /change-clarify → /change-publish
     ↓
-[team-boot] → injects docs/adlc/memory/chdr.md index at next session start
+[team-boot] → injects docs/adlc/memory/chdr/chdr.md index at next session start
     ↓
 [Agent consults ChDRs on demand when touching affected code]
 ```
@@ -242,7 +245,7 @@ Commit the memory directory. The next session automatically sees the ChDR index 
 ## Verification
 
 - All accepted ChDRs with provenance promoted to `docs/adlc/memory/chdr/ChDR-*.md`.
-- `docs/adlc/memory/chdr.md` index regenerated with rows starting `| ChDR-`.
+- `docs/adlc/memory/chdr/chdr.md` index regenerated with rows starting `| ChDR-`.
 - Promoted drafts marked `### Status: **Published**`.
 - No unprovenanced ChDRs were promoted.
 - No duplicate issue keys in memory.

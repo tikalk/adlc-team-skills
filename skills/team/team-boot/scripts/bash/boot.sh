@@ -115,16 +115,17 @@ echo ""
 # Class Boots — on-demand record-class context + decision capture.
 # team-boot injects the always-relevant team context (constitution, CDR index,
 # skills); each class boot loads its record-class index when a task or decision
-# matches, and pairs it with decision capture via its -specify/-init skill.
+# matches, and pairs it with a capture suggestion (its -specify/-init skill).
+# The boot never writes drafts — it suggests the capture skill, the user runs it.
 echo "## Class Boots"
 echo ""
 echo "| Boot | Injects | Invoke When | Capture Via |"
 echo "|--|--|--|--|"
-echo "| architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | direct write to .adlc/drafts/adr/ |"
-echo "| product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | direct write to .adlc/drafts/pdr/ |"
-echo "| change-boot | ChDR index (docs/adlc/memory/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | direct write to .adlc/drafts/chdr/ |"
-echo "| team-levelup | CDR module bodies (team-ai-directives) | session end; CDR descriptor match; reusable team pattern | direct write to adlc branch drafts/cdr/ |"
-echo "| tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + direct write to .adlc/drafts/adr/ |"
+echo "| architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | suggest /architect-specify |"
+echo "| product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | suggest /product-specify |"
+echo "| change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | suggest /change-specify (mining: /change-init) |"
+echo "| team-levelup | CDR module bodies (team-ai-directives) | session end; CDR descriptor match; reusable team pattern | suggest /team-levelup |"
+echo "| tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + suggest /architect-specify |"
 echo ""
 echo "Invoke a class boot when a task or decision matches its row — invoke it at the START of the matching task, before planning the todo list and before implementation, so the class context informs planning; never defer to session end or post-hoc. When no local memory index exists in the current working directory and the directory sits inside a workspace (detected via a .gitmodules marker in an ancestor), the boot reads the workspace root's docs/adlc/memory/ index instead. Each boot emits its class context section and its own searched line (_Searched N <class> records, K matched._)."
 echo ""
@@ -153,13 +154,28 @@ echo ""
 ADR_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/adr/ADR-*.md .adlc/memory/adr/ADR-*.md 2>/dev/null | wc -l || true); ADR_COUNT=$((ADR_COUNT))
 PDR_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/pdr/PDR-*.md .adlc/memory/pdr/PDR-*.md 2>/dev/null | wc -l || true); PDR_COUNT=$((PDR_COUNT))
 _CHDR_FILE=0
-for _chdr_index in "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr.md" ".adlc/memory/chdr.md"; do
+# Index rows count at most one index per memory root — first found wins within
+# each root (docs: canonical chdr/chdr.md, then the older root-level chdr.md;
+# legacy: .adlc/memory/chdr.md), matching the dual-read readers. Rows still
+# sum across the docs and legacy roots (migration overlap tolerated, as above)
+# — but never within one root: a migrated repo's stale root chdr.md would
+# otherwise double-count every row alongside the canonical chdr/chdr.md.
+for _chdr_index in "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr/chdr.md" "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr.md"; do
   if [ -f "$_chdr_index" ]; then
     # grep -c prints the count even on exit 1 (no match) — capture it, and map
     # every other failure shape (empty, multi-line) to 0 via case validation.
     _chdr_rows=$(grep -c '^\| ChDR' "$_chdr_index" 2>/dev/null || true)
     case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
     _CHDR_FILE=$((_CHDR_FILE + _chdr_rows))
+    break
+  fi
+done
+for _chdr_index in ".adlc/memory/chdr.md"; do
+  if [ -f "$_chdr_index" ]; then
+    _chdr_rows=$(grep -c '^\| ChDR' "$_chdr_index" 2>/dev/null || true)
+    case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
+    _CHDR_FILE=$((_CHDR_FILE + _chdr_rows))
+    break
   fi
 done
 _CHDR_DIR=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/chdr/ChDR-*.md .adlc/memory/chdr/ChDR-*.md 2>/dev/null | wc -l || true); _CHDR_DIR=$((_CHDR_DIR))
@@ -199,22 +215,22 @@ echo "Render the section as markdown blocks — heading, table (when rows exist)
 echo ""
 echo "## Decision Capture"
 echo ""
-echo "Detect decisions as they emerge and **write lightweight drafts directly** to"
-echo ".adlc/drafts/{type}/ during the session — no specify skill invocation needed."
-echo "The only gate is clarify at session end."
+echo "Detect decisions as they emerge and **suggest the matching capture skill to"
+echo "the user** — never write drafts or touch .adlc/drafts/. The capture skill"
+echo "writes the draft when the user runs it; the clarify skill gates it afterwards."
 echo ""
 echo "### Detection Triggers"
 echo ""
-echo "| Pattern | Type | Drafts to | Clarify via |"
-echo "|---------|------|-----------|-------------|"
-echo "| Tech stack choice, pattern selection, \"we chose X over Y\" | decision | drafts/adr/ | /architect-clarify |"
-echo "| Feature scope, persona, monetization | product | drafts/pdr/ | /product-clarify |"
-echo "| Reusable team rule, \"we always do X\" | pattern | drafts/cdr/ | /team-levelup |"
-echo "| Revert/hotfix rationale, issue-linked commit, git command w/ human-authored message, authored PR title/body, CHANGELOG edit | incident | drafts/chdr/ | /change-clarify |"
-echo "| Workaround adopted, \"X for now because Y\" | workaround | drafts/chdr/ | /change-clarify |"
-echo "| Operational constraint, \"only works because Z\" | constraint | drafts/adr/ | /architect-clarify |"
-echo "| Change abandoned, \"simplifying X but Y blocks it\" | abandoned | drafts/chdr/ | /change-clarify |"
-echo "| Eval criterion discovered | eval | drafts/evals/ | /evals-clarify |"
+echo "| Pattern | Type | Capture via | Clarify via |"
+echo "|---------|------|-------------|-------------|"
+echo "| Tech stack choice, pattern selection, \"we chose X over Y\" | decision | /architect-specify | /architect-clarify |"
+echo "| Feature scope, persona, monetization | product | /product-specify | /product-clarify |"
+echo "| Reusable team rule, \"we always do X\" | pattern | /team-levelup | /team-levelup |"
+echo "| Revert/hotfix rationale, issue-linked commit, git command w/ human-authored message, authored PR title/body, CHANGELOG edit | incident | /change-specify | /change-clarify |"
+echo "| Workaround adopted, \"X for now because Y\" | workaround | /change-specify | /change-clarify |"
+echo "| Operational constraint, \"only works because Z\" | constraint | /architect-specify | /architect-clarify |"
+echo "| Change abandoned, \"simplifying X but Y blocks it\" | abandoned | /change-specify | /change-clarify |"
+echo "| Eval criterion discovered | eval | /evals-specify | /evals-clarify |"
 echo ""
 echo "### Proportionality Gate"
 echo ""
@@ -242,21 +258,23 @@ echo "Decision rows live in the same table above (Status pending/captured/clarif
 echo ""
 echo "- **Detect**: match session decisions against triggers above."
 echo "- **Classify**: assign record type (ADR/PDR/CDR/ChDR)."
-echo "- **Write**: write a lightweight draft directly to .adlc/drafts/{type}/ using the family draft template."
-echo "- **Track**: update the table row (ID = draft ID or —, Status = pending/captured/clarified/handed off, Clarify = matching skill)."
-echo "- **Surface**: mirror each detected decision as a task-list todo (draft → matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill)."
-echo "- **Session-end**: before closing, deliver the clarify prompt naming each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off."
+echo "- **Suggest**: name the capture skill in one line — _Suggested capture: <decision name> → run <capture skill>._ Never write drafts or touch .adlc/drafts/; the capture skill writes the draft when the user runs it."
+echo "- **Track**: update the table row (ID = draft ID or —, Status = pending/captured/clarified/handed off, Clarify = matching clarify skill)."
+echo "- **Surface**: mirror each detected decision as a task-list todo (suggest capture → matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill)."
+echo "- **Session-end**: before closing, deliver the clarify prompt naming each uncaptured decision (ID + capture skill) and each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off."
 echo ""
-echo "Use the lightweight draft template from the matching skill family:"
+echo "Draft templates (used by the capture skills, never by this boot):"
 echo "- architect: ../templates/adr-draft-template.md"
 echo "- product: ../templates/pdr-draft-template.md"
 echo "- change: ../templates/chdr-draft-template.md"
 echo "- team-levelup: ../templates/cdr-draft-template.md"
 echo "- evals: evals-templates/eval-draft-template.md"
 echo ""
-echo "Specify skills (/architect-specify, /product-specify, etc.) remain available"
-echo "for interactive deep-dive exploration when you want guided trade-off"
-echo "analysis — but are not required for routine capture."
+echo "Capture goes through the class capture skills (/architect-specify,"
+echo "/product-specify, /change-specify, /change-init for mined history,"
+echo "/team-levelup, /evals-specify) — the boot suggests, the user runs. The"
+echo "clarify skills (/architect-clarify, /product-clarify, /change-clarify,"
+echo "/evals-clarify) review whatever drafts exist at session end."
 
 # Pending decisions — ONE consolidated table: no per-class rows, each row
 # carries its clarify skill. Pending drafts are never part of Team Context

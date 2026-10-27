@@ -34,11 +34,11 @@ the event hook already ran — do nothing.
 
 | Boot | Injects | Invoke When | Capture Via |
 |------|---------|-------------|-------------|
-| `architect-boot` | ADR index (`docs/adlc/memory/adr/` + legacy `.adlc/memory/adr/`) | architecture work; tech-stack/pattern choice | direct write to `.adlc/drafts/adr/` |
-| `product-boot` | PDR index (`docs/adlc/memory/pdr/` + legacy `.adlc/memory/pdr/`) | product/feature scope, personas, monetization | direct write to `.adlc/drafts/pdr/` |
-| `change-boot` | ChDR index (`docs/adlc/memory/chdr.md` + legacy `.adlc/memory/chdr.md`) | change-history rationale, reverts, issue-linked commits | direct write to `.adlc/drafts/chdr/` |
-| `team-levelup` | CDR module bodies (team-ai-directives) | session end; CDR descriptor match; reusable team pattern | direct write to adlc branch `drafts/cdr/` |
-| `tech-radar-boot` | Tikal Tech Radar context | choosing/evaluating technology | radar context + direct write to `.adlc/drafts/adr/` |
+| `architect-boot` | ADR index (`docs/adlc/memory/adr/` + legacy `.adlc/memory/adr/`) | architecture work; tech-stack/pattern choice | suggest `/architect-specify` |
+| `product-boot` | PDR index (`docs/adlc/memory/pdr/` + legacy `.adlc/memory/pdr/`) | product/feature scope, personas, monetization | suggest `/product-specify` |
+| `change-boot` | ChDR index (`docs/adlc/memory/chdr/chdr.md` + legacy `.adlc/memory/chdr.md`) | change-history rationale, reverts, issue-linked commits | suggest `/change-specify` (mining: `/change-init`) |
+| `team-levelup` | CDR module bodies (team-ai-directives) | session end; CDR descriptor match; reusable team pattern | suggest `/team-levelup` |
+| `tech-radar-boot` | Tikal Tech Radar context | choosing/evaluating technology | radar context + suggest `/architect-specify` |
 
 Invoke a class boot when a task or decision matches its row — invoke it at the
 START of the matching task, before planning the todo list and before
@@ -83,22 +83,22 @@ guard prevents double-injection. Agents whose adapters don't map
 
 ## Decision Capture
 
-Detect decisions as they emerge and **write lightweight drafts directly** to
-`.adlc/drafts/{type}/` during the session — no specify skill invocation needed.
-The only gate is clarify at session end.
+Detect decisions as they emerge and **suggest the matching capture skill to
+the user** — never write drafts or touch `.adlc/drafts/`. The capture skill
+writes the draft when the user runs it; the clarify skill gates it afterwards.
 
 ### Detection Triggers
 
-| Pattern | Type | Drafts to | Clarify via |
-|---------|------|-----------|-------------|
-| Tech stack choice, pattern selection, "we chose X over Y" | decision | drafts/adr/ | /architect-clarify |
-| Feature scope, persona, monetization | product | drafts/pdr/ | /product-clarify |
-| Reusable team rule, "we always do X" | pattern | drafts/cdr/ | /team-levelup |
-| Revert/hotfix rationale, issue-linked commit, git command w/ human-authored message, authored PR title/body, CHANGELOG edit | incident | drafts/chdr/ | /change-clarify |
-| Workaround adopted, "X for now because Y" | workaround | drafts/chdr/ | /change-clarify |
-| Operational constraint, "only works because Z" | constraint | drafts/adr/ | /architect-clarify |
-| Change abandoned, "simplifying X but Y blocks it" | abandoned | drafts/chdr/ | /change-clarify |
-| Eval criterion discovered | eval | drafts/evals/ | /evals-clarify |
+| Pattern | Type | Capture via | Clarify via |
+|---------|------|-------------|-------------|
+| Tech stack choice, pattern selection, "we chose X over Y" | decision | /architect-specify | /architect-clarify |
+| Feature scope, persona, monetization | product | /product-specify | /product-clarify |
+| Reusable team rule, "we always do X" | pattern | /team-levelup | /team-levelup |
+| Revert/hotfix rationale, issue-linked commit, git command w/ human-authored message, authored PR title/body, CHANGELOG edit | incident | /change-specify | /change-clarify |
+| Workaround adopted, "X for now because Y" | workaround | /change-specify | /change-clarify |
+| Operational constraint, "only works because Z" | constraint | /architect-specify | /architect-clarify |
+| Change abandoned, "simplifying X but Y blocks it" | abandoned | /change-specify | /change-clarify |
+| Eval criterion discovered | eval | /evals-specify | /evals-clarify |
 
 Proportionality gate and trust model in `references/decision-capture.md`:
 match documentation depth to how non-obvious the decision is, and synthesize
@@ -127,14 +127,16 @@ pending decision rows. J = all rows shown.
 
 - **Detect**: match session decisions against triggers above.
 - **Classify**: assign record type (ADR/PDR/CDR/ChDR).
-- **Write**: write a lightweight draft directly to `.adlc/drafts/{type}/` using the family draft template.
-- **Track**: update the table row (ID = draft ID or —, Status = pending/captured/clarified/handed off, Clarify = matching skill).
-- **Surface**: mirror each detected decision as a task-list todo (draft → matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
-- **Session-end**: before closing, deliver the clarify prompt naming each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off.
+- **Suggest**: name the capture skill in one line — `_Suggested capture: <decision name> → run <capture skill>._` Never write drafts or touch `.adlc/drafts/`; the capture skill writes the draft when the user runs it.
+- **Track**: update the table row (ID = draft ID or —, Status = pending/captured/clarified/handed off, Clarify = matching clarify skill).
+- **Surface**: mirror each detected decision as a task-list todo (suggest capture → matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
+- **Session-end**: before closing, deliver the clarify prompt naming each uncaptured decision (ID + capture skill) and each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off.
 
-Specify skills (/architect-specify, /product-specify, etc.) remain available
-for interactive deep-dive exploration when you want guided trade-off
-analysis — but are not required for routine capture.
+Capture goes through the class capture skills (/architect-specify,
+/product-specify, /change-specify, /change-init for mined history,
+/team-levelup, /evals-specify) — the boot suggests, the user runs. The
+clarify skills (/architect-clarify, /product-clarify, /change-clarify,
+/evals-clarify) review whatever drafts exist at session end.
 
 ## Failure Handling
 
@@ -150,6 +152,8 @@ analysis — but are not required for routine capture.
 - [ ] Class boots fired at task start (before todo planning), never deferred;
       workspace-root fallback engaged when CWD has no local memory.
 - [ ] Detected decisions added as table rows with the matching clarify skill.
+- [ ] No drafts written by the boot; each detected decision carries a
+      `_Suggested capture: …` line naming its capture skill.
 - [ ] Detected decisions mirrored as task-list todos; trailing ledger-sweep
       todo added after code-modifying tasks; sweep closed only at
       _Unrecorded: 0 pending · Unclarified: 0 drafts_ with the session-end

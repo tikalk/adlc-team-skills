@@ -1,6 +1,6 @@
 ---
 name: product-boot
-description: Use when product or feature work starts, or a PDR-worthy decision (scope, persona, monetization) emerges — injects the PDR index (docs/adlc/memory/pdr/, legacy .adlc/memory/pdr/ fallback) as session context and pairs the decision with capture via /product-specify; invoked from team-boot's Class Boots catalog.
+description: Use when product or feature work starts, or a PDR-worthy decision (scope, persona, monetization) emerges — injects the PDR index (docs/adlc/memory/pdr/, legacy .adlc/memory/pdr/ fallback) as session context and suggests the decision for capture via /product-specify (never writes drafts itself); invoked from team-boot's Class Boots catalog.
 ---
 
 # product-boot
@@ -11,12 +11,13 @@ One of the five **class boots** surfaced by `team-boot`'s Class Boots
 catalog. `team-boot` injects the always-relevant team context (constitution,
 CDR index, skills registry) at session start; this skill loads the
 **product decision layer** on demand — the Accepted PDR index from project
-memory — and pairs it with decision capture so new product choices are
-recorded (`/product-specify`) rather than evaporating.
+memory — and pairs it with a capture suggestion so new product choices are
+routed to `/product-specify` rather than evaporating. The boot never writes
+files: it suggests the capture skill, and the user runs it.
 
 Reading decisions and recording decisions are one loop: existing PDRs
 inform the work; decisions made during the work flow back into the same
-record system.
+record system through the capture skill.
 
 ## When to Use
 
@@ -98,25 +99,36 @@ _N pending drafts — run /product-clarify to review._
   Emit the section as markdown blocks — heading, table rows, and counts line
   each on their own lines.
 
-### Step 3: Capture Product Decisions
+### Step 3: Suggest Product Decision Capture
 
 | Trigger | Action |
 |---------|--------|
-| Feature scope change, in/out decisions | PDR → direct write to `.adlc/drafts/pdr/` |
-| Persona definition or revision | PDR → direct write to `.adlc/drafts/pdr/` |
-| Monetization, pricing, target-market choice | PDR → direct write to `.adlc/drafts/pdr/` |
-| PDR-class decision already in the ledger | verify capture happened; if not, re-surface |
+| Feature scope change, in/out decisions | PDR → suggest `/product-specify` |
+| Persona definition or revision | PDR → suggest `/product-specify` |
+| Monetization, pricing, target-market choice | PDR → suggest `/product-specify` |
+| PDR-class decision already in the ledger | verify the suggestion was surfaced; if not, re-surface |
+
+Emit one line per detected decision, in the visible response:
+
+```markdown
+_Suggested capture: <decision name> → run /product-specify._
+```
+
+Never write a draft (or any file) yourself — `/product-specify` writes the
+`.adlc/drafts/pdr/` draft when the user runs it, and `/product-clarify`
+gates it afterwards.
 
 Add/refresh rows in **Team Context & Decisions** (ID | Name | Type | Rel |
 Status | Clarify) for every PDR-class decision detected this session —
 including ones from before this boot was invoked. Mirror each decision as a
-task-list todo (draft → `/product-clarify` at session end); after
+task-list todo (suggest `/product-specify` → matching clarify skill at
+session end for drafts that exist); after
 code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until
 _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified
 only via its clarify skill or an explicit user handoff to a named clarify or execute skill). At session end,
-deliver the clarify prompt naming each captured PDR draft in
-`.adlc/drafts/pdr/` (ID + skill); if the user defers clarify, mark those
-rows handed off.
+deliver the clarify prompt naming each uncaptured decision (ID + capture skill)
+and each captured PDR draft in `.adlc/drafts/pdr/` (ID + clarify skill); if the
+user defers clarify, mark those rows handed off.
 
 ## Failure Handling
 
@@ -128,7 +140,9 @@ rows handed off.
 ## Red Flags
 
 - Fabricating PDR rows or inflating K beyond the table shown.
-- Injecting the index but ignoring capture — the pairing is the point.
+- Injecting the index but ignoring the capture suggestion — the pairing is the point.
+- Writing a draft (or any file) yourself — the boot only suggests;
+  `/product-specify` writes.
 - Walking up parent directories to find `.adlc/`.
 
 ## Verification
@@ -136,3 +150,5 @@ rows handed off.
 - [ ] PDR Context table emitted with `_Searched N PDRs, K matched._`
       (K = table rows).
 - [ ] Detected PDR-class decisions added as Team Context & Decisions rows.
+- [ ] No files written; each detected PDR-class decision carries a
+      `_Suggested capture: … → run /product-specify._` line.

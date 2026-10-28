@@ -116,31 +116,32 @@ Generate gap report:
 
 ### Phase 5: Interactive Refinement
 
-For each gap, present one clarification at a time:
+Write every clarification in Simplified Technical English (short sentences, one idea each, active voice, imperative asks, named referents, plain words). Read the contract at `skills/authoring/references/ste-rules.md` before drafting questions.
+
+Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap. See the tier rule in the shared reference:
+
+- **0–1 boundaries**: present one clarification at a time in plain STE prose, using this format, however severe the gap:
 
 ```markdown
 ## Clarification [N]: PDR-XXX — [Gap Type]
 
-**Current State**:
-[Quote current PDR content]
+**Context**: [One STE sentence quoting the PDR content]
 
-**Gap Identified**:
-[Explain what's missing]
+**Gap**: [One STE sentence describing the missing element]
 
-**Question**:
-[Specific question]
+**Question**: [One direct imperative STE question]
 
 **Suggested Options**:
-| Option | Description |
-|--------|-------------|
-| A | [Option A] |
-| B | [Option B] |
-| C | [Custom response] |
+- **A**: [Option text]
+- **B**: [Option text]
+- **C**: [Custom response]
 ```
+
+- **2 or more boundaries**: draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints.
 
 **Rules**:
 - Present **one clarification at a time**
-- **Prioritize by severity** — CRITICAL/HIGH first
+- **Prioritize by severity** — CRITICAL/HIGH first (severity orders questions; it never upgrades a 0–1-boundary item to a map)
 - **Limit to 5 clarifications** per session
 - Allow user to **skip** non-critical clarifications
 - **Summarize changes** after each answer

@@ -30,6 +30,16 @@ workflow:
   # for runs with no test surface (docs/config-only work).
   tdd: true
 
+  # ── Framework lane (optional; M11 E6) ────────────────────────────────
+  # Which mission-* SDD lane the run dispatches through. Resolved by
+  # skills/factory/factory-mission/scripts/bash/detect-framework.sh
+  # (powershell twin: scripts/powershell/detect-framework.ps1) with the
+  # ADR-468 precedence: override → git-dated usage evidence → installed
+  # packs → embedded default. Omit to auto-detect; set explicitly to pin a
+  # lane. An unknown value fails the run closed. The resolved lane and its
+  # evidence are disclosed in the run brief.
+  # framework: speckit   # speckit | superpowers | addy | matt | embedded
+
   # Per-step model routing (optional). If omitted, every step uses the
   # harness default model. Steps carry a `tier:` annotation (strong | fast);
   # the executor resolves tier -> concrete model using this map at dispatch.

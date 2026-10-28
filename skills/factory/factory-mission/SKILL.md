@@ -70,7 +70,8 @@ It implements the following key factory platform capabilities:
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
 4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.
-5. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
+5. Resolve the framework lane (`framework:` in mission.yml → `detect-framework.sh` / `detect-framework.ps1`, ADR-468 precedence: override → git-dated usage evidence → installed packs → embedded default) and disclose the resolved lane plus its evidence in the run brief (`**Framework lane:** <lane> (<evidence>)`).
+6. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
 6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
 
 **Team index fallback:** when no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line. Never block on the missing injection.

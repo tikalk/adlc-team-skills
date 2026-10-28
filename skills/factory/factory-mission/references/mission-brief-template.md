@@ -19,6 +19,10 @@
 **Success Criteria**:
 - <measurable outcome 1> — *measurement method*
 - <measurable outcome 2> — *measurement method*
+
+**Framework lane**: <lane> (<evidence>) — resolved per ADR-468 precedence
+(override → git-dated usage evidence → installed packs → embedded default);
+multi-match conflicts named here.
 ```
 
 ## Rules

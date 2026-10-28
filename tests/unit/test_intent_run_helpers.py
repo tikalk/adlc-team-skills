@@ -597,6 +597,22 @@ def test_factory_mission_checklist_takes_the_issue_and_reports_the_mr():
         assert needle in block, needle
 
 
+def test_factory_mission_local_session_answers_its_gates_and_publishes():
+    # adlc-workspace#11, local run mission-adlc-workspace-11: the engine paused
+    # at gate-mr with no terminal; the session ended its turn without asking,
+    # and the plan had no step after the gate to open the MRs it promised.
+    text = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
+    head = "## In a local session — you answer the gates"
+    assert head in text
+    assert text.index(head) < text.index("## What this skill does")
+    block = text[text.index(head):text.index("## What this skill does")]
+    for needle in ("run_paused", "workflow resume <run_id> --input", "Never end your turn on a paused run",
+                   "publish", "open-mr.sh", "mr_url", "plan defect"):
+        assert needle in block, needle
+    executor = (ROOT / "skills/factory/factory-mission/references/executor.md").read_text()
+    assert "The session is then the one that answers" in executor
+
+
 @pytest.mark.parametrize("skill", ["factory-intent"])
 def test_factory_run_checklist_comes_first(skill):
     # Drill run b664753d: the architecture orchestrator had the rules but read

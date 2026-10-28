@@ -537,3 +537,81 @@ count_pdr_accepted() {
     done
     echo "$count"
 }
+
+###############################################################################
+# Ledger slot allocation
+###############################################################################
+
+# next_record_number PREFIX DIR [DIR...]
+#
+# The next free ledger slot for records named PREFIX-*.md.
+#
+# A record's number is the LEADING DIGITS of its filename stem: PDR-002-amendment-2.md
+# is record 002. Suffixes are preserved and never arithmetically parsed -- the
+# same rule generate_adr_index pins in tests/unit/test_index_id_parsing.py.
+#
+# The maximum is taken across EVERY directory given. Scanning drafts alone
+# reissues a slot that a published record still holds in docs/adlc/memory/.
+next_record_number() {
+  local prefix="$1"
+  shift
+  local max=0 f num
+  for dir in "$@"; do
+    [ -d "$dir" ] || continue
+    for f in "$dir"/"${prefix}"-*.md; do
+      [ -f "$f" ] || continue
+      num=$(basename "$f" .md | sed -n "s/^${prefix}-\([0-9]\{1,\}\).*/\1/p")
+      [ -n "$num" ] || continue
+      ((10#$num > max)) && max=$((10#$num))
+    done
+  done
+  printf '%03d' "$((max + 1))"
+}
+
+###############################################################################
+# Document-internal ledger slots (PRD.md)
+###############################################################################
+#
+# Record ids are allocated by next_record_number above. PRD.md carries three
+# further numbered slots that nothing allocated before: the delta SECTION
+# number (`## 26.`), the REQ id (`REQ-216`), and the Feature number (`| 69 |`).
+# An intent run used to pick these by eyeballing the document, and claimed
+# numbers the merge target already used.
+#
+# Each scan is deliberately OVER-inclusive: a match anywhere in the document
+# raises the result. That is the safe failure direction -- an unused number is
+# harmless, a reissued one collides.
+
+# next_prd_section PRD_FILE - the next `## N.` delta heading number (no padding).
+next_prd_section() {
+  local f="${1:-}"
+  local max=0
+  if [ -f "$f" ]; then
+    max=$(awk '/^## [0-9]+\. / { n=$2; sub(/\.$/, "", n); if (n+0 > m) m=n+0 }
+               END { print m+0 }' "$f")
+  fi
+  printf '%s' "$((max + 1))"
+}
+
+# next_req_id PRD_FILE - the next REQ-NNN. Printed unpadded (217, not 0217).
+next_req_id() {
+  local f="${1:-}"
+  local max=0
+  if [ -f "$f" ]; then
+    max=$(grep -oE 'REQ-[0-9]+' "$f" | sed 's/^REQ-//' | sort -n | tail -1)
+  fi
+  printf '%s' "$((${max:-0} + 1))"
+}
+
+# next_feature_number PRD_FILE - the next `| N |` Feature row number.
+# Every numbered table row in PRD.md is a Feature row today; scanning them all
+# is over-inclusive and therefore safe.
+next_feature_number() {
+  local f="${1:-}"
+  local max=0
+  if [ -f "$f" ]; then
+    max=$(awk -F'|' '/^\| [0-9]+ \| / { gsub(/ /, "", $2); if ($2+0 > m) m=$2+0 }
+                   END { print m+0 }' "$f")
+  fi
+  printf '%s' "$((max + 1))"
+}

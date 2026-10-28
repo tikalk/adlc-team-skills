@@ -380,6 +380,30 @@ Before marking complete, verify ALL checks:
 
 **Gate Rule**: If ANY check fails → do NOT mark as completed. Report failures.
 
+## Claiming Ledger Slots (do this before writing any numbered id)
+
+A number computed from a stale base is wrong even when you compute it
+correctly — the working tree simply does not know what the merge target has
+already used. Check first, then read each number from the document; never
+eyeball it.
+
+```bash
+# 1. Refuse to proceed on a stale base (returns 1 and explains).
+source {REPO_ROOT}/.agents/skills/product-clarify/scripts/bash/pdr-lib.sh
+require_current_base "${MERGE_TARGET:-origin/main}"
+
+# 2. Read the next free number for each slot type.
+next_record_number PDR "{REPO_ROOT}/.adlc/drafts/pdr" "{REPO_ROOT}/docs/adlc/memory/pdr"  # record id -> 138 (drafts + published)
+next_prd_section  "{PRD_FILE}"   # `## 26.` heading  -> 27
+next_req_id       "{PRD_FILE}"   # `REQ-216`         -> 217
+next_feature_number "{PRD_FILE}" # `| 69 |` row      -> 70
+```
+
+Each scan is deliberately over-inclusive: a match anywhere in the document
+raises the result. That is the safe direction — an unused number is harmless,
+a reissued one collides. `next_ad_delta_version` in `setup-architect.sh` is the
+AD.md counterpart and belongs to `architect-implement`.
+
 ## PDR Traceability Rules
 
 - **Every section** must reference source PDRs with ID

@@ -40,6 +40,30 @@ function Get-AdlcMemoryPath {
     return $legacyPath
 }
 
+# Get-NextAdrNumber [ROOT] - the next free ADR ledger slot.
+#
+# PowerShell twin of next_adr_number in setup-architect.sh, same contract as
+# Get-NextRecordNumber in product-clarify's pdr-lib.ps1: a record's number is
+# the LEADING DIGITS of its filename stem (an amendment stem still counts as
+# its base record; suffixes are never arithmetically parsed), and the maximum
+# spans drafts AND published memory so a promoted record's slot is not reissued.
+function Get-NextAdrNumber {
+    param([string]$Root = (Get-RepositoryRoot))
+    $max = 0
+    $docsBase = $DOCS_ADLC_MEMORY
+    if (-not $docsBase) { $docsBase = "docs/adlc/memory" }
+    foreach ($dir in @((Join-Path $Root ".adlc/drafts/adr"), (Join-Path $Root (Join-Path $docsBase "adr")))) {
+        if (-not (Test-Path $dir)) { continue }
+        foreach ($f in @(Get-ChildItem -Path $dir -Filter 'ADR-*.md' -File -ErrorAction SilentlyContinue)) {
+            if ($f.BaseName -cmatch '^ADR-(\d+)') {
+                $num = [int]$Matches[1]
+                if ($num -gt $max) { $max = $num }
+            }
+        }
+    }
+    return ('{0:d3}' -f ($max + 1))
+}
+
 
 if ($Help) {
     Write-Output "Usage: ./setup-architect.ps1 [action] [context] [-Views VIEWS] [-AdrHeuristic HEURISTIC] [-Json] [-Help]"
@@ -284,7 +308,7 @@ function Get-Subsystems {
     
     if ($composeFile) {
         $composeContent = Get-Content $composeFile -Raw
-        $services = [regex]::Matches($composeContent, '^\s*([a-zA-Z0-9_-]+):\s*$' | ForEach-Object { $_.Groups[1].Value } | Where-Object { @("version", "services", "networks", "volumes") -notcontains $_ })
+        $services = [regex]::Matches($composeContent, '^\s*([a-zA-Z0-9_-]+):\s*$') | ForEach-Object { $_.Groups[1].Value } | Where-Object { @("version", "services", "networks", "volumes") -notcontains $_ }
         foreach ($svc in $services) {
             $found = $false
             foreach ($d in $dirs) {
@@ -402,7 +426,7 @@ function Scan-ExistingDocs {
     $findings = @()
     
     # Check for existing architecture docs
-    if (Test-Path "$RepoRoot\docs/adlc/architect/AD.md") -or (Test-Path "$RepoRoot\AD.md") {
+    if ((Test-Path "$RepoRoot\docs/adlc/architect/AD.md") -or (Test-Path "$RepoRoot\AD.md")) {
         $findings += "EXISTING_AD: $RepoRoot\AD.md"
     }
     
@@ -656,8 +680,16 @@ function Invoke-Specify {
     Write-Host ""
     Write-Host "After completion, run '/architect-implement' to generate full AD.md"
     
+    # Ledger slot allocation: hand callers the next free slot (leading digits
+    # of the filename stem, max across drafts AND published memory -- see
+    # Get-NextAdrNumber). Leaving "the highest existing number" to the agent
+    # reissued taken slots.
+    $nextAdr = Get-NextAdrNumber -Root $repoRoot
+    Write-Host ""
+    Write-Host "Next free ADR slot: ADR-$nextAdr"
+    
     if ($Json) {
-        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose} | ConvertTo-Json
+        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose; next_adr=$nextAdr} | ConvertTo-Json
     }
 }
 
@@ -1331,7 +1363,10 @@ function Invoke-Summarize {
     }
 }
 
-# Main execution
+# Main execution -- runs when the file is executed. Dot-sourcing this file
+# (the documented way to reach Get-NextAdrNumber / Get-NextAdDeltaVersion)
+# must define helpers without running the action dispatch below.
+if ($MyInvocation.InvocationName -ne '.') {
 try {
     $repoRoot = Get-RepositoryRoot
     Seed-Templates -RepoRoot $repoRoot
@@ -1408,4 +1443,29 @@ try {
 } catch {
     Write-Error $_.Exception.Message
     exit 1
+}
+}  # end execution-only guard (see the sourcing contract above)
+
+# Get-NextAdDeltaVersion AD_FILE - the next `## vN.N.N Delta:` heading version.
+#
+# Deltas bump the MINOR and reset the patch: v13.18.0 -> v13.19.0. A patch bump
+# means amending the delta already there, which is a deliberate act, not the
+# next free slot -- so this never emits one.
+function Get-NextAdDeltaVersion {
+    param([string]$File)
+    $major = 0; $minor = 0; $patch = 0
+    if (Test-Path $File) {
+        $best = $null
+        foreach ($m in [regex]::Matches((Get-Content $File -Raw),
+                                        '(?m)^## v(\d+)\.(\d+)\.(\d+) Delta')) {
+            $v = @([int]$m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value)
+            if ($null -eq $best -or ($v[0] -gt $best[0]) -or
+                ($v[0] -eq $best[0] -and $v[1] -gt $best[1]) -or
+                ($v[0] -eq $best[0] -and $v[1] -eq $best[1] -and $v[2] -gt $best[2])) {
+                $best = $v
+            }
+        }
+        if ($null -ne $best) { $major = $best[0]; $minor = $best[1]; $patch = $best[2] }
+    }
+    return "v$major.$($minor + 1).0"
 }

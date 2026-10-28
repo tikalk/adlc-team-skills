@@ -106,8 +106,11 @@ skills trigger when the task matches.
 - **Class boots** fire when a decision class shows up: `architect-boot`
   (ADR index), `product-boot` (PDR index), `change-boot` (ChDR index),
   `tech-radar-boot` (radar opinion before a tech selection).
-- **Decision capture runs continuously**: decisions detected mid-session
-  land as lightweight drafts in `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/`.
+- **Decision capture is suggested, never automatic**: decisions detected
+  mid-session surface a `_Suggested capture_` line naming the class capture
+  skill (`/architect-specify`, `/product-specify`, `/change-specify`, …);
+  running that skill writes the lightweight draft to
+  `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/`.
   The `file_edited` hook notices each draft landing and nudges the matching
   clarify skill (`adr→/architect-clarify`, `pdr→/product-clarify`, …).
 - When harness compaction summarizes history away, `session_compact`

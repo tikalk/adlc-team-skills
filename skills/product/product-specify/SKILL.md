@@ -1,6 +1,6 @@
 ---
 name: product-specify
-description: Use when you want guided trade-off analysis, multi-option comparison, or structured product decision facilitation before documenting. Optional for routine capture — team-boot writes lightweight PDR drafts directly.
+description: Use when you want guided trade-off analysis, multi-option comparison, or structured product decision facilitation before documenting. Class boots only suggest capture — they never write drafts; running this skill writes the lightweight PDR draft.
 disable-model-invocation: true
 ---
 
@@ -16,9 +16,9 @@ Transforms a high-level product idea into documented Product Decision Records (P
 
 ## When to use
 
-> **Note**: Routine decision capture is handled by team-boot's continuous
-> capture mechanism, which writes lightweight drafts directly to
-> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
+> **Note**: Class boots detect decisions and **suggest this skill** — running
+> it is how the capture happens (it writes the lightweight draft to
+> `.adlc/drafts/`). Use it for **interactive deep-dive exploration**
 > — when you want guided trade-off analysis, multi-option comparison, or
 > structured decision facilitation before documenting.
 
@@ -52,6 +52,7 @@ ps: scripts/powershell/setup-product-specify.ps1
   "next_pdr": "001"
 }
 ```
+The script reports `next_pdr` — the next free PDR slot (status line `Next PDR: PDR-{NNN}`); Phase 6 numbers the new PDRs from it
 
 ### Phase 1: Feature-Area Decomposition (Optional)
 
@@ -198,7 +199,7 @@ title: [Decision Title]
 
 ### Phase 6: Write PDR Files and Regenerate Index
 
-1. **Number sequentially**: Start from highest existing PDR number + 1
+1. **Number PDRs sequentially**: Start from PDR-001 for new projects, or continue from the **next free slot** the setup script computes (`next_pdr` in its JSON/status output) — never from "the highest existing PDR number" guessed by inspection: a stemmed record (e.g. `PDR-002-amendment-2.md`) is easy to miss, and its slot is still taken
 2. **Write individual files**: `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{NNN}.md`
 3. **Regenerate index**: `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md`
 
@@ -238,9 +239,9 @@ title: [Decision Title]
 
 ## PDR Numbering Rules
 
-- Scan `{REPO_ROOT}/.adlc/drafts/pdr/` for existing `PDR-*.md` files
-- Extract numeric suffix, find maximum
-- Next PDR = max + 1, zero-padded to 3 digits
+- Number from the **next free slot** the setup script computes (`next_pdr`), never from "the highest existing number" guessed by inspection: a stemmed record (e.g. `PDR-002-amendment-2.md`) is easy to miss, and its slot is still taken
+- The slot scan reads every `PDR-*` stem in `{REPO_ROOT}/.adlc/drafts/pdr/` **and** published memory (`docs/adlc/memory/pdr/`) — the same source `next_pdr` reports
+- PDR IDs are zero-padded to 3 digits
 - Never reuse numbers
 
 ## Key Rules

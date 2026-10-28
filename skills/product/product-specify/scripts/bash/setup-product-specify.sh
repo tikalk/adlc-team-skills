@@ -28,20 +28,12 @@ PRD_FILE="$REPO_ROOT/${DOCS_ADLC_PRODUCT:-docs/adlc/product}/PRD.md"
 
 mkdir -p "$PDR_DRAFTS_DIR"
 
-next_pdr_number() {
-  local max=0
-  if [[ -d "$PDR_DRAFTS_DIR" ]]; then
-    for f in "$PDR_DRAFTS_DIR"/PDR-*.md; do
-      if [[ -f "$f" ]]; then
-        local num; num=$(basename "$f" | sed 's/PDR-//' | sed 's/\.md//')
-        if [[ "$num" =~ ^[0-9]+$ ]]; then ((10#$num > max)) && max=$((10#$num)); fi
-      fi
-    done
-  fi
-  printf '%03d' $((max + 1))
-}
-
-NEXT_PDR=$(next_pdr_number)
+# Ledger slot allocation lives in pdr-lib.sh (next_record_number): leading
+# digits of the filename stem, max across drafts AND published memory. This
+# script previously carried its own copy, which silently skipped stemmed
+# records (PDR-002-amendment-2.md) and scanned drafts alone.
+NEXT_PDR=$(next_record_number PDR "$PDR_DRAFTS_DIR" \
+  "$REPO_ROOT/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr")
 PDR_COUNT=$(find "$PDR_DRAFTS_DIR" -name 'PDR-*.md' 2>/dev/null | wc -l)
 
 if $JSON_MODE; then

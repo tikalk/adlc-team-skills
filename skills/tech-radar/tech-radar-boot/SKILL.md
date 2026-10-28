@@ -11,8 +11,9 @@ One of the five **class boots** surfaced by `team-boot`'s Class Boots
 catalog, this skill handles **technology selection**. It surfaces
 **Tikal's opinion** on the technologies relevant to the current prompt so a
 tech stack choice is informed by the Israeli Tech Radar, and it pairs the
-selection with decision capture: the chosen stack is an ADR-class decision
-that should be recorded via `/architect-specify`.
+selection with a capture suggestion: the chosen stack is an ADR-class
+decision; the boot suggests `/architect-specify` and never writes drafts
+itself.
 
 The radar lookup works like `team-discover`, but its search surface is the
 Tikal Tech Radar dataset (fetched live from `https://tikalk.com/radar.json`)
@@ -216,12 +217,14 @@ exists in the current working directory and the directory sits inside a workspac
 | `Stop`-ring technology retained anyway | ADR → suggest `/architect-specify` documenting why the radar guidance was overridden |
 
 Add/refresh rows in **Team Context & Decisions** (ID | Name | Type | Rel |
-Status | Clarify) for the selection, mirrored as a task-list todo (draft →
-`/architect-specify` at session end); after code-modifying tasks, add a
+Status | Clarify) for the selection, mirrored as a task-list todo (suggest
+`/architect-specify` → matching clarify skill at session end for drafts that
+exist); after code-modifying tasks, add a
 trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill). If
 `architect-boot` was already invoked this session, extend its ledger rows
 with the radar evidence; at session end, deliver the clarify prompt naming
-each captured tech-selection draft (ID + skill); if the user defers clarify,
+each uncaptured tech-selection decision (ID + capture skill) and each
+captured draft (ID + clarify skill); if the user defers clarify,
 mark those rows handed off.
 
 ## Failure Handling
@@ -252,8 +255,10 @@ mark those rows handed off.
   user) — the visible response MUST carry the findings.
 - Collapsing the context section into a single line — heading, table rows,
   guidance, and source line each go on their own markdown lines.
-- Injecting radar context but skipping the capture pairing — a tech selection
+- Injecting radar context but skipping the capture suggestion — a tech selection
   that informed no ADR is a decision that evaporated.
+- Writing a draft (or any file) yourself — the boot only suggests;
+  `/architect-specify` writes.
 
 ## Verification
 
@@ -270,7 +275,9 @@ mark those rows handed off.
   data. On fetch failure, an error is reported and the skill continues without
   radar context.
 - Tech selections made this session appear in Team Context & Decisions with
-  `/architect-specify` as the capture skill.
+  `/architect-specify` as the capture skill, each carrying a
+  `_Suggested capture: … → run /architect-specify._` line; no files were
+  written by this skill.
 ## Configuration
 
 - Data source: `https://tikalk.com/radar.json` (live-fetched on every invocation;

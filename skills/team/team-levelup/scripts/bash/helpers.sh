@@ -81,9 +81,17 @@ next_cdr_number() {
   local td="${1:-$TEAM_AI_DIRECTIVES}"
   local max=0
   for f in $(git -C "$td" ls-tree --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null | sort); do
-    local num
-    num=$(echo "$f" | sed -n 's|.*/CDR-\([0-9]\+\)\.md|\1|p')
-    [[ "$num" =~ ^[0-9]+$ ]] || continue
+    local base num
+    # A record's number is the LEADING DIGITS of its filename stem:
+    # CDR-010-amendment-2.md is record 010. Suffixes are preserved and
+    # never arithmetically parsed -- the same rule next_record_number in
+    # product-clarify's pdr-lib.sh implements on the filesystem. The old
+    # "CDR-<digits>.md" match silently skipped stemmed records and handed
+    # out a slot that was already taken.
+    base=$(basename "$f")
+    [[ "$base" == *.md ]] || continue
+    num=$(printf '%s' "${base%.md}" | sed -n 's/^CDR-\([0-9]\{1,\}\).*/\1/p')
+    [[ -n "$num" ]] || continue
     ((10#$num > max)) && max=$((10#$num))
   done
   printf '%03d' $((max + 1))

@@ -191,12 +191,15 @@ function Generate-PdrIndex {
         $category = Parse-PdrField -File $f.FullName -Field "category"
         $featureArea = Parse-PdrField -File $f.FullName -Field "feature-area"
 
-        if (-not $status) { $status = "Unknown"; $warnings += "PDR-$paddedId: Status" }
-        if (-not $date) { $date = "YYYY-MM-DD"; $warnings += "PDR-$paddedId: Date" }
-        if (-not $owner) { $owner = "Unknown"; $warnings += "PDR-$paddedId: Owner" }
-        if (-not $category) { $category = "Unknown"; $warnings += "PDR-$paddedId: Category" }
-        if (-not $featureArea) { $featureArea = "system"; $warnings += "PDR-$paddedId: Feature-Area" }
-        if (-not $title) { $title = "PDR-$paddedId"; $warnings += "PDR-$paddedId: Title" }
+        # ${paddedId} must stay brace-delimited: "$var:" in a double-quoted
+        # string is a PowerShell ParserError ("Variable reference is not
+        # valid"), and one such line made this whole file refuse to load.
+        if (-not $status) { $status = "Unknown"; $warnings += "PDR-${paddedId}: Status" }
+        if (-not $date) { $date = "YYYY-MM-DD"; $warnings += "PDR-${paddedId}: Date" }
+        if (-not $owner) { $owner = "Unknown"; $warnings += "PDR-${paddedId}: Owner" }
+        if (-not $category) { $category = "Unknown"; $warnings += "PDR-${paddedId}: Category" }
+        if (-not $featureArea) { $featureArea = "system"; $warnings += "PDR-${paddedId}: Feature-Area" }
+        if (-not $title) { $title = "PDR-${paddedId}"; $warnings += "PDR-${paddedId}: Title" }
 
         $body += "| PDR-$paddedId | $featureArea | $category | $status | $date | $owner | $title |`n"
     }
@@ -293,4 +296,84 @@ function Count-PdrAccepted {
         if ($status -eq "accepted" -or $status -eq "completed") { $count++ }
     }
     return $count
+}
+
+###############################################################################
+# Ledger slot allocation
+###############################################################################
+
+# Get-NextRecordNumber - the next free ledger slot for records named PREFIX-*.md.
+#
+# A record's number is the LEADING DIGITS of its filename stem:
+# PDR-002-amendment-2.md is record 002. Suffixes are preserved and never
+# arithmetically parsed -- the same rule Generate-PdrIndex pins in
+# tests/unit/test_index_id_parsing.py.
+#
+# The maximum is taken across EVERY directory given. Scanning drafts alone
+# reissues a slot that a published record still holds in docs/adlc/memory/.
+function Get-NextRecordNumber {
+  param(
+    [Parameter(Mandatory = $true)][string]$Prefix,
+    [Parameter(Mandatory = $true)][string[]]$Dirs
+  )
+  $max = 0
+  foreach ($dir in $Dirs) {
+    if (-not (Test-Path $dir)) { continue }
+    Get-ChildItem -Path $dir -Filter "$Prefix-*.md" | ForEach-Object {
+      if ($_.BaseName -match ('^' + [regex]::Escape($Prefix) + '-(\d+)')) {
+        $n = [int]$Matches[1]
+        if ($n -gt $max) { $max = $n }
+      }
+    }
+  }
+  '{0:D3}' -f ($max + 1)
+}
+
+###############################################################################
+# Document-internal ledger slots (PRD.md)
+###############################################################################
+#
+# Record ids are allocated by Get-NextRecordNumber above. PRD.md carries three
+# further numbered slots: the delta SECTION number, the REQ id, and the Feature
+# number. Each scan is deliberately OVER-inclusive -- an unused number is
+# harmless, a reissued one collides.
+
+function Get-NextPrdSection {
+    param([string]$File)
+    $max = 0
+    if (Test-Path $File) {
+        foreach ($line in (Get-Content $File)) {
+            if ($line -cmatch '^## (\d+)\. ') {
+                $n = [int]$Matches[1]
+                if ($n -gt $max) { $max = $n }
+            }
+        }
+    }
+    return ($max + 1)
+}
+
+function Get-NextReqId {
+    param([string]$File)
+    $max = 0
+    if (Test-Path $File) {
+        foreach ($m in [regex]::Matches((Get-Content $File -Raw), 'REQ-(\d+)')) {
+            $n = [int]$m.Groups[1].Value
+            if ($n -gt $max) { $max = $n }
+        }
+    }
+    return ($max + 1)
+}
+
+function Get-NextFeatureNumber {
+    param([string]$File)
+    $max = 0
+    if (Test-Path $File) {
+        foreach ($line in (Get-Content $File)) {
+            if ($line -cmatch '^\|\s*(\d+)\s*\|') {
+                $n = [int]$Matches[1]
+                if ($n -gt $max) { $max = $n }
+            }
+        }
+    }
+    return ($max + 1)
 }

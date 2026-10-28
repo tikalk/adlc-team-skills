@@ -299,7 +299,6 @@ def test_lane_entry_engine_valid():
             f"execution engine not available (ADLC_CLI_DIR={cli_dir})"
         )
     for lane, path in LANE_FILES.items():
-        rel = str(path.relative_to(ROOT))
         r = subprocess.run(
             ["node", "--input-type=module", "-e",
              "import('./src/workflow/engine.mjs').then(m => {"
@@ -308,7 +307,7 @@ def test_lane_entry_engine_valid():
              " console.log(JSON.stringify({"
              " validate: m.validateWorkflow(def, eng.registry),"
              " gateErrors: m.headlessGateErrors(def)})); });",
-             "--", str(ROOT), rel],
+             "--", str(ROOT), str(path)],
             capture_output=True, text=True,
             cwd=cli_dir,
         )

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- **`factory-product` and `factory-architect` skills** (`skills/factory/factory-product/`, `skills/factory/factory-architect/` — SKILL.md + workflow.yml each) with no aliases. Replacement: `skills/factory/factory-intent/` (merged two-lane DAG: one Mission Brief in, product + architecture lanes, two scope-pinned gates, joint build-and-verify). References in README, docs, executor/tracker prose, run-helper tests and the skills-deps closure map now name `factory-intent`; historical entries below are unchanged.
+- **`factory-product` and `factory-architect` skills** (`skills/factory/factory-product/`, `skills/factory/factory-architect/` — SKILL.md + workflow.yml each) with no aliases. Replacement: `skills/factory/factory-intent/` (merged two-lane DAG: one Mission Brief in, product + architecture lanes, two scope-pinned gates, joint build-and-verify; plus thin single-lane entries `workflow-product.yml` for `/factory-product` callers and `workflow-architecture.yml` for `/factory-architect` callers — product-only runs are **not verified end-to-end**). References in README, docs, executor/tracker prose, run-helper tests and the skills-deps closure map now name `factory-intent`; historical entries below are unchanged.
 
 ### Added
 

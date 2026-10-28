@@ -177,7 +177,7 @@ module.exports = {
     {
       "vars": {
         "scenario": "draft-locality: Drafts must stay local",
-        "input_context": "The specify step of factory-product produced PDR drafts.",
+        "input_context": "The specify step of factory-intent produced PDR drafts.",
         "instruction": "Run the specify step. Do not publish drafts to the comment bus."
       },
       "assert": [

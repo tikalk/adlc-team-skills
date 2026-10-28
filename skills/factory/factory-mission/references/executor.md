@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is the canonical executor contract for all Kind-A factory orchestrators (`factory-mission`, `factory-product`, `factory-architect`, `factory-learn`, `factory-init`). It defines how to compile a feature or lifecycle task into a structured step list, execute steps sequentially with state tracking, handle supervision gates, and run correction loops.
+This is the canonical executor contract for all Kind-A factory orchestrators (`factory-mission`, `factory-intent`, `factory-learn`, `factory-init`). It defines how to compile a feature or lifecycle task into a structured step list, execute steps sequentially with state tracking, handle supervision gates, and run correction loops.
 
 ## Shared Run State (shared run state — read this first)
 
@@ -110,7 +110,7 @@ Presented to the user for sign-off (in gated/hybrid modes).
 
 ## Run Context
 - **Run ID:** <run_id>
-- **Orchestrator:** <factory-mission | factory-product | ...>
+- **Orchestrator:** <factory-mission | factory-intent | ...>
 - **Route:** <greenfield | brownfield | refresh>
 - **Supervision:** <gated | hybrid | autonomous>
 - **Target:** <owner>/<repo>#<number> (if tracker-integrated)
@@ -172,7 +172,7 @@ Mirror steps to a `todowrite` tracking list.
 
 **Output type per orchestrator** (defaults — orchestrators may override):
 
-| Step | factory-product | factory-mission | factory-architect | factory-learn |
+| Step | factory-intent (product lane) | factory-mission | factory-intent (architecture lane) | factory-learn |
 |------|-----------------|-----------------|-------------------|---------------|
 | specify/init | draft | draft | draft | draft |
 | clarify⭐ | decision | decision | decision | decision |

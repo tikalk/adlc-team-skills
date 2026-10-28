@@ -25,21 +25,21 @@ def test_factory_mission_state_initialization(sandbox_project):
     assert "circuit_breaker: 3" in content
     assert ".adlc/workflows/memory.jsonl" in content
 
-def test_factory_product_state_initialization(sandbox_project):
+def test_factory_intent_product_lane_state_initialization(sandbox_project):
     # Namespace v3 (shared run state): step progress lives in the shared state.json,
-    # run context in brief.md — no .factory-product-state.json anymore.
+    # run context in brief.md — no per-lane state file anymore.
     run_dir = sandbox_project / ".adlc" / "workflows" / "runs" / "run-prod-1"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     (run_dir / "brief.md").write_text(
-        "# Factory Run Brief: factory-product\n\n"
+        "# Factory Run Brief: factory-intent\n\n"
         "## Goal\nBootstrap PRD for platform\n\n"
         "## Constraints\nZero config, local only\n\n"
         "## Success Criteria\n- PRD.md contains 4 core sections\n"
     )
     (run_dir / "state.json").write_text(json.dumps({
         "run_id": "run-prod-1",
-        "workflow_id": "factory-product",
+        "workflow_id": "factory-intent",
         "status": "created",
         "current_step_index": 0,
         "current_step_id": "specify",
@@ -52,20 +52,20 @@ def test_factory_product_state_initialization(sandbox_project):
     assert loaded["current_step_index"] == 0
     assert loaded["current_step_id"] == "specify"
 
-def test_factory_architect_state_initialization(sandbox_project):
+def test_factory_intent_architecture_lane_state_initialization(sandbox_project):
     # Namespace v3 (shared run state): shared state.json + brief.md in the run dir.
     run_dir = sandbox_project / ".adlc" / "workflows" / "runs" / "run-arch-1"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     (run_dir / "brief.md").write_text(
-        "# Factory Run Brief: factory-architect\n\n"
+        "# Factory Run Brief: factory-intent\n\n"
         "## Goal\nBootstrap AD.md for microservices\n\n"
         "## Constraints\nRozanski & Woods\n\n"
         "## Success Criteria\n- AD.md has Context and Functional views\n"
     )
     (run_dir / "state.json").write_text(json.dumps({
         "run_id": "run-arch-1",
-        "workflow_id": "factory-architect",
+        "workflow_id": "factory-intent",
         "status": "created",
         "current_step_index": 0,
         "current_step_id": "init",

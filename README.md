@@ -224,8 +224,8 @@ advisory; humans hold the gates (⭐).
          │ PRD.md · AD.md · .adlc/memory/
          ▼
 ┌──────────────────────────┐  PDRs → PRD.md  ·  ADRs → AD.md
-│ factory-product /        │  (clarify⭐ human gates)
-│ factory-architect        │
+│ factory-intent           │  (two scope-pinned gates)
+│ (product + arch lanes)   │
 └────────┬─────────────────┘
          │ Mission Brief (goal + constraints + success criteria)
          ▼
@@ -275,7 +275,7 @@ What each station adds:
   (Review→Fix→Converge) with maker-checker separation and circuit breaker.
 - **`factory-learn`** — retrospectives into team-ai-directives:
   build-to-delete pruning, promote-to-check for mechanical rules.
-- **`factory-product` / `factory-architect`** — lifecycle coordinators
+- **`factory-intent`** — merged two-lane intent orchestrator
   maintaining PRD.md and AD.md with clarify⭐ gates.
 - **`factory-tickets`** — read-only worklist across trackers, classified by
   next actionable move.
@@ -287,8 +287,7 @@ What each station adds:
 ```mermaid
 flowchart LR
     FQ["factory-queue<br/>Ingestion & Triage"] ~~~ IG{"Intent Gate"}
-    FP["factory-product<br/>Product Lifecycle"] ~~~ CG1{"clarify⭐ Gate"}
-    FA["factory-architect<br/>Architecture Lifecycle"] ~~~ CG2{"clarify⭐ Gate"}
+    FI2["factory-intent<br/>Merged Two-Lane DAG"] ~~~ CG1{"product Gate"} & CG1 ~~~ CG2{"architecture Gate"}
     FM["factory-mission<br/>Execution Engine"] ~~~ CB{"Circuit Breaker"}
     FR["factory-review<br/>PR Compliance"] ~~~ MG{"Merge Gate"}
     FL["factory-learn<br/>Learning Loop"] ~~~ CG3{"clarify⭐ Gate"}
@@ -301,8 +300,7 @@ flowchart LR
 
     FQ -->|"spec-gated labels"| TR
     TR -->|"--issue ref"| FM
-    FP -->|"PRD.md"| FQ
-    FA -->|"AD.md"| FQ
+    FI2 -->|"PRD.md + AD.md"| FQ
     FM -->|"agent-authored PRs"| TR
     TR -->|"PR diff + checks"| FR
     FR -->|"twice-mistake rule"| FL
@@ -310,9 +308,7 @@ flowchart LR
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
     FT -.->|"read-only"| TR
-    FI -.->|"via product-* leaves"| FP
-    FI -.->|"via architect-* leaves"| FA
-    FI -.->|"via change-* leaves (one-time deep)"| FL
+    FI -.->|"via intent lanes"| FI2
 ```
 
 </details>
@@ -352,9 +348,8 @@ each step. Works alongside:
 - **`factory-init`** — unified brownfield bootstrap + PDR↔ADR↔ChDR↔code coverage matrix (`--refresh`).
 - **`factory-queue`** — queue intake, AI advisory triage scoring, intent gate, milestone generation.
 - **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, mandated TDD RED/GREEN gates (Test Agent writes failing tests first, Implement Agent writes code to pass them), circuit breaker.
-- **`factory-review`** — severity-ranked PR policy compliance against `REVIEW.md`; babysits agent PRs to merge.
+- **`factory-intent`** — merged intent orchestrator (product + architecture lanes, two gates).
 - **`factory-deploy`** — post-merge release orchestration: exact-head gated merge → staged rollout with threshold verdicts → SemVer-tagged, noted release with monitor handoff.
-- **`factory-product`** / **`factory-architect`** — product/architecture lifecycle coordinators.
 - **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.
 - **`factory-clean`** — resource inventory and reclamation (approval-gated).

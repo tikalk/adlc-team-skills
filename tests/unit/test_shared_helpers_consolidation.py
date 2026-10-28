@@ -175,8 +175,7 @@ def test_skills_deps_manifest_valid():
 # (ADR-431-amendment C1): every SKILL.md names all three by mirror path, states
 # the Requires line, and the deps manifest records the dependency.
 INTENT_ORCHESTRATORS = [
-    ROOT / "skills/factory/factory-product/SKILL.md",
-    ROOT / "skills/factory/factory-architect/SKILL.md",
+    ROOT / "skills/factory/factory-intent/SKILL.md",
 ]
 INTENT_HELPERS = ["run-branch.sh", "commit-step.sh", "open-mr.sh"]
 
@@ -194,6 +193,6 @@ def test_intent_orchestrators_reference_the_run_helpers():
 def test_deps_manifest_records_intent_orchestrators():
     import json
     manifest = json.loads((ROOT / ".skills-deps.json").read_text(encoding="utf-8"))
-    for skill in ("factory-product", "factory-architect"):
+    for skill in ("factory-intent",):
         assert "factory-mission" in manifest["requires"].get(skill, []), \
             f".skills-deps.json: {skill} must require factory-mission"

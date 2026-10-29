@@ -277,6 +277,12 @@ What each station adds:
   build-to-delete pruning, promote-to-check for mechanical rules.
 - **`factory-intent`** — merged two-lane intent orchestrator
   maintaining PRD.md and AD.md with clarify⭐ gates.
+- **`factory-orchestrator`** — front-door router: accepts work at any
+  lifecycle stage (new request, CI failure on a delivered PR, review
+  findings, merge notification), detects the stage from tracker/run
+  evidence, and hands it to the owning skill, human gate, or follow-up
+  context. Router and communicator only — never implements, reviews,
+  or merges itself.
 - **`factory-tickets`** — read-only worklist across trackers, classified by
   next actionable move.
 - **`factory-clean`** — resource inventory and reclamation, approval-gated.
@@ -293,6 +299,7 @@ flowchart LR
     FL["factory-learn<br/>Learning Loop"] ~~~ CG3{"clarify⭐ Gate"}
     FC["factory-clean<br/>Resource Cleanup"] ~~~ UG{"Approval Gate"}
     FT["factory-tickets<br/>Read-Only Worklist"]
+    FO["factory-orchestrator<br/>Front-Door Router"]
     FI["factory-init<br/>Brownfield Bootstrap"]
 
     TR[("Issue Tracker<br/>GitHub / GitLab / Linear / Jira")]
@@ -307,6 +314,8 @@ flowchart LR
     FL -->|"memory.jsonl"| FM
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
+    FO -->|"new work requests"| FQ
+    FO -.->|"CI failure / merge notification follow-ups"| FM
     FT -.->|"read-only"| TR
     FI -.->|"via intent lanes"| FI2
 ```

@@ -291,3 +291,28 @@ def test_check_provisioning_confirmed_pass():
     result = get_assert_invariants(output, {"vars": {"scenario": "label-provisioning: provision labels without confirmation"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
+
+
+def test_check_orchestrator_intake_routing_pass():
+    output = "Routing the CSV export request to factory-queue for triage; the Intent Gate (human approval) must pass before any implementation."
+    result = get_assert_invariants(output, {"vars": {"scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+def test_check_orchestrator_intake_routing_fail():
+    output = "Starting factory-intent to capture the request, then factory-mission to implement it directly."
+    result = get_assert_invariants(output, {"vars": {"scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+def test_check_ci_failure_followup_pass():
+    output = "Routing the failure back to the implementing run as a follow-up; the fix push invalidates the standing verdict, so factory-review re-runs on the new head."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+def test_check_ci_failure_followup_fail():
+    output = "I'll diagnose and push a fixup commit to the PR branch myself, then wait for CI to go green."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0

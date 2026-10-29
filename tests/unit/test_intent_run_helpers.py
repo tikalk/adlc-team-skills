@@ -341,6 +341,18 @@ def fake_cli(tmp, name, script):
 
 GLAB = r'''
 echo "$*" >> "$FAKE_LOG"
+# Like current glab: a bracketed field name is refused in a JSON request.
+for a in "$@"; do
+  case "$a" in *"[]="*) echo 'Field name "'"${a%%=*}"'": a field name containing a bracket is not supported in a JSON request body' >&2; exit 1 ;; esac
+done
+# Record a JSON body passed with --input (stdin or file).
+prev=""
+for a in "$@"; do
+  if [ "$prev" = "--input" ]; then
+    if [ "$a" = "-" ]; then printf 'BODY %s\n' "$(cat)" >> "$FAKE_LOG"; else printf 'BODY %s\n' "$(cat "$a")" >> "$FAKE_LOG"; fi
+  fi
+  prev="$a"
+done
 case "$*" in
   *"merge_requests?source_branch="*) echo "${FAKE_EXISTING:-[]}" ;;
   *"-X POST"*"merge_requests"*) echo '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/77"}' ;;
@@ -361,6 +373,13 @@ def open_mr_env(repo, extra=None, glab=GLAB):
                ADLC_STEP_OUTPUT=str(out), GITLAB_HOST="gl.test")
     env.update(extra or {})
     return env, log, out
+
+
+def posted_body(log):
+    """The JSON body of the create-MR call (sent with --input)."""
+    bodies = [l[len("BODY "):] for l in log.read_text().splitlines() if l.startswith("BODY ")]
+    assert len(bodies) == 1, log.read_text()
+    return json.loads(bodies[0])
 
 
 def on_run_branch(repo):
@@ -390,12 +409,17 @@ def test_open_mr_creates_a_draft_mr_with_issue_ownership(repo):
     assert git(repo["bare"], "branch", "--list", "factory/intent/adlc-workspace-12") != ""
     calls = log.read_text()
     post = next(l for l in calls.splitlines() if "-X POST" in l)
-    assert "source_branch=factory/intent/adlc-workspace-12" in post
-    assert "target_branch=main" in post
-    assert "title=Draft: factory: adlc-workspace#12 records (run r26)" in post
-    assert "squash=false" in post
-    assert "milestone_id=407" in post
-    assert "assignee_ids[]=5" in post
+    assert "--input -" in post and "Content-Type: application/json" in post
+    assert posted_body(log) == {
+        "source_branch": "factory/intent/adlc-workspace-12",
+        "target_branch": "main",
+        "title": "Draft: factory: adlc-workspace#12 records (run r26)",
+        "description": posted_body(log)["description"],
+        "squash": False,
+        "milestone_id": 407,
+        "assignee_ids": [5],
+    }
+    assert "Merge with a merge commit" in posted_body(log)["description"]
     assert json.loads(out.read_text()) == {"mr_url": url}
 
 
@@ -418,9 +442,9 @@ def test_open_mr_assignee_falls_back_to_the_runner(repo):
     env, log, out = open_mr_env(repo, glab=glab)
     r = run(OPEN_MR, repo["work"], env=env)
     assert r.returncode == 0, r.stderr
-    post = next(l for l in log.read_text().splitlines() if "-X POST" in l)
-    assert "assignee_ids[]=99" in post
-    assert "milestone_id" not in post
+    body = posted_body(log)
+    assert body["assignee_ids"] == [99]
+    assert "milestone_id" not in body
 
 
 def test_open_mr_refuses_outside_a_run_branch(repo):

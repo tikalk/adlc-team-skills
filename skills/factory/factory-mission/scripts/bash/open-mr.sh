@@ -101,19 +101,27 @@ if [ "$provider" = gitlab ]; then
   url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].web_url || "")' "$existing")"
   if [ -z "$url" ]; then
     target="$(api "projects/$p" | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).default_branch||"main"))')"
-    args=(-X POST "projects/$p/merge_requests" -f "source_branch=$branch" -f "target_branch=$target" -f "title=$title" -f "squash=false" -f "description=$description")
-    assignees=""
+    milestone="" assignees=""
     if [ -n "$iid" ]; then
       issue="$(api "projects/$(enc "$issue_project")/issues/$iid")" || die "cannot read issue $issue_project#$iid"
       milestone="$(json 'const i = JSON.parse(process.argv[1]); console.log(i.milestone && i.milestone.id || "")' "$issue")"
-      [ -z "$milestone" ] || args+=(-f "milestone_id=$milestone")
       assignees="$(json 'const i = JSON.parse(process.argv[1]); console.log((i.assignees || []).map(a => a.id).join(" "))' "$issue")"
     fi
     if [ -z "$assignees" ]; then
       assignees="$(api user | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).id||""))')"
     fi
-    for a in $assignees; do args+=(-f "assignee_ids[]=$a"); done
-    created="$(api "${args[@]}")" || die "the tracker refused to create the merge request (missing scope?)"
+    # One JSON body via --input: current glab refuses bracketed field names
+    # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and the
+    # milestone as strings.
+    body="$(json '
+      const [source_branch, target_branch, title, description, milestone, assignees] = process.argv.slice(1);
+      const b = { source_branch, target_branch, title, description, squash: false };
+      if (milestone) b.milestone_id = Number(milestone);
+      const ids = assignees.split(" ").filter(Boolean).map(Number);
+      if (ids.length) b.assignee_ids = ids;
+      console.log(JSON.stringify(b));
+    ' "$branch" "$target" "$title" "$description" "$milestone" "$assignees")"
+    created="$(printf '%s' "$body" | api -X POST "projects/$p/merge_requests" -H 'Content-Type: application/json' --input -)" || die "the tracker refused to create the merge request (missing scope?)"
     url="$(json 'console.log(JSON.parse(process.argv[1]).web_url || "")' "$created")"
   fi
 else

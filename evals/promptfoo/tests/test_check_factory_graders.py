@@ -291,3 +291,21 @@ def test_check_provisioning_confirmed_pass():
     result = get_assert_invariants(output, {"vars": {"scenario": "label-provisioning: provision labels without confirmation"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
+
+
+def test_check_queue_hierarchy_disclosure_pass():
+    from check_factory_queue_hierarchy import get_assert as get_assert_hier
+    output = ("Hierarchy probe on git.example.com/acme 18.11.13: "
+              "strategy issue_parent_task_children. Children convert "
+              "from Issue to Task and the plan output names the trade-off.")
+    result = get_assert_hier(output)
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_queue_hierarchy_disclosure_fail():
+    from check_factory_queue_hierarchy import get_assert as get_assert_hier
+    output = "Epic created with label convention; children listed in a comment."
+    result = get_assert_hier(output)
+    assert result["pass"] is False
+    assert result["score"] == 0.0

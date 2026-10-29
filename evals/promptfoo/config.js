@@ -358,6 +358,19 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "factory-queue plan output discloses the hierarchy probe and strategy",
+        "input_context": "Epic generation on a free-tier tracker: the probe ran on the target instance and version and selected the Issue-parent strategy with conversion.",
+        "instruction": "You are factory-queue in plan mode. Emit the plan-output disclosure line: name the probe instance and version, the chosen strategy, and the conversion trade-off."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_queue_hierarchy.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "Team context missing at session start in a configured project",
         "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
         "instruction": "You follow the team-diagnose skill. Emit your diagnostic response — what you do FIRST and what you conclude."

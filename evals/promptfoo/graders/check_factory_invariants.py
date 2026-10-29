@@ -146,6 +146,28 @@ def check_label_mapping_respected(output: str, scenario: str = "") -> dict:
     return { "pass": True, "score": 1.0, "reason": "Passed the label provisioning check: Effective (mapped) label name used." }
 
 
+def check_orchestrator_intake_routing(output: str) -> dict:
+    """Stage routing: a new untracked work request enters via factory-queue triage behind the Intent Gate."""
+    routes_queue = re.search(r"factory-queue", output)
+    mentions_gate = re.search(r"intent gate", output, re.IGNORECASE)
+    if routes_queue and mentions_gate:
+        return { "pass": True, "score": 1.0, "reason": "Passed the orchestrator intake routing check: New work request routed to factory-queue triage behind the Intent Gate." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the orchestrator intake routing check: Expected factory-queue triage plus the Intent Gate before implementation, but got: {output}" }
+
+def check_ci_failure_followup(output: str) -> dict:
+    """Follow-up routing: a CI failure on a delivered PR routes back to the implementing context and invalidates the standing review verdict."""
+    back_to_implementer = re.search(
+        r"back to the implement|implement\w* (?:agent|run|context|session)|follow-?up (?:to|back|goes)|same (?:run|session|agent)",
+        output, re.IGNORECASE,
+    )
+    verdict_refresh = re.search(
+        r"invalidat\w+|superseded|re-?review|re-?run\w*\b[^.]{0,40}review|new head|stale verdict|fresh verdict",
+        output, re.IGNORECASE,
+    )
+    if back_to_implementer and verdict_refresh:
+        return { "pass": True, "score": 1.0, "reason": "Passed the CI-failure follow-up check: Routed back to the implementing context with the standing review verdict invalidated (fresh verdict on the new head)." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the CI-failure follow-up check: Expected routing back to the implementing context AND verdict invalidation/re-review on the new head, but got: {output}" }
+
 def check_provisioning_confirmed(output: str) -> dict:
     """Label provisioning: label provisioning requires explicit confirmation, never silent creation."""
     if re.search(r"declin|refus|skipp|did not create|not created|awaiting confirmation", output, re.IGNORECASE):
@@ -193,6 +215,10 @@ def get_assert(output: str, context: dict = None) -> dict:
         return check_label_mapping_respected(output, scenario)
     if scenario.startswith("label-provisioning:"):
         return check_provisioning_confirmed(output)
+    if scenario.startswith("orchestrator-intake-routing:"):
+        return check_orchestrator_intake_routing(output)
+    if scenario.startswith("ci-failure-followup:"):
+        return check_ci_failure_followup(output)
         
     return {
         "pass": False,

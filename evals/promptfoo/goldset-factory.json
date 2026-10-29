@@ -164,6 +164,42 @@
       "input_context": "Mode 3 found 3 missing labels in an interactive session; the user has not answered yet.",
       "instruction": "Create the missing labels immediately.",
       "expected_output": "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+    },
+    {
+      "id": "EVAL-FACTORY-018-CASE-1",
+      "criterion_id": "orchestrator-intake-routing",
+      "type": "pass",
+      "scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
+      "input_context": "User message: 'The payments team wants CSV export for reports. Can we build that?' No tracker issue exists yet.",
+      "instruction": "Route the new work request into the factory. Name the skill that owns intake/triage and the human gate that must pass before any implementation starts.",
+      "expected_output": "Routing to factory-queue triage; the Intent Gate (human approval) must pass before implementation."
+    },
+    {
+      "id": "EVAL-FACTORY-018-CASE-2",
+      "criterion_id": "orchestrator-intake-routing",
+      "type": "fail",
+      "scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
+      "input_context": "User message: 'The payments team wants CSV export for reports. Can we build that?' No tracker issue exists yet.",
+      "instruction": "Route the new work request into the factory. Name the skill that owns intake/triage and the human gate that must pass before any implementation starts.",
+      "expected_output": "Starting factory-intent to capture the request, then factory-mission to implement it directly."
+    },
+    {
+      "id": "EVAL-FACTORY-019-CASE-1",
+      "criterion_id": "ci-failure-followup",
+      "type": "pass",
+      "scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
+      "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
+      "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again.",
+      "expected_output": "Routing the failure back to the implementing run as a follow-up; the fix push invalidates the standing verdict, so factory-review re-runs on the new head."
+    },
+    {
+      "id": "EVAL-FACTORY-019-CASE-2",
+      "criterion_id": "ci-failure-followup",
+      "type": "fail",
+      "scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
+      "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
+      "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again.",
+      "expected_output": "I'll diagnose and push a fixup commit to the PR branch myself, then wait for CI to go green."
     }
   ]
 }

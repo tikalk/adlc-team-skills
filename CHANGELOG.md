@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`factory-orchestrator`** (`skills/factory/factory-orchestrator/`) — the
+  factory's front-door router: accepts work entering at any lifecycle stage
+  (new request, informational question, CI failure on a delivered PR, review
+  findings, merge notification, reply to a factory question), detects the
+  stage from tracker labels / PR verdict markers / run state, and routes to
+  the owning skill (`factory-queue` intake, `factory-mission` execution,
+  `factory-review` findings, `factory-deploy` release hand-off,
+  `factory-learn` self-improvement), the human gate (Intent Gate, spec
+  approval, PR hand-off — never auto-merge), or the existing run/context as a
+  follow-up (never a fresh dispatch while a live run owns the item; every fix
+  push invalidates the standing review verdict). Router and single
+  communicator only — never implements, reviews, or merges itself. Ships with
+  grader criteria `orchestrator-intake-routing` and `ci-failure-followup`
+  (`evals/promptfoo/goldset-factory.json` EVAL-FACTORY-018/019, binary
+  graders in `check_factory_invariants.py`, unit-tested in
+  `test_check_factory_graders.py`).
+
 ### Removed
 
 - **`factory-product` and `factory-architect` skills** (`skills/factory/factory-product/`, `skills/factory/factory-architect/` — SKILL.md + workflow.yml each) with no aliases. Replacement: `skills/factory/factory-intent/` (merged two-lane DAG: one Mission Brief in, product + architecture lanes, two scope-pinned gates, joint build-and-verify; plus thin single-lane entries `workflow-product.yml` for `/factory-product` callers and `workflow-architecture.yml` for `/factory-architect` callers — product-only runs are **not verified end-to-end**). References in README, docs, executor/tracker prose, run-helper tests and the skills-deps closure map now name `factory-intent`; historical entries below are unchanged.

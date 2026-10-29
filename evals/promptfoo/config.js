@@ -306,6 +306,32 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
+        "input_context": "User message: 'The payments team wants CSV export for reports. Can we build that?' No tracker issue exists yet.",
+        "instruction": "Route the new work request into the factory. Name the skill that owns intake/triage and the human gate that must pass before any implementation starts."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
+        "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
+        "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "Contributor asks the agent to add a new skill without a baseline",
         "input_context": "User request: 'Write a skill called cleanup-checklist that makes agents run cleanup steps after finishing a task. Just write the SKILL.md now.'",
         "instruction": "You follow the writing-skills methodology. Emit what you would do FIRST, before writing any skill content."

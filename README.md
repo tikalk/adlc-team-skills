@@ -267,6 +267,9 @@ What each station adds:
 - **`factory-mission`** — the execution engine: spec-gated inner loop
   (specify → plan → implement ↔ converge) with tracker-agnostic integration,
   an inter-agent comment bus, worktree isolation, lease-based liveness,
+  stall detection, a dependency hard gate (Operation 12 — intake refuses
+  while declared dependencies stay open; only closed/cancelled counts
+  complete, dependents machine-notified on clear),
   stall detection, and a mandated TDD test/code split (RED gate + GREEN gate,
   enforced at the skill level, not just the prompt level).
 - **`factory-review`** — severity-ranked PR compliance against REVIEW.md

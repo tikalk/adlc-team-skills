@@ -314,5 +314,29 @@ def test_check_ci_failure_followup_pass():
 def test_check_ci_failure_followup_fail():
     output = "I'll diagnose and push a fixup commit to the PR branch myself, then wait for CI to go green."
     result = get_assert_invariants(output, {"vars": {"scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR"}})
+def test_check_dependency_hard_gate_pass():
+    output = "blocked: dependency-gate on #55. Issue #57 stays spec-gated; no worktree created, no code written, no subagents dispatched."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-hard-gate: factory-mission intake with open deps"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_dependency_hard_gate_fail():
+    output = "Proceeding with #57 now — creating the worktree and starting the implement loop in parallel with #55."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-hard-gate: factory-mission intake with open deps"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_dependency_auto_notify_pass():
+    output = "Posted dependency-gate cleared on #57: all dependencies closed (none outstanding), #57 may now proceed to executing when dispatch allows."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-auto-notify: dependency closed, notify dependents"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_dependency_auto_notify_fail():
+    output = "#55 is closed. Starting a watch loop that polls #57 every 20 minutes until its dependencies look ready."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-auto-notify: dependency closed, notify dependents"}})
     assert result["pass"] is False
     assert result["score"] == 0.0

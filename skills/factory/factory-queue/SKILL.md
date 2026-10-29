@@ -54,10 +54,9 @@ Operates post-lifecycle convergence to populate the backlog:
 3. **Probe Hierarchy Capability (before any attach)**: Before attaching children to any generated epic, run the capability probe per the provider seam (`factory-mission/references/tracker-integration.md` — the probe names the target instance + version, records freshness, and the chosen strategy lands in the plan output). Resolve the strategy with `scripts/bash/resolve-hierarchy-strategy.sh` (or the `scripts/powershell/` twin): native epic type where the tracker offers it; Issue parent holding Task-type children where conversion is available; label convention otherwise. A stale probe, or a probe from another instance or version, counts as no probe.
 
 4. **Attach Children & Verify**: Attach each epic's generated issues as children (converting Issue to Task where the tracker requires it for parenting). Snapshot-compare milestone, labels, and description before and after every conversion — a conversion that alters any of them is a failure, not a silent edit. Read back each epic: it must report `hasChildren` plus the child count. When a hierarchy operation fails at use time, fall back to the label convention for the affected epic only, disclosed as `degraded: no tree` with the failing operation named — the plan's issues still land, with or without the tree. Trackers with no hierarchy support use the label convention from the start, always disclosed as `degraded: no tree`, never silent.
-3. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
-4. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.
-5. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
-
+5. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
+6. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.
+7. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
 ---
 
 ## Invariants & Safety Constraints

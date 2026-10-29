@@ -59,7 +59,6 @@ Operates post-lifecycle convergence to populate the backlog:
 5. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
 6. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.
 7. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
-
 ---
 
 ## Invariants & Safety Constraints

@@ -66,6 +66,7 @@ It implements the following key factory platform capabilities:
    - Discover credentials and MCP/CLI tools (`references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
    - Read the labels. If dispatch is `interactive` or gating is `human-required` -> **HALT execution** (hand back to interactive session).
+   - **Dependency hard gate (Operation 12):** read the issue's `**Depends on**` line, resolve each dependency's state via the connector, and refuse when any dependency is still open (only `closed` / `cancelled` count complete — `spec-gated` does NOT satisfy the gate). On refusal: publish a `blocked: dependency-gate` comment naming the blocking issue(s), set the issue's lifecycle label back to `spec-gated`, release the lease (`ADLC_STEP_OUTPUT` conclusion `blocked: dependency-gate on <refs>`), and return without touching worktree, code, or executor. When the tracker exposes native `blocked_by`/`blocking` relations (GitLab issue links, Linear/Jira relations), use them in addition to the brief's Depends-on line — a `Blocked`/`blocked-by` signal from the tracker also triggers the gate.
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
 4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.

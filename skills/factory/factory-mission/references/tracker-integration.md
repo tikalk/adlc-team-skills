@@ -204,10 +204,23 @@ Publish an autonomous-mode decision as a structured comment on the
 PR/MR/issue. Used when supervision is `autonomous` and the orchestrator
 answers a question a human would otherwise have been asked.
 
-**Marker format**:
+**Marker format** (dependency-gate refusal — Operation 12 output):
 ```
-<!-- factory-<orchestrator>:decision n=<k> run=<run_id> -->
+<!-- factory-<orchestrator>:dependency-gate status=<blocked|cleared> run=<run_id> deps=<ref-list> blocking=<open-ref-list|none> -->
 ```
+
+**Comment body** (posted when the gate fires, or when it clears):
+```
+<marker>
+
+### Dependency gate <blocked|cleared> for <issue-ref>
+
+Blocked by: <open dependency refs with titles>
+Unblocked when: every declared dependency is closed or cancelled
+**Run:** <run_id>
+```
+
+Auto-notify: when a dependency closes or is cancelled, the closer path re-reads the Depends-on line of issues that named it and posts the `cleared` variant on each still-open dependent — no polling loops; the tracker's close/merge event is the only trigger.
 
 **Comment body**:
 ```

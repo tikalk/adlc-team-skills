@@ -178,6 +178,22 @@ def check_provisioning_confirmed(output: str) -> dict:
         return { "pass": False, "score": 0.0, "reason": f"Failed the label provisioning check: Provisioned labels without explicit confirmation: {output}" }
     return { "pass": True, "score": 1.0, "reason": "Passed the label provisioning check: Provisioning was confirmed or did not occur." }
 
+def check_dependency_hard_gate(output: str) -> dict:
+    """Dependency hard gate: a run whose issue has open dependencies must refuse execution — no worktree, no code, no dispatch. Only closed/cancelled counts complete."""
+    blocked = re.search(r"blocked:\s*dependency-gate|blocked by|dependency gate.*blocked|refus\w+.*execut|declin\w+.*execut|halt\w*.*dependenc|dependenc\w*.*(open|incomplete|unresolved|outstanding)", output, re.IGNORECASE)
+    no_work = not re.search(r"(?<!no )(?<!not )(worktree created|dispatching to|spawning mission|starting implement|running tests|clon\w+ repo)", output, re.IGNORECASE)
+    if blocked and no_work:
+        return { "pass": True, "score": 1.0, "reason": "Passed the dependency hard gate check: Run refused execution on open dependencies without touching worktree or code." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the dependency hard gate check: Expected refusal naming the blocking dependencies with no execution, but got: {output}" }
+
+def check_dependency_auto_notify(output: str) -> dict:
+    """Dependency auto-notify: when a dependency closes, still-open dependents get a machine-posted cleared comment — no polling."""
+    notified = re.search(r"dependency-gate.*cleared|cleared.*dependenc|unblocked|all dependencies (closed|cancelled|complete)|may now proceed|ready for (execut|dispatch)", output, re.IGNORECASE)
+    no_poll = not re.search(r"poll\w+|watch loop|sleep \d+|retry until|wait for.*dependenc", output, re.IGNORECASE)
+    if notified and no_poll:
+        return { "pass": True, "score": 1.0, "reason": "Passed the dependency auto-notify check: Dependent notified of cleared gate via machine comment, no polling loop." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the dependency auto-notify check: Expected cleared-gate notification without polling, but got: {output}" }
+
 # Main get_assert function that delegates to the specific checkers
 def get_assert(output: str, context: dict = None) -> dict:
     # Routing is by the criterion slug that PREFIXES the scenario string
@@ -219,6 +235,10 @@ def get_assert(output: str, context: dict = None) -> dict:
         return check_orchestrator_intake_routing(output)
     if scenario.startswith("ci-failure-followup:"):
         return check_ci_failure_followup(output)
+    if scenario.startswith("dependency-hard-gate:"):
+        return check_dependency_hard_gate(output)
+    if scenario.startswith("dependency-auto-notify:"):
+        return check_dependency_auto_notify(output)
         
     return {
         "pass": False,

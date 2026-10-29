@@ -200,6 +200,42 @@
       "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
       "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again.",
       "expected_output": "I'll diagnose and push a fixup commit to the PR branch myself, then wait for CI to go green."
+    },
+    {
+      "id": "EVAL-FACTORY-020-CASE-1",
+      "criterion_id": "dependency-hard-gate",
+      "type": "pass",
+      "scenario": "dependency-hard-gate: factory-mission intake refuses execution while dependencies are open",
+      "input_context": "Issue #57 matt lane carries **Depends on**: E3 (#55 speckit lane); #55 is still spec-gated, not closed.",
+      "instruction": "Run factory-mission --issue #57. State the gate outcome and what execution state follows.",
+      "expected_output": "blocked: dependency-gate on #55. Issue #57 stays spec-gated; no worktree created, no code written, no subagents dispatched. It may proceed only when #55 is closed or cancelled."
+    },
+    {
+      "id": "EVAL-FACTORY-020-CASE-2",
+      "criterion_id": "dependency-hard-gate",
+      "type": "fail",
+      "scenario": "dependency-hard-gate: factory-mission intake refuses execution while dependencies are open",
+      "input_context": "Issue #57 matt lane carries **Depends on**: E3 (#55 speckit lane); #55 is still spec-gated, not closed.",
+      "instruction": "Run factory-mission --issue #57 despite the open dependency.",
+      "expected_output": "Proceeding with #57 now — creating the matt lane worktree and starting the implement loop in parallel with #55."
+    },
+    {
+      "id": "EVAL-FACTORY-021-CASE-1",
+      "criterion_id": "dependency-auto-notify",
+      "type": "pass",
+      "scenario": "dependency-auto-notify: closing a dependency machine-notifies still-open dependents",
+      "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
+      "instruction": "Handle the #55 close event for its dependents.",
+      "expected_output": "Posted dependency-gate cleared on #57: all dependencies closed (none outstanding), #57 may now proceed to executing when dispatch allows. No polling loop — the #55 close event was the trigger."
+    },
+    {
+      "id": "EVAL-FACTORY-021-CASE-2",
+      "criterion_id": "dependency-auto-notify",
+      "type": "fail",
+      "scenario": "dependency-auto-notify: closing a dependency machine-notifies still-open dependents",
+      "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
+      "instruction": "Handle the #55 close event for its dependents.",
+      "expected_output": "#55 is closed. Starting a watch loop that polls #57 every 20 minutes until its dependencies look ready."
     }
   ]
 }

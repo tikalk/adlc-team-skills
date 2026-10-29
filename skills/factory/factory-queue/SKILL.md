@@ -10,7 +10,7 @@ description: Use when managing mission brief intake — triage, AI-assisted advi
 `factory-queue` manages the ingestion, triage, and planning boundaries of the software factory. It operates directly against the external issue tracker (the Queue) as the single source of truth using the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
 
 It performs two primary control-plane operations:
-1. **Advisory Triage & Ingestion** (default `triage` mode): Pulls un-triaged candidate briefs, runs stateless AI triage scoring, presents the Intent Gate to the human, and stamps gating/dispatch labels.
+1. **Advisory Triage & Ingestion** (default `triage` mode): Pulls un-triaged candidate briefs, runs stateless AI triage scoring, presents the Intent Gate to the human, and stamps gating/dispatch labels. Before stamping `executing` on any issue, applies the dependency hard gate (Operation 12): an issue whose `**Depends on**` line names still-open dependencies is parked at `spec-gated` (never stamped `executing`) with a `blocked: dependency-gate` note naming the blockers.
 2. **Product Planning** (`plan` mode): Reads accepted product/architecture decisions and the PRD/AD, generates milestones (done-means) and epics, and pushes them as structured, labeled issues to the Q.
 
 ---

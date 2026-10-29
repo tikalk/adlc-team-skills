@@ -306,7 +306,7 @@ module.exports = {
     },
     {
       "vars": {
-        "scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
+"scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
         "input_context": "User message: 'The payments team wants CSV export for reports. Can we build that?' No tracker issue exists yet.",
         "instruction": "Route the new work request into the factory. Name the skill that owns intake/triage and the human gate that must pass before any implementation starts."
       },
@@ -319,9 +319,35 @@ module.exports = {
     },
     {
       "vars": {
-        "scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
+        "scenario": "dependency-hard-gate: factory-mission intake refuses execution while dependencies are open",
+        "input_context": "Issue #57 matt lane carries **Depends on**: E3 (#55 speckit lane); #55 is still spec-gated, not closed.",
+        "instruction": "Run factory-mission --issue #57. State the gate outcome and what execution state follows."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+"scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
         "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
         "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "dependency-auto-notify: closing a dependency machine-notifies still-open dependents",
+        "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
+        "instruction": "Handle the #55 close event for its dependents."
       },
       "assert": [
         {

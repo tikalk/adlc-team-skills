@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`evals/promptfoo/goldset-factory.json` EVAL-FACTORY-018/019, binary
   graders in `check_factory_invariants.py`, unit-tested in
   `test_check_factory_graders.py`).
+- **Dependency hard gate (Operation 12)**: `factory-mission` intake and `factory-queue` triage refuse execution while declared `**Depends on**` dependencies stay open (only closed/cancelled counts complete — `spec-gated` does not satisfy the gate). Refusal publishes a `blocked: dependency-gate` comment, parks the issue at `spec-gated`, and releases the lease without touching worktree or code; dependents are machine-notified when the last dependency closes (close event is the trigger — no polling). Eval criteria `dependency-hard-gate` (EVAL-FACTORY-020) and `dependency-auto-notify` (EVAL-FACTORY-021) with binary graders.
 
 ### Removed
 

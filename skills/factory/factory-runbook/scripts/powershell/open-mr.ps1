@@ -162,27 +162,37 @@ if ($provider -eq 'gitlab') {
     if (-not $url) {
         $projJson = (Api @("projects/$p")) -join "`n"
         $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
-        $apiArgs = [System.Collections.Generic.List[string]]::new()
-        $apiArgs.AddRange([string[]]@('-X', 'POST', "projects/$p/merge_requests",
-            "-f", "source_branch=$branch", "-f", "target_branch=$target",
-            "-f", "title=$title", '-f', 'squash=false', "-f", "description=$description"))
+        $milestone = ''
         $assignees = ''
         if ($iid) {
             $issue = Api @("projects/$(Enc $issueProject)/issues/$iid")
             if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
             $milestone = json 'const i = JSON.parse(process.argv[1]); console.log(i.milestone && i.milestone.id || "")' @($issue)
-            if ($milestone) { $apiArgs.AddRange([string[]]@('-f', "milestone_id=$milestone")) }
             $assignees = json 'const i = JSON.parse(process.argv[1]); console.log((i.assignees || []).map(a => a.id).join(" "))' @($issue)
         }
         if (-not $assignees) {
             $userJson = (Api @('user')) -join "`n"
             $assignees = json 'console.log(JSON.parse(process.argv[1]).id||"")' @($userJson)
         }
-        foreach ($a in ($assignees -split ' ')) {
-            if ($a) { $apiArgs.AddRange([string[]]@('-f', "assignee_ids[]=$a")) }
+        # One JSON body via --input: current glab refuses bracketed field names
+        # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and
+        # the milestone as strings.
+        $body = [ordered]@{
+            source_branch = $branch; target_branch = $target; title = $title
+            description = $description; squash = $false
         }
-        $created = Api @($apiArgs.ToArray())
-        if ($LASTEXITCODE -ne 0) { Die 'the tracker refused to create the merge request (missing scope?)' }
+        if ($milestone) { $body.milestone_id = [int64]$milestone }
+        $ids = @(($assignees -split ' ') | Where-Object { $_ } | ForEach-Object { [int64]$_ })
+        if ($ids.Count -gt 0) { $body.assignee_ids = $ids }
+        $bodyFile = [System.IO.Path]::GetTempFileName()
+        try {
+            [System.IO.File]::WriteAllText($bodyFile, ($body | ConvertTo-Json -Compress -Depth 3))
+            $created = Api @('-X', 'POST', "projects/$p/merge_requests", '-H', 'Content-Type: application/json', '--input', $bodyFile)
+            $createExit = $LASTEXITCODE
+        } finally {
+            Remove-Item -Force $bodyFile -ErrorAction SilentlyContinue
+        }
+        if ($createExit -ne 0) { Die 'the tracker refused to create the merge request (missing scope?)' }
         $url = json 'console.log(JSON.parse(process.argv[1]).web_url || "")' @($created)
     }
 } else {

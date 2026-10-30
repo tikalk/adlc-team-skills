@@ -28,6 +28,15 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 5. Resolve each surfaced item at the clarify phase — ask the person in a gated run, or in autonomous mode record the decision with its basis. The resulting decision is the `clarify` output.
 6. Never select technologies and never plan files; those are later phases.
 
+## Speckit lane
+
+This section is a reference translation only; the framework keeps its own loop internals and the step contract below stays authoritative.
+- The `specify` step maps to the spec creation preset at `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.specify.md`, run through the `specify` CLI (`specify bundle install adlc-spec-kit` installs the pack).
+  It reads the feature description and writes the `specs/` grammar intake via `.specify/` scaffolding.
+  Its shared contract markers are `output_type` `draft` with `reads_from` `brief.md`.
+- The `clarify` step maps to `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.clarify.md` via the `specify` CLI, which encodes answers back into the spec.
+  Its shared contract markers are `output_type` `decision` with `reads_from` `spec.md`.
+
 ## Step contract
 
 | Step | phase_type | output_type | reads_from | artifact |

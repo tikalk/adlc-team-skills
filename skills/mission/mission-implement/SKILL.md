@@ -27,6 +27,15 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 4. Run the suite — the **GREEN gate** requires the **full suite passes** before converge. A failure loops back to the code step with the failure list attached; the loop is bounded by the mission's code-step retry cap and does not consume the converge circuit breaker.
 5. Skip the split only when the run declares no test surface: `tdd: false`, docs/config-only work, or interactive mode. A code-bearing step in autonomous or supervised mode never skips it.
 
+## Speckit lane
+
+This section is a reference translation only; the framework keeps its own loop internals and the step contract below stays authoritative.
+- The `test` step maps to the TDD tasks command at `github.com/tikalk/adlc-spec-kit-bundle/extensions/adlc-tdd/commands/tasks.md`, which detects the language and generates hybrid risk-plus-increment tests.
+  It reads the `specs/` grammar intake to stage the failing suite; RED discipline is owned here.
+  Its shared contract markers are `output_type` `artifact-ref` with `reads_from` `spec.md`.
+- The `code` step maps to the spec implementation preset at `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.implement.md`, executed through the RED-GREEN-REFACTOR cycle of `github.com/tikalk/adlc-spec-kit-bundle/extensions/adlc-tdd/commands/implement.md`.
+  Its shared contract markers are `output_type` `artifact-ref` with `reads_from` `test` and `spec.md` and `plan.md`.
+
 ## Step contract
 
 | Step | phase_type | output_type | reads_from | artifact |

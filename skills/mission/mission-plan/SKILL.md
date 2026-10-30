@@ -28,6 +28,13 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 5. Write `plan.md`: the files table, the test-first order, and the risk notes for anything that could invalidate that order.
 6. On `SPEC_CORRECTION_NEEDED`, the verdict routes to the owning clarify gate — the spec's clarify phase — never straight to code; once the spec is corrected, the plan is revised. The plan absorbs the revision; it never owns the route.
 
+## Speckit lane
+
+This section is a reference translation only; the framework keeps its own loop internals and the step contract below stays authoritative.
+- The `plan` step maps to the plan preset at `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.plan.md`, run through the `specify` CLI, plus the task breakdown at `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.tasks.md`.
+  It reads the `specs/` grammar and `.specify/` constitution to emit design artifacts and a dependency-ordered task list.
+  Its shared contract markers are `output_type` `draft` with `reads_from` `spec.md` and `clarify`.
+
 ## Step contract
 
 | Step | phase_type | output_type | reads_from | artifact |

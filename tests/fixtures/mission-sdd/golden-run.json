@@ -1,0 +1,51 @@
+{
+  "captured_from": "factory-mission SKILL.md + references/executor.md @ 953c333 (re-derived from source during verify; corrected in iteration 2)",
+  "steps": [
+    {
+      "id": "specify",
+      "phase_type": "generate",
+      "output_type": "draft",
+      "reads_from": ["brief.md"]
+    },
+    {
+      "id": "clarify",
+      "phase_type": "clarify",
+      "output_type": "decision",
+      "reads_from": ["spec.md"]
+    },
+    {
+      "id": "plan",
+      "phase_type": "generate",
+      "output_type": "draft",
+      "reads_from": ["spec.md", "clarify"]
+    },
+    {
+      "id": "test",
+      "phase_type": "build",
+      "output_type": "artifact-ref",
+      "reads_from": ["spec.md"]
+    },
+    {
+      "id": "code",
+      "phase_type": "build",
+      "output_type": "artifact-ref",
+      "reads_from": ["test", "spec.md", "plan.md"]
+    },
+    {
+      "id": "verify",
+      "phase_type": "verify",
+      "output_type": "findings",
+      "reads_from": ["test", "code"]
+    },
+    {
+      "id": "converge",
+      "phase_type": "verify",
+      "output_type": "decision",
+      "reads_from": ["brief.md"]
+    }
+  ],
+  "gates": [
+    {"after": "test", "kind": "RED"},
+    {"after": "code", "kind": "GREEN"}
+  ]
+}

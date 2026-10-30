@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`mission-*` SDD family** (`skills/factory/mission-specify/`,
+  `mission-plan/`, `mission-implement/`, `mission-verify/`) — `factory-mission`'s
+  lifecycle extracted into four discipline skills with one framework-free
+  default lane: specify turns `brief.md` into a measurable `spec.md`, plan
+  turns `spec.md` into `plan.md`, implement owns the mechanical test → code
+  build with its RED/GREEN gates, and verify owns severity-ranked findings and
+  the converge verdict. Each carries the local-session gate section verbatim
+  and its phase's step contract; orchestration (worktree, lease, tracker
+  integration, gate relay) stays with `factory-mission`. Framework-specific
+  lanes and the `factory-mission` rewrite are out of scope for this change.
 - **`factory-orchestrator`** (`skills/factory/factory-orchestrator/`) — the
   factory's front-door router: accepts work entering at any lifecycle stage
   (new request, informational question, CI failure on a delivered PR, review

@@ -5,7 +5,7 @@ description: Use when a measurable spec must become an ordered implementation pl
 
 # mission-plan
 
-**Requires:** the `factory-mission` skill's shared executor contract at `.agents/skills/factory-mission/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-mission`.
+**Requires:** the `factory-runbook` skill's shared executor contract at `.agents/skills/factory-runbook/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
 
 ## In a local session — you answer the gates
 
@@ -17,7 +17,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`mission-plan` owns the plan phase of the mission SDD family: it turns the settled `spec.md` into a `plan.md` that names every file the change touches and orders the work so each step stands on a valid tree. It works under the shared executor contract (`.agents/skills/factory-mission/references/executor.md`): the `plan` step emits a draft, read from `spec.md` and the clarify decision that closed the spec. It stops at the plan — building belongs to `mission-implement`, verification and convergence to `mission-verify`, and REVIEW and SHIP belong to `factory-review` and `factory-deploy`.
+`mission-plan` owns the plan phase of the mission SDD family: it turns the settled `spec.md` into a `plan.md` that names every file the change touches and orders the work so each step stands on a valid tree. It works under the shared executor contract (`.agents/skills/factory-runbook/references/executor.md`): the `plan` step emits a draft, read from `spec.md` and the clarify decision that closed the spec. It stops at the plan — building belongs to `mission-implement`, verification and convergence to `mission-verify`, and REVIEW and SHIP belong to `factory-review` and `factory-deploy`.
 
 ## Default lane
 

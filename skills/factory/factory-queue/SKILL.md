@@ -7,7 +7,9 @@ description: Use when managing mission brief intake — triage, AI-assisted advi
 
 ## What this skill does
 
-`factory-queue` manages the ingestion, triage, and planning boundaries of the software factory. It operates directly against the external issue tracker (the Queue) as the single source of truth using the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
+`factory-queue` manages the ingestion, triage, and planning boundaries of the software factory. It operates directly against the external issue tracker (the Queue) as the single source of truth using the tracker-agnostic integration layer (`factory-runbook/references/tracker-integration.md`).
+
+**Requires:** the `factory-runbook` skill (provides the tracker-agnostic integration layer): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 It performs two primary control-plane operations:
 1. **Advisory Triage & Ingestion** (default `triage` mode): Pulls un-triaged candidate briefs, runs stateless AI triage scoring, presents the Intent Gate to the human, and stamps gating/dispatch labels. Before stamping `executing` on any issue, applies the dependency hard gate (Operation 12): an issue whose `**Depends on**` line names still-open dependencies is parked at `spec-gated` (never stamped `executing`) with a `blocked: dependency-gate` note naming the blockers.
@@ -33,7 +35,7 @@ It performs two primary control-plane operations:
 
 Operates on candidate issues (labeled `intent`) or local draft briefs:
 
-1. **Pull Candidate Briefs**: Discover the active tracker provider and fetch issues with status `intent` (`factory-mission/references/tracker-integration.md`).
+1. **Pull Candidate Briefs**: Discover the active tracker provider and fetch issues with status `intent` (`factory-runbook/references/tracker-integration.md`).
 2. **AI Triage Scoring**: Compute stateless advisory scores on three dimensions:
    - **Risk**: Blast radius, data sensitivity, and architectural impact (Low / Medium / High).
    - **Complexity**: Scope and cross-service dependencies (Low / Medium / High).

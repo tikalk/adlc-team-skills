@@ -1,7 +1,7 @@
 """Intent run branch, step commits and draft MR helpers (ADR-431-amendment,
 ADR-444; adlc-workspace#26).
 
-Contract pinned here (bash helpers in skills/factory/factory-mission/scripts/bash/):
+Contract pinned here (bash helpers in skills/factory/factory-runbook/scripts/bash/):
 
   run-branch.sh   With ADLC_RUN_ID: check out factory/intent/<repo>-<iid> (from
                   ADLC_ISSUE_REF) or factory/intent/run-<run_id> in the project root;
@@ -28,7 +28,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parent.parent.parent
-SCRIPTS = ROOT / "skills/factory/factory-mission/scripts/bash"
+SCRIPTS = ROOT / "skills/factory/factory-runbook/scripts/bash"
 RUN_BRANCH = SCRIPTS / "run-branch.sh"
 COMMIT_STEP = SCRIPTS / "commit-step.sh"
 OPEN_MR = SCRIPTS / "open-mr.sh"
@@ -95,6 +95,13 @@ def test_run_branch_without_issue_uses_run_id(repo):
     r = run(RUN_BRANCH, repo["work"], env={"ADLC_RUN_ID": "r26"})
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip() == "factory/intent/run-r26"
+
+
+def test_run_branch_with_kind_code(repo):
+    r = run(RUN_BRANCH, repo["work"], "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "factory/mission/adlc-workspace-12"
+    assert git(repo["work"], "branch", "--show-current") == "factory/mission/adlc-workspace-12"
 
 
 def test_run_branch_reuses_local_branch(repo):
@@ -341,6 +348,18 @@ def fake_cli(tmp, name, script):
 
 GLAB = r'''
 echo "$*" >> "$FAKE_LOG"
+# Like current glab: a bracketed field name is refused in a JSON request.
+for a in "$@"; do
+  case "$a" in *"[]="*) echo 'Field name "'"${a%%=*}"'": a field name containing a bracket is not supported in a JSON request body' >&2; exit 1 ;; esac
+done
+# Record a JSON body passed with --input (stdin or file).
+prev=""
+for a in "$@"; do
+  if [ "$prev" = "--input" ]; then
+    if [ "$a" = "-" ]; then printf 'BODY %s\n' "$(cat)" >> "$FAKE_LOG"; else printf 'BODY %s\n' "$(cat "$a")" >> "$FAKE_LOG"; fi
+  fi
+  prev="$a"
+done
 case "$*" in
   *"merge_requests?source_branch="*) echo "${FAKE_EXISTING:-[]}" ;;
   *"-X POST"*"merge_requests"*) echo '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/77"}' ;;
@@ -361,6 +380,13 @@ def open_mr_env(repo, extra=None, glab=GLAB):
                ADLC_STEP_OUTPUT=str(out), GITLAB_HOST="gl.test")
     env.update(extra or {})
     return env, log, out
+
+
+def posted_body(log):
+    """The JSON body of the create-MR call (sent with --input)."""
+    bodies = [l[len("BODY "):] for l in log.read_text().splitlines() if l.startswith("BODY ")]
+    assert len(bodies) == 1, log.read_text()
+    return json.loads(bodies[0])
 
 
 def on_run_branch(repo):
@@ -390,12 +416,17 @@ def test_open_mr_creates_a_draft_mr_with_issue_ownership(repo):
     assert git(repo["bare"], "branch", "--list", "factory/intent/adlc-workspace-12") != ""
     calls = log.read_text()
     post = next(l for l in calls.splitlines() if "-X POST" in l)
-    assert "source_branch=factory/intent/adlc-workspace-12" in post
-    assert "target_branch=main" in post
-    assert "title=Draft: factory: adlc-workspace#12 records (run r26)" in post
-    assert "squash=false" in post
-    assert "milestone_id=407" in post
-    assert "assignee_ids[]=5" in post
+    assert "--input -" in post and "Content-Type: application/json" in post
+    assert posted_body(log) == {
+        "source_branch": "factory/intent/adlc-workspace-12",
+        "target_branch": "main",
+        "title": "Draft: factory: adlc-workspace#12 records (run r26)",
+        "description": posted_body(log)["description"],
+        "squash": False,
+        "milestone_id": 407,
+        "assignee_ids": [5],
+    }
+    assert "Merge with a merge commit" in posted_body(log)["description"]
     assert json.loads(out.read_text()) == {"mr_url": url}
 
 
@@ -418,9 +449,9 @@ def test_open_mr_assignee_falls_back_to_the_runner(repo):
     env, log, out = open_mr_env(repo, glab=glab)
     r = run(OPEN_MR, repo["work"], env=env)
     assert r.returncode == 0, r.stderr
-    post = next(l for l in log.read_text().splitlines() if "-X POST" in l)
-    assert "assignee_ids[]=99" in post
-    assert "milestone_id" not in post
+    body = posted_body(log)
+    assert body["assignee_ids"] == [99]
+    assert "milestone_id" not in body
 
 
 def test_open_mr_refuses_outside_a_run_branch(repo):
@@ -451,6 +482,41 @@ def test_open_mr_refuses_a_non_intent_factory_branch(repo):
     assert r.returncode != 0
     assert "factory/intent/" in r.stderr
     assert git(repo["bare"], "branch", "--list", "factory/mission/adlc-workspace-12") == ""
+
+
+def test_open_mr_with_kind_code_creates_code_mr_for_mission_branch(repo):
+    git(repo["work"], "switch", "-q", "-c", "factory/mission/adlc-workspace-12")
+    (repo["work"] / "code.txt").write_text("code\n")
+    git(repo["work"], "add", "-A")
+    git(repo["work"], "commit", "-q", "-m", "code")
+    env, log, out = open_mr_env(repo)
+    r = run(OPEN_MR, repo["work"], "--kind", "code", env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"
+    assert git(repo["bare"], "branch", "--list", "factory/mission/adlc-workspace-12") != ""
+    post = next(l for l in log.read_text().splitlines() if "-X POST" in l)
+    assert "--input -" in post and "Content-Type: application/json" in post
+    body = posted_body(log)
+    assert body["source_branch"] == "factory/mission/adlc-workspace-12"
+    assert body["title"] == "Draft: factory: adlc-workspace#12 (run r26)"
+    assert "Factory mission run" in body["description"]
+    assert body["squash"] is False
+
+
+def test_open_mr_with_kind_code_refuses_intent_branch(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(OPEN_MR, repo["work"], "--kind", "code", env=env)
+    assert r.returncode != 0
+    assert "factory/mission/" in r.stderr or "code run branch" in r.stderr
+
+
+def test_open_mr_refuses_unknown_kind(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(OPEN_MR, repo["work"], "--kind", "bogus", env=env)
+    assert r.returncode != 0
+    assert "--kind" in r.stderr
 
 
 @pytest.mark.parametrize("scopes", ['{"scopes":["read_api","write_repository"]}', '{"message":"404 Not Found"}'])
@@ -607,9 +673,9 @@ def test_factory_mission_local_session_answers_its_gates_and_publishes():
     assert text.index(head) < text.index("## What this skill does")
     block = text[text.index(head):text.index("## What this skill does")]
     for needle in ("run_paused", "workflow resume <run_id> --input", "Never end your turn on a paused run",
-                   "publish", "open-mr.sh", "mr_url", "plan defect"):
+                   "publish", "factory-runbook", "mr_url", "plan defect"):
         assert needle in block, needle
-    executor = (ROOT / "skills/factory/factory-mission/references/executor.md").read_text()
+    executor = (ROOT / "skills/factory/factory-runbook/references/executor.md").read_text()
     assert "The session is then the one that answers" in executor
 
 
@@ -622,5 +688,5 @@ def test_factory_run_checklist_comes_first(skill):
     assert head in text
     assert text.index(head) < text.index("## What this skill does")
     block = text[text.index(head):text.index("## What this skill does")]
-    for needle in ("run-branch.sh", "commit-step.sh", "open-mr.sh", "Never ask for approval", "conclusion"):
+    for needle in ("Invoke the `factory-runbook` skill", "Never ask for approval", "conclusion", "ADLC_STEP_OUTPUT"):
         assert needle in block, needle

@@ -27,9 +27,9 @@ CANONICAL = {
     "pdr-lib.sh": ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh",
     "pdr-lib.ps1": ROOT / "skills/product/product-clarify/scripts/powershell/pdr-lib.ps1",
     # Intent run helpers (ADR-431-amendment C1, adlc-workspace#26).
-    "run-branch.sh": ROOT / "skills/factory/factory-mission/scripts/bash/run-branch.sh",
-    "commit-step.sh": ROOT / "skills/factory/factory-mission/scripts/bash/commit-step.sh",
-    "open-mr.sh": ROOT / "skills/factory/factory-mission/scripts/bash/open-mr.sh",
+    "run-branch.sh": ROOT / "skills/factory/factory-runbook/scripts/bash/run-branch.sh",
+    "commit-step.sh": ROOT / "skills/factory/factory-runbook/scripts/bash/commit-step.sh",
+    "open-mr.sh": ROOT / "skills/factory/factory-runbook/scripts/bash/open-mr.sh",
 }
 
 # (borrower script, expected canonical-relative snippet in its source line)
@@ -171,28 +171,36 @@ def test_skills_deps_manifest_valid():
             assert home in skill_dirs, f"unknown canonical home: {home} (required by {borrower})"
 
 
-# Intent orchestrators borrow the run helpers from factory-mission
-# (ADR-431-amendment C1): every SKILL.md names all three by mirror path, states
-# the Requires line, and the deps manifest records the dependency.
+# The publish procedure lives in factory-runbook: its SKILL.md names every
+# helper by mirror path; orchestrators invoke the runbook instead of the raw
+# paths (ADR-431-amendment §4, as amended). Every SKILL.md states the Requires
+# line, and the deps manifest records the dependency.
 INTENT_ORCHESTRATORS = [
     ROOT / "skills/factory/factory-intent/SKILL.md",
+    ROOT / "skills/factory/factory-mission/SKILL.md",
 ]
 INTENT_HELPERS = ["run-branch.sh", "commit-step.sh", "open-mr.sh"]
 
 
-def test_intent_orchestrators_reference_the_run_helpers():
+def test_runbook_names_the_helpers_by_mirror_path():
+    content = (ROOT / "skills/factory/factory-runbook/SKILL.md").read_text(encoding="utf-8")
+    for helper in INTENT_HELPERS + ["resolve-mr-ownership.sh"]:
+        path = f"{{REPO_ROOT}}/.agents/skills/factory-runbook/scripts/bash/{helper}"
+        assert path in content, f"factory-runbook/SKILL.md: missing {path}"
+
+
+def test_intent_orchestrators_invoke_the_runbook():
     for doc in INTENT_ORCHESTRATORS:
         content = doc.read_text(encoding="utf-8")
-        for helper in INTENT_HELPERS:
-            path = f"{{REPO_ROOT}}/.agents/skills/factory-mission/scripts/bash/{helper}"
-            assert path in content, f"{doc.parent.name}/SKILL.md: missing {path}"
-        assert "Requires" in content and "--skill factory-mission" in content, \
-            f"{doc.parent.name}/SKILL.md: no Requires line for factory-mission"
+        assert "Invoke the `factory-runbook` skill" in content, \
+            f"{doc.parent.name}/SKILL.md: must delegate publish to the runbook"
+        assert "Requires" in content and "--skill factory-runbook" in content, \
+            f"{doc.parent.name}/SKILL.md: no Requires line for factory-runbook"
 
 
 def test_deps_manifest_records_intent_orchestrators():
     import json
     manifest = json.loads((ROOT / ".skills-deps.json").read_text(encoding="utf-8"))
-    for skill in ("factory-intent",):
-        assert "factory-mission" in manifest["requires"].get(skill, []), \
-            f".skills-deps.json: {skill} must require factory-mission"
+    for skill in ("factory-intent", "factory-mission"):
+        assert "factory-runbook" in manifest["requires"].get(skill, []), \
+            f".skills-deps.json: {skill} must require factory-runbook"

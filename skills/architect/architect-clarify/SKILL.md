@@ -242,6 +242,10 @@ Generate a gap report:
 
 **Objective**: Fill gaps through targeted questions
 
+Write every clarification in Simplified Technical English (short sentences, one idea each, active voice, imperative asks, named referents, plain words). Read the contract at `skills/authoring/references/ste-rules.md` before drafting questions.
+
+Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap. See the tier rule in the shared reference: **0–1 boundaries** use the plain STE prose format below, however severe the gap; **2 or more boundaries** draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints.
+
 ##### Question Format
 
 For each gap requiring clarification:

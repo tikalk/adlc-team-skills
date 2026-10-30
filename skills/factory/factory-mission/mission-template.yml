@@ -34,7 +34,7 @@ workflow:
   # Which mission-* SDD lane the run dispatches through. Resolved by
   # skills/factory/factory-mission/scripts/bash/detect-framework.sh
   # (powershell twin: scripts/powershell/detect-framework.ps1) with the
-  # ADR-468 precedence: override → git-dated usage evidence → installed
+  # frozen precedence: override → git-dated usage evidence → installed
   # packs → embedded default. Omit to auto-detect; set explicitly to pin a
   # lane. An unknown value fails the run closed. The resolved lane and its
   # evidence are disclosed in the run brief.

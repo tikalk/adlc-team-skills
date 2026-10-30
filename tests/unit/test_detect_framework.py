@@ -1,4 +1,4 @@
-"""Framework-lane detection + run-level framework knob (M11 E6; ADR-468 rule 2, PDR-149).
+"""Framework-lane detection + run-level framework knob (M11 E6, implementing the governing SDD-wrapper decision).
 
 Contract pinned here (bash helper in skills/factory/factory-mission/scripts/bash/):
 
@@ -18,7 +18,7 @@ Contract pinned here (bash helper in skills/factory/factory-mission/scripts/bash
                        default`. Conflict detail (multi-match losers) goes to
                        stderr as `conflict:` lines.
 
-  Fingerprints (ADR-468 §decision.1 lane grammar):
+  Fingerprints (lane grammar from the governing SDD-wrapper decision):
     speckit     specs/ + .specify/
     superpowers docs/superpowers/plans/
     addy        CONSTRAINTS.md + references checklists
@@ -90,6 +90,8 @@ def test_usage_beats_installation(repo):
     (repo / ".agents/skills/addy-agent-skills").mkdir(parents=True)
     (repo / ".agents/skills/addy-agent-skills/SKILL.md").write_text("# addy\n")
     (repo / "CONSTRAINTS.md").write_text("# constraints\n")
+    (repo / "references").mkdir()
+    (repo / "references/checklist.md").write_text("c\n")
     commit_all(repo, "addy usage + install", "2026-01-02T00:00:00+00:00")
     result = run(repo)
     assert result.returncode == 0, f"aborted: {result.stderr}"
@@ -117,6 +119,8 @@ def test_latest_usage_wins_and_conflict_logged(repo):
 
 def test_override_wins_over_usage(repo):
     (repo / "CONSTRAINTS.md").write_text("# c\n")
+    (repo / "references").mkdir()
+    (repo / "references/checklist.md").write_text("c\n")
     commit_all(repo, "addy usage", "2026-01-01T00:00:00+00:00")
     mission = repo / "mission.yml"
     mission.write_text("workflow:\n  framework: speckit\n")

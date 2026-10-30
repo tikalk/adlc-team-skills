@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# detect-framework.ps1 — resolve the active mission-* lane (PowerShell twin; ADR-468 rule 2, PDR-149; M11 E6).
+# detect-framework.ps1 — resolve the active mission-* lane (PowerShell twin; M11 E6, same lane grammar as the bash helper).
 #
 # Precedence: 1. `framework:` override in mission.yml (fails closed, exit 2).
 # 2. Repo usage evidence — framework-native artifact fingerprints dated by

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# detect-framework.sh — resolve the active mission-* lane (ADR-468 rule 2, PDR-149; M11 E6).
+# detect-framework.sh — resolve the active mission-* lane (M11 E6; lane grammar per the governing SDD-wrapper decision).
 #
 # Precedence: 1. `framework:` override in the run's mission.yml (unknown value
 # fails closed, exit 2). 2. Repo usage evidence — framework-native artifact

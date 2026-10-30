@@ -340,9 +340,12 @@ def test_open_mr_with_kind_code_creates_code_mr_for_mission_branch(repo):
     assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"
     assert git(repo["bare"], "branch", "--list", "factory/mission/adlc-workspace-12") != ""
     post = next(l for l in log.read_text().splitlines() if "-X POST" in l)
-    assert "source_branch=factory/mission/adlc-workspace-12" in post
-    assert "title=Draft: factory: adlc-workspace#12 (run r26)" in post
-    assert "Factory mission run" in post.replace("`", "")
+    assert "--input" in post and "Content-Type: application/json" in post
+    body = posted_body(log)
+    assert body["source_branch"] == "factory/mission/adlc-workspace-12"
+    assert body["title"] == "Draft: factory: adlc-workspace#12 (run r26)"
+    assert "Factory mission run" in body["description"]
+    assert body["squash"] is False
 
 
 def test_open_mr_with_kind_code_refuses_intent_branch(repo):

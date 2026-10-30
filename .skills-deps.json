@@ -31,6 +31,18 @@
     ],
     "factory-intent": [
       "factory-mission"
+    ],
+    "mission-implement": [
+      "factory-mission"
+    ],
+    "mission-plan": [
+      "factory-mission"
+    ],
+    "mission-specify": [
+      "factory-mission"
+    ],
+    "mission-verify": [
+      "factory-mission"
     ]
   }
 }

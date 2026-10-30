@@ -64,7 +64,9 @@ Enter the routing table below at the detected stage.
 
 ### 4. Spec decision
 
-Use triage's assessed complexity to decide whether the work needs a **Mission Brief** refined beyond its intake form (Goal / Constraints / Non-Goals / Success Criteria — canonical template in `factory-mission/references/mission-brief-template.md`).
+Use triage's assessed complexity to decide whether the work needs a **Mission Brief** refined beyond its intake form (Goal / Constraints / Non-Goals / Success Criteria — canonical template in `factory-runbook/references/mission-brief-template.md`).
+
+**Requires:** the `factory-runbook` skill (provides the run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 - No ambiguity and no user-input-needed decisions → do not elaborate a spec; proceed once the Intent Gate passes.
 - Ambiguity that the user must resolve → ask **before** implementation. Relay the question, pause, and route the answer back (§Follow-up routing).
@@ -153,8 +155,8 @@ You are the only communicator with the end user:
 
 ## References
 
-- `factory-mission/references/tracker-integration.md` — tracker-agnostic integration (comment bus, marker comments, lifecycle labels, distributed lease)
-- `factory-mission/references/executor.md` — shared executor contract (step schema, run state, lanes)
+- `factory-runbook/references/tracker-integration.md` — tracker-agnostic integration (comment bus, marker comments, lifecycle labels, distributed lease)
+- `factory-runbook/references/executor.md` — shared executor contract (step schema, run state, lanes)
 - `factory-queue/SKILL.md` — intake, triage, Intent Gate
 - `factory-review/SKILL.md` — The Great Filter, verdict invalidation on fix push, PR hand-off
 - `factory-deploy/SKILL.md` — post-merge gated release

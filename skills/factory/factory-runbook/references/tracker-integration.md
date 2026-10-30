@@ -11,7 +11,7 @@ This is the shared reference for all tracker-aware factory skills (`factory-miss
 ### 1. Provider Resolution
 Resolve the provider in this order (first hit wins):
 1. `{{params.tracker_provider}}` — explicit run override (hierarchical context parameters).
-2. `.adlc/issues-provider.yml` in the target repo (factory-canonical; the template ships in this release at `skills/factory/factory-mission/references/issues-provider.yml`).
+2. `.adlc/issues-provider.yml` in the target repo (factory-canonical; the template ships in this release at `skills/factory/factory-runbook/references/issues-provider.yml`).
 3. Neither source resolves a provider: **halt with an error naming the expected locations** (`{{params.tracker_provider}}`, `.adlc/issues-provider.yml`). Never silently default (a wrong guess posts to the wrong tracker). Repos carrying only the legacy spec-kit provider file must add the factory-canonical copy — the factory no longer reads the spec-kit path. Run `/factory-setup` (or `adlc-cli factory setup`) to create it.
 Parse `provider: github | gitlab | linear | jira` from the winning source.
 Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, plus per-provider `remote_override`/`project_id`).
@@ -336,8 +336,8 @@ pre-flight scope check.
 anything:
 
 ```bash
-bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/resolve-mr-ownership.sh <payload.json>
-# PowerShell: pwsh -NoProfile -File {REPO_ROOT}/.agents/skills/factory-mission/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
+bash {REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership.sh <payload.json>
+# PowerShell: pwsh -NoProfile -File {REPO_ROOT}/.agents/skills/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
 ```
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and

@@ -250,7 +250,9 @@ review_self_heal:
 
 ## Sub-Agent Step Schema
 
-Each step is defined as a step in the executor's step list (follows `factory-mission/references/executor.md` Phase 4):
+Each step is defined as a step in the executor's step list (follows `factory-runbook/references/executor.md` Phase 4):
+
+**Requires:** the `factory-runbook` skill (provides the shared executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 ```json
 {

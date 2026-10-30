@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# open-mr.sh — push the intent run branch and open (or reuse) its one draft MR
-# (ADR-431-amendment §3, ADR-432, ADR-444; adlc-workspace#26).
+# open-mr.sh — push the intent or mission run branch and open (or reuse)
+# its one draft MR
+# (ADR-431-amendment §3, ADR-432, ADR-444; adlc-workspace#26; --kind code under ADR-473).
 #
 # With a factory run context (ADLC_RUN_ID): pushes ONLY the current run branch
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
@@ -17,6 +18,23 @@ set -euo pipefail
 die() { echo "open-mr: $*" >&2; exit 2; }
 json() { node -e "$1" "${@:2}"; }
 
+usage() {
+  echo 'usage: open-mr.sh [--kind <intent|code>]' >&2
+  exit 2
+}
+
+kind="intent"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --kind) [ $# -ge 2 ] || usage; kind="$2"; shift 2 ;;
+    *) usage ;;
+  esac
+done
+case "$kind" in
+  intent|code) ;;
+  *) die "unsupported --kind: $kind (expected 'intent' or 'code')" ;;
+esac
+
 if [ -z "${ADLC_RUN_ID:-}" ]; then
   echo "open-mr: no run context (ADLC_RUN_ID unset) — skipped" >&2
   exit 0
@@ -24,7 +42,18 @@ fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"
 cd "$root"
 branch="$(git branch --show-current)"
-case "$branch" in factory/intent/*) ;; *) die "not on an intent run branch (factory/intent/*): '$branch'" ;; esac
+case "$kind" in
+  intent)
+    case "$branch" in
+      factory/intent/*) ;;
+      *) die "not on an intent run branch (factory/intent/*): '$branch'" ;;
+    esac ;;
+  code)
+    case "$branch" in
+      factory/mission/*|factory/code/*|factory/mission-*) ;;
+      *) die "not on a code run branch (factory/mission/*, factory/code/*): '$branch'" ;;
+    esac ;;
+esac
 
 origin="$(git config --get remote.origin.url)" || die "no origin remote"
 read -r host project < <(json '
@@ -41,11 +70,23 @@ if [ -n "${ADLC_ISSUE_REF:-}" ]; then
   case "$ADLC_ISSUE_REF" in *..*) die "invalid ADLC_ISSUE_REF";; esac
   [[ "$ADLC_ISSUE_REF" =~ ^(([A-Za-z0-9_][A-Za-z0-9._-]*/)+([A-Za-z0-9_][A-Za-z0-9._-]*))#([0-9]+)$ ]] || die "invalid ADLC_ISSUE_REF"
   issue_project="${BASH_REMATCH[1]}"; iid="${BASH_REMATCH[4]}"
-  title="Draft: factory: ${issue_project##*/}#${iid} records (run ${ADLC_RUN_ID})"
+  if [ "$kind" = "code" ]; then
+    title="Draft: factory: ${issue_project##*/}#${iid} (run ${ADLC_RUN_ID})"
+  else
+    title="Draft: factory: ${issue_project##*/}#${iid} records (run ${ADLC_RUN_ID})"
+  fi
 else
-  title="Draft: factory: run ${ADLC_RUN_ID} records"
+  if [ "$kind" = "code" ]; then
+    title="Draft: factory: run ${ADLC_RUN_ID}"
+  else
+    title="Draft: factory: run ${ADLC_RUN_ID} records"
+  fi
 fi
-description="Factory intent run \`${ADLC_RUN_ID}\`${iid:+ for ${issue_project}#${iid}}. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
+if [ "$kind" = "code" ]; then
+  description="Factory mission run \`${ADLC_RUN_ID}\`${iid:+ for ${issue_project}#${iid}}. Merge with a merge commit, no squash — approved step SHAs must stay reachable."
+else
+  description="Factory intent run \`${ADLC_RUN_ID}\`${iid:+ for ${issue_project}#${iid}}. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
+fi
 
 provider="${ISSUE_PROVIDER:-gitlab}"
 case "$provider" in

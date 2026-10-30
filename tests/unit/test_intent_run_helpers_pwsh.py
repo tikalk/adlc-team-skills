@@ -25,7 +25,7 @@ from test_intent_run_helpers import (
 )
 
 ROOT = Path(__file__).parent.parent.parent
-SCRIPTS = ROOT / "skills/factory/factory-mission/scripts"
+SCRIPTS = ROOT / "skills/factory/factory-runbook/scripts"
 BASH = SCRIPTS / "bash"
 PS = SCRIPTS / "powershell"
 
@@ -63,7 +63,7 @@ def run(script, cwd, *args, env=None):
                           cwd=cwd, capture_output=True, text=True, env=full_env)
 
 
-# ── twin inventory (CDR-022, scoped to factory-mission) ────────────────────
+# ── twin inventory (CDR-022, scoped to factory-runbook) ────────────────────────
 
 def test_every_bash_helper_has_a_powershell_twin_and_vice_versa():
     bash = {p.name[:-3] for p in BASH.glob("*.sh")}
@@ -325,3 +325,36 @@ def test_open_mr_blocks_when_the_tracker_token_lacks_the_api_scope(repo):
     assert r.returncode != 0
     assert "scope" in r.stderr
     assert "merge_requests" not in log.read_text().split("personal_access_tokens/self")[0]
+
+
+def test_open_mr_with_kind_code_creates_code_mr_for_mission_branch(repo):
+    git(repo["work"], "switch", "-q", "-c", "factory/mission/adlc-workspace-12")
+    (repo["work"] / "code.txt").write_text("code\n")
+    git(repo["work"], "add", "-A")
+    git(repo["work"], "commit", "-q", "-m", "code")
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], "--kind", "code", env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"
+    assert git(repo["bare"], "branch", "--list", "factory/mission/adlc-workspace-12") != ""
+    post = next(l for l in log.read_text().splitlines() if "-X POST" in l)
+    assert "source_branch=factory/mission/adlc-workspace-12" in post
+    assert "title=Draft: factory: adlc-workspace#12 (run r26)" in post
+    assert "Factory mission run" in post.replace("`", "")
+
+
+def test_open_mr_with_kind_code_refuses_intent_branch(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], "--kind", "code", env=env)
+    assert r.returncode != 0
+    assert "code run branch" in r.stderr or "factory/mission/" in r.stderr
+
+
+def test_open_mr_refuses_unknown_kind(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], "--kind", "bogus", env=env)
+    assert r.returncode != 0
+    assert "--kind" in r.stderr
+

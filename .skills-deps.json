@@ -30,7 +30,10 @@
       "team-setup"
     ],
     "factory-intent": [
-      "factory-mission"
+      "factory-runbook"
+    ],
+    "factory-mission": [
+      "factory-runbook"
     ],
     "mission-implement": [
       "factory-mission"
@@ -43,6 +46,27 @@
     ],
     "mission-verify": [
       "factory-mission"
+    ],
+    "factory-init": [
+      "factory-runbook"
+    ],
+    "factory-learn": [
+      "factory-runbook"
+    ],
+    "factory-orchestrator": [
+      "factory-runbook"
+    ],
+    "factory-queue": [
+      "factory-runbook"
+    ],
+    "factory-review": [
+      "factory-runbook"
+    ],
+    "factory-setup": [
+      "factory-runbook"
+    ],
+    "factory-tickets": [
+      "factory-runbook"
     ]
   }
 }

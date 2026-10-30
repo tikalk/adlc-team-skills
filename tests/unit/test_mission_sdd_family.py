@@ -15,7 +15,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).parent.parent.parent
-SKILLS_DIR = ROOT / "skills/factory"
+SKILLS_DIR = ROOT / "skills/mission"
 FIXTURES = ROOT / "tests/fixtures/mission-sdd"
 
 SKILL_NAMES = [
@@ -68,7 +68,7 @@ def read_skill(name: str) -> str:
     """Read a mission skill, failing with the missing path that gates RED."""
     path = skill_path(name)
     assert path.exists(), (
-        f"missing skills/factory/{name}/SKILL.md — mission-* extraction "
+        f"missing skills/mission/{name}/SKILL.md — mission-* extraction "
         "not implemented yet"
     )
     return path.read_text(encoding="utf-8")
@@ -132,7 +132,7 @@ def test_four_skills_exist_with_frontmatter():
     for name in SKILL_NAMES:
         path = skill_path(name)
         assert path.exists(), (
-            f"missing skills/factory/{name}/SKILL.md — mission-* extraction "
+            f"missing skills/mission/{name}/SKILL.md — mission-* extraction "
             "not implemented yet"
         )
         meta = parse_frontmatter(path.read_text(encoding="utf-8"))
@@ -332,5 +332,5 @@ def test_parity_matrix_is_complete_and_single_valued():
             f"{name} maps to {sorted(steps - step_ids)} which the golden trace lacks"
         )
         assert skill_path(name).exists(), (
-            f"parity destination {name} has no skills/factory/{name}/SKILL.md"
+            f"parity destination {name} has no skills/mission/{name}/SKILL.md"
         )

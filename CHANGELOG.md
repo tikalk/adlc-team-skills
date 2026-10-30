@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`mission-*` SDD family** (`skills/factory/mission-specify/`,
+- **`mission-*` SDD family** (`skills/mission/mission-specify/`,
   `mission-plan/`, `mission-implement/`, `mission-verify/`) — `factory-mission`'s
   lifecycle extracted into four discipline skills with one framework-free
   default lane: specify turns `brief.md` into a measurable `spec.md`, plan

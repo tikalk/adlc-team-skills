@@ -92,6 +92,26 @@ def test_mirror_fallback_files_exist_with_sync_notes():
         assert "WHAT / WHY" in text
 
 
+def test_mirror_bodies_match_canonical():
+    """ADR-456 drift guard: each mirror body (past the SYNC NOTE header)
+    is byte-identical to the canonical file.
+
+    Catches a canonical edit without re-copy: today the sync test asserts
+    existence + header markers only, so the four mirrors would rot silently.
+    When adlc-workspace#34 lands and the mirrors collapse to path-refs,
+    delete this test with them."""
+    canonical = CANONICAL_STE.read_text(encoding="utf-8")
+    for mirror in MIRROR_REFS:
+        text = mirror.read_text(encoding="utf-8")
+        # Strip the one-line SYNC NOTE HTML comment + following blank line.
+        assert text.startswith("<!-- SYNC NOTE:"), f"{mirror} lost its sync header"
+        body = text.split("-->", 1)[1].lstrip("\n")
+        assert body == canonical, (
+            f"{mirror} drifted from {CANONICAL_STE.name}: "
+            "re-copy the canonical file over the mirror"
+        )
+
+
 def test_tier_boundary_classification_logic():
     """Criterion 2, 3, 4: unit logic tests for 0, 1, and >=2 boundaries."""
     def classify_and_render(boundaries, gaps=None):

@@ -93,7 +93,7 @@ def test_mirror_fallback_files_exist_with_sync_notes():
 
 
 def test_mirror_bodies_match_canonical():
-    """ADR-456 drift guard: each mirror body (past the SYNC NOTE header)
+    """Shared-reference drift guard: each mirror body (past the SYNC NOTE header)
     is byte-identical to the canonical file.
 
     Catches a canonical edit without re-copy: today the sync test asserts

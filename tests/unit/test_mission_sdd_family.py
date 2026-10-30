@@ -243,7 +243,7 @@ def test_source_fidelity_rules_are_preserved():
     )
     for name in SKILL_NAMES:
         text = read_skill(name)
-        assert ".agents/skills/factory-mission/references/executor.md" in text, (
+        assert ".agents/skills/factory-runbook/references/executor.md" in text, (
             f"{name}: dependency must be cited by installed path"
         )
 

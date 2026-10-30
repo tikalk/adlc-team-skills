@@ -28,6 +28,14 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 5. Route `SPEC_CORRECTION_NEEDED` to the owning clarify gate, never to code; return `CONTINUE` to the implementation phase with the findings attached.
 6. Never approve or merge; approval and merge stay with the human and the deploy phase.
 
+## Speckit lane
+
+This section is a reference translation only; the framework keeps its own loop internals and the step contract below stays authoritative.
+- The `verify` step maps to the evaluation-driven verification command at `github.com/tikalk/adlc-spec-kit-bundle/extensions/edd/commands/verify.md`, which runs deterministic checks plus model-graded quality gates against `specs/` and `.specify/` grammar.
+  Its shared contract markers are `output_type` `findings` with `reads_from` `test` and `code`.
+- The `converge` step maps to `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.converge.md` via the `specify` CLI, which assesses the built tree against the brief and returns the loop verdict.
+  Its shared contract markers are `output_type` `decision` with `reads_from` `brief.md`.
+
 ## Step contract
 
 | Step | phase_type | output_type | reads_from | artifact |

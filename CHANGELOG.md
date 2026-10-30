@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   integration, gate relay) stays with `factory-mission`. Framework-specific
   lanes and the `factory-mission` rewrite are out of scope for this change.
  (feat(skills): shared factory run mechanics live in invocable factory-runbook)
+- **STE clarify ruleset** (work item #37, ADR-456) — canonical shared reference at `skills/authoring/references/ste-rules.md` (ASD-STE100 writing rules, >=2-boundary deterministic tier rule across `record`/`lane`/`team`/`now`, ASCII decision-map schema, `?` slot rule). All four clarification skills (`product-clarify`, `architect-clarify`, `change-clarify`, `evals-clarify`) cite the shared reference and apply the tier rule; verbatim mirrors with SYNC NOTE at each consumer `references/` pending flat-install support (adlc-workspace#34). Folded in from PR #109 (closed unmerged). Pinned by `tests/unit/test_ste_clarify_rules.py`.
 - **`factory-orchestrator`** (`skills/factory/factory-orchestrator/`) — the
   factory's front-door router: accepts work entering at any lifecycle stage
   (new request, informational question, CI failure on a delivered PR, review

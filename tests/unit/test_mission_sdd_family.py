@@ -304,29 +304,37 @@ def test_parity_matrix_is_complete_and_single_valued():
         "discipline and orchestration duty IDs must be disjoint"
     )
 
-    destinations = {row["destination"] for row in discipline.values()}
+    destinations = {row.get("destination") for row in discipline.values()}
+    assert None not in destinations, (
+        "parity discipline rows must each carry a destination; "
+        "a malformed row is a contract violation"
+    )
     assert destinations == set(SKILL_NAMES), (
         f"discipline duties must map onto the four mission skills, "
         f"got {sorted(destinations)}"
     )
-    assert {row["destination"] for row in orchestration.values()} == {
+    orchestration_destinations = {
+        row.get("destination") for row in orchestration.values()
+    }
+    assert None not in orchestration_destinations, (
+        "parity orchestration rows must each carry a destination; "
+        "a malformed row is a contract violation"
+    )
+    assert orchestration_destinations == {
         "factory-mission"
     }, "orchestration duties must stay with factory-mission"
 
     # An obligation without text or a source cannot be audited.
     for duty_id, row in {**discipline, **orchestration}.items():
-        assert row["text"].strip(), f"{duty_id}: obligation text is empty"
-        assert row["source"].strip(), f"{duty_id}: obligation source is empty"
+        text = row.get("text")
+        assert text and text.strip(), f"{duty_id}: obligation text is empty"
+        source = row.get("source")
+        assert source and source.strip(), f"{duty_id}: obligation source is empty"
 
     # A destination must own at least one golden step, or the duty is homeless.
     golden = json.loads((FIXTURES / "golden-run.json").read_text(encoding="utf-8"))
     step_ids = {step["id"] for step in golden["steps"]}
-    owned = {
-        "mission-specify": {"specify", "clarify"},
-        "mission-plan": {"plan"},
-        "mission-implement": {"test", "code"},
-        "mission-verify": {"verify", "converge"},
-    }
+    owned = {name: set(steps) for name, steps in EXPECTED_STEPS.items()}
     for name, steps in owned.items():
         assert steps <= step_ids, (
             f"{name} maps to {sorted(steps - step_ids)} which the golden trace lacks"

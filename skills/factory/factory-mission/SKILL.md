@@ -40,7 +40,7 @@ It implements the following key factory platform capabilities:
 9. **Scratchpad Tools**: Subagents share named, run-private scratchpads (`.adlc/workflows/runs/<run_id>/scratchpads/<name>.txt`) to compile notes, drafts, and reviews incrementally before publishing.
 10. **Workflow Memory & Self-Improvement**: Persistent JSONL database (`.adlc/workflows/memory.jsonl`, workspace-global) stores learnings across runs. `factory-learn` periodically runs retrospectives to prune/weight memories.
 11. **Hierarchical Context Parameters**: Workflows and agents reference parameters as `{{params.<key>}}`, resolved from most specific to least specific: `agent < workflow < repository < project < default`.
-12. **Decoupled Test/Code Separation**: In `autonomous` or `supervised` modes, it splits `implement` into sequential `test` (Test Agent writes failing tests under read-only `src/`) and `code` (Implement Agent writes code under read-only `tests/`) runs — each closed by a **mandatory mechanical gate** (see Phase 5): the RED gate proves the new suite fails before coding starts; the GREEN gate proves it passes before converge is reached.
+12. **Decoupled Test/Code Separation**: Test-first build with mechanical gates lives in `mission-implement`; converging judgement in `mission-verify`.
 
 ---
 
@@ -75,30 +75,33 @@ It implements the following key factory platform capabilities:
 
 **Team index fallback:** when no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line. Never block on the missing injection.
 
-### Phase 5: Executing the Converge Loop
-Execute steps sequentially. When reaching `implement` / `converge`:
+## Lifecycle DAG & Step Resolution
 
-#### Decoupled Test/Code Execution (mandated TDD)
-In `autonomous` and `supervised` modes, the `implement` step is split into two sequential subagent dispatches, each closed by a mechanical verification run:
+`factory-mission` resolves each lifecycle step to the mission-* skill that owns it. Step order, inputs, and outputs follow the table; the owning skills define the discipline.
 
-1. **The Test Agent (`test` step)**:
-   - Instruction: Write a failing test suite based on `spec.md` in `tests/`.
-   - Enforcement: Mount `src/` as hard **read-only**; only `tests/` is writeable.
-   - **RED gate (mandatory)**: the executor runs the suite and asserts at least one test FAILS. A suite that passes immediately means the feature already exists or the tests assert nothing — route to `SPEC_CORRECTION_NEEDED` with the run output; never proceed to the `code` step. Record the failing count in the run log.
-2. **The Implement Agent (`code` step)**:
-   - Instruction: Write minimum implementation code in `src/` to pass the tests.
-   - Enforcement: Mount `tests/`, `spec.md`, and `plan.md` as hard **read-only**; only `src/` is writeable.
-   - **GREEN gate (mandatory)**: the executor runs the suite again; `converge` is never reached with a red suite. Any failure loops straight back to the `code` step with the failure list attached (this loop-back does not consume the converge circuit breaker; only broken *iterations* do — use the `code`-step retry cap from `mission.yml`).
+| Step | Skill | output_type | reads_from |
+| --- | --- | --- | --- |
+| specify | mission-specify | draft | `brief.md` |
+| clarify | mission-specify | decision | `spec.md` |
+| plan | mission-plan | draft | `spec.md`, `clarify` |
+| test | mission-implement | artifact-ref | `spec.md` |
+| code | mission-implement | artifact-ref | `test`, `spec.md`, `plan.md` |
+| verify | mission-verify | findings | `test`, `code` |
+| converge | mission-verify | decision | `brief.md` |
 
-**Skipping the split** is allowed only when the run declares no test surface: `tdd: false` in `mission.yml`, a docs/config-only step, or `interactive` mode (the attended pair runs its own discipline — e.g. superpowers' `test-driven-development`). A code-bearing step in `autonomous`/`supervised` mode never skips it.
+A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate (`mission-specify`), never to code.
 
-#### Converge Loop (Implement ↔ Converge)
-1. Execute implement step (or `test` + `code` steps — RED→GREEN gates enforced first).
-2. Execute `converge` step (independent judge mode; checks against Brief and Non-Goals).
-3. If `converge` returns:
-   - `DONE` (and quality is above `quality_threshold`): Loop exits.
-   - `CONTINUE`: Increment `consecutive_tasks_appended`. Check circuit breaker (default 3) and score-regression counter. Repeat.
-   - `SPEC_CORRECTION_NEEDED`: Stop and route to Phase 6.
+## Boundary
+
+`factory-mission` owns the execution harness: the worktree, the lease, tracker integration (issue intake, the comment bus, completion write-back), and the draft code MR. It never owns spec content, tests, code, or verdicts — each step's output belongs to the mission-* skill that produced it. Dispatch names phases, not commands: every lifecycle step resolves through the table above.
+
+## Shared Executor Overrides
+
+Knobs specific to a mission run, read from `mission.yml` (the policy home for execution and supervision):
+
+1. **Supervision**: the run's supervision mode — unattended runs never ask a question.
+2. **Quality threshold**: `quality_threshold` travels in as a converge input owned by `mission-verify`; the orchestrator carries it, never applies it.
+3. **Test/code split**: selected per run — whether the build dispatches separate test and code steps.
 
 ### Phase 6: Completion & Write-Back
 1. If tracker-integrated: read all marker comments from the PR/MR/issue to compile the audit trail (converge decisions, test findings, implement artifact references, convergence history).

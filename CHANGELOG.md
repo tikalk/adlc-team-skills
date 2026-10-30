@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`factory-mission` thin-dispatch e2e** (`tests/e2e/test_factory_mission_thin_dispatch_e2e.py`) — four consumer-side contract tests pinning the thin boundary: no lifecycle discipline or forbidden correction routes in `factory-mission`, DAG dispatches to exactly the four `mission-*` skills with no bare slash commands or record IDs, every dispatched step owned by an owning `Step contract`, and SPEC_CORRECTION_NEEDED routed to the `mission-specify` clarify gate (RED pre-rewrite: 4 failed).
+- **`factory-mission` rewritten as thin spec-harness orchestrator** (E2) — lifecycle steps dispatch only to `mission-*` (`mission-specify`, `mission-plan`, `mission-implement`, `mission-verify`) via a Lifecycle DAG table with the harness boundary and per-run executor overrides; the correction route lands at the owning clarify gate, never code. Executor contract, scripts, and `mission-*` untouched.
 - **`mission-*` SDD family** (`skills/mission/mission-specify/`,
   `mission-plan/`, `mission-implement/`, `mission-verify/`) — `factory-mission`'s
   lifecycle extracted into four discipline skills with one framework-free

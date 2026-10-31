@@ -89,12 +89,26 @@ validate_team_ai_directives() {
   return "$missing"
 }
 
+# JSON-parse check shared by --validate and --wire: the structure check is
+# existence-only, but the post-setup health contract requires .skills.json to
+# parse. Prints MISSING and returns 1 when present-but-malformed, 0 otherwise.
+check_skills_json_parses() {
+  local dir="$1"
+  if [[ -e "${dir}/.skills.json" ]] \
+    && ! python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "${dir}/.skills.json" 2>/dev/null; then
+    echo "MISSING: .skills.json is not valid JSON"
+    return 1
+  fi
+  return 0
+}
+
 # --validate [DIR] — exit 0 when the structure is complete, exit 1 with the
 # MISSING lines when it is not. Used by headless callers to gate wiring.
 validate_structure_cli() {
   local dir="$1"
   local missing=0
   validate_team_ai_directives "$dir" || missing=$?
+  check_skills_json_parses "$dir" || missing=$((missing + 1))
   if [[ "$missing" -gt 0 ]]; then
     echo "INVALID: team-ai-directives at ${dir} is missing ${missing} required path(s)" >&2
     return 1
@@ -118,36 +132,45 @@ wire_team_ai_directives() {
   fi
 
   local abs
-  abs="$(cd "$dir" && pwd)"
+  abs="$(cd "$dir" && pwd -P)"
 
   local missing=0
   validate_team_ai_directives "$abs" || missing=$?
   # .skills.json must also parse (post-setup health check contract)
-  if [[ -e "${abs}/.skills.json" ]] \
-    && ! python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "${abs}/.skills.json" 2>/dev/null; then
-    echo "MISSING: .skills.json is not valid JSON"
-    missing=$((missing + 1))
-  fi
+  check_skills_json_parses "$abs" || missing=$((missing + 1))
   if [[ "$missing" -gt 0 ]]; then
     echo "ERROR: team-ai-directives at ${abs} failed validation (${missing} issue(s)) — not wired" >&2
     return 1
   fi
 
-  local init_dir="${PROJECT_ROOT}/.adlc"
+  # PROJECT_ROOT may be unset in a fresh headless shell (set -u is on) — fall
+  # back exactly like resolve_paths, and refuse an explicit empty value that
+  # would resolve init-options.json to /.adlc.
+  local project_root="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+  if [[ -z "$project_root" ]]; then
+    echo "ERROR: PROJECT_ROOT is empty — cannot locate .adlc/init-options.json" >&2
+    return 1
+  fi
+  local init_dir="${project_root}/.adlc"
   local init_path="${init_dir}/init-options.json"
   mkdir -p "$init_dir"
-  python3 - "$abs" "$init_path" <<'PY'
+  if ! python3 -c '
 import json, os, sys
 abs_path, path = sys.argv[1], sys.argv[2]
 cfg = {}
 if os.path.exists(path):
     with open(path) as f:
         cfg = json.load(f)
+if not isinstance(cfg, dict):
+    sys.exit("not a JSON object")
 cfg["team_ai_directives"] = abs_path
 with open(path, "w") as f:
     json.dump(cfg, f, indent=2)
     f.write("\n")
-PY
+' "$abs" "$init_path" 2>/dev/null; then
+    echo "ERROR: ${init_path} is not valid JSON or not an object — not wired" >&2
+    return 1
+  fi
   echo "WIRED team_ai_directives=${abs}"
   return 0
 }

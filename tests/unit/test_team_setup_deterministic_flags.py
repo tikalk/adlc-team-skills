@@ -41,11 +41,29 @@ def _make_valid_directives(tmp_path: Path) -> Path:
     return d
 
 
-def _run_bash(args, cwd, project_root):
+def _run_bash(args, cwd, project_root, extra_env=None):
+    env = {"PATH": "/usr/bin:/bin", "PROJECT_ROOT": str(project_root)}
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(
         ["bash", str(BASH), *args],
         cwd=cwd,
-        env={"PATH": "/usr/bin:/bin", "PROJECT_ROOT": str(project_root)},
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _run_bash_no_project_root(args, cwd):
+    """Invoke without PROJECT_ROOT (U1 regression: must fall back, not crash)."""
+    import os
+
+    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+    env.pop("PROJECT_ROOT", None)
+    return subprocess.run(
+        ["bash", str(BASH), *args],
+        cwd=cwd,
+        env=env,
         capture_output=True,
         text=True,
     )
@@ -154,6 +172,63 @@ def test_wire_rejects_malformed_skills_json(tmp_path):
     r = _run_bash(["--wire", str(d)], cwd=project, project_root=project)
     assert r.returncode == 1, r.stdout
     assert "not valid JSON" in r.stdout + r.stderr
+
+
+@pytest.mark.requires_bash
+def test_validate_rejects_malformed_skills_json(tmp_path):
+    """U3: --validate must agree with --wire that malformed .skills.json fails."""
+    d = _make_valid_directives(tmp_path)
+    (d / ".skills.json").write_text("{not json")
+    r = _run_bash(["--validate", str(d)], cwd=tmp_path, project_root=tmp_path)
+    assert r.returncode == 1, r.stdout
+    assert "not valid JSON" in r.stdout + r.stderr
+
+
+@pytest.mark.requires_bash
+@pytest.mark.parametrize("poison", ["{bad json", "[1,2]", "null", '"str"'])
+def test_wire_refuses_corrupt_or_non_object_init_options(tmp_path, poison):
+    """U2: corrupt/non-object init-options.json → clean ERROR refusal, file untouched."""
+    d = _make_valid_directives(tmp_path)
+    project = tmp_path / "proj"
+    (project / ".adlc").mkdir(parents=True)
+    init = project / ".adlc" / "init-options.json"
+    init.write_text(poison)
+
+    r = _run_bash(["--wire", str(d)], cwd=project, project_root=project)
+    assert r.returncode == 1, f"stdout={r.stdout} stderr={r.stderr}"
+    assert "not valid JSON or not an object" in r.stderr
+    assert "Traceback" not in r.stdout + r.stderr
+    assert init.read_text() == poison, "refusal must not touch the file"
+
+
+@pytest.mark.requires_bash
+def test_wire_without_project_root_falls_back(tmp_path):
+    """U1: unset PROJECT_ROOT must fall back (git root/pwd), not crash unbound."""
+    d = _make_valid_directives(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+
+    r = _run_bash_no_project_root(["--wire", str(d)], cwd=project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    assert "unbound variable" not in r.stderr
+    assert f"WIRED team_ai_directives={d.resolve()}" in r.stdout
+    cfg = json.loads((project / ".adlc" / "init-options.json").read_text())
+    assert cfg["team_ai_directives"] == str(d.resolve())
+
+
+@pytest.mark.requires_bash
+def test_wire_resolves_symlinked_directives(tmp_path):
+    """U8: symlinked DIR stores the canonical physical path (bash matches PS twin)."""
+    d = _make_valid_directives(tmp_path)
+    link = tmp_path / "linkdir"
+    link.symlink_to(d, target_is_directory=True)
+    project = tmp_path / "proj"
+    project.mkdir()
+
+    r = _run_bash(["--wire", str(link)], cwd=project, project_root=project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    cfg = json.loads((project / ".adlc" / "init-options.json").read_text())
+    assert cfg["team_ai_directives"] == str(d.resolve())
 
 
 # ── --validate / --wire (powershell twin, runtime only if pwsh exists) ──

@@ -4,6 +4,10 @@
 # Flags:
 #   -Json              Output path info as JSON (default: key=value)
 #   -Scaffold DIR      Create a fresh 11-file team AI directives scaffold at DIR
+#   -Validate DIR      Validate the team AI directives structure at DIR (exit 1 if incomplete)
+#   -Wire DIR          Validate DIR, then write team_ai_directives (absolute path) into
+#                      the project's .adlc/init-options.json — the deterministic Mode 2
+#                      wiring used headless (adlc-cli team setup --directives)
 #   -AgentsOnly DIR    Create only AGENTS.md at DIR (for repair use)
 #   -InjectAgents DIR  Inject team-boot directive into project-level AGENTS.md at DIR
 #   -AgentsStatus DIR  Report managed-section status in project-level AGENTS.md at DIR
@@ -12,6 +16,8 @@
 param(
   [switch]$Json,
   [string]$Scaffold = "",
+  [string]$Validate = "",
+  [string]$Wire = "",
   [string]$AgentsOnly = "",
   [string]$InjectAgents = "",
   [string]$AgentsStatus = "",
@@ -92,6 +98,97 @@ function Test-TeamAiDirectivesStructure {
     }
   }
   return $missing
+}
+
+# JSON-parse check shared by -Validate and -Wire: the structure check is
+# existence-only, but the post-setup health contract requires .skills.json to
+# parse. Emits MISSING and returns 1 when present-but-malformed, 0 otherwise.
+function Test-SkillsJsonParses {
+  param([string]$Dir)
+  $skillsJson = Join-Path $Dir ".skills.json"
+  if ((Test-Path $skillsJson)) {
+    try {
+      $null = Get-Content $skillsJson -Raw | ConvertFrom-Json
+    } catch {
+      Write-Output "MISSING: .skills.json is not valid JSON"
+      return 1
+    }
+  }
+  return 0
+}
+
+# -Validate DIR — exit 0 when the structure is complete, exit 1 with the
+# MISSING lines when it is not. Used by headless callers to gate wiring.
+# NOTE: Test-TeamAiDirectivesStructure emits MISSING lines to the output
+# stream AND returns the count, so the call captures an array whose last
+# element is the count — never compare or increment it directly.
+function Invoke-TeamAiDirectivesValidation {
+  param([string]$Dir)
+  $check = @(Test-TeamAiDirectivesStructure -Dir $Dir)
+  $missing = [int]$check[-1]
+  if ($check.Count -gt 1) { $check[0..($check.Count - 2)] | Write-Output }
+  $skillsOk = Test-SkillsJsonParses -Dir $Dir
+  if ($skillsOk -ne 0) {
+    $skillsOk | Where-Object { $_ -is [string] } | Write-Output
+    $missing++
+  }
+  if ($missing -gt 0) {
+    Write-Error "INVALID: team-ai-directives at ${Dir} is missing ${missing} required path(s)"
+    exit 1
+  }
+  Write-Output "VALID: team-ai-directives at ${Dir}"
+}
+
+# -Wire DIR — deterministic Mode 2 (point to existing local path): validate
+# the structure, then merge the absolute path into .adlc/init-options.json.
+function Invoke-TeamAiDirectivesWire {
+  param([string]$Dir)
+  if (-not $Dir) {
+    Write-Error "-Wire requires a team-ai-directives directory argument"
+    exit 1
+  }
+  if (-not (Test-Path $Dir -PathType Container)) {
+    Write-Error "team-ai-directives directory not found: ${Dir}"
+    exit 1
+  }
+
+  $abs = (Resolve-Path $Dir).Path
+
+  # NOTE: Test-TeamAiDirectivesStructure emits MISSING lines to the output
+  # stream AND returns the count, so the call captures an array whose last
+  # element is the count — never compare or increment it directly.
+  $check = @(Test-TeamAiDirectivesStructure -Dir $abs)
+  $missing = [int]$check[-1]
+  if ($check.Count -gt 1) { $check[0..($check.Count - 2)] | Write-Output }
+  # .skills.json must also parse (post-setup health check contract)
+  $skillsOk = Test-SkillsJsonParses -Dir $abs
+  if ($skillsOk -ne 0) {
+    $skillsOk | Where-Object { $_ -is [string] } | Write-Output
+    $missing++
+  }
+  if ($missing -gt 0) {
+    Write-Error "team-ai-directives at ${abs} failed validation (${missing} issue(s)) — not wired"
+    exit 1
+  }
+
+  $InitOptions = Join-Path $ProjectRoot ".adlc" "init-options.json"
+  $Config = @{}
+  if (Test-Path $InitOptions) {
+    try {
+      $raw = Get-Content $InitOptions -Raw
+      if ([string]::IsNullOrWhiteSpace($raw)) { throw "empty" }
+      $parsed = $raw | ConvertFrom-Json -AsHashtable
+      if ($parsed -isnot [hashtable]) { throw "not an object" }
+      $Config = $parsed
+    } catch {
+      Write-Error "init-options.json is not valid JSON or not an object — not wired"
+      exit 1
+    }
+  }
+  $Config["team_ai_directives"] = $abs
+  $null = New-Item -ItemType Directory -Force -Path (Split-Path $InitOptions)
+  $Config | ConvertTo-Json -Depth 10 | Set-Content -Path $InitOptions -Encoding UTF8
+  Write-Output "WIRED team_ai_directives=${abs}"
 }
 
 # 3. SCAFFOLD
@@ -477,6 +574,10 @@ function Remove-ProjectAgentsSection {
 # MAIN
 if ($Scaffold) {
   New-TeamAiDirectivesScaffold -Dest $Scaffold -TeamName $Name
+} elseif ($Validate) {
+  Invoke-TeamAiDirectivesValidation -Dir $Validate
+} elseif ($Wire) {
+  Invoke-TeamAiDirectivesWire -Dir $Wire
 } elseif ($AgentsOnly) {
   New-AgentsOnly -Dest $AgentsOnly
 } elseif ($InjectAgents -ne "") {

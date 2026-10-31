@@ -4,6 +4,10 @@
 # Flags:
 #   --json              Output path info as JSON (default: key=value)
 #   --scaffold [DIR]    Create a fresh 11-file team AI directives scaffold at DIR
+#   --validate [DIR]    Validate the team AI directives structure at DIR (exit 1 if incomplete)
+#   --wire [DIR]        Validate DIR, then write team_ai_directives (absolute path) into
+#                       the project's .adlc/init-options.json — the deterministic Mode 2
+#                       wiring used headless (adlc-cli team setup --directives)
 #   --agents-only DIR   Create only AGENTS.md at DIR (for repair use)
 #   --inject-agents [DIR]  Inject team-boot directive into project-level AGENTS.md at DIR
 #   --agents-status [DIR]  Report managed-section status in project-level AGENTS.md at DIR
@@ -83,6 +87,92 @@ validate_team_ai_directives() {
   done
 
   return "$missing"
+}
+
+# JSON-parse check shared by --validate and --wire: the structure check is
+# existence-only, but the post-setup health contract requires .skills.json to
+# parse. Prints MISSING and returns 1 when present-but-malformed, 0 otherwise.
+check_skills_json_parses() {
+  local dir="$1"
+  if [[ -e "${dir}/.skills.json" ]] \
+    && ! python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "${dir}/.skills.json" 2>/dev/null; then
+    echo "MISSING: .skills.json is not valid JSON"
+    return 1
+  fi
+  return 0
+}
+
+# --validate [DIR] — exit 0 when the structure is complete, exit 1 with the
+# MISSING lines when it is not. Used by headless callers to gate wiring.
+validate_structure_cli() {
+  local dir="$1"
+  local missing=0
+  validate_team_ai_directives "$dir" || missing=$?
+  check_skills_json_parses "$dir" || missing=$((missing + 1))
+  if [[ "$missing" -gt 0 ]]; then
+    echo "INVALID: team-ai-directives at ${dir} is missing ${missing} required path(s)" >&2
+    return 1
+  fi
+  echo "VALID: team-ai-directives at ${dir}"
+  return 0
+}
+
+# --wire [DIR] — deterministic Mode 2 (point to existing local path): validate
+# the structure, then merge the absolute path into .adlc/init-options.json.
+# Never interpolates the path into shell/Python source — it travels as argv.
+wire_team_ai_directives() {
+  local dir="$1"
+  if [[ -z "$dir" ]]; then
+    echo "ERROR: --wire requires a team-ai-directives directory argument" >&2
+    exit 1
+  fi
+  if [[ ! -d "$dir" ]]; then
+    echo "ERROR: team-ai-directives directory not found: ${dir}" >&2
+    exit 1
+  fi
+
+  local abs
+  abs="$(cd "$dir" && pwd -P)"
+
+  local missing=0
+  validate_team_ai_directives "$abs" || missing=$?
+  # .skills.json must also parse (post-setup health check contract)
+  check_skills_json_parses "$abs" || missing=$((missing + 1))
+  if [[ "$missing" -gt 0 ]]; then
+    echo "ERROR: team-ai-directives at ${abs} failed validation (${missing} issue(s)) — not wired" >&2
+    return 1
+  fi
+
+  # PROJECT_ROOT may be unset in a fresh headless shell (set -u is on) — fall
+  # back exactly like resolve_paths, and refuse an explicit empty value that
+  # would resolve init-options.json to /.adlc.
+  local project_root="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+  if [[ -z "$project_root" ]]; then
+    echo "ERROR: PROJECT_ROOT is empty — cannot locate .adlc/init-options.json" >&2
+    return 1
+  fi
+  local init_dir="${project_root}/.adlc"
+  local init_path="${init_dir}/init-options.json"
+  mkdir -p "$init_dir"
+  if ! python3 -c '
+import json, os, sys
+abs_path, path = sys.argv[1], sys.argv[2]
+cfg = {}
+if os.path.exists(path):
+    with open(path) as f:
+        cfg = json.load(f)
+if not isinstance(cfg, dict):
+    sys.exit("not a JSON object")
+cfg["team_ai_directives"] = abs_path
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+    f.write("\n")
+' "$abs" "$init_path" 2>/dev/null; then
+    echo "ERROR: ${init_path} is not valid JSON or not an object — not wired" >&2
+    return 1
+  fi
+  echo "WIRED team_ai_directives=${abs}"
+  return 0
 }
 
 ###############################################################################
@@ -537,17 +627,23 @@ main() {
 
   local has_json=false
   local has_scaffold=false
+  local has_validate=false
+  local has_wire=false
   local has_agents_only=false
   local has_inject_agents=false
   local has_agents_status=false
   local has_agents_uninstall=false
   local scaffold_dest=""
+  local validate_dest=""
+  local wire_dest=""
   local agents_only_dest=""
   local inject_dest=""
   local agents_status_dest=""
   local agents_uninstall_dest=""
   local team_name="My Team"
   local parsing_scaffold=false
+  local parsing_validate=false
+  local parsing_wire=false
   local parsing_agents=false
   local parsing_name=false
   local parsing_inject=false
@@ -560,12 +656,38 @@ main() {
       continue
     fi
     if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
-      echo "Usage: team-helpers.sh [--json] [--scaffold DIR] [--agents-only DIR] [--inject-agents [DIR]] [--agents-status [DIR]] [--agents-uninstall [DIR]] [--name NAME]"
+      echo "Usage: team-helpers.sh [--json] [--scaffold DIR] [--validate DIR] [--wire DIR] [--agents-only DIR] [--inject-agents [DIR]] [--agents-status [DIR]] [--agents-uninstall [DIR]] [--name NAME]"
       exit 0
     fi
     if [[ "$arg" == "--scaffold" ]]; then
       has_scaffold=true
       parsing_scaffold=true
+      parsing_validate=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--validate" ]]; then
+      has_validate=true
+      parsing_validate=true
+      parsing_scaffold=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--wire" ]]; then
+      has_wire=true
+      parsing_wire=true
+      parsing_scaffold=false
+      parsing_validate=false
       parsing_agents=false
       parsing_name=false
       parsing_inject=false
@@ -577,6 +699,8 @@ main() {
       has_agents_only=true
       parsing_agents=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_name=false
       parsing_inject=false
       parsing_status=false
@@ -587,6 +711,8 @@ main() {
       has_inject_agents=true
       parsing_inject=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_name=false
       parsing_status=false
@@ -597,6 +723,8 @@ main() {
       has_agents_status=true
       parsing_status=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_name=false
       parsing_inject=false
@@ -607,6 +735,8 @@ main() {
       has_agents_uninstall=true
       parsing_uninstall=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_name=false
       parsing_inject=false
@@ -616,6 +746,8 @@ main() {
     if [[ "$arg" == "--name" ]]; then
       parsing_name=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_inject=false
       parsing_status=false
@@ -625,6 +757,16 @@ main() {
     if $parsing_scaffold && [[ -n "$arg" ]]; then
       scaffold_dest="$arg"
       parsing_scaffold=false
+      continue
+    fi
+    if $parsing_validate && [[ -n "$arg" ]]; then
+      validate_dest="$arg"
+      parsing_validate=false
+      continue
+    fi
+    if $parsing_wire && [[ -n "$arg" ]]; then
+      wire_dest="$arg"
+      parsing_wire=false
       continue
     fi
     if $parsing_agents && [[ -n "$arg" ]]; then
@@ -669,6 +811,24 @@ main() {
       exit 1
     fi
     scaffold_agents_only "$agents_only_dest"
+    return
+  fi
+
+  if $has_validate; then
+    if [[ -z "$validate_dest" ]]; then
+      echo "ERROR: --validate requires a team-ai-directives directory argument" >&2
+      exit 1
+    fi
+    validate_structure_cli "$validate_dest"
+    return
+  fi
+
+  if $has_wire; then
+    if [[ -z "$wire_dest" ]]; then
+      echo "ERROR: --wire requires a team-ai-directives directory argument" >&2
+      exit 1
+    fi
+    wire_team_ai_directives "$wire_dest"
     return
   fi
 

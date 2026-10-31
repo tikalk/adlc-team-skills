@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`factory-runbook`** (`skills/factory/factory-runbook/`) — one invocable shared home for factory run mechanics. Holds the publish procedure (run branch → step commits → draft MR/PR with milestone/assignee ownership) invoked by the factory orchestrators, plus the run contracts (`executor.md`, `tracker-integration.md`, `lanes.md`, brief/provider templates, run policy) borrowed by path, never copied. Moves the publish scripts and run contracts out of `factory-mission` (nine borrowers repointed; `factory-intent` no longer installs `factory-mission`). `open-mr` and `run-branch` support `--kind code` (default `intent`) so mission code-MRs check out and publish from `factory/mission/*` or `factory/code/*` with code titles and descriptions. Pinned by `tests/unit/test_factory_runbook.py` with repointed helper, ownership, provider, and consolidation contracts.
 - **`factory-mission` thin-dispatch e2e** (`tests/e2e/test_factory_mission_thin_dispatch_e2e.py`) — four consumer-side contract tests pinning the thin boundary: no lifecycle discipline or forbidden correction routes in `factory-mission`, DAG dispatches to exactly the four `mission-*` skills with no bare slash commands or record IDs, every dispatched step owned by an owning `Step contract`, and SPEC_CORRECTION_NEEDED routed to the `mission-specify` clarify gate (RED pre-rewrite: 4 failed).
 - **`factory-mission` rewritten as thin spec-harness orchestrator** (E2) — lifecycle steps dispatch only to `mission-*` (`mission-specify`, `mission-plan`, `mission-implement`, `mission-verify`) via a Lifecycle DAG table with the harness boundary and per-run executor overrides; the correction route lands at the owning clarify gate, never code. Executor contract, scripts, and `mission-*` untouched.
+- **`team-setup` deterministic flags** (`skills/team/team-setup/scripts/`) —
+  `team-helpers.sh [--validate DIR] [--wire DIR]` (plus PowerShell twin
+  `-Validate`/`-Wire`) expose the Mode 2 validation and wiring logic as
+  script flags, so headless callers (`adlc-cli team setup --directives
+  <path>`) run the same checks the interactive skill runs without an LLM
+  session. `--validate` exits 0 for a complete structure, 1 with `MISSING:`
+  lines otherwise; `--wire` merges the absolute path into
+  `.adlc/init-options.json` as `team_ai_directives` (existing keys preserved,
+  invalid structures refused). Documented in the skill's "Script Entry
+  Points" section.
+
 - **`mission-*` SDD family** (`skills/mission/mission-specify/`,
   `mission-plan/`, `mission-implement/`, `mission-verify/`) — `factory-mission`'s
   lifecycle extracted into four discipline skills with one framework-free

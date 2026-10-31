@@ -112,6 +112,23 @@ Full walkthrough in `references/mode-configured.md`.
 3. **Confirm**: Ask the user to confirm before executing.
 
 4. **Write/Execute**: Perform the setup for the chosen mode.
+
+### Script Entry Points (deterministic, headless use)
+
+The Mode 1/2 validation and wiring logic has ONE home — the shared helper
+scripts — and is exposed as flags so headless callers (e.g. `adlc-cli team
+setup --directives <path>`) run the same checks without an LLM session:
+
+- `scripts/bash/team-helpers.sh [--validate DIR] [--wire DIR]`
+- `scripts/powershell/team-helpers.ps1 [-Validate DIR] [-Wire DIR]`
+
+`--validate DIR` runs the Verification structure check (exit 0 when complete,
+exit 1 with `MISSING:` lines when not). `--wire DIR` validates, then merges
+the absolute path into the project's `.adlc/init-options.json` as
+`team_ai_directives` (existing keys preserved; refuses to wire an invalid
+structure). Both twins behave identically. Interactive sessions still go
+through Mode Selection above; the in-session path and the headless path share
+the same implementation.
 ### Post-Setup Configuration
 
 After any mode completes successfully, update the project configuration:

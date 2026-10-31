@@ -12,8 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent.parent
 
-TEMPLATE = ROOT / "skills/factory/factory-mission/references/issues-provider.yml"
-TRACKER_INTEGRATION = ROOT / "skills/factory/factory-mission/references/tracker-integration.md"
+TEMPLATE = ROOT / "skills/factory/factory-runbook/references/issues-provider.yml"
+TRACKER_INTEGRATION = ROOT / "skills/factory/factory-runbook/references/tracker-integration.md"
 
 NEW_PATH = ".adlc/issues-provider.yml"
 

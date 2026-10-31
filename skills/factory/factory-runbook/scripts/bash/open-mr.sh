@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# open-mr.sh — push the intent run branch and open (or reuse) its one draft MR
-# (ADR-431-amendment §3, ADR-432, ADR-444; adlc-workspace#26).
+# open-mr.sh — push the intent or mission run branch and open (or reuse)
+# its one draft MR
+# (ADR-431-amendment §3, ADR-432, ADR-444; adlc-workspace#26; --kind code under ADR-473).
 #
 # With a factory run context (ADLC_RUN_ID): pushes ONLY the current run branch
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
@@ -17,6 +18,23 @@ set -euo pipefail
 die() { echo "open-mr: $*" >&2; exit 2; }
 json() { node -e "$1" "${@:2}"; }
 
+usage() {
+  echo 'usage: open-mr.sh [--kind <intent|code>]' >&2
+  exit 2
+}
+
+kind="intent"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --kind) [ $# -ge 2 ] || usage; kind="$2"; shift 2 ;;
+    *) usage ;;
+  esac
+done
+case "$kind" in
+  intent|code) ;;
+  *) die "unsupported --kind: $kind (expected 'intent' or 'code')" ;;
+esac
+
 if [ -z "${ADLC_RUN_ID:-}" ]; then
   echo "open-mr: no run context (ADLC_RUN_ID unset) — skipped" >&2
   exit 0
@@ -24,7 +42,18 @@ fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"
 cd "$root"
 branch="$(git branch --show-current)"
-case "$branch" in factory/intent/*) ;; *) die "not on an intent run branch (factory/intent/*): '$branch'" ;; esac
+case "$kind" in
+  intent)
+    case "$branch" in
+      factory/intent/*) ;;
+      *) die "not on an intent run branch (factory/intent/*): '$branch'" ;;
+    esac ;;
+  code)
+    case "$branch" in
+      factory/mission/*|factory/code/*|factory/mission-*) ;;
+      *) die "not on a code run branch (factory/mission/*, factory/code/*): '$branch'" ;;
+    esac ;;
+esac
 
 origin="$(git config --get remote.origin.url)" || die "no origin remote"
 read -r host project < <(json '
@@ -41,11 +70,23 @@ if [ -n "${ADLC_ISSUE_REF:-}" ]; then
   case "$ADLC_ISSUE_REF" in *..*) die "invalid ADLC_ISSUE_REF";; esac
   [[ "$ADLC_ISSUE_REF" =~ ^(([A-Za-z0-9_][A-Za-z0-9._-]*/)+([A-Za-z0-9_][A-Za-z0-9._-]*))#([0-9]+)$ ]] || die "invalid ADLC_ISSUE_REF"
   issue_project="${BASH_REMATCH[1]}"; iid="${BASH_REMATCH[4]}"
-  title="Draft: factory: ${issue_project##*/}#${iid} records (run ${ADLC_RUN_ID})"
+  if [ "$kind" = "code" ]; then
+    title="Draft: factory: ${issue_project##*/}#${iid} (run ${ADLC_RUN_ID})"
+  else
+    title="Draft: factory: ${issue_project##*/}#${iid} records (run ${ADLC_RUN_ID})"
+  fi
 else
-  title="Draft: factory: run ${ADLC_RUN_ID} records"
+  if [ "$kind" = "code" ]; then
+    title="Draft: factory: run ${ADLC_RUN_ID}"
+  else
+    title="Draft: factory: run ${ADLC_RUN_ID} records"
+  fi
 fi
-description="Factory intent run \`${ADLC_RUN_ID}\`${iid:+ for ${issue_project}#${iid}}. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
+if [ "$kind" = "code" ]; then
+  description="Factory mission run \`${ADLC_RUN_ID}\`${iid:+ for ${issue_project}#${iid}}. Merge with a merge commit, no squash — approved step SHAs must stay reachable."
+else
+  description="Factory intent run \`${ADLC_RUN_ID}\`${iid:+ for ${issue_project}#${iid}}. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
+fi
 
 provider="${ISSUE_PROVIDER:-gitlab}"
 case "$provider" in
@@ -101,19 +142,27 @@ if [ "$provider" = gitlab ]; then
   url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].web_url || "")' "$existing")"
   if [ -z "$url" ]; then
     target="$(api "projects/$p" | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).default_branch||"main"))')"
-    args=(-X POST "projects/$p/merge_requests" -f "source_branch=$branch" -f "target_branch=$target" -f "title=$title" -f "squash=false" -f "description=$description")
-    assignees=""
+    milestone="" assignees=""
     if [ -n "$iid" ]; then
       issue="$(api "projects/$(enc "$issue_project")/issues/$iid")" || die "cannot read issue $issue_project#$iid"
       milestone="$(json 'const i = JSON.parse(process.argv[1]); console.log(i.milestone && i.milestone.id || "")' "$issue")"
-      [ -z "$milestone" ] || args+=(-f "milestone_id=$milestone")
       assignees="$(json 'const i = JSON.parse(process.argv[1]); console.log((i.assignees || []).map(a => a.id).join(" "))' "$issue")"
     fi
     if [ -z "$assignees" ]; then
       assignees="$(api user | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).id||""))')"
     fi
-    for a in $assignees; do args+=(-f "assignee_ids[]=$a"); done
-    created="$(api "${args[@]}")" || die "the tracker refused to create the merge request (missing scope?)"
+    # One JSON body via --input: current glab refuses bracketed field names
+    # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and the
+    # milestone as strings.
+    body="$(json '
+      const [source_branch, target_branch, title, description, milestone, assignees] = process.argv.slice(1);
+      const b = { source_branch, target_branch, title, description, squash: false };
+      if (milestone) b.milestone_id = Number(milestone);
+      const ids = assignees.split(" ").filter(Boolean).map(Number);
+      if (ids.length) b.assignee_ids = ids;
+      console.log(JSON.stringify(b));
+    ' "$branch" "$target" "$title" "$description" "$milestone" "$assignees")"
+    created="$(printf '%s' "$body" | api -X POST "projects/$p/merge_requests" -H 'Content-Type: application/json' --input -)" || die "the tracker refused to create the merge request (missing scope?)"
     url="$(json 'console.log(JSON.parse(process.argv[1]).web_url || "")' "$created")"
   fi
 else

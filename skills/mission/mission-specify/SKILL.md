@@ -5,7 +5,7 @@ description: Use when a mission brief must become a measurable spec — restates
 
 # mission-specify
 
-**Requires:** the `factory-mission` skill's shared executor contract at `.agents/skills/factory-mission/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-mission`.
+**Requires:** the `factory-runbook` skill's shared executor contract at `.agents/skills/factory-runbook/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
 
 ## In a local session — you answer the gates
 
@@ -17,7 +17,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`mission-specify` owns the specify phase of the mission SDD family: it turns the mission's `brief.md` into a `spec.md` whose acceptance criteria can each be judged yes or no, and it records the decisions taken to get there. It works under the shared executor contract (`.agents/skills/factory-mission/references/executor.md`): the `specify` step reads `brief.md` and emits a draft, and the `clarify` step reads `spec.md` and emits a decision, with `reads_from` resolved by the orchestrator. It stops at the spec — planning belongs to `mission-plan`, building to `mission-implement`, verification and convergence to `mission-verify`, and REVIEW and SHIP belong to `factory-review` and `factory-deploy`.
+`mission-specify` owns the specify phase of the mission SDD family: it turns the mission's `brief.md` into a `spec.md` whose acceptance criteria can each be judged yes or no, and it records the decisions taken to get there. It works under the shared executor contract (`.agents/skills/factory-runbook/references/executor.md`): the `specify` step reads `brief.md` and emits a draft, and the `clarify` step reads `spec.md` and emits a decision, with `reads_from` resolved by the orchestrator. It stops at the spec — planning belongs to `mission-plan`, building to `mission-implement`, verification and convergence to `mission-verify`, and REVIEW and SHIP belong to `factory-review` and `factory-deploy`.
 
 ## Default lane
 

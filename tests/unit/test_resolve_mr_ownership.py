@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parent.parent.parent
-SCRIPTS = ROOT / "skills/factory/factory-mission/scripts"
+SCRIPTS = ROOT / "skills/factory/factory-runbook/scripts"
 RESOLVER_BASH = SCRIPTS / "bash/resolve-mr-ownership.sh"
 RESOLVER_PWSH = SCRIPTS / "powershell/resolve-mr-ownership.ps1"
 HAVE_BASH = shutil.which("bash") is not None

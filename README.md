@@ -184,7 +184,8 @@ npx skills add tikalk/adlc-team-skills -a claude -g
 
 Selective installs resolve closures automatically: `--skill architect-implement`
 also pulls its canonical home (`architect-clarify`) via `.skills-deps.json`,
-so shared helpers are never orphaned. Borrower skills fail fast with the exact
+so shared helpers are never orphaned. Factory skills resolve the same way
+(`--skill factory-intent` pulls `factory-runbook`). Borrower skills fail fast with the exact
 recovery command if their canonical home is missing.
 
 Works with any agent supporting the [Agent Skills standard](https://agentskills.io) —
@@ -343,7 +344,7 @@ each step. Works alongside:
 
 ## What's inside
 
-44 skills across 8 categories.
+48 skills across 8 categories.
 
 ### Team directives — every session, every user
 
@@ -361,6 +362,7 @@ each step. Works alongside:
 - **`factory-queue`** — queue intake, AI advisory triage scoring, intent gate, milestone generation.
 - **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, mandated TDD RED/GREEN gates (Test Agent writes failing tests first, Implement Agent writes code to pass them), circuit breaker.
 - **`factory-intent`** — merged intent orchestrator (product + architecture lanes, two gates).
+- **`factory-runbook`** — shared run mechanics, invoked by orchestrators: publish procedure (run branch → step commits → draft MR/PR with milestone/assignee ownership) plus the run contracts (executor, tracker integration, lanes, brief/provider templates) borrowed by path, never copied.
 - **`factory-deploy`** — post-merge release orchestration: exact-head gated merge → staged rollout with threshold verdicts → SemVer-tagged, noted release with monitor handoff.
 - **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.

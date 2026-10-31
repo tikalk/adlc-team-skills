@@ -14,8 +14,8 @@ ROOT = Path(__file__).parent.parent.parent
 
 SKILL_DIR = ROOT / "skills/factory/factory-setup"
 SKILL_MD = SKILL_DIR / "SKILL.md"
-TEMPLATE = ROOT / "skills/factory/factory-mission/references/issues-provider.yml"
-TRACKER_INTEGRATION = ROOT / "skills/factory/factory-mission/references/tracker-integration.md"
+TEMPLATE = ROOT / "skills/factory/factory-runbook/references/issues-provider.yml"
+TRACKER_INTEGRATION = ROOT / "skills/factory/factory-runbook/references/tracker-integration.md"
 TEAM_BOOT_MD = ROOT / "skills/team/team-boot/SKILL.md"
 
 

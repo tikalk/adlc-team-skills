@@ -1,7 +1,10 @@
 #!/usr/bin/env pwsh
-# open-mr.ps1 — push the intent run branch and open (or reuse) its one draft MR
+# open-mr.ps1 — push the intent or mission run branch and open (or reuse)
+# its one draft MR
 # (PowerShell twin of open-mr.sh; ADR-431-amendment §3, ADR-432, ADR-444;
-# adlc-workspace#26).
+# adlc-workspace#26; --kind code under ADR-473).
+#
+# Usage: open-mr.ps1 [--kind <intent|code>] (default intent).
 #
 # With a factory run context (ADLC_RUN_ID): pushes ONLY the current run branch
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
@@ -9,7 +12,9 @@
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
 # own account), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
 # with no commits beyond the base opens nothing (empty run). Titles are
-# built from repo, iid and run id only — never issue text. The tracker token's
+# built from repo, iid and run id only — never issue text. --kind code
+# opens the mission code MR instead (branch factory/mission/* or
+# factory/code/*, mission-flavoured title). The tracker token's
 # scopes are checked before anything is pushed or created (ADR-432); a missing
 # scope or a tracker refusal blocks: non-zero exit, nothing written. Without
 # ADLC_RUN_ID this is a no-op. Prints the MR URL.
@@ -21,6 +26,15 @@ function Die([string]$Message) {
     [Console]::Error.WriteLine("open-mr: $Message")
     exit 2
 }
+
+$kind = 'intent'
+$rest = [System.Collections.Generic.List[object]]::new()
+for ($i = 0; $i -lt $args.Count; $i++) {
+    if ($args[$i] -eq '--kind') { $i++; if ($i -ge $args.Count) { Die 'missing --kind value' }; $kind = [string]$args[$i]; continue }
+    $rest.Add($args[$i])
+}
+if ($kind -notin @('intent', 'code')) { Die "unsupported --kind: $kind (expected 'intent' or 'code')" }
+if ($rest.Count -gt 0) { Die "unknown argument: $($rest[0])" }
 # json <node-script> [args...] — node is the JSON engine (same as the bash twin).
 function json([string]$Script, [string[]]$JArgs = @()) {
     if ($JArgs.Count -gt 0) { node -e $Script @JArgs } else { node -e $Script }
@@ -34,7 +48,13 @@ $root = git rev-parse --show-toplevel 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $root) { Die 'not inside a git work tree' }
 Set-Location $root.Trim()
 $branch = (git branch --show-current).Trim()
-if ($branch -notlike 'factory/intent/*') { Die "not on an intent run branch (factory/intent/*): '$branch'" }
+if ($kind -eq 'intent') {
+    if ($branch -notlike 'factory/intent/*') { Die "not on an intent run branch (factory/intent/*): '$branch'" }
+} else {
+    if ($branch -notlike 'factory/mission/*' -and $branch -notlike 'factory/code/*' -and $branch -notlike 'factory/mission-*') {
+        Die "not on a code run branch (factory/mission/*, factory/code/*): '$branch'"
+    }
+}
 
 $origin = (git config --get remote.origin.url 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $origin) { Die 'no origin remote' }
@@ -53,13 +73,25 @@ if ($env:ADLC_ISSUE_REF) {
     if ($env:ADLC_ISSUE_REF -match '^(([A-Za-z0-9_][A-Za-z0-9._-]*/)+([A-Za-z0-9_][A-Za-z0-9._-]*))#([0-9]+)$') {
         $issueProject = $Matches[1]; $iid = $Matches[4]
         $ipRepo = ($issueProject -split '/')[-1]
-        $title = "Draft: factory: ${ipRepo}#${iid} records (run $($env:ADLC_RUN_ID))"
+        if ($kind -eq 'code') {
+            $title = "Draft: factory: ${ipRepo}#${iid} (run $($env:ADLC_RUN_ID))"
+        } else {
+            $title = "Draft: factory: ${ipRepo}#${iid} records (run $($env:ADLC_RUN_ID))"
+        }
     } else { Die 'invalid ADLC_ISSUE_REF' }
 } else {
-    $title = "Draft: factory: run $($env:ADLC_RUN_ID) records"
+    if ($kind -eq 'code') {
+        $title = "Draft: factory: run $($env:ADLC_RUN_ID)"
+    } else {
+        $title = "Draft: factory: run $($env:ADLC_RUN_ID) records"
+    }
 }
 $forIssue = if ($iid) { " for ${issueProject}#${iid}" } else { '' }
-$description = "Factory intent run ``$($env:ADLC_RUN_ID)``$forIssue. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
+if ($kind -eq 'code') {
+    $description = "Factory mission run ``$($env:ADLC_RUN_ID)``$forIssue. Merge with a merge commit, no squash — approved step SHAs must stay reachable."
+} else {
+    $description = "Factory intent run ``$($env:ADLC_RUN_ID)``$forIssue. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
+}
 
 $provider = if ($env:ISSUE_PROVIDER) { $env:ISSUE_PROVIDER } else { 'gitlab' }
 switch ($provider) {
@@ -130,27 +162,37 @@ if ($provider -eq 'gitlab') {
     if (-not $url) {
         $projJson = (Api @("projects/$p")) -join "`n"
         $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
-        $apiArgs = [System.Collections.Generic.List[string]]::new()
-        $apiArgs.AddRange([string[]]@('-X', 'POST', "projects/$p/merge_requests",
-            "-f", "source_branch=$branch", "-f", "target_branch=$target",
-            "-f", "title=$title", '-f', 'squash=false', "-f", "description=$description"))
+        $milestone = ''
         $assignees = ''
         if ($iid) {
             $issue = Api @("projects/$(Enc $issueProject)/issues/$iid")
             if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
             $milestone = json 'const i = JSON.parse(process.argv[1]); console.log(i.milestone && i.milestone.id || "")' @($issue)
-            if ($milestone) { $apiArgs.AddRange([string[]]@('-f', "milestone_id=$milestone")) }
             $assignees = json 'const i = JSON.parse(process.argv[1]); console.log((i.assignees || []).map(a => a.id).join(" "))' @($issue)
         }
         if (-not $assignees) {
             $userJson = (Api @('user')) -join "`n"
             $assignees = json 'console.log(JSON.parse(process.argv[1]).id||"")' @($userJson)
         }
-        foreach ($a in ($assignees -split ' ')) {
-            if ($a) { $apiArgs.AddRange([string[]]@('-f', "assignee_ids[]=$a")) }
+        # One JSON body via --input: current glab refuses bracketed field names
+        # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and
+        # the milestone as strings.
+        $body = [ordered]@{
+            source_branch = $branch; target_branch = $target; title = $title
+            description = $description; squash = $false
         }
-        $created = Api @($apiArgs.ToArray())
-        if ($LASTEXITCODE -ne 0) { Die 'the tracker refused to create the merge request (missing scope?)' }
+        if ($milestone) { $body.milestone_id = [int64]$milestone }
+        $ids = @(($assignees -split ' ') | Where-Object { $_ } | ForEach-Object { [int64]$_ })
+        if ($ids.Count -gt 0) { $body.assignee_ids = $ids }
+        $bodyFile = [System.IO.Path]::GetTempFileName()
+        try {
+            [System.IO.File]::WriteAllText($bodyFile, ($body | ConvertTo-Json -Compress -Depth 3))
+            $created = Api @('-X', 'POST', "projects/$p/merge_requests", '-H', 'Content-Type: application/json', '--input', $bodyFile)
+            $createExit = $LASTEXITCODE
+        } finally {
+            Remove-Item -Force $bodyFile -ErrorAction SilentlyContinue
+        }
+        if ($createExit -ne 0) { Die 'the tracker refused to create the merge request (missing scope?)' }
         $url = json 'console.log(JSON.parse(process.argv[1]).web_url || "")' @($created)
     }
 } else {

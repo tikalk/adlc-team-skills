@@ -20,9 +20,9 @@
 - <measurable outcome 1> — *measurement method*
 - <measurable outcome 2> — *measurement method*
 
-**Framework lane**: <lane> (<evidence>) — resolved per the frozen precedence
-(override → git-dated usage evidence → installed packs → embedded default);
-multi-match conflicts named here.
+**Framework lane**: <lane> (<evidence>) — the session model inspects the
+well-known install paths and discloses what it found; usage hints with no
+installed framework disclose and fall back to Default.
 ```
 
 ## Rules

@@ -1,0 +1,38 @@
+lanes:
+  embedded:
+    section: Default lane (embedded)
+    home: Default lane built into this skill
+  speckit:
+    section: Speckit lane
+    home: speckit framework integration (see !55)
+  superpowers:
+    section: Superpowers lane
+    home: superpowers framework integration (see lane issue)
+  matt:
+    section: Matt lane
+    home: matt framework integration (see !56)
+  addy:
+    section: Addy lane
+    home: addy framework integration (see !57)
+steps:
+  specify:
+    output_type: draft
+    reads_from: [brief.md]
+  clarify:
+    output_type: decision
+    reads_from: [spec.md]
+  plan:
+    output_type: draft
+    reads_from: [spec.md, clarify]
+  test:
+    output_type: artifact-ref
+    reads_from: [spec.md]
+  code:
+    output_type: artifact-ref
+    reads_from: [test, spec.md, plan.md]
+  verify:
+    output_type: findings
+    reads_from: [test, code]
+  converge:
+    output_type: decision
+    reads_from: [brief.md]

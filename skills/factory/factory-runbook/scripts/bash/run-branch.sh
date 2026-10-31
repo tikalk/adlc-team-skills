@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# run-branch.sh — check out the intent run branch in the project root
-# (ADR-431-amendment §1, adlc-workspace#26).
+# run-branch.sh — check out the intent or mission run branch in the project root
+# (ADR-431-amendment §1, adlc-workspace#26; --kind code under ADR-473).
 #
 # With a factory run context (ADLC_RUN_ID, ADR-444): check out
 #   factory/intent/<repo>-<iid>   from ADLC_ISSUE_REF (<group>/<repo>#<iid>), or
-#   factory/intent/run-<run_id>   without an issue,
+#   factory/intent/run-<run_id>   without an issue (intent, the default);
+#   factory/mission/<repo>-<iid>  from ADLC_ISSUE_REF, or
+#   factory/mission/run-<run_id>  without an issue (with --kind code);
 # continuing from origin when it has the branch (a local copy is fast-forwarded;
 # a local copy that diverged from origin halts), else creating it. The branch is shared by both intent lanes and by re-dispatches of the
 # same issue. Without ADLC_RUN_ID this is a no-op (interactive sessions never
@@ -12,6 +14,23 @@
 set -euo pipefail
 
 die() { echo "run-branch: $*" >&2; exit 2; }
+
+usage() {
+  echo 'usage: run-branch.sh [--kind <intent|code>]' >&2
+  exit 2
+}
+
+kind="intent"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --kind) [ $# -ge 2 ] || usage; kind="$2"; shift 2 ;;
+    *) usage ;;
+  esac
+done
+case "$kind" in
+  intent|code) ;;
+  *) die "unsupported --kind: $kind (expected 'intent' or 'code')" ;;
+esac
 
 if [ -z "${ADLC_RUN_ID:-}" ]; then
   echo "run-branch: no run context (ADLC_RUN_ID unset) — skipped" >&2
@@ -27,9 +46,17 @@ if [ -n "${ADLC_ISSUE_REF:-}" ]; then
   # (same rule as open-mr.sh).
   case "$ADLC_ISSUE_REF" in *..*) die "invalid ADLC_ISSUE_REF";; esac
   [[ "$ADLC_ISSUE_REF" =~ ^(([A-Za-z0-9_][A-Za-z0-9._-]*/)+([A-Za-z0-9_][A-Za-z0-9._-]*))#([0-9]+)$ ]] || die "invalid ADLC_ISSUE_REF"
-  branch="factory/intent/${BASH_REMATCH[3]}-${BASH_REMATCH[4]}"
+  if [ "$kind" = "code" ]; then
+    branch="factory/mission/${BASH_REMATCH[3]}-${BASH_REMATCH[4]}"
+  else
+    branch="factory/intent/${BASH_REMATCH[3]}-${BASH_REMATCH[4]}"
+  fi
 else
-  branch="factory/intent/run-${ADLC_RUN_ID}"
+  if [ "$kind" = "code" ]; then
+    branch="factory/mission/run-${ADLC_RUN_ID}"
+  else
+    branch="factory/intent/run-${ADLC_RUN_ID}"
+  fi
 fi
 git check-ref-format "refs/heads/$branch" || die "invalid branch name: $branch"
 

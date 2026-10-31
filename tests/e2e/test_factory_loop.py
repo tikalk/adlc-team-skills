@@ -14,7 +14,7 @@ def test_factory_mission_state_initialization(sandbox_project):
     config_file = run_dir / "mission.yml"
 
     config_file.parent.mkdir(parents=True, exist_ok=True)
-    template_config = ROOT / "skills" / "factory" / "factory-mission" / "mission-template.yml"
+    template_config = ROOT / "skills" / "factory" / "factory-runbook" / "mission-template.yml"
     assert template_config.exists()
 
     shutil.copy(template_config, config_file)

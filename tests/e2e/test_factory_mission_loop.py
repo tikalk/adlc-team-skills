@@ -13,7 +13,7 @@ def test_factory_mission_state_initialization(sandbox_project):
 
     # Simulate Phase 2 policy bootstrap
     config_file.parent.mkdir(parents=True, exist_ok=True)
-    template_config = Path(__file__).parent.parent.parent / "skills" / "factory" / "factory-mission" / "mission-template.yml"
+    template_config = Path(__file__).parent.parent.parent / "skills" / "factory" / "factory-runbook" / "mission-template.yml"
     assert template_config.exists()
 
     import shutil

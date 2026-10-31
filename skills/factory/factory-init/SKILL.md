@@ -14,7 +14,9 @@ It coordinates the leaf lifecycle skills directly — `product-init`, `product-c
 
 Its own final step, the **sweep**, is the only cross-layer analysis in the factory: it builds the **coverage matrix** (`.adlc/coverage/coverage.md`) — a feature-area pivot plus the four traceability relations PDR↔ADR, PDR↔code, ADR↔code, ChDR↔code — and diffs it against the previous sweep to detect drift.
 
-It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-mission/references/executor.md`.
+It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-runbook/references/executor.md`.
+
+**Requires:** the `factory-runbook` skill (provides the shared executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 **Scope boundary**: project-local memory only (PDR, ADR, ChDR + code). Team context directives (CDR / `team-init`) are NOT bootstrapped here — they publish to the external `team-ai-directives` repo and are owned by `factory-learn`. The sweep's final output includes a prose recommendation to run `factory-learn` / `/team-init` for reusable patterns spotted during bootstrap.
 
@@ -188,8 +190,8 @@ Every gap line uses the form:
 
 ## References
 
-- `factory-mission/references/executor.md` — shared executor contract (step schema, phases, correction loop, output types)
-- `factory-mission/references/tracker-integration.md` — comment bus, marker comments, distributed lease
+- `factory-runbook/references/executor.md` — shared executor contract (step schema, phases, correction loop, output types)
+- `factory-runbook/references/tracker-integration.md` — comment bus, marker comments, distributed lease
 - the factory-init matrix (factory-init skill — unified brownfield bootstrap + coverage matrix)
 - layer-tagged correction routing
 - Workflows as graphs — the fixed DAG is chosen; declarative graphs remain an option

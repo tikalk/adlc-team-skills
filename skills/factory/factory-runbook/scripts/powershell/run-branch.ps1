@@ -1,10 +1,15 @@
 #!/usr/bin/env pwsh
-# run-branch.ps1 — check out the intent run branch in the project root
-# (PowerShell twin of run-branch.sh; ADR-431-amendment §1, adlc-workspace#26).
+# run-branch.ps1 — check out the intent or mission run branch in the project root
+# (PowerShell twin of run-branch.sh; ADR-431-amendment §1, adlc-workspace#26;
+# --kind code under ADR-473).
+#
+# Usage: run-branch.ps1 [--kind <intent|code>] (default intent).
 #
 # Factory run context (ADLC_RUN_ID, ADR-444): check out
 # factory/intent/<repo>-<iid> from ADLC_ISSUE_REF (<group>/<repo>#<iid>), or
-# factory/intent/run-<run_id> without an issue, reusing the local branch or
+# factory/intent/run-<run_id> without an issue (intent, the default);
+# factory/mission/<repo>-<iid> from ADLC_ISSUE_REF, or
+# factory/mission/run-<run_id> without an issue (with --kind code), reusing the local branch or
 # continuing from origin (local copy fast-forwarded; diverged halts), else
 # creating it. The branch is shared by both intent lanes and by re-dispatches
 # of the same issue. Without ADLC_RUN_ID: no-op (interactive sessions never
@@ -18,6 +23,15 @@ function Die([string]$Message) {
     exit 2
 }
 
+$kind = 'intent'
+for ($i = 0; $i -lt $args.Count; $i++) {
+    switch -Regex ($args[$i]) {
+        '^--kind$' { $i++; if ($i -ge $args.Count) { Die 'missing --kind value' }; $kind = [string]$args[$i]; continue }
+        default    { Die "unknown argument: $($args[$i])" }
+    }
+}
+if ($kind -notin @('intent', 'code')) { Die "unsupported --kind: $kind (expected 'intent' or 'code')" }
+
 if (-not $env:ADLC_RUN_ID) {
     [Console]::Error.WriteLine("run-branch: no run context (ADLC_RUN_ID unset) — skipped")
     exit 0
@@ -29,15 +43,16 @@ if ($LASTEXITCODE -ne 0 -or -not $root) { Die "not inside a git work tree" }
 Set-Location $root.Trim()
 
 $branch = $null
+$prefix = if ($kind -eq 'code') { 'factory/mission' } else { 'factory/intent' }
 if ($env:ADLC_ISSUE_REF) {
     # Never build anything but a plain <path>#<number>
     # (same rule as open-mr.ps1).
     if ($env:ADLC_ISSUE_REF -like '*..*') { Die "invalid ADLC_ISSUE_REF" }
     if ($env:ADLC_ISSUE_REF -match '^(([A-Za-z0-9_][A-Za-z0-9._-]*/)+([A-Za-z0-9_][A-Za-z0-9._-]*))#([0-9]+)$') {
-        $branch = "factory/intent/$($Matches[3])-$($Matches[4])"
+        $branch = "$prefix/$($Matches[3])-$($Matches[4])"
     } else { Die "invalid ADLC_ISSUE_REF" }
 } else {
-    $branch = "factory/intent/run-$($env:ADLC_RUN_ID)"
+    $branch = "$prefix/run-$($env:ADLC_RUN_ID)"
 }
 
 git check-ref-format "refs/heads/$branch" 2>$null

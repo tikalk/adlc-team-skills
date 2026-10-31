@@ -5,7 +5,7 @@ description: Use when a plan must become working code under a mechanical test-fi
 
 # mission-implement
 
-**Requires:** the `factory-mission` skill's shared executor contract at `.agents/skills/factory-mission/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-mission`.
+**Requires:** the `factory-runbook` skill's shared executor contract at `.agents/skills/factory-runbook/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
 
 ## In a local session — you answer the gates
 
@@ -17,7 +17,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`mission-implement` owns the build phase of the mission SDD family: it splits implementation into a `test` step that writes the failing suite and a `code` step that writes the minimum source to satisfy it, each closed by a mechanical gate. It works under the shared executor contract (`.agents/skills/factory-mission/references/executor.md`): the `test` step reads `spec.md` and emits an `artifact-ref`; the `code` step reads that `test` artifact plus `spec.md` and `plan.md`. It stops at a green suite — verification and convergence belong to `mission-verify`, and REVIEW and SHIP belong to `factory-review` and `factory-deploy`.
+`mission-implement` owns the build phase of the mission SDD family: it splits implementation into a `test` step that writes the failing suite and a `code` step that writes the minimum source to satisfy it, each closed by a mechanical gate. It works under the shared executor contract (`.agents/skills/factory-runbook/references/executor.md`): the `test` step reads `spec.md` and emits an `artifact-ref`; the `code` step reads that `test` artifact plus `spec.md` and `plan.md`. It stops at a green suite — verification and convergence belong to `mission-verify`, and REVIEW and SHIP belong to `factory-review` and `factory-deploy`.
 
 ## Default lane
 

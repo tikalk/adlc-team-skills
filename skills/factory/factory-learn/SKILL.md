@@ -10,7 +10,9 @@ disable-model-invocation: true
 
 `factory-learn` orchestrates the continuous improvement learning loop of the software factory. It coordinates individual learning-related skills (`team-init`, `team-levelup`, `change-init`, `change-clarify`, `change-publish`, `team-repair`, `evals-analyze`) to transition draft directives into verified, published, and minimal team context assets.
 
-It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-mission/references/executor.md`.
+It operates as a **Kind-A DAG orchestrator** in alignment with the shared executor engine contract in `factory-runbook/references/executor.md`.
+
+**Requires:** the `factory-runbook` skill (provides the shared executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 ---
 

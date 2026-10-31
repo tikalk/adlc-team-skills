@@ -9,7 +9,9 @@ description: Use when the user asks for their active worklist — open PRs with 
 
 `factory-tickets` is the read-only personal worklist engine of the software factory. It provides the user with an immediate, live, and actionable overview of their active queue, categorized by "next move" rather than abstract status.
 
-It operates directly against the external issue tracker and PR host (GitHub, GitLab, Linear, Jira) using the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
+It operates directly against the external issue tracker and PR host (GitHub, GitLab, Linear, Jira) using the tracker-agnostic integration layer (`factory-runbook/references/tracker-integration.md`).
+
+**Requires:** the `factory-runbook` skill (provides the tracker-agnostic integration layer): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 ---
 
@@ -28,7 +30,7 @@ It operates directly against the external issue tracker and PR host (GitHub, Git
 ## Operating Process
 
 ### 1. Provider & Identity Discovery
-1. Discover the active tracker provider and credentials (`factory-mission/references/tracker-integration.md`).
+1. Discover the active tracker provider and credentials (`factory-runbook/references/tracker-integration.md`).
 2. Identify the authenticated user's login. Restrict the search to:
    - Pull requests **authored by** the authenticated account.
    - Tickets **assigned to** the authenticated account (or another login if explicitly requested).

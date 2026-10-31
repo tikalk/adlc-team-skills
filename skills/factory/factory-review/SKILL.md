@@ -9,7 +9,9 @@ description: Use when reviewing PRs for severity-ranked policy compliance agains
 
 `factory-review` is the PR-review compliance engine of the software factory. It acts as the automated component of **The Great Filter**, reviewing Pull Requests against organizational policy-as-code (`REVIEW.md`) and babysitting agent-opened PRs until they are ready for merge.
 
-It operates as a **Kind-B control-plane skill** integrated with the PR hosting provider (GitHub / GitLab) via the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
+It operates as a **Kind-B control-plane skill** integrated with the PR hosting provider (GitHub / GitLab) via the tracker-agnostic integration layer (`factory-runbook/references/tracker-integration.md`).
+
+**Requires:** the `factory-runbook` skill (provides tracker integration, lanes, and the executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `factory-mission` Phase 5's test/code/converge pattern. Three separate sub-agents — Review Agent (read-only), Fix Agent (writeable src/), Converge Agent (independent judge) — are dispatched per iteration via lane-based dispatch, communicating only through the comment bus. The converge step returns `DONE` / `CONTINUE` / `SPEC_CORRECTION_NEEDED`, bounded by a circuit breaker and score-regression counter.
 
@@ -44,7 +46,7 @@ In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `
 
 When triggered with `--pr <id>` (without `--self-heal`):
 
-1. Discover credentials and PR hosting tools (`factory-mission/references/tracker-integration.md`).
+1. Discover credentials and PR hosting tools (`factory-runbook/references/tracker-integration.md`).
 2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
 3. Fetch the PR diff and description.
 4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings`.
@@ -188,9 +190,9 @@ factory-review --pr <id> --self-heal
 
 - `references/review-loop.md` — Converge loop controller specification (three-sub-agent dispatch, convergence detection, circuit breaker, score-regression)
 - `references/review-policy.md` — REVIEW.md format and review pass definitions
-- `factory-mission/references/tracker-integration.md` — Tracker-agnostic integration (comment bus, label gates, distributed lease)
-- `factory-mission/references/executor.md` — Shared executor contract (step schema, lane dispatch, reads_from pattern)
-- `factory-mission/references/lanes.md` — Lane profiles and cross-runtime dispatch
+- `factory-runbook/references/tracker-integration.md` — Tracker-agnostic integration (comment bus, label gates, distributed lease)
+- `factory-runbook/references/executor.md` — Shared executor contract (step schema, lane dispatch, reads_from pattern)
+- `factory-runbook/references/lanes.md` — Lane profiles and cross-runtime dispatch
 - The factory-review Converge Loop — Three-Sub-Agent PR Repair
 - The factory-review Converge Loop architecture
 - The PR/MR comment thread as inter-agent memory bus

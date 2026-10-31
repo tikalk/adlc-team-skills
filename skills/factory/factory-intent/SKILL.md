@@ -8,14 +8,11 @@ disable-model-invocation: true
 
 ## In a factory run — read this first
 
-When `ADLC_RUN_ID` is set, the workflow engine runs this step unattended and a gate follows it. Do exactly this:
+When `ADLC_RUN_ID` is set, the workflow engine runs this step unattended and a gate follows it. Invoke the `factory-runbook` skill for the publish sequence (run branch → step commits → draft MR, plus the run-context rules); run the lifecycle steps the DAG resolves for the issue in between.
 
-1. **Start:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/run-branch.sh` — on Windows, the PowerShell twin (every helper has one under `scripts/powershell/`)
-2. Run the lifecycle steps the DAG resolves for the issue. After **each** step that changed files: `commit-step.sh` with every path it wrote, moved or deleted.
-3. **Before you return, always:** `open-mr.sh`, then write a one-line `conclusion` into `ADLC_STEP_OUTPUT`. Do this whatever the outcome, even when nothing changed.
-4. **Never ask for approval** or wait for an answer. The engine's gate after this step is the approval; a question here ends the step with nothing published.
+**Never ask for approval** or wait for an answer. The engine's gate after this step is the approval. **Before you return, always:** write `mr_url` and a one-line `conclusion` into `ADLC_STEP_OUTPUT`, whatever the outcome.
 
-Only this orchestrator commits, pushes and opens the MR, and only through these helpers; lifecycle skills never do. Details: [Run Branch, Step Commits and Draft MR](#run-branch-step-commits-and-draft-mr).
+Only this orchestrator invokes the publish sequence, and only through the runbook; lifecycle skills never do. Details: [Run Branch, Step Commits and Draft MR](#run-branch-step-commits-and-draft-mr).
 
 ---
 
@@ -29,7 +26,7 @@ architecture lifecycle skills (`architect-init`, `architect-specify`,
 a consistent `PRD.md` and `AD.md` from a single Mission Brief.
 
 It operates as a **Kind-A DAG orchestrator** in alignment with the shared
-executor engine contract in `factory-mission/references/executor.md`. It
+executor engine contract in `factory-runbook/references/executor.md`. It
 replaces the twin orchestrators with one two-lane DAG — no aliases.
 
 ---
@@ -121,15 +118,12 @@ enforced at dispatch, not by a gate in that file).
 
 ## Run Branch, Step Commits and Draft MR
 
-**Requires:** the `factory-mission` skill (provides the run helpers): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-mission`
+**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
-In a factory run (`ADLC_RUN_ID` set by the workflow engine) this orchestrator — and only it, never the lane lifecycle skills — commits, pushes the run branch and opens the draft MR, always through these three helpers:
+In a factory run (`ADLC_RUN_ID` set by the workflow engine) this orchestrator — and only it, never the lane lifecycle skills — commits, pushes the run branch and opens the draft MR. Invoke the `factory-runbook` skill for the publish sequence with:
 
-1. **Before the first step:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/run-branch.sh` — checks out `factory/intent/<repo>-<iid>` (from `ADLC_ISSUE_REF`) in the project root, reusing it or continuing from `origin`. Shared by both lanes and with re-dispatches.
-2. **After each step** (`specify`/`init`, `clarify`, `implement`, `analyze` fixes):
-   `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/commit-step.sh --orchestrator factory-intent --step <step> --output-type <draft|decision|artifact-ref|findings> --summary "<one line, no issue text>" --records <IDs> -- <paths the step wrote>`
-   Pass every path the step wrote, moved or deleted (a promoted draft's old path too; the helper also commits deletions inside the allowlist), and only paths inside the lifecycle write allowlists (`.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, `docs/adlc/product/PRD.md`, `.adlc/product/sections/`, `.adlc/product/state.json`, `.adlc/drafts/adr/`, `docs/adlc/memory/adr/`, `docs/adlc/architect/AD.md`, `docs/adlc/architect/views/`, `.adlc/architect/state.json`). It prints `sha: <sha>` or `sha: none`; put that `sha` in the step's bus marker (the bus carries pointers, not content). Never stage `.adlc/workflows/**`.
-3. **Before you return, always:** `bash {REPO_ROOT}/.agents/skills/factory-mission/scripts/bash/open-mr.sh` — pushes the run branch only, finds or opens one draft MR (merge commit, no squash; milestone/assignee per the MR-ownership decision) and writes `mr_url` to `ADLC_STEP_OUTPUT`, which the engines' gates link (`context.link`). Call it whatever the outcome — even when nothing was committed (`sha: none`, an analyze-only pass): with no commits on the run branch it opens nothing and the gate shows there is nothing to review. Also write a one-line `conclusion` into the same JSON object (the gates' intent-conclusion rule).
-   In a factory run the engine's gate after this step **is** the approval: do not ask for approval yourself (no "approve `implement`?" question) — finish the steps the issue needs, run `open-mr.sh`, state the conclusion and return.
+1. **Branch:** `factory/intent/<repo>-<iid>` (from `ADLC_ISSUE_REF`) — shared by both lanes and with re-dispatches; continues from `origin`.
+2. **Step commits** (`specify`/`init`, `clarify`, `implement`, `analyze` fixes): every path the step wrote, moved or deleted (a promoted draft's old path too), restricted to the lifecycle write allowlists (`.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, `docs/adlc/product/PRD.md`, `.adlc/product/sections/`, `.adlc/product/state.json`, `.adlc/drafts/adr/`, `docs/adlc/memory/adr/`, `docs/adlc/architect/AD.md`, `docs/adlc/architect/views/`, `.adlc/architect/state.json`). Put the returned `sha` in the step's bus marker (the bus carries pointers, not content). Never stage `.adlc/workflows/**`.
+3. **Draft MR + conclusion:** Call it whatever the outcome — even when nothing was committed (`sha: none`, an analyze-only pass): with no commits on the run branch it opens nothing and the gate shows there is nothing to review. In a factory run the engine's gate after this step **is** the approval: do not ask for approval yourself — finish the steps the issue needs, state the conclusion and return.
 
-Outside a factory run the helpers do nothing unless the user opted in (`adlc.commit_steps: true` in `.adlc/init-options.json`, or `--commit` passed to this skill, which you forward to `commit-step.sh`); `run-branch.sh` and `open-mr.sh` never act without `ADLC_RUN_ID`. A helper's non-zero exit (refused path, missing committer identity, tracker scope) stops the run — report it, do not work around it.
+Outside a factory run the runbook helpers do nothing unless the user opted in (`adlc.commit_steps: true` in `.adlc/init-options.json`, or `--commit` passed to this skill and forwarded); a helper's non-zero exit (refused path, missing committer identity, tracker scope) stops the run — report it, do not work around it.

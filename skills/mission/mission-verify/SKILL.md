@@ -5,7 +5,7 @@ description: Use when implemented work must be judged against its brief — seve
 
 # mission-verify
 
-**Requires:** the `factory-mission` skill's shared executor contract at `.agents/skills/factory-mission/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-mission`.
+**Requires:** the `factory-runbook` skill's shared executor contract at `.agents/skills/factory-runbook/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
 
 ## In a local session — you answer the gates
 
@@ -17,7 +17,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`mission-verify` owns the verify phase of the mission SDD family: it judges the built work against the brief rather than the implementer's claims, emits severity-ranked findings, and returns one converge verdict. It works under the shared executor contract (`.agents/skills/factory-mission/references/executor.md`): the `verify` step reads the `test` and `code` artifacts and emits `findings`, and the `converge` step reads `brief.md` and emits a `decision` — the judge is independent, so it checks the brief and non-goals rather than the verifier's own findings. It stops at the verdict — REVIEW and SHIP belong to `factory-review` and `factory-deploy`, which this skill never pre-empts.
+`mission-verify` owns the verify phase of the mission SDD family: it judges the built work against the brief rather than the implementer's claims, emits severity-ranked findings, and returns one converge verdict. It works under the shared executor contract (`.agents/skills/factory-runbook/references/executor.md`): the `verify` step reads the `test` and `code` artifacts and emits `findings`, and the `converge` step reads `brief.md` and emits a `decision` — the judge is independent, so it checks the brief and non-goals rather than the verifier's own findings. It stops at the verdict — REVIEW and SHIP belong to `factory-review` and `factory-deploy`, which this skill never pre-empts.
 
 ## Default lane
 

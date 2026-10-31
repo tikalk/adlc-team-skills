@@ -14,12 +14,12 @@ ROOT = Path(__file__).parent.parent.parent
 SKILLS = ROOT / "skills"
 MIRROR = ROOT / ".agents" / "skills"
 
-TRACKER = SKILLS / "factory/factory-mission/references/tracker-integration.md"
-EXECUTOR = SKILLS / "factory/factory-mission/references/executor.md"
-PROVIDER_YML = SKILLS / "factory/factory-mission/references/issues-provider.yml"
+TRACKER = SKILLS / "factory/factory-runbook/references/tracker-integration.md"
+EXECUTOR = SKILLS / "factory/factory-runbook/references/executor.md"
+PROVIDER_YML = SKILLS / "factory/factory-runbook/references/issues-provider.yml"
 RESOLVERS_REL = [
-    "skills/factory/factory-mission/scripts/bash/resolve-mr-ownership.sh",
-    "skills/factory/factory-mission/scripts/powershell/resolve-mr-ownership.ps1",
+    "skills/factory/factory-runbook/scripts/bash/resolve-mr-ownership.sh",
+    "skills/factory/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1",
 ]
 
 
@@ -63,7 +63,7 @@ def test_connector_names_the_resolver_path():
 
 def test_resolver_path_in_the_connector_resolves():
     content = TRACKER.read_text(encoding="utf-8")
-    match = re.search(r"(\{REPO_ROOT\}/\.agents/skills/factory-mission/scripts/bash/resolve-mr-ownership\.sh)", content)
+    match = re.search(r"(\{REPO_ROOT\}/\.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership\.sh)", content)
     assert match, "the connector must reference the resolver by its installed path"
     for rel in RESOLVERS_REL:
         source = ROOT / rel
@@ -99,9 +99,9 @@ def test_provider_template_marks_the_noop_providers():
 def test_mirror_carries_the_resolver():
     if not MIRROR.exists():
         pytest.skip("installed mirror absent — regenerate with adlc-cli")
-    assert (MIRROR / "factory-mission/scripts/bash/resolve-mr-ownership.sh").exists(), (
+    assert (MIRROR / "factory-runbook/scripts/bash/resolve-mr-ownership.sh").exists(), (
         "mirror missing the ownership resolver twin"
     )
-    assert (MIRROR / "factory-mission/scripts/powershell/resolve-mr-ownership.ps1").exists(), (
+    assert (MIRROR / "factory-runbook/scripts/powershell/resolve-mr-ownership.ps1").exists(), (
         "mirror missing the ownership resolver PowerShell twin"
     )

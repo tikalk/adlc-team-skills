@@ -21,10 +21,13 @@ REFERENCES = [
     "executor.md",
     "tracker-integration.md",
     "lanes.md",
-    "mission-brief-template.md",
     "issues-provider.yml",
     "run-context.md",
 ]
+# Canonical brief template moved to mission-brief/references/ (fold !69):
+# the core owns its contract, the runbook table points borrowers at the
+# mission-brief home.
+TEMPLATE_HOME = ROOT / "skills/mission/mission-brief/references"
 
 # Orchestrators that post changes delegate publish to the runbook.
 PUBLISH_USERS = [
@@ -78,6 +81,10 @@ def test_canonical_contract_refs_exist():
     missing = [n for n in REFERENCES if not (SKILL / "references" / n).exists()]
     assert not missing, f"runbook missing contract references: {missing}"
     assert (SKILL / "mission-template.yml").exists(), "runbook missing mission-template.yml"
+    assert (TEMPLATE_HOME / "mission-brief-template.md").exists(), (
+        "canonical brief template missing from mission-brief/references/ "
+        "(fold decision 2: template home moves with the core)"
+    )
 
 
 def test_no_stale_contract_refs_in_mission():

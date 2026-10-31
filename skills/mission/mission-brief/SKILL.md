@@ -5,7 +5,7 @@ description: Use when a mission brief must become verified work end to end — b
 
 # mission-brief
 
-**Requires:** the `factory-mission` skill's shared executor contract at `.agents/skills/factory-mission/references/executor.md` (installed path); install with `adlc-cli skills add tikalk/adlc-team-skills --skill factory-mission`.
+**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
 
 ## In a local session — you answer the gates
 
@@ -17,7 +17,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`mission-brief` owns the mission lifecycle end to end as one DAG: it turns the mission's brief into a spec whose acceptance criteria each answer yes or no, into an ordered plan, into tested code, into a converge verdict — judged against the brief, never against the implementer's claims. It works under the shared executor contract (`.agents/skills/factory-mission/references/executor.md`): the `brief` step emits the Mission Brief draft per `references/mission-brief-template.md`; `specify` reads `brief.md` and emits a draft; `clarify` reads `spec.md` and emits a decision; `plan` reads `spec.md` plus the clarify decision and emits `plan.md`; `test` reads `spec.md` and emits an `artifact-ref`; `code` reads that `test` artifact plus `spec.md` and `plan.md`; `verify` reads the `test` and `code` artifacts and emits severity-ranked findings; `converge` reads `brief.md` and emits one verdict of `DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`. A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate, never to code.
+`mission-brief` owns the mission lifecycle end to end as one DAG: it turns the mission's brief into a spec whose acceptance criteria each answer yes or no, into an ordered plan, into tested code, into a converge verdict — judged against the brief, never against the implementer's claims. It works under the shared executor contract (`.agents/skills/factory-runbook/references/executor.md`): the `brief` step emits the Mission Brief draft per `references/mission-brief-template.md`; `specify` reads `brief.md` and emits a draft; `clarify` reads `spec.md` and emits a decision; `plan` reads `spec.md` plus the clarify decision and emits `plan.md`; `test` reads `spec.md` and emits an `artifact-ref`; `code` reads that `test` artifact plus `spec.md` and `plan.md`; `verify` reads the `test` and `code` artifacts and emits severity-ranked findings; `converge` reads `brief.md` and emits one verdict of `DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`. A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate, never to code.
 
 The lane-carrying sections below keep one pointer per framework lane; the lane prose lives in its own home and is linked, never duplicated here. Lane resolution is a session instruction (Phase 0), never a script or table lookup.
 

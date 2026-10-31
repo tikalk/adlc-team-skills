@@ -48,9 +48,13 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
    step's bus marker.
 3. **Before returning, always:** `bash {REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/open-mr.sh [--kind <intent|code>]` —
    pushes the run branch only, finds or opens one draft MR (merge commit, no
-   squash; milestone/assignee per the MR-ownership decision via
-   `{REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership.sh`),
-   stamps `agent-authored`, and writes `mr_url` to `ADLC_STEP_OUTPUT`. Pass
+   squash; Issue milestone applied inline, Issue assignees else the
+   runner's own account, per `tracker-integration.md` Operation 11; the
+   deterministic resolver `{REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership.sh`
+   itself runs at caller/completion, not inside `open-mr.sh`), and the
+   `agent-authored` stamp likewise lives at completion (mission Phase 6,
+   orchestrator §7 hygiene — not in this helper). It writes `mr_url` to
+   `ADLC_STEP_OUTPUT`. Pass
    `--kind code` for code missions (`factory/mission/*` branch). Call it
    whatever the outcome — an empty run opens nothing and the gate shows no
    link. Also write a one-line `conclusion` into the same JSON object,

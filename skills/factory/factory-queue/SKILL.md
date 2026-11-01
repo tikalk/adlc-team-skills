@@ -35,7 +35,7 @@ It performs two primary control-plane operations:
 
 Operates on candidate issues (labeled `intent`) or local draft briefs:
 
-1. **Pull Candidate Briefs**: Discover the active tracker provider and fetch issues with status `intent` (`factory-runbook/references/tracker-integration.md`).
+1. **Pull Candidate Briefs**: Discover the active tracker provider and fetch issues with status `intent` (`skills/factory/factory-runbook/references/tracker-integration.md`). The fetch includes Task-typed issues — children converted from Issue to Task for hierarchy stay visible to triage and are first-class plan items, never filtered out.
 2. **AI Triage Scoring**: Compute stateless advisory scores on three dimensions:
    - **Risk**: Blast radius, data sensitivity, and architectural impact (Low / Medium / High).
    - **Complexity**: Scope and cross-service dependencies (Low / Medium / High).
@@ -52,10 +52,13 @@ Operates post-lifecycle convergence to populate the backlog:
 
 1. **Load Artifacts**: Read accepted PDRs + ADRs and the generated `docs/adlc/product/PRD.md` / `docs/adlc/architect/AD.md`. When no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line.
 2. **Generate Milestones & Epics**: Extract sequencing, requirement groupings, and "done-means" definitions into prioritized epics and milestones. **Gate/task issues MUST use the mission-brief format** — Goal / Constraints / Non-Goals / Success Criteria (each criterion with a measurement method) — per the canonical template in `factory-mission`'s `references/mission-brief-template.md`. Milestone descriptions carry the demo sentence + done-means (milestones are grouping containers, not executable units). Issue titles are short work-item names; `[Gx]`/`Mx:` prefixes are forbidden (milestone assignment carries grouping; descriptions carry references).
-3. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
-4. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.
-5. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
 
+3. **Probe Hierarchy Capability (before any attach)**: Before attaching children to any generated epic, run the capability probe per the provider seam (`skills/factory/factory-runbook/references/tracker-integration.md` — the probe names the target instance + version, records freshness, and the chosen strategy lands in the plan output). Resolve the strategy with `scripts/bash/resolve-hierarchy-strategy.sh` (or the `scripts/powershell/` twin): native epic type where the tracker offers it; Issue parent holding Task-type children where conversion is available; label convention otherwise. A stale probe, or a probe from another instance or version, counts as no probe.
+
+4. **Attach Children & Verify**: Attach each epic's generated issues as children (converting Issue to Task where the tracker requires it for parenting). Snapshot-compare milestone, labels, and description before and after every conversion — a conversion that alters any of them is a failure, not a silent edit. Read back each epic: it must report `hasChildren` plus the child count. When a hierarchy operation fails at use time, fall back to the label convention for the affected epic only, disclosed as `degraded: no tree` with the failing operation named — the plan's issues still land, with or without the tree. Trackers with no hierarchy support use the label convention from the start, always disclosed as `degraded: no tree`, never silent.
+5. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
+6. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.
+7. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
 ---
 
 ## Invariants & Safety Constraints

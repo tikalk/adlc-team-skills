@@ -63,7 +63,15 @@ Default lane built into this skill.
 
 ## Speckit lane
 
-Pointer — lane prose lives at the speckit framework integration. Same brief → steps → converge DAG; speckit tooling shapes the specify/plan artifacts per its own contract.
+This section translates the shared lifecycle DAG into the speckit framework workflow; speckit keeps its own loop internals and the step contract below remains authoritative. All artifacts are committed directly to the repository under the `specs/` tree, giving developers reviewing the pull request the native speckit audit trail.
+
+- The `specify` step maps to the spec creation preset at `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.specify.md`, run through the `specify` CLI (`specify bundle install adlc-spec-kit`). It reads the brief and writes the `specs/` intake (`spec.md`) scaffolded via `.specify/` templates. Shared contract: `output_type` `draft` with `reads_from` `brief.md`.
+- The `clarify` step maps to `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.clarify.md` via the `specify` CLI, resolving open questions and encoding decisions back into `spec.md`. Shared contract: `output_type` `decision` with `reads_from` `spec.md`.
+- The `plan` step maps to the plan preset at `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.plan.md` run through the `specify` CLI, generating `specs/` architecture design (`plan.md`) alongside the dependency-ordered task breakdown from `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.tasks.md` into `tasks.md`. It reads `.specify/` templates and the clarified spec. Shared contract: `output_type` `draft` with `reads_from` `spec.md, clarify`.
+- The `test` step maps to the TDD tasks command at `github.com/tikalk/adlc-spec-kit-bundle/extensions/adlc-tdd/commands/tasks.md`, which detects language and generates risk-plus-increment tests. It reads `spec.md` and stages the failing suite in `tests/` under the RED gate. Shared contract: `output_type` `artifact-ref` with `reads_from` `spec.md`.
+- The `code` step maps to the implementation preset at `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.implement.md`, executed through the RED-GREEN-REFACTOR cycle of `github.com/tikalk/adlc-spec-kit-bundle/extensions/adlc-tdd/commands/implement.md`. It writes code to `src/` until the full suite passes under the GREEN gate. Shared contract: `output_type` `artifact-ref` with `reads_from` `test, spec.md, plan.md`.
+- The `verify` step maps to the evaluation-driven verification command at `github.com/tikalk/adlc-spec-kit-bundle/extensions/edd/commands/verify.md`, running deterministic checks and quality assessments against `specs/` and `.specify/` grammar. Shared contract: `output_type` `findings` with `reads_from` `test, code`.
+- The `converge` step maps to `github.com/tikalk/adlc-spec-kit-bundle/presets/agentic-sdlc/commands/adlc.spec.converge.md` via the `specify` CLI, judging the built work against `brief.md` and returning the loop verdict (`DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`). Shared contract: `output_type` `decision` with `reads_from` `brief.md`.
 
 Canonical home: speckit framework integration.
 

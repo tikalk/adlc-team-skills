@@ -63,27 +63,27 @@ Default lane built into this skill.
 
 ## Speckit lane
 
-Pointer — lane prose lives at the speckit framework integration (see !55). Same brief → steps → converge DAG; speckit tooling shapes the specify/plan artifacts per its own contract.
+Pointer — lane prose lives at the speckit framework integration. Same brief → steps → converge DAG; speckit tooling shapes the specify/plan artifacts per its own contract.
 
-Canonical home: speckit framework integration (see !55).
+Canonical home: speckit framework integration.
 
 ## Superpowers lane
 
-Pointer — lane prose lives at the superpowers framework integration (see lane issue). Same brief → steps → converge DAG; the superpowers workflow shapes the implement/verify loop per its own contract.
+Pointer — lane prose lives at the superpowers framework integration. Same brief → steps → converge DAG; the superpowers workflow shapes the implement/verify loop per its own contract.
 
-Canonical home: superpowers framework integration (see lane issue).
+Canonical home: superpowers framework integration.
 
 ## Matt lane
 
-Pointer — lane prose lives at the matt framework integration (see !56). Same brief → steps → converge DAG; matt's spec-issue linkage shapes the specify/clarify artifacts per its own contract.
+Pointer — lane prose lives at the matt framework integration. Same brief → steps → converge DAG; matt's spec-issue linkage shapes the specify/clarify artifacts per its own contract.
 
-Canonical home: matt framework integration (see !56).
+Canonical home: matt framework integration.
 
 ## Addy lane
 
-Pointer — lane prose lives at the addy framework integration (see !57). Same brief → steps → converge DAG; addy checklists shape the plan/verify artifacts per its own contract.
+Pointer — lane prose lives at the addy framework integration. Same brief → steps → converge DAG; addy checklists shape the plan/verify artifacts per its own contract.
 
-Canonical home: addy framework integration (see !57).
+Canonical home: addy framework integration.
 
 ## Step contract
 

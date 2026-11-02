@@ -4,16 +4,16 @@ lanes:
     home: Default lane built into this skill
   speckit:
     section: Speckit lane
-    home: speckit framework integration (see !55)
+    home: speckit framework integration
   superpowers:
     section: Superpowers lane
-    home: superpowers framework integration (see lane issue)
+    home: superpowers framework integration
   matt:
     section: Matt lane
-    home: matt framework integration (see !56)
+    home: matt framework integration
   addy:
     section: Addy lane
-    home: addy framework integration (see !57)
+    home: addy framework integration
 steps:
   specify:
     output_type: draft

@@ -24,7 +24,7 @@ REFERENCES = [
     "issues-provider.yml",
     "run-context.md",
 ]
-# Canonical brief template moved to mission-brief/references/ (fold !69):
+# Canonical brief template moved to mission-brief/references/ (the fold):
 # the core owns its contract, the runbook table points borrowers at the
 # mission-brief home.
 TEMPLATE_HOME = ROOT / "skills/mission/mission-brief/references"

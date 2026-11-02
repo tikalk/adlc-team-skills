@@ -1,9 +1,9 @@
-"""mission-brief fold (adlc-workspace!69, implementing the lane-core fold).
+"""mission-brief fold: restore the lane-carrying core DAG.
 
 RED-gate suite for the fold: mission-brief is restored as the single
 lane-carrying core DAG (brief -> steps -> converge - Default lane plus four
-framework lane pointers; lane prose lands in !55/!56/!57 plus the new
-superpowers issue), and the four mission-* step-skills are retired
+framework lane pointers; lane prose lives at the per-framework
+integration homes), and the four mission-* step-skills are retired
 (deleted, not shimmed). factory-mission becomes harness-only and delegates
 lifecycle to mission-brief's DAG with the resolved lane.
 
@@ -269,9 +269,9 @@ def test_no_orphan_lane_every_resolvable_lane_has_a_section():
             continue
         assert len(lines) <= 14, (
             f"lane {lane}: section must stay a pointer "
-            f"(got {len(lines)} lines - lane prose belongs in its lane issue)"
+            f"(got {len(lines)} lines - lane prose belongs at its prose home)"
         )
-        assert re.search(r"!\d+|prose|pointer|canonical", body, re.IGNORECASE), (
+        assert re.search(r"prose|pointer|canonical", body, re.IGNORECASE), (
             f"lane {lane}: section must reference its prose home explicitly"
         )
 

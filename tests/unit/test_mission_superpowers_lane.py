@@ -60,12 +60,17 @@ def test_superpowers_lane_anchors_and_artifacts():
     body = section_body(text, "## Superpowers lane")
 
     # Installed plugin / skills anchors
-    assert "github.com/obra/superpowers/skills/" in body or ".opencode/opencode.json" in body, (
-        "Superpowers lane must cite installed skill paths or .opencode/opencode.json plugin entry"
+    assert "github.com/obra/superpowers/skills/" in body, (
+        "Superpowers lane must cite installed skill paths (github.com/obra/superpowers/skills/...)"
+    )
+    assert ".opencode/opencode.json" in body or "plugin" in body, (
+        "Superpowers lane must cite plugin installation entry"
     )
 
     # Native superpowers artifact grammar (docs/superpowers/specs/, docs/superpowers/plans/)
     assert "docs/superpowers/" in body, "Superpowers lane must reference docs/superpowers/ directory"
+    assert "docs/superpowers/specs/" in body, "Superpowers lane must reference docs/superpowers/specs/"
+    assert "docs/superpowers/plans/" in body, "Superpowers lane must reference docs/superpowers/plans/"
     assert "spec.md" in body, "Superpowers lane must produce or read spec.md"
     assert "plan.md" in body, "Superpowers lane must produce or read plan.md"
 

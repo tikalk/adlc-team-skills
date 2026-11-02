@@ -77,7 +77,15 @@ Canonical home: speckit framework integration.
 
 ## Superpowers lane
 
-Pointer — lane prose lives at the superpowers framework integration. Same brief → steps → converge DAG; the superpowers workflow shapes the implement/verify loop per its own contract.
+This section translates the shared lifecycle DAG into the superpowers framework workflow across coding agents (Claude Code, Cursor, Codex, OpenCode, Gemini, etc.); superpowers keeps its own inner loop discipline and the step contract below remains authoritative. All design and planning artifacts are stored directly in the repository under `docs/superpowers/` (`specs/` and `plans/`), matching the native superpowers convention.
+
+- The `specify` step maps to the design workflow of `github.com/obra/superpowers/skills/brainstorming`, activated when the superpowers plugin or skill pack is installed (in the coding agent's configuration or at `github.com/obra/superpowers/skills/brainstorming`). It reads `brief.md` and writes the design specification under `docs/superpowers/specs/` (`spec.md`). Shared contract: `output_type` `draft` with `reads_from` `brief.md`.
+- The `clarify` step maps to the builder-check validation and targeted clarifying questions of `github.com/obra/superpowers/skills/brainstorming`, resolving requirements and encoding confirmed decisions into `spec.md`. Shared contract: `output_type` `decision` with `reads_from` `spec.md`.
+- The `plan` step maps to `github.com/obra/superpowers/skills/writing-plans`, producing an implementation plan with bite-sized tasks under `docs/superpowers/plans/` (`plan.md`). It reads `spec.md` and clarified decisions. Shared contract: `output_type` `draft` with `reads_from` `spec.md, clarify`.
+- The `test` step maps to `github.com/obra/superpowers/skills/test-driven-development` (Iron Law: no production code without a failing test first), authoring tests in `tests/` and staging them under the RED gate before code is touched. Shared contract: `output_type` `artifact-ref` with `reads_from` `spec.md`.
+- The `code` step maps to `github.com/obra/superpowers/skills/subagent-driven-development` (or `github.com/obra/superpowers/skills/executing-plans`), executing the tasks until the full test suite passes under the GREEN gate. Shared contract: `output_type` `artifact-ref` with `reads_from` `test, spec.md, plan.md`.
+- The `verify` step maps to `github.com/obra/superpowers/skills/verification-before-completion` and `github.com/obra/superpowers/skills/requesting-code-review`, gathering fresh execution evidence and code review findings. Shared contract: `output_type` `findings` with `reads_from` `test, code`.
+- The `converge` step maps to `github.com/obra/superpowers/skills/finishing-a-development-branch`, judging the built work against `brief.md` and returning the loop verdict (`DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`). Shared contract: `output_type` `decision` with `reads_from` `brief.md`.
 
 Canonical home: superpowers framework integration.
 

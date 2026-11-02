@@ -30,14 +30,14 @@ workflow:
   # for runs with no test surface (docs/config-only work).
   tdd: true
 
-  # ── Framework lane (optional; M11 E6) ────────────────────────────────
-  # Which mission-* SDD lane the run dispatches through. Resolved by
-  # skills/factory/factory-mission/scripts/bash/detect-framework.sh
-  # (powershell twin: scripts/powershell/detect-framework.ps1) with the
-  # frozen precedence: override → git-dated usage evidence → installed
-  # packs → embedded default. Omit to auto-detect; set explicitly to pin a
-  # lane. An unknown value fails the run closed. The resolved lane and its
-  # evidence are disclosed in the run brief.
+  # ── Framework lane (optional; M11 E6, amended: session-LLM-only) ──
+  # Which lane the run works in. Resolved by the session model inspecting
+  # the well-known install paths and disclosing the lane in the mission
+  # brief as `Framework lane: <lane> (<evidence>)` — see the detection
+  # section in skills/mission/mission-brief/SKILL.md. Omit to let the
+  # session model resolve; set explicitly to pin a lane. An unknown value
+  # fails the run closed. The resolved lane and its evidence are disclosed
+  # in the run brief.
   # framework: speckit   # speckit | superpowers | addy | matt | embedded
 
   # Per-step model routing (optional). If omitted, every step uses the

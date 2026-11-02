@@ -20,9 +20,9 @@
 - <measurable outcome 1> — *measurement method*
 - <measurable outcome 2> — *measurement method*
 
-**Framework lane**: <lane> (<evidence>) — resolved per the frozen precedence
-(override → git-dated usage evidence → installed packs → embedded default);
-multi-match conflicts named here.
+**Framework lane**: <lane> (<evidence>) — the session model inspects the
+well-known install paths and discloses what it found; usage hints with no
+installed framework disclose and fall back to Default.
 ```
 
 ## Rules
@@ -33,9 +33,9 @@ multi-match conflicts named here.
    *next* issue owns) and deferred scope.
 3. **Gate/phase/depends line** — queue-generated issues append a metadata line:
    `**Gate**: <id> · **Phase**: <phase> · **Depends on**: <ids>`.
-4. **References section** — link (never paste) the governing records:
-   PDR file, PRD section, AD section, ADRs. Links point at `main` so they
-   track current content; the owning milestone stays frozen as the decision record.
+4. **References section** — link (never paste) the governing records that
+   apply to the work. Links point at `main` so they track current content;
+   the owning milestone stays frozen as the decision record.
 5. **Neutral component language** — issues describe the system, not the org:
    no organization names, no internal-infrastructure names. The execution
    environment is "the reference deployment"; the end state is "any" cluster/customer.

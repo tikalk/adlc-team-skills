@@ -42,7 +42,7 @@ It implements the following key factory platform capabilities:
 9. **Scratchpad Tools**: Subagents share named, run-private scratchpads (`.adlc/workflows/runs/<run_id>/scratchpads/<name>.txt`) to compile notes, drafts, and reviews incrementally before publishing.
 10. **Workflow Memory & Self-Improvement**: Persistent JSONL database (`.adlc/workflows/memory.jsonl`, workspace-global) stores learnings across runs. `factory-learn` periodically runs retrospectives to prune/weight memories.
 11. **Hierarchical Context Parameters**: Workflows and agents reference parameters as `{{params.<key>}}`, resolved from most specific to least specific: `agent < workflow < repository < project < default`.
-12. **Decoupled Test/Code Separation**: Test-first build with mechanical gates lives in `mission-implement`; converging judgement in `mission-verify`.
+12. **Decoupled Test/Code Separation**: Test-first build with mechanical gates plus converging judgement lives in `mission-brief`.
 
 ---
 
@@ -71,8 +71,8 @@ It implements the following key factory platform capabilities:
    - **Dependency hard gate (Operation 12):** read the issue's `**Depends on**` line, resolve each dependency's state via the connector, and refuse when any dependency is still open (only `closed` / `cancelled` count complete — `spec-gated` does NOT satisfy the gate). On refusal: publish a `blocked: dependency-gate` comment naming the blocking issue(s), set the issue's lifecycle label back to `spec-gated`, release the lease (`ADLC_STEP_OUTPUT` conclusion `blocked: dependency-gate on <refs>`), and return without touching worktree, code, or executor. When the tracker exposes native `blocked_by`/`blocking` relations (GitLab issue links, Linear/Jira relations), use them in addition to the brief's Depends-on line — a `Blocked`/`blocked-by` signal from the tracker also triggers the gate.
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
-4. Structure the Mission Brief (Goal, Constraints, Non-Goals, Success Criteria). The Brief is a `draft` — not published to the comment bus.
-5. Resolve the framework lane (`framework:` in mission.yml → `detect-framework.sh` / `detect-framework.ps1`, frozen precedence: override → git-dated usage evidence → installed packs → embedded default) and disclose the resolved lane plus its evidence in the run brief (`**Framework lane:** <lane> (<evidence>)`).
+4. Validate intake and hand the brief to `mission-brief` — brief construction lives there (per `mission-brief/references/mission-brief-template.md`). The intake bundle (validated intake) plus the `Framework lane` line the session model resolves (see step 5) is a `draft` — not published to the comment bus.
+5. Resolve the framework lane (`framework:` in mission.yml is an explicit pin; otherwise the session model inspects the well-known install paths — installed skill packs under `.agents/skills/`, plugin entries, `specify` CLI availability — and discloses the lane in the brief as `Framework lane: <lane> (<evidence>)`; usage hints with no installed framework disclose and fall back to Default) and record the lane in the run brief.
 6. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
 6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
 
@@ -80,30 +80,30 @@ It implements the following key factory platform capabilities:
 
 ## Lifecycle DAG & Step Resolution
 
-`factory-mission` resolves each lifecycle step to the mission-* skill that owns it. Step order, inputs, and outputs follow the table; the owning skills define the discipline.
+`factory-mission` resolves each lifecycle step to `mission-brief`, the lane-carrying core skill that owns it. Step order, inputs, and outputs follow the table; the owning skill defines the discipline.
 
 | Step | Skill | output_type | reads_from |
 | --- | --- | --- | --- |
-| specify | mission-specify | draft | `brief.md` |
-| clarify | mission-specify | decision | `spec.md` |
-| plan | mission-plan | draft | `spec.md`, `clarify` |
-| test | mission-implement | artifact-ref | `spec.md` |
-| code | mission-implement | artifact-ref | `test`, `spec.md`, `plan.md` |
-| verify | mission-verify | findings | `test`, `code` |
-| converge | mission-verify | decision | `brief.md` |
+| specify | mission-brief | draft | `brief.md` |
+| clarify | mission-brief | decision | `spec.md` |
+| plan | mission-brief | draft | `spec.md`, `clarify` |
+| test | mission-brief | artifact-ref | `spec.md` |
+| code | mission-brief | artifact-ref | `test`, `spec.md`, `plan.md` |
+| verify | mission-brief | findings | `test`, `code` |
+| converge | mission-brief | decision | `brief.md` |
 
-A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate (`mission-specify`), never to code.
+A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate (`mission-brief` clarify), never to code.
 
 ## Boundary
 
-`factory-mission` owns the execution harness: the worktree, the lease, tracker integration (issue intake, the comment bus, completion write-back), and the draft code MR. It never owns spec content, tests, code, or verdicts — each step's output belongs to the mission-* skill that produced it. Dispatch names phases, not commands: every lifecycle step resolves through the table above.
+`factory-mission` owns the execution harness: the worktree, the lease, tracker integration (issue intake, the comment bus, completion write-back), and the draft code MR. It never owns spec content, tests, code, or verdicts — each step's output belongs to the `mission-brief` skill that produced it. Dispatch names phases, not commands: every lifecycle step resolves through the table above.
 
 ## Shared Executor Overrides
 
 Knobs specific to a mission run, read from `mission.yml` (the policy home for execution and supervision):
 
 1. **Supervision**: the run's supervision mode — unattended runs never ask a question.
-2. **Quality threshold**: `quality_threshold` travels in as a converge input owned by `mission-verify`; the orchestrator carries it, never applies it.
+2. **Quality threshold**: `quality_threshold` travels in as a converge input owned by `mission-brief`; the orchestrator carries it, never applies it.
 3. **Test/code split**: selected per run — whether the build dispatches separate test and code steps.
 
 ### Phase 6: Completion & Write-Back

@@ -64,7 +64,7 @@ Enter the routing table below at the detected stage.
 
 ### 4. Spec decision
 
-Use triage's assessed complexity to decide whether the work needs a **Mission Brief** refined beyond its intake form (Goal / Constraints / Non-Goals / Success Criteria — canonical template in `factory-runbook/references/mission-brief-template.md`).
+Use triage's assessed complexity to decide whether the work needs a **Mission Brief** refined beyond its intake form (Goal / Constraints / Non-Goals / Success Criteria — canonical template in `mission-brief/references/mission-brief-template.md`).
 
 **Requires:** the `factory-runbook` skill (provides the run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 

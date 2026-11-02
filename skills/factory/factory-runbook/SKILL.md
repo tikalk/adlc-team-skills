@@ -80,7 +80,7 @@ only through these helpers; lifecycle skills never do.
 | `executor.md` | every Kind-A orchestrator (step schema, run state, lanes, gates, converge) |
 | `tracker-integration.md` | tracker-integrated skills (comment bus, labels, lease, provider ops, MR ownership) |
 | `lanes.md` | lane-based dispatch consumers |
-| `mission-brief-template.md` | brief/milestone authors (queue, orchestrator) |
+| `mission-brief-template.md` | brief/milestone authors (queue, orchestrator) — canonical home `mission-brief/references/` |
 | `issues-provider.yml` | provider resolution template (setup writes the repo copy) |
 | `run-context.md` | run-mode vs local-session rules |
 | `mission-template.yml` | run policy defaults (execution, supervision, budgets) |

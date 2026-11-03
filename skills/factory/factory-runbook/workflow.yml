@@ -1,0 +1,105 @@
+# Factory outer loop — intent (product + architecture) → execution → sweep,
+# with stage gates. Shipped with factory-runbook, the skill that owns the
+# publish helpers it calls, so a helper move or a renamed orchestrator lands
+# in the same change as this file (the CLI's bundled copy of this workflow
+# drifted twice: helpers moved to factory-runbook, and factory-intent
+# replaced factory-product / factory-architect).
+#
+# Run it by path: `adlc-cli workflow run .agents/skills/factory-runbook/workflow.yml`
+# (an agent runner sets WORKFLOW_SOURCE to that path). Needs an adlc-cli whose
+# gates support `context.since: run_start` (gate-architecture below).
+#
+# The shell steps call scripts/bash/run-helpers.sh, which runs the named
+# helpers from this skill and FAILS the step when one is missing: a skipped
+# helper used to leave a "completed" run that pushed nothing and opened no MR.
+schema_version: "1.0"
+workflow:
+  id: factory
+  name: Factory Outer Loop
+  version: "1.0.0"
+inputs:
+  verdict:
+    type: string
+    enum: ["", approve, reject]
+  mr_url:
+    type: string
+    default: ""
+  # Set by the dispatching runtime. issue_ref becomes the agent steps'
+  # ADLC_ISSUE_REF (ADR-444) and is checked on restore; undeclared inputs are
+  # dropped, so both must be declared here.
+  issue_ref:
+    type: string
+    default: ""
+  dispatch:
+    type: string
+    default: ""
+steps:
+  - id: run-branch
+    type: shell
+    # The engine checks out the intent run branch before any agent step
+    # (ADR-431-amendment §1, §3a), so agent commits land on it and a
+    # re-dispatch continues the issue's branch and MR. Idempotent with the
+    # orchestrator's own run-branch call; skipped without the helper.
+    run: |-
+      bash .agents/skills/factory-runbook/scripts/bash/run-helpers.sh run-branch run-branch.sh
+  # Intent: factory-intent runs both lanes, product and
+  # architecture, in one step; factory-product and factory-architect no
+  # longer exist. One publish, then the two scope-pinned gates in order.
+  - id: intent
+    type: command
+    command: factory-intent
+  - id: publish-intent
+    type: shell
+    # The engine pushes the run branch and opens/reuses the draft MR itself
+    # (ADR-431-amendment §3a), so the gate link never depends on the agent.
+    # run-branch first: an intent step that changed nothing may never have
+    # left the base branch, and open-mr refuses anything but factory/intent/*.
+    # open-mr is idempotent and opens nothing for an empty run.
+    run: |-
+      bash .agents/skills/factory-runbook/scripts/bash/run-helpers.sh publish run-branch.sh open-mr.sh
+  - id: gate-product
+    type: gate
+    message: "Approve PDRs before architecture?"
+    context:
+      records: [".adlc/drafts/pdr/*.md"]
+      since: last_approved
+      # The draft MR the publish step opened (ADR-444 §5, ADR-431-amendment §3a).
+      link: "{{ steps.publish-intent.output.mr_url }}"
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: verdict
+  - id: gate-architecture
+    type: gate
+    message: "Approve ADRs before execution?"
+    context:
+      records: [".adlc/drafts/adr/*.md"]
+      # run_start, not last_approved: the intent step wrote the ADRs before
+      # gate-product was approved, so "since that approval" would list none.
+      since: run_start
+      link: "{{ steps.publish-intent.output.mr_url }}"
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: verdict
+  - id: execute
+    type: command
+    command: factory-mission
+    # The mission is the run's issue (ADR-444 §4): without it factory-mission
+    # asked for one and returned, and the step counted as completed. The skill
+    # also falls back to ADLC_ISSUE_REF and fails the step when neither is set.
+    input:
+      args: "--issue {{ inputs.issue_ref }}"
+  - id: gate-completion
+    type: gate
+    message: "Approve completion (ChDRs and merge request)?"
+    context:
+      records: [".adlc/drafts/chdr/*.md"]
+      since: last_approved
+      # The code MR factory-mission opened (its mr_url step output, ADR-444);
+      # an operator-supplied mr_url input is the fallback.
+      link: "{{ steps.execute.output.mr_url | default(inputs.mr_url) }}"
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: verdict
+  - id: sweep
+    type: command
+    command: factory-init

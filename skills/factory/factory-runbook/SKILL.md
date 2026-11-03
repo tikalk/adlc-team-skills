@@ -73,6 +73,31 @@ only through these helpers; lifecycle skills never do.
 
 ---
 
+## The factory workflow (`workflow.yml`)
+
+This skill ships the factory outer loop: `workflow.yml` (`id: factory`),
+intent → `gate-product` → `gate-architecture` → `execute` →
+`gate-completion` → `sweep`. It lives here, next to the helpers its shell
+steps call, so a helper move or a renamed orchestrator changes the workflow
+in the same change.
+
+- **Run it by path:**
+  `adlc-cli workflow run .agents/skills/factory-runbook/workflow.yml --input issue_ref=<ref> --input dispatch=<mode>`.
+  An agent runner sets `WORKFLOW_SOURCE` to that path, not to `factory`,
+  which resolves to the CLI's bundled copy.
+- **Needs** an adlc-cli whose gates support `context.since: run_start`
+  (`gate-architecture`: the one `factory-intent` step writes the ADRs
+  before `gate-product` is approved).
+- **Shell steps** call `scripts/bash/run-helpers.sh <label> <helper.sh>…`
+  (PowerShell twin `run-helpers.ps1`). A helper missing from this skill
+  **fails** the step, never "skipped": a run that pushed nothing must not
+  report success.
+- `tests/unit/test_factory_workflow_contract.py` checks every shipped
+  workflow: each `command:` is a skill in this repo, each helper a shell step
+  names exists, and the factory layout above.
+
+---
+
 ## Run contracts (`references/`)
 
 | File | Borrowed by |

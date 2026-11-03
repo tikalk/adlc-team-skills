@@ -81,20 +81,31 @@ intent → `gate-product` → `gate-architecture` → `execute` →
 steps call, so a helper move or a renamed orchestrator changes the workflow
 in the same change.
 
-- **Run it by path:**
-  `adlc-cli workflow run .agents/skills/factory-runbook/workflow.yml --input issue_ref=<ref> --input dispatch=<mode>`.
-  An agent runner sets `WORKFLOW_SOURCE` to that path, not to `factory`,
-  which resolves to the CLI's bundled copy.
-- **Needs** an adlc-cli whose gates support `context.since: run_start`
-  (`gate-architecture`: the one `factory-intent` step writes the ADRs
-  before `gate-product` is approved).
-- **Shell steps** call `scripts/bash/run-helpers.sh <label> <helper.sh>…`
-  (PowerShell twin `run-helpers.ps1`). A helper missing from this skill
-  **fails** the step, never "skipped": a run that pushed nothing must not
-  report success.
+- **Run it by path, from where the skill is installed:**
+  `adlc-cli workflow run <skills dir>/factory-runbook/workflow.yml --input issue_ref=<ref> --input dispatch=<mode>`.
+  The skills dir depends on the agent (`.agents/skills` for opencode,
+  `.claude/skills` for Claude Code, and so on). An agent runner sets
+  `WORKFLOW_SOURCE` to that path. `workflow run factory` still resolves to
+  the CLI's bundled copy, so until shipped workflows are installed into
+  `.adlc/workflows/<id>/`, this file runs only when given by path.
+- **Needs adlc-cli newer than 2.7.0** (gate `context.since: run_start`,
+  tikalk/adlc-cli#69): `gate-architecture` follows the one `factory-intent`
+  step, which writes the ADRs before `gate-product` is approved.
+- **Shell steps** find the helpers through `ADLC_WORKFLOW_DIR`, which the
+  engine sets to this file's directory and keeps on resume, so they work in
+  any install layout. `scripts/bash/run-helpers.sh <label> <helper.sh>…`
+  (PowerShell twin `run-helpers.ps1`) runs them; a missing helper **fails**
+  the step, never "skipped": a run that pushed nothing must not report
+  success. **Copying this file** (e.g. an installer placing it under
+  `.adlc/workflows/factory/`) must copy the whole skill directory with it,
+  or point at it, or the shell steps cannot find `scripts/`.
+- `run-branch-architecture` checks out the run branch again after
+  `gate-product`: a parked run can resume in a fresh clone on the base
+  branch, and `gate-architecture` diffs the working tree.
 - `tests/unit/test_factory_workflow_contract.py` checks every shipped
   workflow: each `command:` is a skill in this repo, each helper a shell step
-  names exists, and the factory layout above.
+  names exists, the factory layout, and that the factory's intent gates
+  match `factory-intent`'s own.
 
 ---
 

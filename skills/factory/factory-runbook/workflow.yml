@@ -5,13 +5,18 @@
 # drifted twice: helpers moved to factory-runbook, and factory-intent
 # replaced factory-product / factory-architect).
 #
-# Run it by path: `adlc-cli workflow run .agents/skills/factory-runbook/workflow.yml`
-# (an agent runner sets WORKFLOW_SOURCE to that path). Needs an adlc-cli whose
-# gates support `context.since: run_start` (gate-architecture below).
+# Run it by path, from where the skill is installed:
+# `adlc-cli workflow run <skills dir>/factory-runbook/workflow.yml`, where the
+# skills dir depends on the agent (.agents/skills, .claude/skills, ...); an
+# agent runner sets WORKFLOW_SOURCE to that path. Needs adlc-cli newer than
+# 2.7.0 (gate `context.since: run_start`, tikalk/adlc-cli#69).
 #
-# The shell steps call scripts/bash/run-helpers.sh, which runs the named
-# helpers from this skill and FAILS the step when one is missing: a skipped
-# helper used to leave a "completed" run that pushed nothing and opened no MR.
+# The shell steps find their helpers through ADLC_WORKFLOW_DIR, which the
+# engine sets to this file's directory (and keeps on resume), so they work in
+# any install layout. Whoever copies this file elsewhere must copy the skill
+# directory with it. run-helpers.sh runs the named helpers and FAILS the step
+# when one is missing: a skipped helper used to leave a "completed" run that
+# pushed nothing and opened no MR.
 schema_version: "1.0"
 workflow:
   id: factory
@@ -39,9 +44,9 @@ steps:
     # The engine checks out the intent run branch before any agent step
     # (ADR-431-amendment §1, §3a), so agent commits land on it and a
     # re-dispatch continues the issue's branch and MR. Idempotent with the
-    # orchestrator's own run-branch call; skipped without the helper.
+    # orchestrator's own run-branch call; a missing helper fails the step.
     run: |-
-      bash .agents/skills/factory-runbook/scripts/bash/run-helpers.sh run-branch run-branch.sh
+      bash "${ADLC_WORKFLOW_DIR:?run this workflow by path, from its skill directory}/scripts/bash/run-helpers.sh" run-branch run-branch.sh
   # Intent: factory-intent runs both lanes, product and
   # architecture, in one step; factory-product and factory-architect no
   # longer exist. One publish, then the two scope-pinned gates in order.
@@ -56,7 +61,7 @@ steps:
     # left the base branch, and open-mr refuses anything but factory/intent/*.
     # open-mr is idempotent and opens nothing for an empty run.
     run: |-
-      bash .agents/skills/factory-runbook/scripts/bash/run-helpers.sh publish run-branch.sh open-mr.sh
+      bash "${ADLC_WORKFLOW_DIR:?run this workflow by path, from its skill directory}/scripts/bash/run-helpers.sh" publish run-branch.sh open-mr.sh
   - id: gate-product
     type: gate
     message: "Approve PDRs before architecture?"
@@ -68,6 +73,14 @@ steps:
     options: [approve, reject]
     on_reject: abort
     verdict_input: verdict
+  - id: run-branch-architecture
+    type: shell
+    # Again after gate-product: a run parked there resumes after it, possibly
+    # restored into a fresh clone on the base branch, and resume never re-runs
+    # the first run-branch step. gate-architecture diffs the working tree, so
+    # without the run branch checked out it would list no ADRs.
+    run: |-
+      bash "${ADLC_WORKFLOW_DIR:?run this workflow by path, from its skill directory}/scripts/bash/run-helpers.sh" run-branch run-branch.sh
   - id: gate-architecture
     type: gate
     message: "Approve ADRs before execution?"

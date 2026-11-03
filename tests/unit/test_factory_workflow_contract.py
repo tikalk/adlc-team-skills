@@ -29,7 +29,10 @@ SKILLS = ROOT / "skills"
 RUNBOOK = SKILLS / "factory" / "factory-runbook"
 FACTORY = RUNBOOK / "workflow.yml"
 RUN_HELPERS = RUNBOOK / "scripts" / "bash" / "run-helpers.sh"
-RUN_HELPERS_RE = re.compile(r"\.agents/skills/([\w-]+)/scripts/bash/run-helpers\.sh\s+([\w-]+)((?:\s+[\w.-]+)+)")
+# A shell step runs its helpers through the workflow's own directory, which
+# the engine exports as ADLC_WORKFLOW_DIR: never through an install path.
+RUN_HELPERS_RE = re.compile(r'"\$\{ADLC_WORKFLOW_DIR[^}]*\}/scripts/bash/run-helpers\.sh"\s+([\w-]+)((?:\s+[\w.-]+)+)')
+INSTALL_PATH_RE = re.compile(r"\.(agents|claude|devin|augment|pi|qwen|junie|goose|kilocode|kiro|qoder|codebuddy|bob|tabnine)/(agent/)?skills/")
 
 WORKFLOWS = sorted(SKILLS.glob("**/workflow*.yml"))
 SKILL_NAMES = {p.parent.name for p in SKILLS.glob("*/*/SKILL.md")}
@@ -76,6 +79,16 @@ def test_no_removed_orchestrators(path):
 
 
 @pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: str(p.relative_to(SKILLS)))
+def test_no_shell_step_hardcodes_an_install_path(path):
+    # Skills install per agent (.agents/skills, .claude/skills, ...); a shell
+    # step that names one runs in only that layout.
+    for step in all_steps(load(path)):
+        run = step.get("run")
+        if isinstance(run, str):
+            assert not INSTALL_PATH_RE.search(run), f"{step.get('id')}: install path in {run!r}; use $ADLC_WORKFLOW_DIR"
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: str(p.relative_to(SKILLS)))
 def test_every_helper_a_shell_step_runs_exists(path):
     for step in all_steps(load(path)):
         run = step.get("run")
@@ -83,9 +96,10 @@ def test_every_helper_a_shell_step_runs_exists(path):
             continue
         calls = RUN_HELPERS_RE.findall(run)
         if "run-helpers.sh" in run:
-            assert calls, f"{step.get('id')}: unparseable run-helpers call: {run!r}"
-        for skill, _label, names in calls:
-            base = SKILLS / "factory" / skill / "scripts"
+            assert calls, f"{step.get('id')}: run-helpers.sh must be called through ADLC_WORKFLOW_DIR: {run!r}"
+        for _label, names in calls:
+            base = path.parent / "scripts"
+            skill = path.parent.name
             for name in names.split():
                 assert (base / "bash" / name).is_file(), f"{step.get('id')}: {skill}/scripts/bash/{name} missing"
                 twin = base / "powershell" / (Path(name).stem + ".ps1")
@@ -97,14 +111,16 @@ def test_factory_layout():
     assert doc["workflow"]["id"] == "factory"
     steps = doc["steps"]
     assert [s["id"] for s in steps] == [
-        "run-branch", "intent", "publish-intent", "gate-product", "gate-architecture",
-        "execute", "gate-completion", "sweep",
+        "run-branch", "intent", "publish-intent", "gate-product", "run-branch-architecture",
+        "gate-architecture", "execute", "gate-completion", "sweep",
     ]
     by_id = {s["id"]: s for s in steps}
     assert by_id["intent"]["command"] == "factory-intent"
     assert by_id["execute"]["command"] == "factory-mission"
     assert by_id["execute"]["input"]["args"] == "--issue {{ inputs.issue_ref }}"
-    for sid in ("run-branch", "publish-intent"):
+    # run-branch-architecture: a run parked at gate-product can resume in a
+    # fresh clone on the base branch; gate-architecture diffs the working tree.
+    for sid in ("run-branch", "publish-intent", "run-branch-architecture"):
         assert by_id[sid]["type"] == "shell"
         assert "run-helpers.sh" in by_id[sid]["run"], f"{sid} runs its helpers through run-helpers.sh"
     assert "node -e" not in FACTORY.read_text(encoding="utf-8"), "no inline runner"
@@ -209,8 +225,11 @@ def test_runner_usage(tmp_path):
 # never asks; the factory's gate-product / gate-architecture are its approval.
 # Run alone, factory-intent's workflows gate with their own steps. Both must
 # approve the same records with the same answers, so the two definitions
-# cannot drift apart. (link and on_reject differ by design: the factory links
-# its publish step's MR and aborts; a standalone intent run retries its lane.)
+# cannot drift apart. Three keys differ by design and are not compared:
+# link (the factory links its publish step's MR), on_reject (the factory
+# aborts, a standalone intent run retries its lane), and since (the factory's
+# gate-architecture follows one merged intent step that wrote the ADRs before
+# gate-product, hence run_start; a standalone run gates after its own steps).
 
 INTENT = SKILLS / "factory" / "factory-intent"
 LANE_GLOB = {"product": ".adlc/drafts/pdr/*.md", "architecture": ".adlc/drafts/adr/*.md"}
@@ -244,3 +263,88 @@ def test_factory_intent_gate_matches_factory_intent(lane, factory_gate):
         where = f"{name}:{gate_id} vs factory {factory_gate}"
         assert gate["context"]["records"] == outer["context"]["records"], f"{where}: record scope differs"
         assert gate["options"] == outer["options"], f"{where}: answer options differ"
+
+
+# ── the shell steps work in any install layout ──────────────────────────────
+
+def install_copy(tmp_path, skills_dir, helpers):
+    """A copy of factory-runbook's runner under <skills_dir>, with stub helpers."""
+    skill = tmp_path / skills_dir / "factory-runbook"
+    bash_dir = skill / "scripts" / "bash"
+    bash_dir.mkdir(parents=True)
+    shutil.copy(RUN_HELPERS, bash_dir / "run-helpers.sh")
+    log = tmp_path / "ran.txt"
+    for name in helpers:
+        helper(bash_dir, name, f'echo "{name}" >> "{log}"')
+    return skill, log
+
+
+SHELL_STEPS = [(s["id"], s["run"]) for s in load(FACTORY)["steps"] if s.get("type") == "shell"]
+
+
+@needs_bash
+@pytest.mark.parametrize("skills_dir", [".agents/skills", ".claude/skills"])
+@pytest.mark.parametrize("step_id,run_line", SHELL_STEPS, ids=[i for i, _ in SHELL_STEPS])
+def test_shell_step_finds_its_helpers_in_any_layout(tmp_path, skills_dir, step_id, run_line):
+    skill, log = install_copy(tmp_path, skills_dir, ["run-branch.sh", "open-mr.sh"])
+    r = subprocess.run(["sh", "-c", run_line], cwd=tmp_path, capture_output=True, text=True,
+                       env={**os.environ, "ADLC_WORKFLOW_DIR": str(skill)})
+    assert r.returncode == 0, r.stderr
+    expected = RUN_HELPERS_RE.search(run_line).group(2).split()
+    assert log.read_text(encoding="utf-8").split() == expected
+
+
+@needs_bash
+@pytest.mark.parametrize("step_id,run_line", SHELL_STEPS, ids=[i for i, _ in SHELL_STEPS])
+def test_shell_step_without_workflow_dir_fails_with_a_reason(tmp_path, step_id, run_line):
+    env = {k: v for k, v in os.environ.items() if k != "ADLC_WORKFLOW_DIR"}
+    r = subprocess.run(["sh", "-c", run_line], cwd=tmp_path, capture_output=True, text=True, env=env)
+    assert r.returncode != 0
+    assert "run this workflow by path" in r.stderr
+
+
+# ── run-helpers.ps1 behaviour (the twin is tested, not just present) ────────
+
+PWSH = shutil.which("pwsh")
+needs_pwsh = pytest.mark.skipif(PWSH is None, reason="pwsh not available")
+RUN_HELPERS_PS1 = RUNBOOK / "scripts" / "powershell" / "run-helpers.ps1"
+
+
+def ps_copy(tmp_path):
+    ps_dir = tmp_path / "scripts" / "powershell"
+    ps_dir.mkdir(parents=True)
+    runner = ps_dir / "run-helpers.ps1"
+    shutil.copy(RUN_HELPERS_PS1, runner)
+    return ps_dir, runner
+
+
+def ps_run(runner, *args):
+    return subprocess.run([PWSH, "-NoProfile", "-File", str(runner), *args], capture_output=True, text=True)
+
+
+@needs_pwsh
+def test_ps_runner_fails_closed_on_a_missing_helper(tmp_path):
+    ps_dir, runner = ps_copy(tmp_path)
+    (ps_dir / "run-branch.ps1").write_text("Write-Output ran-branch\n", encoding="utf-8")
+    r = ps_run(runner, "publish", "run-branch.sh", "open-mr.sh")
+    assert r.returncode == 1
+    assert "ran-branch" in r.stdout
+    assert "publish: open-mr.ps1 not found" in r.stderr
+
+
+@needs_pwsh
+def test_ps_runner_returns_a_helpers_exit_code_and_stops(tmp_path):
+    ps_dir, runner = ps_copy(tmp_path)
+    (ps_dir / "open-mr.ps1").write_text("[Console]::Error.WriteLine('refused'); exit 2\n", encoding="utf-8")
+    (ps_dir / "after.ps1").write_text("Write-Output should-not-run\n", encoding="utf-8")
+    r = ps_run(runner, "publish", "open-mr.sh", "after.ps1")
+    assert r.returncode == 2
+    assert "should-not-run" not in r.stdout
+
+
+@needs_pwsh
+def test_ps_runner_refuses_paths(tmp_path):
+    _, runner = ps_copy(tmp_path)
+    r = ps_run(runner, "publish", "../x.ps1")
+    assert r.returncode == 2
+    assert "invalid helper name" in r.stderr

@@ -202,3 +202,45 @@ def test_runner_refuses_paths_outside_its_directory(tmp_path, bad):
 def test_runner_usage(tmp_path):
     _, runner = copy_runner(tmp_path)
     assert run(runner, "publish").returncode == 2
+
+
+# ── the factory's intent gates match factory-intent's own gates ─────────────
+# In a factory run the factory-intent skill runs inside one `intent` step and
+# never asks; the factory's gate-product / gate-architecture are its approval.
+# Run alone, factory-intent's workflows gate with their own steps. Both must
+# approve the same records with the same answers, so the two definitions
+# cannot drift apart. (link and on_reject differ by design: the factory links
+# its publish step's MR and aborts; a standalone intent run retries its lane.)
+
+INTENT = SKILLS / "factory" / "factory-intent"
+LANE_GLOB = {"product": ".adlc/drafts/pdr/*.md", "architecture": ".adlc/drafts/adr/*.md"}
+
+
+def intent_gates():
+    """(workflow file, gate id, lane, gate) for every gate factory-intent ships."""
+    found = []
+    for path in sorted(INTENT.glob("workflow*.yml")):
+        for step in all_steps(load(path)):
+            if step.get("type") != "gate":
+                continue
+            records = (step.get("context") or {}).get("records") or []
+            lanes = [lane for lane, glob in LANE_GLOB.items() if glob in records]
+            assert len(lanes) == 1, f"{path.name}:{step['id']} must gate exactly one lane, got {records}"
+            found.append((path.name, step["id"], lanes[0], step))
+    return found
+
+
+def test_factory_intent_ships_a_gate_per_lane():
+    lanes = {lane for _f, _id, lane, _g in intent_gates()}
+    assert lanes == {"product", "architecture"}
+
+
+@pytest.mark.parametrize("lane,factory_gate", [("product", "gate-product"), ("architecture", "gate-architecture")])
+def test_factory_intent_gate_matches_factory_intent(lane, factory_gate):
+    outer = {s["id"]: s for s in load(FACTORY)["steps"]}[factory_gate]
+    for name, gate_id, gate_lane, gate in intent_gates():
+        if gate_lane != lane:
+            continue
+        where = f"{name}:{gate_id} vs factory {factory_gate}"
+        assert gate["context"]["records"] == outer["context"]["records"], f"{where}: record scope differs"
+        assert gate["options"] == outer["options"], f"{where}: answer options differ"

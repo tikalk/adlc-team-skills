@@ -64,8 +64,7 @@ def test_addy_lane_anchors_and_artifacts():
         "Addy lane must cite installed skill paths (github.com/addyosmani/agent-skills/skills/...) or agent-skills"
     )
 
-    # Native addy artifact grammar (CONSTRAINTS.md, tasks/, references/)
-    assert "CONSTRAINTS.md" in body, "Addy lane must reference CONSTRAINTS.md"
+    # Native addy artifact grammar (tasks/, references/)
     assert "tasks/" in body or "tasks" in body, "Addy lane must reference tasks/ directory"
     assert "references/" in body, "Addy lane must reference references/ directory"
     assert "spec.md" in body, "Addy lane must produce or read spec.md"

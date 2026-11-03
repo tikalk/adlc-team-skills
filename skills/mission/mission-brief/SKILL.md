@@ -91,7 +91,15 @@ Canonical home: superpowers framework integration.
 
 ## Matt lane
 
-Pointer — lane prose lives at the matt framework integration. Same brief → steps → converge DAG; matt's spec-issue linkage shapes the specify/clarify artifacts per its own contract.
+This section translates the shared lifecycle DAG into the mattpocock/skills framework workflow across coding agents (Claude Code, Cursor, Codex, OpenCode, Gemini, etc.); matt keeps its modular discipline while the step contract below remains authoritative. Design, task, and review artifacts are stored in linked tracker spec issues and run-local drafts (`spec.md`, `plan.md`).
+
+- The `specify` step maps to the design workflow of `github.com/mattpocock/skills/skills/engineering/to-spec`, activated when the skill pack is installed (at `github.com/mattpocock/skills/skills/` or `.agents/skills/`). It reads `brief.md` and conversation, publishing a linked tracker spec issue or writing `spec.md`. Shared contract: `output_type` `draft` with `reads_from` `brief.md`.
+- The `clarify` step maps to the alignment and boundary analysis of `github.com/mattpocock/skills/skills/engineering/grill-with-docs` (and `grilling`), resolving requirements and domain models into `spec.md`. Shared contract: `output_type` `decision` with `reads_from` `spec.md`.
+- The `plan` step maps to `github.com/mattpocock/skills/skills/engineering/to-tickets`, decomposing the spec into tracer-bullet tickets or task plans (`plan.md`). It reads `spec.md` and clarified decisions. Shared contract: `output_type` `draft` with `reads_from` `spec.md, clarify`.
+- The `test` step maps to `github.com/mattpocock/skills/skills/engineering/tdd` (red-green-refactor loop), authoring failing tests staged under the RED gate before code is touched. Shared contract: `output_type` `artifact-ref` with `reads_from` `spec.md`.
+- The `code` step maps to `github.com/mattpocock/skills/skills/engineering/implement` (and `codebase-design`), implementing deep modules until the full suite passes under the GREEN gate. Shared contract: `output_type` `artifact-ref` with `reads_from` `test, spec.md, plan.md`.
+- The `verify` step maps to `github.com/mattpocock/skills/skills/engineering/code-review` (two-axis review: standards and spec fidelity), gathering fresh execution evidence and review findings. Shared contract: `output_type` `findings` with `reads_from` `test, code`.
+- The `converge` step maps to `github.com/mattpocock/skills/skills/engineering/pr` gates, judging built work against `brief.md` and returning the loop verdict (`DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`). Shared contract: `output_type` `decision` with `reads_from` `brief.md`.
 
 Canonical home: matt framework integration.
 

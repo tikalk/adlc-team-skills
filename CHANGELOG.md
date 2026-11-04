@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **One lifecycle state machine in `tracker-integration.md` §2** (adlc-workspace#80) — the lifecycle dimension gains `parked` (seven exclusive states; `done`/`cancelled` terminal), `resume` is documented as a transient trigger label on `parked` → `executing` that the runtime removes, and a ten-edge transition table names each edge's trigger, owner and dispatch difference (`parked` edges are supervised only). Lifecycle labels are bare names: Operation 9's commands, the `issues-provider.yml` vocabulary and its `labels:` mapping example drop the `factory-stage:` prefix (mapping keys are now `executing`, not `factory-stage:executing`). `factory-orchestrator` points at the table. Pinned by `tests/unit/test_lifecycle_state_machine_contract.py`.
+
 ### Added
 
 - **Matt lane in shared `mission-brief`** (#57) — maps the seven lifecycle steps to mattpocock/skills' native skills (`github.com/mattpocock/skills/skills/engineering/` and `.agents/skills/`), anchoring artifacts in linked tracker spec issues and run-local drafts (`spec.md`, `plan.md`) with zero bare commands and zero record IDs across coding agents. Pinned by `tests/unit/test_mission_matt_lane.py`.

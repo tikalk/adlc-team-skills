@@ -34,11 +34,32 @@ Retrieve issue summary, description, and comments via MCP or CLI. Use this raw t
 Every ticket carries three label dimensions:
 - **Automation-gating**: `agent-can-execute` | `human-required`
 - **Dispatch**: `autonomous` | `supervised` | `interactive`
-- **Lifecycle-stage**: `intent` | `spec-gated` | `executing` | `validation` | `done` | `cancelled`
+- **Lifecycle-stage**: `intent` | `spec-gated` | `executing` | `parked` | `validation` | `done` | `cancelled`
 
 **Rule**: If dispatch is `interactive` or automation-gating is `human-required`, the agent must halt and refuse auto-execution.
 
-**Name resolution**: the names above are canonical defaults. When stamping or reading labels, first consult the target repo's `.adlc/issues-provider.yml` `labels:` mapping; an absent entry resolves to the canonical name. Repos without the block behave exactly as before. Custom names require updating lane sensor/template filters, which match literal names.
+**Name resolution**: the names above are canonical defaults, bare (no prefix). When stamping or reading labels, first consult the target repo's `.adlc/issues-provider.yml` `labels:` mapping; an absent entry resolves to the canonical name. Repos without the block behave exactly as before. Custom names require updating lane sensor/template filters, which match literal names.
+
+#### Lifecycle state machine (`autonomous` and `supervised`)
+
+An issue carries exactly one lifecycle label. `done` and `cancelled` are terminal. A missing lifecycle label reads as `intent`. The `interactive` lifecycle is out of scope here.
+
+`resume` is a **trigger label, not a state**: a human adds it to a `parked` issue to request the `parked` → `executing` edge, and the runtime removes it on every outcome, so it never stays beside a state. A refused resume leaves the issue `parked`. Its name is set on the lane side (the resume Sensor's label values), so a custom `parked` or `resume` name must change both the mapping and the lane.
+
+| # | Edge | Trigger | Owner | Dispatch difference |
+|--|--|--|--|--|
+| 1 | (none) → `intent` | candidate brief created | `factory-queue` (brief/milestone generation) | none |
+| 2 | `intent` → `spec-gated` | human approves at the Intent Gate | `factory-queue` (triage) | the dispatch label is stamped on this edge |
+| 3 | `intent` → `cancelled` | human rejects at the Intent Gate | `factory-queue` (triage) | none |
+| 4 | `spec-gated` → `executing` | run dispatched and lease acquired (Operation 10) | lane dispatch gate (lane runs) · `factory-mission` (local runs) | none |
+| 5 | `executing` → `spec-gated` | dependency gate refuses (Operation 12) | `factory-mission` | none |
+| 6 | `executing` → `parked` | a gate's in-pod wait expires with no verdict | gate runtime (agentic-container) | supervised only — autonomous runs have no gates |
+| 7 | `parked` → `executing` | human adds `resume` (or re-sends the issue) and the run restores | gate runtime (agentic-container) | supervised only |
+| 8 | `executing` → `validation` | draft MR/PR opened at mission completion | `factory-mission` | supervised: after its gates are answered |
+| 9 | `validation` → `done` | MR/PR that closes the issue is merged | `factory-orchestrator` (completion) · `factory-review` (babysit) | none |
+| 10 | any non-terminal → `cancelled` | issue closed without a merge | `factory-orchestrator` (completion) · lane close-event path | a parked run is released: run marked cancelled, draft MR closed |
+
+`validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A failed run has no edge yet and stays `executing`. Every edge swaps labels through Operation 9.
 
 ### 3. Write-Back & Comments
 Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored`.
@@ -278,11 +299,11 @@ issue from `spec-gated` to `executing`), the integration layer executes
 the transition based on provider type:
 
 1. **Label-Based (GitHub/GitLab)**:
-   - Statuses mapped to `factory-stage:<value>` labels.
+   - Statuses are the bare lifecycle labels of §2 (e.g. `executing`, no prefix), resolved through the `labels:` mapping; the edges and their owners are the §2 transition table.
    - Transitions must **atomically add the new label and remove the old label**.
    - CLI/MCP commands:
-     - GitHub CLI: `gh pr edit --add-label "factory-stage:<new>" --remove-label "factory-stage:<old>"`
-     - GitLab CLI: `glab mr update --label "factory-stage:<new>" --unlabel "factory-stage:<old>"`
+     - GitHub CLI: `gh pr edit --add-label "<new>" --remove-label "<old>"`
+     - GitLab CLI: `glab mr update --label "<new>" --unlabel "<old>"`
      - GitHub MCP: `github` server `update_issue` updating `labels` array.
 
 2. **State-Based (Jira/Linear/ClickUp)**:

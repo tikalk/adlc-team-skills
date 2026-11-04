@@ -27,8 +27,10 @@
 # confirmation, interactive runs only).
 #   Automation-gating: agent-can-execute, human-required
 #   Dispatch: autonomous, supervised, interactive
-#   Lifecycle (factory-stage:<value>): intent, spec-gated, executing,
-#     validation, done, cancelled
+#   Lifecycle (bare names, one per issue): intent, spec-gated, executing,
+#     parked, validation, done, cancelled
+#   Trigger (transient, removed by the runtime): resume (requests
+#     parked -> executing; tracker-integration §2 state machine)
 # Jira/Linear: lifecycle rides native workflow states (tracker-integration
 # §9); gating/dispatch labels apply as named — confirm against the target.
 #
@@ -43,7 +45,7 @@
 # labels:
 #   agent-can-execute: "l-ai-ok"
 #   autonomous: "auto"
-#   factory-stage:executing: "factory-stage:running"
+#   executing: "running"
 
 # --- Optional: Override git remote heuristic ---
 # Set to force a provider when the git remote URL doesn't match.

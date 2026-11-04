@@ -63,7 +63,7 @@ def test_connector_names_the_resolver_path():
 
 def test_resolver_path_in_the_connector_resolves():
     content = TRACKER.read_text(encoding="utf-8")
-    match = re.search(r"(\{REPO_ROOT\}/\.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership\.sh)", content)
+    match = re.search(r"({SKILLS_DIR}/factory-runbook/scripts/bash/resolve-mr-ownership.sh)", content)
     assert match, "the connector must reference the resolver by its installed path"
     for rel in RESOLVERS_REL:
         source = ROOT / rel

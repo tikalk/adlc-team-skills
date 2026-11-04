@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # architect-specify
 
+
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Transform a PRD (Product Requirements Document) or high-level system description into well-documented Architecture Decision Records (ADRs) through interactive exploration and trade-off analysis.
@@ -297,7 +300,7 @@ After confirmation, output structured sub-system data:
 5. **Check Existing Documentation**:
    - Scan `README.md` for already-documented tech stack
    - Check `AGENTS.md` for project context
-   - Check team directives: Run `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). and look for `TEAM_AGENTS_MD` in output - if present, this file contains usage instructions for team-wide agent directives
+   - Check team directives: Run `{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). and look for `TEAM_AGENTS_MD` in output - if present, this file contains usage instructions for team-wide agent directives
    - Review `CONTRIBUTING.md` for dev guidelines
    - Note: Don't duplicate - reference existing docs
 
@@ -541,7 +544,7 @@ Chosen option: "{title option 1}", because {justification}.
 **Objective**: Write finalized ADRs to file
 
 1. **Run Setup Script**:
-   - Execute `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh specify` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists — the `specify` action is mandatory: with no action and no AD.md the script defaults to `init` (brownfield reverse-engineering), not greenfield specify
+   - Execute `{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh specify` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists — the `specify` action is mandatory: with no action and no AD.md the script defaults to `init` (brownfield reverse-engineering), not greenfield specify
    - Script creates from template if directory is empty
    - Script reports `next_adr` — the next free ADR slot (status line `Next free ADR slot: ADR-{NNN}`); number the new ADRs from it
    - Pass `--no-decompose` if decomposition was disabled
@@ -641,7 +644,7 @@ After `specify` completes, run `/architect-clarify` to refine and validate the A
 
 ## Verification
 
-- The setup script `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). has been executed and `{REPO_ROOT}/.adlc/drafts/adr/` exists.
+- The setup script `{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). has been executed and `{REPO_ROOT}/.adlc/drafts/adr/` exists.
 - One focused ADR file per decision exists at `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`.
 - Each ADR follows MADR format, includes its parent sub-system tag, and has status `Proposed`.
 - `adr.md` is auto-generated in `{REPO_ROOT}/.adlc/drafts/adr/`.

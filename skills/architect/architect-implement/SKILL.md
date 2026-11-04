@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # architect-implement
 
+
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Generate a full Architecture Description (AD.md) from Architecture Decision Records (ADRs) using a **multi-agent DAG orchestration** approach:
@@ -400,7 +403,7 @@ it.
 
 ```bash
 # 1. Refuse to proceed on a stale base (returns 1 and explains).
-source {REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh
+source {SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh
 require_current_base "${MERGE_TARGET:-origin/main}"   # from paths.sh, already sourced
 
 # 2. Read the next free number for each slot type.
@@ -418,7 +421,7 @@ a deliberate act, never the next free slot. The PRD.md counterparts
 
 **Objective**: Analyze ADRs, detect sub-systems, generate customized DAG, get user approval
 
-**Script Action**: Run `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). which calls `plan-dag` internally
+**Script Action**: Run `{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). which calls `plan-dag` internally
 
 #### Step 1.1: Load and Analyze ADRs
 
@@ -1115,7 +1118,7 @@ After generating AD.md, perform ALL of the following steps:
 After moving Accepted ADRs to `docs/adlc/memory/adr/`, generate a memory index file at `{REPO_ROOT}/docs/adlc/memory/adr/adr.md` using the `generate_adr_index` function from the setup script (the same function that generates the drafts index, but with scope=memory —  the memory scope writes the index to the docs root whenever it holds records):
 
 ```bash
-source "{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh"
+source "{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh"
 generate_adr_index memory
 ```
 

@@ -659,7 +659,7 @@ parse_fm_title() {
 #
 # Deliberately not one shared implementation: the source tree is
 # skills/<group>/<skill>/ while the installed mirror is flat
-# .agents/skills/<skill>/, so no single relative source path resolves in both --
+# {SKILLS_DIR}/<skill>/, so no single relative source path resolves in both --
 # which is why parse_fm_field is duplicated here and in pdr-lib.sh too.
 # tests/unit/test_ledger_slot_numbering.py pins the behaviour in both homes.
 next_adr_number() {
@@ -687,7 +687,7 @@ next_adr_number() {
 # product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split for
 # the same reason the index generators are -- the source tree is
 # skills/<group>/<skill>/ while the installed mirror is flat
-# .agents/skills/<skill>/, so no one relative source path resolves in both.
+# {SKILLS_DIR}/<skill>/, so no one relative source path resolves in both.
 next_ad_delta_version() {
     local f="${1:-}"
     local major=0 minor=0 patch=0 max=""

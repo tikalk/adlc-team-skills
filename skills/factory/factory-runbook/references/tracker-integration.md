@@ -1,5 +1,7 @@
 # Tracker-Agnostic Integration Layer
 
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (see factory-runbook `SKILL.md`). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 This is the shared reference for all tracker-aware factory skills (`factory-mission`, `factory-queue`, `factory-review`). It details how the platform integrates with any issue tracker (GitHub, GitLab, Linear, Jira) without holding proprietary queue state.
@@ -336,8 +338,8 @@ pre-flight scope check.
 anything:
 
 ```bash
-bash {REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership.sh <payload.json>
-# PowerShell: pwsh -NoProfile -File {REPO_ROOT}/.agents/skills/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
+bash {SKILLS_DIR}/factory-runbook/scripts/bash/resolve-mr-ownership.sh <payload.json>
+# PowerShell: pwsh -NoProfile -File {SKILLS_DIR}/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
 ```
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and

@@ -5,6 +5,9 @@ description: Use when coordinating a multi-repo workspace — init the .adlc/ st
 
 # workspace
 
+
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 A multi-repo workspace coordinator for shared team context. The parent
@@ -299,7 +302,7 @@ team context. It is created by `--init` and maintained by other skills:
 | PDR drafts | `.adlc/drafts/pdr/` (accepted → `docs/adlc/memory/pdr/`) | `product-specify`, `product-init` |
 | ADR drafts | `.adlc/drafts/adr/` (accepted → `docs/adlc/memory/adr/`) | `architect-specify`, `architect-init` |
 | CDRs | team-ai-directives `adlc` branch (local drafts in `.adlc/drafts/cdr/`) | `team-levelup`, `team-init` |
-| Skills | agent skills dir (`.agents/skills/` mirror) | `team-skills` |
+| Skills | agent skills dir (`{SKILLS_DIR}/` mirror) | `team-skills` |
 | Directory structure | `.adlc/` tree | `workspace --init` (this skill) |
 
 In audit mode (default), this skill does **not** create or modify `.adlc/` content. It only:

@@ -20,13 +20,13 @@
 # Usage:
 #   REPO_ROOT=/path/to/adlc-workspace bash migrate-pdr-frontmatter.sh
 #   # or run from the adlc-workspace directory:
-#   bash /path/to/adlc-team-skills/.agents/skills/product-implement/scripts/bash/migrate-pdr-frontmatter.sh
+#   bash /path/to/adlc-team-skills/skills/product/product-implement/scripts/bash/migrate-pdr-frontmatter.sh
 #
 set -euo pipefail
 
 # Resolve REPO_ROOT — default to the adlc-workspace directory (parent of adlc-team-skills)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"  # .agents/skills/
+SKILLS_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"  # the installed skills dir (e.g. .agents/skills)
 
 # If REPO_ROOT not set, try to detect the adlc-workspace directory
 if [ -z "${REPO_ROOT:-}" ]; then

@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # product-implement
 
+
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Transforms **accepted PDRs** into a comprehensive, self-contained `PRD.md` using a **three-phase DAG**:
@@ -306,8 +309,8 @@ D) Cancel — Stop execution
 Source the PDR lifecycle library and call `move_pdr` for each Accepted PDR. This performs an atomic `mv` (no copy-then-delete duplication risk) and regenerates both scopes' indexes automatically.
 
 ```bash
-source "{REPO_ROOT}/.agents/skills/product-clarify/scripts/bash/pdr-lib.sh"
-# Or on Windows: . "{REPO_ROOT}/.agents/skills/product-clarify/scripts/powershell/pdr-lib.ps1"
+source "{SKILLS_DIR}/product-clarify/scripts/bash/pdr-lib.sh"
+# Or on Windows: . "{SKILLS_DIR}/product-clarify/scripts/powershell/pdr-lib.ps1"
 
 for pdr_id in <list of Accepted PDR IDs>; do
   move_pdr "$pdr_id" drafts memory
@@ -324,7 +327,7 @@ done
 The `move_pdr` call in Step 4.1 already regenerates the memory index. To manually regenerate (e.g., after bulk edits to PDR files):
 
 ```bash
-source "{REPO_ROOT}/.agents/skills/product-clarify/scripts/bash/pdr-lib.sh"
+source "{SKILLS_DIR}/product-clarify/scripts/bash/pdr-lib.sh"
 generate_pdr_index memory
 ```
 
@@ -389,7 +392,7 @@ eyeball it.
 
 ```bash
 # 1. Refuse to proceed on a stale base (returns 1 and explains).
-source {REPO_ROOT}/.agents/skills/product-clarify/scripts/bash/pdr-lib.sh
+source {SKILLS_DIR}/product-clarify/scripts/bash/pdr-lib.sh
 require_current_base "${MERGE_TARGET:-origin/main}"
 
 # 2. Read the next free number for each slot type.

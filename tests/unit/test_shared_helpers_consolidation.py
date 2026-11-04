@@ -4,7 +4,7 @@ setup-architect.{sh,ps1} (+ common/ascii/mermaid companions) and pdr-lib.{sh,ps1
 are canonical in exactly one skill each; every other skill references them by
 path. This pins that contract: stale copies must not reappear, borrower
 references must resolve in BOTH the source tree (skills/<group>/<skill>/) and
-the installed mirror tree (.agents/skills/<skill>/, flat per skill).
+the installed mirror tree ({SKILLS_DIR}/<skill>/, flat per skill).
 """
 
 import os
@@ -43,15 +43,15 @@ BASH_BORROWERS = {
 # (SKILL.md, canonical mirror-absolute path it must reference)
 DOC_BORROWERS = {
     ROOT / "skills/architect/architect-analyze/SKILL.md":
-        "{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh",
+        "{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh",
     ROOT / "skills/architect/architect-implement/SKILL.md":
-        "{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh",
+        "{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh",
     ROOT / "skills/architect/architect-init/SKILL.md":
-        "{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh",
+        "{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh",
     ROOT / "skills/architect/architect-specify/SKILL.md":
-        "{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh",
+        "{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh",
     ROOT / "skills/product/product-implement/SKILL.md":
-        "{REPO_ROOT}/.agents/skills/product-clarify/scripts/bash/pdr-lib.sh",
+        "{SKILLS_DIR}/product-clarify/scripts/bash/pdr-lib.sh",
 }
 
 STALE_ARCHITECT_DIRS = [
@@ -102,7 +102,7 @@ def test_borrower_refs_resolve_in_mirror_tree():
         pytest.skip("installed mirror absent — regenerate with adlc-cli")
     for borrower, snippet in BASH_BORROWERS.items():
         rel = borrower.relative_to(ROOT / "skills")
-        # source skills/<group>/<skill>/... -> mirror .agents/skills/<skill>/...
+        # source skills/<group>/<skill>/... -> mirror {SKILLS_DIR}/<skill>/...
         mirror_borrower = MIRROR / rel.parts[1] / Path(*rel.parts[2:])
         assert mirror_borrower.exists(), f"mirror missing borrower {mirror_borrower}"
         assert (MIRROR / "product-clarify/scripts/bash/pdr-lib.sh").exists(), \
@@ -185,7 +185,7 @@ INTENT_HELPERS = ["run-branch.sh", "commit-step.sh", "open-mr.sh"]
 def test_runbook_names_the_helpers_by_mirror_path():
     content = (ROOT / "skills/factory/factory-runbook/SKILL.md").read_text(encoding="utf-8")
     for helper in INTENT_HELPERS + ["resolve-mr-ownership.sh"]:
-        path = f"{{REPO_ROOT}}/.agents/skills/factory-runbook/scripts/bash/{helper}"
+        path = f"{{SKILLS_DIR}}/factory-runbook/scripts/bash/{helper}"
         assert path in content, f"factory-runbook/SKILL.md: missing {path}"
 
 

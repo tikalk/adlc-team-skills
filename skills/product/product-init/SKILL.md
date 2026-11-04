@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # product-init
 
+
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Reverse-engineers product decisions from an **existing product** using a **three-phase analysis pipeline**:
@@ -142,7 +145,7 @@ For each discovered PDR:
 
 **PDR file format** (individual file, YAML frontmatter — use the shared template):
 
-Use the template at `{REPO_ROOT}/.agents/skills/product/../templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections.
+Use the template at `{SKILLS_DIR}/product/../templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections.
 
 ```markdown
 ---

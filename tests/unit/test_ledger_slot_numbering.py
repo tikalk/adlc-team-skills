@@ -477,6 +477,112 @@ def test_write_and_move_adr_accept_octal_looking_ids(tmp_path):
     assert "invalid octal" not in r.stderr
 
 
+# ── prefixed + suffixed IDs: Important 1+2 fix (callers may pass full IDs) ──
+
+def test_get_adr_by_id_accepts_prefixed_ids(tmp_path):
+    """get_adr_by_id 'ADR-008' must resolve ADR-008.md (Important 1).
+
+    Callers (implement flows, slash-command args) pass the full display ID;
+    without prefix-stripping this looks up ADR-ADR-008.md and returns 1.
+    """
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    r = _run(f'source "{harness}"; get_adr_by_id "ADR-008" drafts', tmp_path)
+    assert r.returncode == 0, f"prefixed id rejected: {r.stderr}"
+    assert "Eight" in r.stdout
+    assert "invalid octal" not in r.stderr
+
+
+def test_move_adr_accepts_prefixed_ids(tmp_path):
+    """move_adr 'ADR-008' drafts memory must move ADR-008.md (Important 2).
+
+    The bare-ID path silently no-ops on prefixed input (rc 0, file stays),
+    so this pins the files, not just the return code.
+    """
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title",
+                            "generate_adr_index", "move_adr")
+    r = _run(f'source "{harness}"; move_adr "ADR-008" drafts memory', tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert (tmp_path / "docs/adlc/memory/adr/ADR-008.md").exists(), (
+        f"prefixed move left no dest: {r.stdout} {r.stderr}")
+    assert not (tmp_path / ".adlc/drafts/adr/ADR-008.md").exists()
+    assert "invalid octal" not in r.stderr
+
+
+def test_move_pdr_accepts_prefixed_ids(tmp_path):
+    """move_pdr 'PDR-008' drafts memory must move PDR-008.md (Important 2, PDR side)."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "Eight")
+    r = _run(f'source "{PDR_LIB}"; move_pdr "PDR-008" drafts memory', tmp_path)
+    assert r.returncode == 0, f"prefixed pdr id rejected: {r.stderr}"
+    assert (tmp_path / "docs/adlc/memory/pdr/PDR-008.md").exists(), (
+        f"prefixed move left no dest: {r.stdout} {r.stderr}")
+    assert not (tmp_path / ".adlc/drafts/pdr/PDR-008.md").exists()
+
+
+def test_get_adr_by_id_accepts_suffixed_ids(tmp_path):
+    """Suffixed stems resolve verbatim: '008-amendment-2' → ADR-008-amendment-2.md.
+
+    Pins that the prefixed-ID fix must not strip or re-parse suffixes
+    (008-amendment-2 is not 0082).
+    """
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008-amendment-2.md",
+                     "proposed", "Eight Amended")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    for given in ("008-amendment-2", "ADR-008-amendment-2"):
+        r = _run(f'source "{harness}"; get_adr_by_id "{given}" drafts', tmp_path)
+        assert r.returncode == 0, f"id {given}: {r.stderr}"
+        assert "Eight Amended" in r.stdout
+        assert "invalid octal" not in r.stderr
+
+
+def test_move_adr_accepts_suffixed_ids(tmp_path):
+    """move_adr moves suffixed stems verbatim, bare or prefixed."""
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008-amendment-2.md",
+                     "proposed", "Eight Amended")
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-009-workspace-profile.md",
+                     "proposed", "Nine Profile")
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title",
+                            "generate_adr_index", "move_adr")
+    for given, stem in (("008-amendment-2", "ADR-008-amendment-2"),
+                        ("ADR-009-workspace-profile", "ADR-009-workspace-profile")):
+        r = _run(f'source "{harness}"; move_adr "{given}" drafts memory', tmp_path)
+        assert r.returncode == 0, f"id {given}: {r.stderr}"
+        assert (tmp_path / f"docs/adlc/memory/adr/{stem}.md").exists(), (
+            f"suffixed move left no dest: {r.stdout} {r.stderr}")
+        assert not (tmp_path / f".adlc/drafts/adr/{stem}.md").exists()
+
+
+def test_get_adr_by_id_rejects_lowercase_prefix(tmp_path):
+    """'adr-008' must NOT resolve: IDs are case-sensitive (ADR- prefix only)."""
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    r = _run(f'source "{harness}"; get_adr_by_id "adr-008" drafts; echo "rc=$?"',
+             tmp_path)
+    assert "rc=1" in r.stdout, f"lowercase id must not resolve: {r.stdout} {r.stderr}"
+
+
+# No PS twin for get/move ADR by ID: setup-architect.ps1 defines no
+# Get-AdrById/Move-Adr (only Get-NextAdrNumber and friends), so there is
+# nothing to pin on the PS side. Revisit if the fixer adds them.
+
+
+@needs_pwsh
+def test_powershell_move_pdr_accepts_prefixed_ids(tmp_path):
+    """Move-Pdr 'PDR-008' drafts memory — prefixed IDs resolve (PS twin of
+    test_move_pdr_accepts_prefixed_ids)."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "Eight")
+    r = _pwsh(
+        f'$REPO_ROOT = "{tmp_path}"; . "{PDR_LIB_PS1}"; '
+        f'Move-Pdr "PDR-008" drafts memory')
+    assert r.returncode == 0, r.stderr
+    assert "False" not in r.stdout.split(), f"prefixed move refused: {r.stdout} {r.stderr}"
+    assert (tmp_path / "docs/adlc/memory/pdr/PDR-008.md").exists()
+    assert not (tmp_path / ".adlc/drafts/pdr/PDR-008.md").exists()
+
+
 def test_generate_pdr_index_derives_header_and_titlecase_status(tmp_path):
     """All-Accepted drafts must not claim 'Proposed PDRs only'; status
     renders Title-Case like adr.md ('Accepted', not frontmatter 'accepted')."""

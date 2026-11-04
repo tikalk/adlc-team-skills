@@ -387,7 +387,7 @@ Reply with your choice (A/B/C), or provide additional context.
 After each decision is confirmed:
 
 1. **Create ADR Entry**:
-   - Use MADR format from `../../architect-clarify/templates/adr-template.md` (selective-install mirror: `skills/architect/templates/adr-template.md` in adlc-team-skills)
+   - Use MADR format from the canonical template `skills/architect/templates/adr-template.md` in the adlc-team-skills checkout. Templates ship only with the skill that owns them — the installed `architect-clarify` skill contains no `templates/` directory, so do NOT use a relative `../../architect-clarify/templates/` path (it resolves nowhere). If the template file is absent in your installed layout, use the inline MADR 3.0.0 format in this SKILL.md instead.
    - Document context, decision, consequences, and alternatives
    - Link to constitution principles if applicable
    - **Include Sub-System tag**: Mark each ADR with its parent sub-system
@@ -482,7 +482,7 @@ If decomposed, structure the ADR file as:
 
 3. **Cross-Cutting ADRs**: Some decisions affect multiple sub-systems (e.g., "Use PostgreSQL for all sub-systems"). Mark these as **System-Level** and note impact on each sub-system.
 
-4. **ADR Format** (MADR 3.0.0 — see `../../architect-clarify/templates/adr-template.md`; selective-install mirror `skills/architect/templates/adr-template.md` in adlc-team-skills):
+4. **ADR Format** (MADR 3.0.0 — canonical template: `skills/architect/templates/adr-template.md` in the adlc-team-skills checkout; templates ship only with the owning skill and the installed `architect-clarify` skill has no `templates/` directory, so a relative `../../architect-clarify/templates/` path resolves nowhere — if the file is absent, use the inline format below):
 
 ```markdown
 ---

@@ -604,7 +604,7 @@ For each view in the DAG:
    continue to next view.
 1. **Check Dependencies**: Ensure all dependency views are completed
 2. **Load Dependency Context**: Read completed view files for context
-3. **Load View Template**: Read from `../../architect-clarify/templates/views/{view}.md` (selective-install mirror: `skills/architect/templates/views/{view}.md` in adlc-team-skills)
+3. **Load View Template**: Read the canonical template `skills/architect/templates/views/{view}.md` in the adlc-team-skills checkout. Templates ship only with the skill that owns them — the installed `architect-clarify` skill contains no `templates/` directory, so do NOT use a relative `../../architect-clarify/templates/` path (it resolves nowhere). If the template file is absent in your installed layout, generate the view from the Purpose / Key Content catalog in Steps 2.3–2.4 below instead.
 4. **Generate View Content**: Fill template with ADR-derived content
 5. **Write View File**: Save to `{REPO_ROOT}/docs/adlc/architect/views/{subsystem}/{view}.md`
 6. **Update State**: Mark view as "completed" in state.json

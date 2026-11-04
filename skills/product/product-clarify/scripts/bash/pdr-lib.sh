@@ -323,6 +323,7 @@ generate_pdr_index() {
 # Fails if the source file does not exist. Verifies no duplicates remain.
 move_pdr() {
     local pdr_id="$1"
+    pdr_id="${pdr_id#PDR-}"
     local from_scope="${2:-drafts}"
     local to_scope="${3:-memory}"
 

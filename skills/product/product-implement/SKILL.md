@@ -159,7 +159,7 @@ Document Information → Executive Summary → Overview → Problem
 For each section in the DAG:
 
 1. **Check dependencies** — ensure all prerequisites completed
-2. **Load section template** — `../../product-clarify/templates/sections/{section}.md` (selective-install mirror: `skills/product/templates/sections/{section}.md` in adlc-team-skills)
+2. **Load section template** — the canonical template `skills/product/templates/sections/{section}.md` in the adlc-team-skills checkout. Templates ship only with the owning skill — the installed `product-clarify` skill has no `templates/` directory, so a relative `../../product-clarify/templates/` path resolves nowhere; do not use it. If the file is absent in your installed layout, generate the section from the PRD structure outline in Step 3.3 instead.
 3. **Generate content** — fill template with PDR-derived content
 4. **Write section file** — `.adlc/product/sections/{feature-area}/{section}.md`
 5. **Validate** — run `scripts/bash/validate-prd.sh {section}.md`

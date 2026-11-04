@@ -787,6 +787,7 @@ generate_adr_index() {
 # Read a single ADR by ID
 get_adr_by_id() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local scope="${2:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
 
@@ -860,6 +861,7 @@ get_adr_count() {
 # Write a single ADR to disk (regenerates adr.md index)
 write_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local adr_content="$2"
     local scope="${3:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
@@ -883,6 +885,7 @@ write_adr() {
 # Move ADR from one scope to another (e.g., drafts -> memory)
 move_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local from_scope="${2:-drafts}"
     local to_scope="${3:-memory}"
 

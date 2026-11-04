@@ -221,6 +221,11 @@ function Generate-PdrIndex {
 # ============================================================================
 function Move-Pdr {
     param([string]$PdrId, [string]$FromScope = "drafts", [string]$ToScope = "memory")
+    # Accept an optional leading 'PDR-' so callers can pass the full record ID
+    # or the bare stem interchangeably. Strips at most one case-sensitive
+    # prefix (PDR-PDR-8 stays invalid); exact-stem-first + numeric-fallback
+    # logic below is unchanged.
+    if ($PdrId -like 'PDR-*') { $PdrId = $PdrId.Substring(4) }
     # Resolve exact stems first (PDR-<given>.md verbatim); numeric fallback
     # only for bare IDs. Never strip suffixes. Reject path separators.
     if ($PdrId -match '[\\/]|^\.') { Write-Error "Move-Pdr: invalid id: $PdrId"; return $false }

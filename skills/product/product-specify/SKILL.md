@@ -142,7 +142,7 @@ After each decision is confirmed, create a PDR file.
 
 **PDR file format** (individual file, YAML frontmatter — use the shared template):
 
-Use the template at `{REPO_ROOT}/.agents/skills/product-clarify/templates/pdr-template.md` (selective-install mirror: `skills/product/templates/pdr-template.md` in adlc-team-skills) as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
+Use the canonical template `skills/product/templates/pdr-template.md` in the adlc-team-skills checkout as the canonical PDR format. Templates ship only with the skill that owns them — the installed `product-clarify` skill contains no `templates/` directory, so `{REPO_ROOT}/.agents/skills/product-clarify/templates/pdr-template.md` resolves nowhere; do not use it. If the template file is absent in your installed layout, use the inline PDR format below instead. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
 
 ```markdown
 ---

@@ -177,6 +177,17 @@ Read the PR/MR/issue's current state for routing decisions.
 
 For issue-based providers (Linear, Jira): return issue state and labels.
 
+### Operation 6b — Probe Hierarchy Capability (per run, before any hierarchy use)
+
+Before attaching children to a generated epic, the provider layer probes the tracker's actual hierarchy capabilities and records the result in the plan output:
+
+1. **What the probe asks**: which work-item types exist (native epic type?), whether an Issue parent can hold Task-type children, whether `workItemHierarchyAddChildrenItems` and `workItemConvert` mutations are available, and schema introspection where the tracker exposes it.
+2. **Freshness and identity**: a probe is per-run and names the target instance + version. A stale probe, or a probe recorded on another instance or version, counts as no probe — the run uses the degraded label convention for hierarchy and says so.
+3. **Strategy selection** (best available wins): native epic type where offered; Issue parent holding Task-type children where conversion is available; label convention otherwise. Resolve deterministically with `scripts/bash/resolve-hierarchy-strategy.sh` (or the `scripts/powershell/` twin): capability matrix in, chosen strategy and disclosure line out. The disclosure line names the instance, the version, and the strategy.
+4. **MCP schema mismatch**: where the MCP work-item tools are schema-incompatible with the instance (their queries reference widget types the tracker does not have), the failure mode is recorded as a probe finding. The raw GraphQL fallback is **provider-owned behavior** — documented here, executed through the provider seam — never skill-embedded transport. Never print or store tokens: credentials come from the environment only.
+5. **Conversion safety**: `workItemConvert` (Issue to Task) must preserve milestone, labels, and description. The generation flow snapshot-compares before/after on every conversion; a mismatch is a failure of the conversion step.
+6. **Use-time downgrade**: a passing probe is necessary but not sufficient — the mutation itself can still fail (for example, the token lacks permission). If a hierarchy operation fails at use time, that run falls back to the label-convention shape for the affected epic only, disclosed in the plan output as `degraded: no tree` with the failing operation named. The plan's issues still land, with or without the tree. Silence is never the fallback.
+
 ### Operation 7 — Post Review Finding (PR-based providers only)
 
 Verdict submissions are native Review-type COMMENT submissions — never Approve.

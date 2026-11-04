@@ -84,7 +84,7 @@ def test_template_documents_label_vocabulary():
     """The template must document the factory label vocabulary for verify-only checks."""
     content = _read(TEMPLATE)
     assert content is not None
-    assert "factory-stage:" in content, "template must list the lifecycle label vocabulary"
+    assert "Lifecycle (bare names" in content, "template must list the lifecycle label vocabulary"
     assert "agent-can-execute" in content, "template must list the gating label vocabulary"
 
 
@@ -104,7 +104,7 @@ def test_template_documents_labels_mapping():
     content = _read(TEMPLATE)
     assert content is not None
     assert "labels:" in content, "template must document the optional labels: mapping"
-    assert "factory-stage:executing" in content, "mapping must show a lifecycle override example"
+    assert '#   executing: "running"' in content, "mapping must show a lifecycle override example"
 
 
 def test_mode_configured_offers_provisioning():

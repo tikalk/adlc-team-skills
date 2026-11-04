@@ -130,13 +130,13 @@ def test_check_scratchpad_staging_fail():
     assert result["score"] == 0.0
 
 def test_check_status_transitions_pass():
-    output = "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\" --remove-label \"factory-stage:spec-gated\""
+    output = "Transitioning issue: gh issue edit 123 --add-label \"executing\" --remove-label \"spec-gated\""
     result = get_assert_invariants(output, {"vars": {"scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
 
 def test_check_status_transitions_fail():
-    output = "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\""
+    output = "Transitioning issue: gh issue edit 123 --add-label \"executing\""
     result = get_assert_invariants(output, {"vars": {"scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
@@ -280,7 +280,7 @@ def test_check_label_mapping_pass():
 
 
 def test_check_provisioning_confirmed_fail():
-    output = "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+    output = "Created 3 missing labels (autonomous, supervised, executing)."
     result = get_assert_invariants(output, {"vars": {"scenario": "label-provisioning: provision labels without confirmation"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
@@ -338,5 +338,23 @@ def test_check_dependency_auto_notify_pass():
 def test_check_dependency_auto_notify_fail():
     output = "#55 is closed. Starting a watch loop that polls #57 every 20 minutes until its dependencies look ready."
     result = get_assert_invariants(output, {"vars": {"scenario": "dependency-auto-notify: dependency closed, notify dependents"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_queue_hierarchy_disclosure_pass():
+    from check_factory_queue_hierarchy import get_assert as get_assert_hier
+    output = ("Hierarchy probe on git.example.com/acme 18.11.13: "
+              "strategy issue_parent_task_children. Children convert "
+              "from Issue to Task and the plan output names the trade-off.")
+    result = get_assert_hier(output)
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_queue_hierarchy_disclosure_fail():
+    from check_factory_queue_hierarchy import get_assert as get_assert_hier
+    output = "Epic created with label convention; children listed in a comment."
+    result = get_assert_hier(output)
     assert result["pass"] is False
     assert result["score"] == 0.0

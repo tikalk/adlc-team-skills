@@ -387,7 +387,7 @@ Reply with your choice (A/B/C), or provide additional context.
 After each decision is confirmed:
 
 1. **Create ADR Entry**:
-   - Use MADR format from `../templates/adr-template.md`
+   - Use MADR format from `../../architect-clarify/templates/adr-template.md` (selective-install mirror: `skills/architect/templates/adr-template.md` in adlc-team-skills)
    - Document context, decision, consequences, and alternatives
    - Link to constitution principles if applicable
    - **Include Sub-System tag**: Mark each ADR with its parent sub-system
@@ -482,7 +482,7 @@ If decomposed, structure the ADR file as:
 
 3. **Cross-Cutting ADRs**: Some decisions affect multiple sub-systems (e.g., "Use PostgreSQL for all sub-systems"). Mark these as **System-Level** and note impact on each sub-system.
 
-4. **ADR Format** (MADR 3.0.0 — see `../templates/adr-template.md`):
+4. **ADR Format** (MADR 3.0.0 — see `../../architect-clarify/templates/adr-template.md`; selective-install mirror `skills/architect/templates/adr-template.md` in adlc-team-skills):
 
 ```markdown
 ---
@@ -541,7 +541,7 @@ Chosen option: "{title option 1}", because {justification}.
 **Objective**: Write finalized ADRs to file
 
 1. **Run Setup Script**:
-   - Execute `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists
+   - Execute `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh specify` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists — the `specify` action is mandatory: with no action and no AD.md the script defaults to `init` (brownfield reverse-engineering), not greenfield specify
    - Script creates from template if directory is empty
    - Script reports `next_adr` — the next free ADR slot (status line `Next free ADR slot: ADR-{NNN}`); number the new ADRs from it
    - Pass `--no-decompose` if decomposition was disabled

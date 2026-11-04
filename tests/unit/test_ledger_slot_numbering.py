@@ -412,3 +412,118 @@ def test_setup_architect_sh_is_source_safe(docs_tree):
         f"sourcing setup-architect.sh must run no action; got stderr={r.stderr!r}")
     assert not (docs_tree / ".adlc" / "memory").exists(), (
         "sourcing setup-architect.sh must not seed directories")
+
+
+# ── octal guard: zero-padded IDs ≥ 008 must not abort index generation ─────────
+
+def _write_fm_status(path: Path, status: str, title: str = "T"):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f"---\nstatus: {status}\ndate: 2026-11-04\n---\n\n# {title}\n",
+        encoding="utf-8",
+    )
+
+
+def test_generate_adr_index_handles_octal_looking_ids(tmp_path):
+    """ADR-008/ADR-009 must render, byte-identical to the PDR-side 10# guard."""
+    for stem, title in (("ADR-008", "Eight"), ("ADR-009", "Nine")):
+        _write_fm_status(tmp_path / f".adlc/drafts/adr/{stem}.md", "proposed", title)
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title", "generate_adr_index")
+    r = _run(f'source "{harness}"; generate_adr_index drafts', tmp_path)
+    assert r.returncode == 0, f"octal abort: {r.stderr}"
+    assert "invalid octal" not in r.stderr
+    out = (tmp_path / ".adlc/drafts/adr/adr.md").read_text(encoding="utf-8")
+    assert "| ADR-008 |" in out
+    assert "| ADR-009 |" in out
+    assert "ADR-000" not in out
+
+
+def test_generate_adr_index_octal_ids_stay_byte_stable(tmp_path):
+    """008/009 render through the same %03d path as 007: one code path."""
+    for stem, title in (("ADR-007", "Seven"), ("ADR-008", "Eight")):
+        _write_fm_status(tmp_path / f".adlc/drafts/adr/{stem}.md", "proposed", title)
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title", "generate_adr_index")
+    r = _run(f'source "{harness}"; generate_adr_index drafts', tmp_path)
+    assert r.returncode == 0, r.stderr
+    out = (tmp_path / ".adlc/drafts/adr/adr.md").read_text(encoding="utf-8")
+    assert "| ADR-007 |" in out and "| ADR-008 |" in out
+
+
+def test_get_adr_by_id_accepts_octal_looking_bare_ids(tmp_path):
+    """get_adr_by_id 8 / 008 must resolve ADR-008.md without an octal error."""
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    for given in ("8", "008"):
+        r = _run(f'source "{harness}"; get_adr_by_id "{given}" drafts', tmp_path)
+        assert r.returncode == 0, f"id {given}: {r.stderr}"
+        assert "Eight" in r.stdout
+        assert "invalid octal" not in r.stderr
+
+
+def test_write_and_move_adr_accept_octal_looking_ids(tmp_path):
+    """write_adr 8 → ADR-008.md; move_adr 8 drafts memory — no octal abort."""
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title",
+                            "generate_adr_index", "move_adr", "write_adr")
+    r = _run(f'source "{harness}"; write_adr 8 "---\\nstatus: proposed\\n---\\n\\n# Eight\\n" drafts',
+             tmp_path)
+    assert r.returncode == 0, f"write_adr octal abort: {r.stderr}"
+    assert (tmp_path / ".adlc/drafts/adr/ADR-008.md").exists()
+    r = _run(f'source "{harness}"; move_adr 8 drafts memory', tmp_path)
+    assert r.returncode == 0, f"move_adr octal abort: {r.stderr}"
+    assert (tmp_path / "docs/adlc/memory/adr/ADR-008.md").exists()
+    assert "invalid octal" not in r.stderr
+
+
+def test_generate_pdr_index_derives_header_and_titlecase_status(tmp_path):
+    """All-Accepted drafts must not claim 'Proposed PDRs only'; status
+    renders Title-Case like adr.md ('Accepted', not frontmatter 'accepted')."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "All Accepted")
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-009.md", "accepted", "Also Accepted")
+    r = _run(f'source "{PDR_LIB}"; generate_pdr_index drafts', tmp_path)
+    assert r.returncode == 0, r.stderr
+    out = (tmp_path / ".adlc/drafts/pdr/pdr.md").read_text(encoding="utf-8")
+    assert "Proposed PDRs only" not in out
+    assert "| Accepted |" in out
+    assert "| accepted |" not in out
+
+
+def test_generate_pdr_index_mixed_status_keeps_drafts_header(tmp_path):
+    """Mixed Proposed/Accepted drafts keep the Drafts header; both title-cased."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "Done")
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-009.md", "proposed", "Pending")
+    r = _run(f'source "{PDR_LIB}"; generate_pdr_index drafts', tmp_path)
+    assert r.returncode == 0, r.stderr
+    out = (tmp_path / ".adlc/drafts/pdr/pdr.md").read_text(encoding="utf-8")
+    assert "(Drafts)" in out
+    assert "| Accepted |" in out and "| Proposed |" in out
+
+
+def test_count_pdr_accepted_matches_derived_index(tmp_path):
+    """count_pdr_accepted must agree with generate_pdr_index status cells:
+    frontmatter lower-case 'accepted' counts (the legacy grep did not)."""
+    from pathlib import Path as _P
+    (_P(tmp_path) / ".adlc/drafts/pdr").mkdir(parents=True, exist_ok=True)
+    for stem, status in (("PDR-008", "accepted"), ("PDR-009", "Accepted"),
+                         ("PDR-012", "proposed")):
+        (_P(tmp_path) / f".adlc/drafts/pdr/{stem}.md").write_text(
+            f"---\nstatus: {status}\ndate: 2026-11-04\nowner: me\ncategory: F\n"
+            f"feature-area: core\ntitle: T\n---\n\n# T\n", encoding="utf-8")
+    import subprocess as _sp, os as _os
+    r = _sp.run(["bash", "-c", f'source \"{PDR_LIB}\"; count_pdr_accepted '
+                 f'\"{tmp_path}/.adlc/drafts/pdr\"'],
+                capture_output=True, text=True, timeout=60,
+                env={**_os.environ, "REPO_ROOT": str(tmp_path)})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "2", f"frontmatter accepted undercounted: {r.stdout!r}"
+
+
+def test_setup_architect_preview_flag_exists(tmp_path):
+    """`implement --preview` must exist: lists ADRs/views/rewrites without
+    writing AD.md, views, or moving drafts (factory dry-run parity)."""
+    import subprocess as _sp, os as _os
+    src = SETUP_ARCH.read_text(encoding="utf-8")
+    assert "--preview" in src, "setup-architect.sh must accept --preview"
+    assert "PREVIEW" in src, "implement must gate writes behind PREVIEW"

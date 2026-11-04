@@ -14,7 +14,7 @@ Resolve the provider in this order (first hit wins):
 2. `.adlc/issues-provider.yml` in the target repo (factory-canonical; the template ships in this release at `skills/factory/factory-runbook/references/issues-provider.yml`).
 3. Neither source resolves a provider: **halt with an error naming the expected locations** (`{{params.tracker_provider}}`, `.adlc/issues-provider.yml`). Never silently default (a wrong guess posts to the wrong tracker). Repos carrying only the legacy spec-kit provider file must add the factory-canonical copy — the factory no longer reads the spec-kit path. Run `/factory-setup` (or `adlc-cli factory setup`) to create it.
 Parse `provider: github | gitlab | linear | jira` from the winning source.
-Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, plus per-provider `remote_override`/`project_id`).
+Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, `required_fields`, `default_labels`, `default_components`, plus per-provider `remote_override`/`project_id`).
 
 ### 2. Credentials & Tools Discovery
 1. Check environment variables: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `LINEAR_API_KEY`, `JIRA_API_TOKEN` / `JIRA_URL` + `JIRA_EMAIL`.

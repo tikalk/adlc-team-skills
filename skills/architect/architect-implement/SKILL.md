@@ -604,7 +604,7 @@ For each view in the DAG:
    continue to next view.
 1. **Check Dependencies**: Ensure all dependency views are completed
 2. **Load Dependency Context**: Read completed view files for context
-3. **Load View Template**: Read from `templates/views/{view}.md`
+3. **Load View Template**: Read from `../../architect-clarify/templates/views/{view}.md` (selective-install mirror: `skills/architect/templates/views/{view}.md` in adlc-team-skills)
 4. **Generate View Content**: Fill template with ADR-derived content
 5. **Write View File**: Save to `{REPO_ROOT}/docs/adlc/architect/views/{subsystem}/{view}.md`
 6. **Update State**: Mark view as "completed" in state.json
@@ -1095,9 +1095,10 @@ After generating AD.md, perform ALL of the following steps:
   "Deprecated", or "Superseded" — these are NOT eligible for promotion
 - **Verification**: After filtering, count non-Accepted ADRs in the promotion
   set. If >0, STOP and fix before proceeding.
+- **Superseded chain**: when a promoted ADR's frontmatter names `superseded-by` (or a draft supersedes a memory ADR), update the superseded record in place: set its `status` to `Superseded` and its `superseded-by` to the new ADR id, then regenerate the memory index. Never leave both the old and the new ADR as `Accepted`.
 
 **Step 2: Copy to Canonical Location (MANDATORY)**
-- Move Accepted ADR files into `{REPO_ROOT}/docs/adlc/memory/adr/` (the shared layout canonical memory root)
+- Move Accepted ADR files into `{REPO_ROOT}/docs/adlc/memory/adr/` (the shared layout canonical memory root) — per-move `move_adr "<id>" drafts memory` (never a bulk `mv`), so each move regenerates both scopes' indexes
 - Create the file if it doesn't exist, or merge with existing content
 - **VERIFY**: Read the file back and confirm ADRs are present
 

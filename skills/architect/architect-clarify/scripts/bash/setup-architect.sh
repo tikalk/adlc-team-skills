@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Bash-only: run this script and source its helpers from bash
+# (`bash scripts/bash/setup-architect.sh ...`). Under zsh, BASH_SOURCE[0]
+# is unset and SCRIPT_DIR resolution fails — use `bash -c` or `emulate -L sh`.
 
 set -e
 
@@ -113,6 +116,10 @@ while [[ $# -gt 0 ]]; do
             DECOMPOSE=false
             shift
             ;;
+        --preview)
+            PREVIEW=true
+            shift
+            ;;
         init|map|update|review|specify|implement|clarify|analyze|validate|plan-dag|execute-dag|summarize)
             ACTION="$1"
             shift
@@ -141,6 +148,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --views VIEWS      Architecture views to generate: core (default), all, or comma-separated"
             echo "  --adr-heuristic H  ADR generation heuristic: surprising (default), all, minimal"
             echo "  --no-decompose     Disable automatic sub-system decomposition (default: auto-detect)"
+            echo "  --preview          Preview only: list planned writes (AD.md, views, promotions) without writing"
             echo "  --help             Show this help message"
             echo ""
             echo "Examples:"
@@ -745,7 +753,7 @@ generate_adr_index() {
         # stems render verbatim (printf %03d on them printed ADR-000).
         local disp="$id"
         if [[ "$id" =~ ^[0-9]+$ ]]; then
-            disp=$(printf "%03d" "$id")
+            disp=$(printf "%03d" "$((10#$id))")
         fi
 
         # Extract metadata from MADR frontmatter (fallback to empty + defaults)
@@ -805,7 +813,7 @@ get_adr_by_id() {
         fi
         if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
             local padded_id
-            padded_id=$(printf "%03d" "$adr_id")
+            padded_id=$(printf "%03d" "$((10#$adr_id))")
             hybrid_file="$_d/ADR-$padded_id.md"
             if [[ -f "$hybrid_file" ]]; then
                 cat "$hybrid_file"
@@ -860,7 +868,7 @@ write_adr() {
 
     local target_name
     if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        target_name="ADR-$(printf "%03d" "$adr_id").md"
+        target_name="ADR-$(printf "%03d" "$((10#$adr_id))").md"
     else
         case "$adr_id" in *"/"*|.*) echo "write_adr: invalid id: $adr_id" >&2; return 1;; esac
         target_name="ADR-$adr_id.md"
@@ -893,7 +901,7 @@ move_adr() {
     # Exact stem first; numeric fallback only for bare IDs.
     local src_file="$from_dir/ADR-$adr_id.md"
     if [[ ! -f "$src_file" ]] && [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        src_file="$from_dir/ADR-$(printf "%03d" "$adr_id").md"
+        src_file="$from_dir/ADR-$(printf "%03d" "$((10#$adr_id))").md"
     fi
     if [[ -f "$src_file" ]]; then
         mv "$src_file" "$to_dir/$(basename "$src_file")"
@@ -1148,6 +1156,20 @@ action_implement() {
     fi
 
     echo "📐 Setting up for Architecture Description generation..." >&2
+
+    if [[ "${PREVIEW:-false}" == "true" ]]; then
+        echo "Preview (no writes): would init $ad_file from template," >&2
+        echo "  generate views per sub-system, move Accepted ADRs" >&2
+        echo "  $adr_dir -> docs/adlc/memory/adr/, regenerate both indexes." >&2
+        if $JSON_MODE; then
+            python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" <<'PY'
+import json, sys
+adr_dir, ad_file, count, context = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+print(json.dumps({"status": "success", "action": "implement", "preview": True, "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context}))
+PY
+        fi
+        return 0
+    fi
 
     # Initialize AD.md from template if it doesn't exist
     if [[ ! -f "$ad_file" ]]; then

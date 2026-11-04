@@ -33,14 +33,7 @@ mkdir -p "$REPO_ROOT/.adlc/product"
 #  compiled PRD lives under docs/adlc/product/ — ensure the parent exists.
 mkdir -p "$REPO_ROOT/${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 
-ACCEPTED_COUNT=0
-if [[ -d "$PDR_DRAFTS_DIR" ]]; then
-  for f in "$PDR_DRAFTS_DIR"/PDR-*.md; do
-    if [[ -f "$f" ]] && grep -q '^\*\*Accepted\*\*' "$f" 2>/dev/null; then
-      ((ACCEPTED_COUNT++))
-    fi
-  done
-fi
+ACCEPTED_COUNT=$(count_pdr_accepted "$PDR_DRAFTS_DIR" 2>/dev/null || echo 0)
 
 if $JSON_MODE; then
   python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PDR_MEMORY_DIR" "$PRD_FILE" "$SECTIONS_DIR" "$STATE_FILE" "$ACCEPTED_COUNT" <<'PY'

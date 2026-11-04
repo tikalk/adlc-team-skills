@@ -178,7 +178,13 @@ function Generate-PdrIndex {
     $body = ""
     $warnings = @()
     # Lexical BaseName sort (zero-padded repo names keep amendment-before-base order). IDs are stems verbatim.
-    $files = Get-ChildItem -Path $scanDirs -Filter 'PDR-*.md' | Sort-Object BaseName
+    # Skip scan dirs that do not exist (bash twin: [ -d ... ] || continue) —
+    # with $ErrorActionPreference = 'Stop', Get-ChildItem on a missing dir throws.
+    $existingDirs = @($scanDirs | Where-Object { Test-Path $_ })
+    $files = @()
+    if ($existingDirs.Count -gt 0) {
+        $files = Get-ChildItem -Path $existingDirs -Filter 'PDR-*.md' | Sort-Object BaseName
+    }
     foreach ($f in $files) {
         $id = ($f.BaseName -replace '^PDR-','')
         # Purely numeric stems keep the legacy zero-padded display; suffixed stems render verbatim.

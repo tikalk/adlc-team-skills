@@ -48,15 +48,13 @@ if [[ -z "${REPO_ROOT:-}" ]]; then
   exit 1
 fi
 
-# shared layout constants (single definition in paths.sh; common.sh
-# already sources it — this block keeps the script correct standalone).
-if [ -f "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh"
-elif [ -f "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh"
-fi
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 # dual-read: resolve a memory-relative artifact to the canonical
 # docs/adlc/memory path, falling back to legacy .adlc/memory when only the
@@ -657,10 +655,8 @@ parse_fm_title() {
 # 003; suffixes are never arithmetically parsed), and the maximum spans drafts
 # AND published memory so a promoted record's slot is not reissued.
 #
-# Deliberately not one shared implementation: the source tree is
-# skills/<group>/<skill>/ while the installed mirror is flat
-# {SKILLS_DIR}/<skill>/, so no single relative source path resolves in both --
-# which is why parse_fm_field is duplicated here and in pdr-lib.sh too.
+# Deliberately skill-local (scope rule): scripts stay skill-local and never
+# source another skill, so parse_fm_field is vendored here and in pdr-lib.sh.
 # tests/unit/test_ledger_slot_numbering.py pins the behaviour in both homes.
 next_adr_number() {
     local root="${1:-$REPO_ROOT}"
@@ -684,10 +680,8 @@ next_adr_number() {
 # deliberate act, not the next free slot -- so this never emits one.
 #
 # Companion to next_prd_section/next_req_id/next_feature_number in
-# product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split for
-# the same reason the index generators are -- the source tree is
-# skills/<group>/<skill>/ while the installed mirror is flat
-# {SKILLS_DIR}/<skill>/, so no one relative source path resolves in both.
+# product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split per
+# the scope rule — each skill vendors its own ledger helpers.
 next_ad_delta_version() {
     local f="${1:-}"
     local major=0 minor=0 patch=0 max=""
@@ -1160,15 +1154,19 @@ action_implement() {
 
     echo "📐 Setting up for Architecture Description generation..." >&2
 
+    # Ledger slot: the next `## vN.N.N Delta:` heading in the existing AD.md.
+    local next_delta
+    next_delta=$(next_ad_delta_version "$ad_file")
+
     if [[ "${PREVIEW:-false}" == "true" ]]; then
         echo "Preview (no writes): would init $ad_file from template," >&2
         echo "  generate views per sub-system, move Accepted ADRs" >&2
         echo "  $adr_dir -> docs/adlc/memory/adr/, regenerate both indexes." >&2
         if $JSON_MODE; then
-            python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" <<'PY'
+            python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" "$next_delta" <<'PY'
 import json, sys
-adr_dir, ad_file, count, context = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
-print(json.dumps({"status": "success", "action": "implement", "preview": True, "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context}))
+adr_dir, ad_file, count, context, next_delta = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
+print(json.dumps({"status": "success", "action": "implement", "preview": True, "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context, "next_ad_delta_version": next_delta}))
 PY
         fi
         return 0
@@ -1202,10 +1200,10 @@ PY
     echo "  8. Clean up drafts if all ADRs are Accepted" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" <<'PY'
+        python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" "$next_delta" <<'PY'
 import json, sys
-adr_dir, ad_file, count, context = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
-print(json.dumps({"status": "success", "action": "implement", "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context}))
+adr_dir, ad_file, count, context, next_delta = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
+print(json.dumps({"status": "success", "action": "implement", "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context, "next_ad_delta_version": next_delta}))
 PY
     fi
 }

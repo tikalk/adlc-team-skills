@@ -1,6 +1,6 @@
 # Tracker-Agnostic Integration Layer
 
-> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (see factory-runbook `SKILL.md`). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+> **Scope rule**: scripts stay skill-local — invoke `factory-runbook` for publish operations. `scripts/` below is relative to the `factory-runbook` skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
 ## Overview
 
@@ -370,8 +370,8 @@ pre-flight scope check.
 anything:
 
 ```bash
-bash {SKILLS_DIR}/factory-runbook/scripts/bash/resolve-mr-ownership.sh <payload.json>
-# PowerShell: pwsh -NoProfile -File {SKILLS_DIR}/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
+bash scripts/bash/resolve-mr-ownership.sh <payload.json>
+# PowerShell: pwsh -NoProfile -File scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
 ```
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and

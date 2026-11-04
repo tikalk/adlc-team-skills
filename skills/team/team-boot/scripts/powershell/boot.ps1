@@ -2,9 +2,13 @@
 # PowerShell native (ConvertFrom-Json).
 $ErrorActionPreference = "Stop"
 
-# shared layout constants (single definition in paths.ps1).
-$BootPathsPs1 = "$PSScriptRoot/../../workspace/scripts/powershell/paths.ps1"
-if (Test-Path $BootPathsPs1) { . $BootPathsPs1 }
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+$ADLC_DIR = if ($env:ADLC_DIR) { $env:ADLC_DIR } else { ".adlc" }
+$DOCS_ADLC_DIR = if ($env:DOCS_ADLC_DIR) { $env:DOCS_ADLC_DIR } else { "docs/adlc" }
+$DOCS_ADLC_MEMORY = if ($env:DOCS_ADLC_MEMORY) { $env:DOCS_ADLC_MEMORY } else { "docs/adlc/memory" }
+$DOCS_ADLC_PRODUCT = if ($env:DOCS_ADLC_PRODUCT) { $env:DOCS_ADLC_PRODUCT } else { "docs/adlc/product" }
+$DOCS_ADLC_ARCHITECT = if ($env:DOCS_ADLC_ARCHITECT) { $env:DOCS_ADLC_ARCHITECT } else { "docs/adlc/architect" }
+$ADLC_DRAFTS = if ($env:ADLC_DRAFTS) { $env:ADLC_DRAFTS } else { ".adlc/drafts" }
 
 # file_edited payload mode (event-driven, not session-start).
 # The dispatcher sets ADLC_EVENT and forwards the event payload on stdin.

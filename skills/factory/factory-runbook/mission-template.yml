@@ -84,7 +84,7 @@ workflow:
   #     claude-code:
   #       command: ["claude", "--print", "{cwd}"]
   #       runtime_label: "Claude Code"
-  #       skills_root: "{SKILLS_DIR}"
+  #       skills_root: "<installed-skills-dir>"
 
   # ── fd leak prevention ─────────────────────────────────
   # Heartbeat process redirection — for CI/CD shells to not hang

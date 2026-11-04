@@ -7,7 +7,7 @@ disable-model-invocation: true
 # product-implement
 
 
-> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
 ## What this skill does
 
@@ -301,21 +301,12 @@ D) Cancel — Stop execution
 ```
 
 ### Phase 4: PDR Lifecycle Management (MANDATORY)
-**Requires:** the `product-clarify` skill (provides `pdr-lib.sh`): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
+**Requires:** the `product-clarify` skill for PDR lifecycle operations (index generation, promotion, clarification): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
 
 
-**Step 4.1: Move Accepted PDRs to Memory (atomic — script-driven)**
+**Step 4.1: Move Accepted PDRs to Memory (atomic — owned by `product-clarify`)**
 
-Source the PDR lifecycle library and call `move_pdr` for each Accepted PDR. This performs an atomic `mv` (no copy-then-delete duplication risk) and regenerates both scopes' indexes automatically.
-
-```bash
-source "{SKILLS_DIR}/product-clarify/scripts/bash/pdr-lib.sh"
-# Or on Windows: . "{SKILLS_DIR}/product-clarify/scripts/powershell/pdr-lib.ps1"
-
-for pdr_id in <list of Accepted PDR IDs>; do
-  move_pdr "$pdr_id" drafts memory
-done
-```
+Invoke the `product-clarify` skill for the promotion; its `move_pdr` operation moves each Accepted PDR with an atomic `mv` (no copy-then-delete duplication risk) and regenerates both scopes' indexes automatically. Pass the Accepted PDR IDs (`<list of Accepted PDR IDs>`) with scope `drafts memory`.
 
 - PDRs with status "Accepted" are moved (not copied) from `.adlc/drafts/pdr/` to `docs/adlc/memory/pdr/`.
 - **Do NOT change status to "Completed"** — keep status as "Accepted" so the index header ("Accepted PDRs only") remains truthful.
@@ -324,12 +315,7 @@ done
 
 **Step 4.2: Generate Memory PDR Index (MANDATORY — script-driven)**
 
-The `move_pdr` call in Step 4.1 already regenerates the memory index. To manually regenerate (e.g., after bulk edits to PDR files):
-
-```bash
-source "{SKILLS_DIR}/product-clarify/scripts/bash/pdr-lib.sh"
-generate_pdr_index memory
-```
+The promotion in Step 4.1 already regenerates the memory index. To manually regenerate (e.g., after bulk edits to PDR files), invoke the `product-clarify` skill and run its `generate_pdr_index memory` operation.
 
 This writes `{REPO_ROOT}/docs/adlc/memory/pdr/pdr.md` using a frontmatter-primary + heading-fallback parser that handles both `##` (H2 legacy) and `###` (H3 current) metadata. Blank cells trigger a stderr warning and defaults are applied — no silent blank rows.
 
@@ -387,25 +373,31 @@ Before marking complete, verify ALL checks:
 
 A number computed from a stale base is wrong even when you compute it
 correctly — the working tree simply does not know what the merge target has
-already used. Check first, then read each number from the document; never
-eyeball it.
+already used. Check the base first, then read each number from the setup
+output; never eyeball it.
 
 ```bash
-# 1. Refuse to proceed on a stale base (returns 1 and explains).
-source {SKILLS_DIR}/product-clarify/scripts/bash/pdr-lib.sh
-require_current_base "${MERGE_TARGET:-origin/main}"
+# 1. Refuse to proceed on a stale base.
+git fetch origin --quiet
+test "$(git rev-list --count "HEAD..${MERGE_TARGET:-origin/main}")" = 0 \
+  || { echo "base is behind ${MERGE_TARGET:-origin/main}; rebase before claiming a slot" >&2; exit 1; }
 
-# 2. Read the next free number for each slot type.
-next_record_number PDR "{REPO_ROOT}/.adlc/drafts/pdr" "{REPO_ROOT}/docs/adlc/memory/pdr"  # record id -> 138 (drafts + published)
-next_prd_section  "{PRD_FILE}"   # `## 26.` heading  -> 27
-next_req_id       "{PRD_FILE}"   # `REQ-216`         -> 217
-next_feature_number "{PRD_FILE}" # `| 69 |` row      -> 70
+# 2. Read the next free slot for each type from the setup JSON.
+bash scripts/bash/setup-product-implement.sh --json
 ```
 
+| Setup JSON field | Slot | Example |
+|---|---|---|
+| `next_pdr` | record id (`PDR-{NNN}`) — drafts + published | `138` |
+| `next_prd_section` | `## N.` delta heading in PRD.md | `27` |
+| `next_req_id` | `REQ-NNN` | `217` |
+| `next_feature_number` | `\| N \|` Feature row | `70` |
+
+The setup script vendors these scans (scripts stay skill-local), so the numbers
+come from the checkout rather than from a helper that may not be installed.
 Each scan is deliberately over-inclusive: a match anywhere in the document
 raises the result. That is the safe direction — an unused number is harmless,
-a reissued one collides. `next_ad_delta_version` in `setup-architect.sh` is the
-AD.md counterpart and belongs to `architect-implement`.
+a reissued one collides.
 
 ## PDR Traceability Rules
 

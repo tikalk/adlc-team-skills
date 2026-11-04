@@ -7,7 +7,7 @@ disable-model-invocation: true
 # product-specify
 
 
-> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
 ## What this skill does
 
@@ -43,7 +43,7 @@ Transforms a high-level product idea into documented Product Decision Records (P
 sh: scripts/bash/setup-product-specify.sh [--json]
 ps: scripts/powershell/setup-product-specify.ps1
 ```
-**Requires:** the `product-clarify` skill (provides `pdr-lib.sh`): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
+**Requires:** the `product-clarify` skill for PDR lifecycle operations (index generation, promotion, clarification): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
 
 
 **Setup output** (JSON):
@@ -145,7 +145,7 @@ After each decision is confirmed, create a PDR file.
 
 **PDR file format** (individual file, YAML frontmatter — use the shared template):
 
-Use the canonical template `skills/product/templates/pdr-template.md` in the adlc-team-skills checkout as the canonical PDR format. Templates ship only with the skill that owns them — the installed `product-clarify` skill contains no `templates/` directory, so `{SKILLS_DIR}/product-clarify/templates/pdr-template.md` resolves nowhere; do not use it. If the template file is absent in your installed layout, use the inline PDR format below instead. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
+Use the canonical template `skills/product/templates/pdr-template.md` in the adlc-team-skills checkout as the canonical PDR format (family-level templates are checkout-only — they do not ship with an installed skill). If the template file is absent in your checkout, use the inline PDR format below instead. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
 
 ```markdown
 ---

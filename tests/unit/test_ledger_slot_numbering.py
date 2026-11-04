@@ -8,7 +8,8 @@ whose highest record carries a suffix reports a slot that is already taken. It
 also scanned `.adlc/drafts/pdr/` alone, ignoring published records in
 `docs/adlc/memory/pdr/`, so a promoted record's slot was free to be reissued.
 
-Contract under test (canonical helpers only — borrowers reference these):
+Contract under test (canonical helpers; borrowing skills vendor the ones they
+need per the skill-local script rule):
 - a record's number is the leading digits of its filename stem; suffixes are
   preserved and never arithmetically parsed (same rule `generate_adr_index`
   already pins in test_index_id_parsing.py)
@@ -273,6 +274,36 @@ def test_next_ad_delta_version_bumps_the_minor(docs_tree):
     assert r.stdout.strip() == "v13.20.0"
 
 
+# ── the setup JSON is the documented surface for implement runs ─────────────
+
+SETUP_IMPLEMENT = (ROOT / "skills/product/product-implement/scripts/bash/"
+                   "setup-product-implement.sh")
+
+
+def test_implement_setup_emits_every_ledger_slot(docs_tree):
+    """SKILL.md tells product-implement to read the slots from this JSON, so
+    the fields must be calculated from the same checkout, not eyeballed."""
+    import json as _json
+    r = _run(f'bash "{SETUP_IMPLEMENT}" --json', docs_tree)
+    assert r.returncode == 0, r.stderr
+    data = _json.loads(r.stdout)
+    assert data["next_pdr"] == "010", data
+    assert data["next_prd_section"] == "27", data
+    assert data["next_req_id"] == "217", data
+    assert data["next_feature_number"] == "70", data
+
+
+def test_architect_implement_json_emits_the_delta_slot(docs_tree):
+    """architect-implement reads `ad_file` + `next_ad_delta_version` from the
+    owning skill's setup JSON."""
+    import json as _json
+    r = _run(f'bash "{SETUP_ARCH}" implement --preview --json', docs_tree)
+    assert r.returncode == 0, r.stderr
+    data = _json.loads(r.stdout)
+    assert data["ad_file"].endswith("docs/adlc/architect/AD.md"), data
+    assert data["next_ad_delta_version"] == "v13.20.0", data
+
+
 # ── the staleness precondition: a slot read from a stale base is still wrong ─
 
 PATHS_SH = ROOT / "skills/team/workspace/scripts/bash/paths.sh"
@@ -395,12 +426,13 @@ def test_powershell_twins_are_declared_for_the_new_helpers():
 
 
 def test_setup_architect_sh_is_source_safe(docs_tree):
-    """The SKILL.md "Claiming Ledger Slots" flow sources setup-architect.sh
-    and then calls its helpers, so a source must run no action: the argument
-    parse, the default action and the dispatch belong to execution only.
-    Before the guard, a bare source picked the default action and ran the
-    whole update/init flow -- banner on stderr, `.adlc/` directories seeded
-    into the caller's repo."""
+    """Sourcing setup-architect.sh must only define helpers, never run an
+    action. The SKILL.md flow now invokes the owning skill and reads the
+    setup JSON, but the script keeps its sourcing contract for callers that
+    already source it: the argument parse, the default action and the
+    dispatch belong to execution only. Before the guard, a bare source picked
+    the default action and ran the whole update/init flow -- banner on stderr,
+    `.adlc/` directories seeded into the caller's repo."""
     r = _run(f'source "{SETUP_ARCH}"; '
              f'next_ad_delta_version "{docs_tree}/docs/adlc/architect/AD.md"',
              docs_tree)

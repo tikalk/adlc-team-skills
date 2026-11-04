@@ -3,12 +3,13 @@
 # Pure shell (grep/sed), no runtime dependencies.
 set -euo pipefail
 
-# shared layout constants (single definition in paths.sh).
-_boot_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$_boot_dir/../../workspace/scripts/bash/paths.sh" ]; then
-  # shellcheck disable=SC1091
-  . "$_boot_dir/../../workspace/scripts/bash/paths.sh"
-fi
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 # file_edited payload mode (event-driven, not session-start).
 # The dispatcher sets ADLC_EVENT and forwards the event payload on stdin.
@@ -48,7 +49,7 @@ fi
 # script's own intended message — every session_start hook invocation
 # just died with exit 1 and no output at all.
 TEAM_AI_DIRECTIVES=$( (grep '"team_ai_directives"' "$INIT_FILE" \
-  | sed 's/.*"team_ai_directives"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' \
+  | sed -n 's/.*"team_ai_directives"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
   | head -1) || true)
 
 # Handle null marker (user opted out) or empty value.

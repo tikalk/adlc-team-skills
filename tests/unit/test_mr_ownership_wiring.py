@@ -63,8 +63,11 @@ def test_connector_names_the_resolver_path():
 
 def test_resolver_path_in_the_connector_resolves():
     content = TRACKER.read_text(encoding="utf-8")
-    match = re.search(r"({SKILLS_DIR}/factory-runbook/scripts/bash/resolve-mr-ownership.sh)", content)
-    assert match, "the connector must reference the resolver by its installed path"
+    match = re.search(r"(scripts/bash/resolve-mr-ownership\.sh)", content)
+    assert match, "the connector must reference the resolver by its skill-local path"
+    assert "{SKILLS_DIR}" not in content, (
+        "the connector must not depend on a layout-dependent skills directory"
+    )
     for rel in RESOLVERS_REL:
         source = ROOT / rel
         assert source.exists(), f"the referenced resolver is missing at {source}"

@@ -6,7 +6,7 @@ description: Use when a factory run must post its changes — check out the run 
 # factory-runbook
 
 
-> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
 ## What this skill does
 
@@ -36,7 +36,7 @@ context and without them, state what is missing and stop.
 **Requires:** nothing — this skill is self-contained. (Borrowers declare the
 reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
 
-1. **Start:** `bash {SKILLS_DIR}/factory-runbook/scripts/bash/run-branch.sh [--kind <intent|code>]`
+1. **Start:** `bash scripts/bash/run-branch.sh [--kind <intent|code>]`
    — on Windows, the PowerShell twin (every helper has one under
    `scripts/powershell/`). Checks out the run branch (`factory/intent/<repo>-<iid>`
    from `ADLC_ISSUE_REF` for intent runs — the default; `factory/mission/<repo>-<iid>`
@@ -44,16 +44,16 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
    or continuing from `origin`. Shared by both intent lanes and with
    re-dispatches. Without `ADLC_RUN_ID` this is a no-op.
 2. Run the lifecycle steps. After **each** step that changed files:
-   `bash {SKILLS_DIR}/factory-runbook/scripts/bash/commit-step.sh --orchestrator <name> --step <id> --output-type
+   `bash scripts/bash/commit-step.sh --orchestrator <name> --step <id> --output-type
    <draft|decision|artifact-ref|findings> --summary "<one line, no issue text>"
    --records <IDs> -- <paths the step wrote, moved or deleted>`. Stages ONLY
    allowlisted paths; prints `sha: <sha>` or `sha: none` for the
    step's bus marker.
-3. **Before returning, always:** `bash {SKILLS_DIR}/factory-runbook/scripts/bash/open-mr.sh [--kind <intent|code>]` —
+3. **Before returning, always:** `bash scripts/bash/open-mr.sh [--kind <intent|code>]` —
    pushes the run branch only, finds or opens one draft MR (merge commit, no
    squash; Issue milestone applied inline, Issue assignees else the
    runner's own account, per `tracker-integration.md` Operation 11; the
-   deterministic resolver `{SKILLS_DIR}/factory-runbook/scripts/bash/resolve-mr-ownership.sh`
+   deterministic resolver `scripts/bash/resolve-mr-ownership.sh`
    itself runs at caller/completion, not inside `open-mr.sh`), and the
    `agent-authored` stamp likewise lives at completion (mission Phase 6,
    orchestrator §7 hygiene — not in this helper). It writes `mr_url` to

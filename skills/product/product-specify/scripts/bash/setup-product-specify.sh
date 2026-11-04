@@ -7,28 +7,52 @@ for arg in "$@"; do
   case "$arg" in --json) JSON_MODE=true ;; esac
 done
 
-source "$(dirname "${BASH_SOURCE[0]}")/../../../product-clarify/scripts/bash/pdr-lib.sh" 2>/dev/null || true
-# Fail fast when the canonical helper is absent (selective install without
-# product-clarify) instead of dying later on a missing function.
-command -v generate_pdr_index >/dev/null 2>&1 || { echo "ERROR: pdr-lib.sh not loaded — install the product-clarify skill: adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify" >&2; return 1 2>/dev/null || exit 1; }
+_get_project_root() {
+  local dir
+  dir="$(pwd)"
+  while [ "$dir" != "/" ]; do
+    if [ -d "$dir/.adlc" ] || [ -d "$dir/.git" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+  pwd
+}
 
-# shared layout constants (single definition in paths.sh; pdr-lib.sh
-# sources it too — this block keeps the script correct standalone).
-_pd_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$_pd_dir/../../../../team/workspace/scripts/bash/paths.sh" ]; then
-  # shellcheck disable=SC1091
-  . "$_pd_dir/../../../../team/workspace/scripts/bash/paths.sh"
-elif [ -f "$_pd_dir/../../../workspace/scripts/bash/paths.sh" ]; then
-  # shellcheck disable=SC1091
-  . "$_pd_dir/../../../workspace/scripts/bash/paths.sh"
-fi
+# Ledger slot allocation (vendored from product-clarify pdr-lib.sh):
+# leading digits of the filename stem, max across drafts AND published memory.
+next_record_number() {
+  local prefix="$1"
+  shift
+  local max=0 f num
+  local dir
+  for dir in "$@"; do
+    [ -d "$dir" ] || continue
+    for f in "$dir"/"${prefix}"-*.md; do
+      [ -f "$f" ] || continue
+      num=$(basename "$f" .md | sed -n "s/^${prefix}-\([0-9]\{1,\}\).*/\1/p")
+      [ -n "$num" ] || continue
+      ((10#$num > max)) && max=$((10#$num))
+    done
+  done
+  printf '%03d' "$((max + 1))"
+}
+
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 REPO_ROOT="${REPO_ROOT:-$(_get_project_root)}"
 PDR_DRAFTS_DIR="$REPO_ROOT/${ADLC_DRAFTS:-.adlc/drafts}/pdr"
 PRD_FILE="$REPO_ROOT/${DOCS_ADLC_PRODUCT:-docs/adlc/product}/PRD.md"
 
 mkdir -p "$PDR_DRAFTS_DIR"
 
-# Ledger slot allocation lives in pdr-lib.sh (next_record_number): leading
+# Ledger slot allocation (vendored): leading
 # digits of the filename stem, max across drafts AND published memory. This
 # script previously carried its own copy, which silently skipped stemmed
 # records (PDR-002-amendment-2.md) and scanned drafts alone.

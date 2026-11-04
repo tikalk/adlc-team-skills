@@ -7,7 +7,7 @@ disable-model-invocation: true
 # architect-analyze
 
 
-> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
 ## What this skill does
 
@@ -92,7 +92,7 @@ Architecture document hierarchy:
 **Objective**: Load all architecture artifacts for analysis
 
 1. **Run Setup Script**:
-   - Execute `{SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). from repo root
+   - Invoke the `architect-clarify` skill to load architecture artifacts (Requires that skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`)
    - Parse JSON for file paths and existence status
 
 2. **Load System-Level Artifacts**:
@@ -253,8 +253,7 @@ For each ADR:
    - Run the shared validator; it produces one finding per broken block with severity, location (file + line + fence index) and a suggested patch:
 
      ```bash
-     sh: {SKILLS_DIR}/architect-clarify/scripts/bash/setup-architect.sh
-     sh: {SKILLS_DIR}/architect-clarify/scripts/bash/mermaid-lint.sh --tsv <artifact>
+     Invoke the `architect-clarify` skill to run the shared mermaid validator (Requires that skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`)
      ```
 
      The rule set is documented once, in the validator itself — read it there rather than re-deriving the rules here. Exit code: `0` clean, `1` a HIGH (syntax-break) is present, `2` only MEDIUM (style) findings. An unrecognised diagram type is MEDIUM, never HIGH: this rule set must not produce a false syntax break. The pass is read-only (the lifecycle write scope) — remediation belongs to `/architect-implement` or a human.

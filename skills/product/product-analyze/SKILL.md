@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # product-analyze
 
+
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Performs **read-only** product consistency analysis:
@@ -108,7 +111,7 @@ For each PDR, check if decision appears in PRD:
 **Run the shared validator** — it owns the rule set (canonical in `architect-clarify`; the rules are documented once, in the validator itself). Do not re-derive or restate the thresholds here:
 
 ```bash
-sh: {REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/mermaid-lint.sh --tsv <artifact>
+sh: {SKILLS_DIR}/architect-clarify/scripts/bash/mermaid-lint.sh --tsv <artifact>
 ```
 
 Requires the `architect-clarify` skill (`adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). Exit code: `0` clean, `1` a HIGH (syntax-break) is present, `2` only MEDIUM (style) findings.
@@ -214,7 +217,7 @@ Requires the `architect-clarify` skill (`adlc-cli skills add tikalk/adlc-team-sk
 - `PDR_DRAFTS_DIR` — `{REPO_ROOT}/.adlc/drafts/pdr`
 - `PRD_FILE` — `{REPO_ROOT}/docs/adlc/product/PRD.md`
 - `CONSTITUTION` — `{REPO_ROOT}/docs/adlc/memory/constitution.md` (legacy `.adlc/memory/constitution.md` fallback)
-- `MERMAID_LINTER` — `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/mermaid-lint.sh` (canonical in `architect-clarify`; requires that skill to be installed)
+- `MERMAID_LINTER` — `{SKILLS_DIR}/architect-clarify/scripts/bash/mermaid-lint.sh` (canonical in `architect-clarify`; requires that skill to be installed)
 
 ## 12-Factor Alignment
 

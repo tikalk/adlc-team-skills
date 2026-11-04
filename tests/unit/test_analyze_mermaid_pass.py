@@ -23,7 +23,7 @@ PRODUCT_ANALYZE = SKILLS / "product/product-analyze/SKILL.md"
 ARCHITECT_ANALYZE = SKILLS / "architect/architect-analyze/SKILL.md"
 EVALS_ANALYZE = SKILLS / "evals/evals-analyze/SKILL.md"
 
-CANONICAL_DOC_PATH = ".agents/skills/architect-clarify/scripts/bash/mermaid-lint.sh"
+CANONICAL_DOC_PATH = "{SKILLS_DIR}/architect-clarify/scripts/bash/mermaid-lint.sh"
 
 
 def rule_ids_in_script():

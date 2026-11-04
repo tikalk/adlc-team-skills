@@ -5,6 +5,9 @@ description: Use when the team context did not appear at session start, a skill 
 
 # team-diagnose
 
+
+> **Path convention**: `{SKILLS_DIR}` denotes the current coding agent's installed skills directory (e.g., `.agents/skills` for OpenCode/Codex, `.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or the skill's own local checkout during testing). `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 Evidence-first diagnosis of broken adlc-team-skills wiring. The chain has
@@ -34,8 +37,8 @@ Run the checks **in order** — stop at the first failure, fix, re-run:
 |---|---|---|---|
 | 1 | Not configured | `cat .adlc/init-options.json` | A `team_ai_directives` path that exists |
 | 2 | Missing tool | `command -v jq` | jq on PATH (skills registry needs it) |
-| 3 | Broken handler | `bash .agents/skills/team-boot/scripts/bash/boot.sh` from the project root | The directives index on stdout, wrapped in `EXTREMELY_IMPORTANT` |
-| 4 | Stale install | `pytest tests/unit/test_generated_artifacts_sync.py -q` (in the skills repo) or compare `skills/**/SKILL.md` vs `.agents/skills/` names | Mirror matches source |
+| 3 | Broken handler | `bash {SKILLS_DIR}/team-boot/scripts/bash/boot.sh` from the project root | The directives index on stdout, wrapped in `EXTREMELY_IMPORTANT` |
+| 4 | Stale install | `pytest tests/unit/test_generated_artifacts_sync.py -q` (in the skills repo) or compare `skills/**/SKILL.md` vs `{SKILLS_DIR}/` names | Mirror matches source |
 | 5 | Injection side | Generated plugin present and loaded for the agent? | If 1–4 are green and the session still lacks context → **adlc-cli's territory** — file there with the outputs of checks 1–4 attached |
 
 For "a rule didn't load" specifically: confirm the session began with the

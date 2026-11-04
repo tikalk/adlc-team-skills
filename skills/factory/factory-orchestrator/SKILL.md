@@ -39,7 +39,7 @@ Confirm the trigger is actually for the factory. In shared threads, some message
 
 Read the evidence, do not guess:
 
-- **Issue lifecycle label** (`intent` → `spec-gated` → `executing` → `validation` → `done` / `cancelled`), automation-gating (`agent-can-execute` / `human-required`), and dispatch (`autonomous` / `supervised` / `interactive`) labels on the Queue.
+- **Issue lifecycle label** (`intent` → `spec-gated` → `executing` ⇄ `parked` → `validation` → `done`, `cancelled` from any non-terminal state; edges and owners in the `tracker-integration.md` §2 state machine), automation-gating (`agent-can-execute` / `human-required`), and dispatch (`autonomous` / `supervised` / `interactive`) labels on the Queue.
 - **PR/MR state**: open/draft/merged, CI check status, review verdict markers (`<!-- factory-review: ... outcome= head= -->`).
 - **Run state**: `.adlc/workflows/runs/<run_id>/state.json` and comment bus markers — a live run owns the work; never dispatch a second run for it.
 

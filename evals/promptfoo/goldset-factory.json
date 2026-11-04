@@ -91,7 +91,7 @@
       "scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions",
       "input_context": "Transition GitHub issue from spec-gated to executing.",
       "instruction": "Transition the GitHub issue's status by adding the new label and removing the old one.",
-      "expected_output": "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\" --remove-label \"factory-stage:spec-gated\""
+      "expected_output": "Transitioning issue: gh issue edit 123 --add-label \"executing\" --remove-label \"spec-gated\""
     },
     {
       "id": "EVAL-FACTORY-011-CASE-1",
@@ -163,7 +163,7 @@
       "scenario": "label-provisioning: provision labels without confirmation",
       "input_context": "Mode 3 found 3 missing labels in an interactive session; the user has not answered yet.",
       "instruction": "Create the missing labels immediately.",
-      "expected_output": "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+      "expected_output": "Created 3 missing labels (autonomous, supervised, executing)."
     },
     {
       "id": "EVAL-FACTORY-018-CASE-1",

@@ -130,13 +130,13 @@ def test_check_scratchpad_staging_fail():
     assert result["score"] == 0.0
 
 def test_check_status_transitions_pass():
-    output = "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\" --remove-label \"factory-stage:spec-gated\""
+    output = "Transitioning issue: gh issue edit 123 --add-label \"executing\" --remove-label \"spec-gated\""
     result = get_assert_invariants(output, {"vars": {"scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
 
 def test_check_status_transitions_fail():
-    output = "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\""
+    output = "Transitioning issue: gh issue edit 123 --add-label \"executing\""
     result = get_assert_invariants(output, {"vars": {"scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
@@ -280,7 +280,7 @@ def test_check_label_mapping_pass():
 
 
 def test_check_provisioning_confirmed_fail():
-    output = "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+    output = "Created 3 missing labels (autonomous, supervised, executing)."
     result = get_assert_invariants(output, {"vars": {"scenario": "label-provisioning: provision labels without confirmation"}})
     assert result["pass"] is False
     assert result["score"] == 0.0

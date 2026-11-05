@@ -5,6 +5,9 @@ description: Use when executing a spec-gated mission from the queue — inner lo
 
 # factory-mission
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## In a factory run — read this first
 
 When `ADLC_RUN_ID` is set, the workflow engine runs this skill unattended as its `execute` step, and the completion gate follows it. Do exactly this:
@@ -73,7 +76,7 @@ It implements the following key factory platform capabilities:
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
 4. Validate intake and hand the brief to `mission-brief` — brief construction lives there (per `mission-brief/references/mission-brief-template.md`). The intake bundle (validated intake) plus the `Framework lane` line the session model resolves (see step 5) is a `draft` — not published to the comment bus.
-5. Resolve the framework lane (`framework:` in mission.yml is an explicit pin; otherwise the session model inspects the well-known install paths — installed skill packs under `.agents/skills/`, plugin entries, `specify` CLI availability — and discloses the lane in the brief as `Framework lane: <lane> (<evidence>)`; usage hints with no installed framework disclose and fall back to Default) and record the lane in the run brief.
+5. Resolve the framework lane (`framework:` in mission.yml is an explicit pin; otherwise the session model inspects installed skill packs via the Skill tool) using the well-known skill-pack paths first and the CLI default last. Disclose the resolution one line (`Framework lane: <lane> (<evidence>)`); if no framework is installed, disclose that and fall back to Default. Record the lane in the run brief.
 6. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
 6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
 

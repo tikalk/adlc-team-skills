@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Bash-only: run this script and source its helpers from bash
+# (`bash scripts/bash/setup-architect.sh ...`). Under zsh, BASH_SOURCE[0]
+# is unset and SCRIPT_DIR resolution fails — use `bash -c` or `emulate -L sh`.
 
 set -e
 
@@ -45,15 +48,13 @@ if [[ -z "${REPO_ROOT:-}" ]]; then
   exit 1
 fi
 
-# shared layout constants (single definition in paths.sh; common.sh
-# already sources it — this block keeps the script correct standalone).
-if [ -f "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh"
-elif [ -f "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh"
-fi
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 # dual-read: resolve a memory-relative artifact to the canonical
 # docs/adlc/memory path, falling back to legacy .adlc/memory when only the
@@ -113,6 +114,10 @@ while [[ $# -gt 0 ]]; do
             DECOMPOSE=false
             shift
             ;;
+        --preview)
+            PREVIEW=true
+            shift
+            ;;
         init|map|update|review|specify|implement|clarify|analyze|validate|plan-dag|execute-dag|summarize)
             ACTION="$1"
             shift
@@ -141,6 +146,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --views VIEWS      Architecture views to generate: core (default), all, or comma-separated"
             echo "  --adr-heuristic H  ADR generation heuristic: surprising (default), all, minimal"
             echo "  --no-decompose     Disable automatic sub-system decomposition (default: auto-detect)"
+            echo "  --preview          Preview only: list planned writes (AD.md, views, promotions) without writing"
             echo "  --help             Show this help message"
             echo ""
             echo "Examples:"
@@ -649,10 +655,8 @@ parse_fm_title() {
 # 003; suffixes are never arithmetically parsed), and the maximum spans drafts
 # AND published memory so a promoted record's slot is not reissued.
 #
-# Deliberately not one shared implementation: the source tree is
-# skills/<group>/<skill>/ while the installed mirror is flat
-# .agents/skills/<skill>/, so no single relative source path resolves in both --
-# which is why parse_fm_field is duplicated here and in pdr-lib.sh too.
+# Deliberately skill-local (scope rule): scripts stay skill-local and never
+# source another skill, so parse_fm_field is vendored here and in pdr-lib.sh.
 # tests/unit/test_ledger_slot_numbering.py pins the behaviour in both homes.
 next_adr_number() {
     local root="${1:-$REPO_ROOT}"
@@ -676,10 +680,8 @@ next_adr_number() {
 # deliberate act, not the next free slot -- so this never emits one.
 #
 # Companion to next_prd_section/next_req_id/next_feature_number in
-# product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split for
-# the same reason the index generators are -- the source tree is
-# skills/<group>/<skill>/ while the installed mirror is flat
-# .agents/skills/<skill>/, so no one relative source path resolves in both.
+# product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split per
+# the scope rule — each skill vendors its own ledger helpers.
 next_ad_delta_version() {
     local f="${1:-}"
     local major=0 minor=0 patch=0 max=""
@@ -745,7 +747,7 @@ generate_adr_index() {
         # stems render verbatim (printf %03d on them printed ADR-000).
         local disp="$id"
         if [[ "$id" =~ ^[0-9]+$ ]]; then
-            disp=$(printf "%03d" "$id")
+            disp=$(printf "%03d" "$((10#$id))")
         fi
 
         # Extract metadata from MADR frontmatter (fallback to empty + defaults)
@@ -779,6 +781,7 @@ generate_adr_index() {
 # Read a single ADR by ID
 get_adr_by_id() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local scope="${2:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
 
@@ -805,7 +808,7 @@ get_adr_by_id() {
         fi
         if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
             local padded_id
-            padded_id=$(printf "%03d" "$adr_id")
+            padded_id=$(printf "%03d" "$((10#$adr_id))")
             hybrid_file="$_d/ADR-$padded_id.md"
             if [[ -f "$hybrid_file" ]]; then
                 cat "$hybrid_file"
@@ -852,6 +855,7 @@ get_adr_count() {
 # Write a single ADR to disk (regenerates adr.md index)
 write_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local adr_content="$2"
     local scope="${3:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
@@ -860,7 +864,7 @@ write_adr() {
 
     local target_name
     if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        target_name="ADR-$(printf "%03d" "$adr_id").md"
+        target_name="ADR-$(printf "%03d" "$((10#$adr_id))").md"
     else
         case "$adr_id" in *"/"*|.*) echo "write_adr: invalid id: $adr_id" >&2; return 1;; esac
         target_name="ADR-$adr_id.md"
@@ -875,6 +879,7 @@ write_adr() {
 # Move ADR from one scope to another (e.g., drafts -> memory)
 move_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local from_scope="${2:-drafts}"
     local to_scope="${3:-memory}"
 
@@ -893,7 +898,7 @@ move_adr() {
     # Exact stem first; numeric fallback only for bare IDs.
     local src_file="$from_dir/ADR-$adr_id.md"
     if [[ ! -f "$src_file" ]] && [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        src_file="$from_dir/ADR-$(printf "%03d" "$adr_id").md"
+        src_file="$from_dir/ADR-$(printf "%03d" "$((10#$adr_id))").md"
     fi
     if [[ -f "$src_file" ]]; then
         mv "$src_file" "$to_dir/$(basename "$src_file")"
@@ -1149,6 +1154,24 @@ action_implement() {
 
     echo "📐 Setting up for Architecture Description generation..." >&2
 
+    # Ledger slot: the next `## vN.N.N Delta:` heading in the existing AD.md.
+    local next_delta
+    next_delta=$(next_ad_delta_version "$ad_file")
+
+    if [[ "${PREVIEW:-false}" == "true" ]]; then
+        echo "Preview (no writes): would init $ad_file from template," >&2
+        echo "  generate views per sub-system, move Accepted ADRs" >&2
+        echo "  $adr_dir -> docs/adlc/memory/adr/, regenerate both indexes." >&2
+        if $JSON_MODE; then
+            python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" "$next_delta" <<'PY'
+import json, sys
+adr_dir, ad_file, count, context, next_delta = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
+print(json.dumps({"status": "success", "action": "implement", "preview": True, "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context, "next_ad_delta_version": next_delta}))
+PY
+        fi
+        return 0
+    fi
+
     # Initialize AD.md from template if it doesn't exist
     if [[ ! -f "$ad_file" ]]; then
         if [[ -f "$ad_template" ]]; then
@@ -1177,10 +1200,10 @@ action_implement() {
     echo "  8. Clean up drafts if all ADRs are Accepted" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" <<'PY'
+        python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" "$next_delta" <<'PY'
 import json, sys
-adr_dir, ad_file, count, context = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
-print(json.dumps({"status": "success", "action": "implement", "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context}))
+adr_dir, ad_file, count, context, next_delta = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
+print(json.dumps({"status": "success", "action": "implement", "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context, "next_ad_delta_version": next_delta}))
 PY
     fi
 }

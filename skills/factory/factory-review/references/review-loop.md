@@ -177,7 +177,7 @@ their own; they are held for converge adjudication.
 2. Re-run the synthesis gate locally to verify the tags — never trust the
    review step's claimed tags:
    ```bash
-   skills/factory/factory-review/scripts/bash/synthesize-findings.sh <findings.json>
+   scripts/bash/synthesize-findings.sh <findings.json>
    # PowerShell twin: scripts/powershell/synthesize-findings.ps1 <findings.json>
    ```
    The gate is: cross-validated + consensus Important findings are actionable

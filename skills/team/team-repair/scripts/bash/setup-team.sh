@@ -9,7 +9,7 @@ TEAM_AI_DIRECTIVES=""
 INIT_OPTIONS="${PROJECT_ROOT}/.adlc/init-options.json"
 if [[ -f "$INIT_OPTIONS" ]]; then
   TEAM_AI_DIRECTIVES=$(grep '"team_ai_directives"' "$INIT_OPTIONS" \
-    | sed 's/.*"team_ai_directives"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' \
+    | sed -n 's/.*"team_ai_directives"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
     | head -1)
 fi
 

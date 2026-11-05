@@ -249,9 +249,11 @@ Run `/product-implement` to generate PRD.md.
 
 ## Configuration
 
+- `REPO_ROOT` — resolved by the setup script (searches upward for `.adlc`); always use `{REPO_ROOT}`-anchored paths, never bare relative paths. When running helpers from zsh, source the `scripts/bash/` file under `bash -c` or `emulate -L sh`: the scripts rely on `BASH_SOURCE[0]` for path resolution and will not locate helpers under zsh.
 - `PDR_DRAFTS_DIR` — `{REPO_ROOT}/.adlc/drafts/pdr`
 - `PDR_INDEX` — `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md`
 - `CONSTITUTION` — `{REPO_ROOT}/docs/adlc/memory/constitution.md` (legacy `.adlc/memory/constitution.md` fallback)
+- `move_pdr`/`next_record_number` accept bare IDs (`8`), zero-padded IDs (`008`), and full suffixed stems (`008-amendment-2`): the `PDR-` prefix is optional and callers must never pre-strip it.
 
 ## 12-Factor Alignment
 

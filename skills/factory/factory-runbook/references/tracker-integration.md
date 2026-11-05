@@ -1,5 +1,7 @@
 # Tracker-Agnostic Integration Layer
 
+> **Scope rule**: scripts stay skill-local — invoke `factory-runbook` for publish operations. `scripts/` below is relative to the `factory-runbook` skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 This is the shared reference for all tracker-aware factory skills (`factory-mission`, `factory-queue`, `factory-review`). It details how the platform integrates with any issue tracker (GitHub, GitLab, Linear, Jira) without holding proprietary queue state.
@@ -14,7 +16,7 @@ Resolve the provider in this order (first hit wins):
 2. `.adlc/issues-provider.yml` in the target repo (factory-canonical; the template ships in this release at `skills/factory/factory-runbook/references/issues-provider.yml`).
 3. Neither source resolves a provider: **halt with an error naming the expected locations** (`{{params.tracker_provider}}`, `.adlc/issues-provider.yml`). Never silently default (a wrong guess posts to the wrong tracker). Repos carrying only the legacy spec-kit provider file must add the factory-canonical copy — the factory no longer reads the spec-kit path. Run `/factory-setup` (or `adlc-cli factory setup`) to create it.
 Parse `provider: github | gitlab | linear | jira` from the winning source.
-Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, plus per-provider `remote_override`/`project_id`).
+Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, `required_fields`, `default_labels`, `default_components`, plus per-provider `remote_override`/`project_id`).
 
 ### 2. Credentials & Tools Discovery
 1. Check environment variables: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `LINEAR_API_KEY`, `JIRA_API_TOKEN` / `JIRA_URL` + `JIRA_EMAIL`.
@@ -374,8 +376,8 @@ pre-flight scope check.
 anything:
 
 ```bash
-bash {REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership.sh <payload.json>
-# PowerShell: pwsh -NoProfile -File {REPO_ROOT}/.agents/skills/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
+bash scripts/bash/resolve-mr-ownership.sh <payload.json>
+# PowerShell: pwsh -NoProfile -File scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
 ```
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and

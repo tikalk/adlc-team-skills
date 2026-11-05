@@ -276,15 +276,21 @@ def test_helper_templates_carry_catalog():
         assert "Team Context & Decisions" in content, f"{label}: no merged-table contract"
 
 
-def test_helper_borrowers_reference_canonical():
-    """team-repair and team-skills must reference the canonical team-setup
-    helpers (no local copies)."""
+def test_helper_borrowers_are_self_contained():
+    """team-repair and team-skills resolve paths with their own setup script.
+
+    The old contract had them reach into ``../team-setup/scripts`` — that path
+    resolves in the source tree but dangles after a flat install. Each skill
+    now runs its own ``setup-team.sh`` and invokes ``team-setup`` only for
+    team-setup's operations (AGENTS.md injection)."""
     for name, path in BORROWER_SKILLS.items():
         assert not (path.parent / "team-helpers.sh").exists(), f"{name}: stale local team-helpers.sh"
         assert not (path.parent / "team-helpers.ps1").exists(), f"{name}: stale local team-helpers.ps1"
         content = path.read_text(encoding="utf-8")
-        assert "../team-setup/scripts/bash/team-helpers.sh" in content, f"{name}: no canonical sh reference"
-        assert "../team-setup/scripts/powershell/team-helpers.ps1" in content, f"{name}: no canonical ps1 reference"
+        assert "../team-setup/scripts/" not in content, (
+            f"{name}: cross-skill script path breaks a flat install"
+        )
+        assert "scripts/bash/setup-team.sh" in content, f"{name}: no skill-local setup reference"
 
 
 # ── team-boot file_edited payload mode ──────────────────────────────────────

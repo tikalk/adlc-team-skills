@@ -6,6 +6,11 @@ disable-model-invocation: true
 
 # architect-init
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
+**Requires:** the `architect-clarify` skill for architecture setup, ADR index generation, and diagram validation: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`
+
 ## What this skill does
 
 Reverse-engineer architecture from an **existing codebase** (brownfield) to create Architecture Decision Records (ADRs) documenting discovered decisions, then **validate the findings** by running `/architect-clarify` manually.
@@ -270,7 +275,7 @@ After confirmation, output structured sub-system data:
 **Note**: If sub-system decomposition is enabled (Phase 0), analyze each sub-system **separately** to provide focused insights.
 
 1. **Run Setup Script**:
-   - Execute `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). to initialize architecture files
+   - Invoke the `architect-clarify` skill to initialize architecture files
    - Script scans codebase and outputs structured findings
    - Pass `--no-decompose` if decomposition was disabled
    - **If decomposed**: Script outputs sub-system breakdown for targeted analysis
@@ -367,7 +372,7 @@ After confirmation, output structured sub-system data:
 
 **Process**:
 
-1. Run `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). which calls `scan_existing_docs()`
+1. Invoke the `architect-clarify` skill, which calls `scan_existing_docs()`
 2. Parse findings from JSON output
 3. For each finding, determine: Skip ADR / Reference existing / Document new
 4. Report: "X decisions covered by existing docs, Y new ADRs created"

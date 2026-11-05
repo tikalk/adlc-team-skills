@@ -6,6 +6,11 @@ disable-model-invocation: true
 
 # architect-specify
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
+**Requires:** the `architect-clarify` skill for architecture setup, ADR index generation, and diagram validation: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`
+
 ## What this skill does
 
 Transform a PRD (Product Requirements Document) or high-level system description into well-documented Architecture Decision Records (ADRs) through interactive exploration and trade-off analysis.
@@ -297,7 +302,7 @@ After confirmation, output structured sub-system data:
 5. **Check Existing Documentation**:
    - Scan `README.md` for already-documented tech stack
    - Check `AGENTS.md` for project context
-   - Check team directives: Run `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). and look for `TEAM_AGENTS_MD` in output - if present, this file contains usage instructions for team-wide agent directives
+   - Check team directives: Invoke the `architect-clarify` skill and look for `TEAM_AGENTS_MD` in output - if present, this file contains usage instructions for team-wide agent directives
    - Review `CONTRIBUTING.md` for dev guidelines
    - Note: Don't duplicate - reference existing docs
 
@@ -387,7 +392,7 @@ Reply with your choice (A/B/C), or provide additional context.
 After each decision is confirmed:
 
 1. **Create ADR Entry**:
-   - Use MADR format from `../templates/adr-template.md`
+   - Use MADR format from the canonical template `skills/architect/templates/adr-template.md` in the adlc-team-skills checkout. Templates ship only with the skill that owns them — the installed `architect-clarify` skill contains no `templates/` directory, so do NOT use a relative `../../architect-clarify/templates/` path (it resolves nowhere). If the template file is absent in your installed layout, use the inline MADR 3.0.0 format in this SKILL.md instead.
    - Document context, decision, consequences, and alternatives
    - Link to constitution principles if applicable
    - **Include Sub-System tag**: Mark each ADR with its parent sub-system
@@ -482,7 +487,7 @@ If decomposed, structure the ADR file as:
 
 3. **Cross-Cutting ADRs**: Some decisions affect multiple sub-systems (e.g., "Use PostgreSQL for all sub-systems"). Mark these as **System-Level** and note impact on each sub-system.
 
-4. **ADR Format** (MADR 3.0.0 — see `../templates/adr-template.md`):
+4. **ADR Format** (MADR 3.0.0 — canonical template: `skills/architect/templates/adr-template.md` in the adlc-team-skills checkout; templates ship only with the owning skill and the installed `architect-clarify` skill has no `templates/` directory, so a relative `../../architect-clarify/templates/` path resolves nowhere — if the file is absent, use the inline format below):
 
 ```markdown
 ---
@@ -541,7 +546,7 @@ Chosen option: "{title option 1}", because {justification}.
 **Objective**: Write finalized ADRs to file
 
 1. **Run Setup Script**:
-   - Execute `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists
+   - Invoke the `architect-clarify` skill to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists — the `specify` action is mandatory: with no action and no AD.md the script defaults to `init` (brownfield reverse-engineering), not greenfield specify
    - Script creates from template if directory is empty
    - Script reports `next_adr` — the next free ADR slot (status line `Next free ADR slot: ADR-{NNN}`); number the new ADRs from it
    - Pass `--no-decompose` if decomposition was disabled
@@ -641,7 +646,7 @@ After `specify` completes, run `/architect-clarify` to refine and validate the A
 
 ## Verification
 
-- The setup script `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). has been executed and `{REPO_ROOT}/.adlc/drafts/adr/` exists.
+- The `architect-clarify` skill setup has been invoked (see Requires above) and `{REPO_ROOT}/.adlc/drafts/adr/` exists.
 - One focused ADR file per decision exists at `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`.
 - Each ADR follows MADR format, includes its parent sub-system tag, and has status `Proposed`.
 - `adr.md` is auto-generated in `{REPO_ROOT}/.adlc/drafts/adr/`.

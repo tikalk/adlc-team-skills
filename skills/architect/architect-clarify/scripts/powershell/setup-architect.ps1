@@ -17,12 +17,13 @@ $Decompose = -not $NoDecompose
 
 $ErrorActionPreference = 'Stop'
 
-# shared layout constants (single definition in paths.ps1).
-$ArchitectPathsPs1 = "$PSScriptRoot/../../../../team/workspace/scripts/powershell/paths.ps1"
-if (-not (Test-Path $ArchitectPathsPs1)) {
-    $ArchitectPathsPs1 = "$PSScriptRoot/../../../workspace/scripts/powershell/paths.ps1"
-}
-if (Test-Path $ArchitectPathsPs1) { . $ArchitectPathsPs1 }
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+$ADLC_DIR = if ($env:ADLC_DIR) { $env:ADLC_DIR } else { ".adlc" }
+$DOCS_ADLC_DIR = if ($env:DOCS_ADLC_DIR) { $env:DOCS_ADLC_DIR } else { "docs/adlc" }
+$DOCS_ADLC_MEMORY = if ($env:DOCS_ADLC_MEMORY) { $env:DOCS_ADLC_MEMORY } else { "docs/adlc/memory" }
+$DOCS_ADLC_PRODUCT = if ($env:DOCS_ADLC_PRODUCT) { $env:DOCS_ADLC_PRODUCT } else { "docs/adlc/product" }
+$DOCS_ADLC_ARCHITECT = if ($env:DOCS_ADLC_ARCHITECT) { $env:DOCS_ADLC_ARCHITECT } else { "docs/adlc/architect" }
+$ADLC_DRAFTS = if ($env:ADLC_DRAFTS) { $env:ADLC_DRAFTS } else { ".adlc/drafts" }
 
 # dual-read: resolve a memory-relative artifact to the canonical
 # docs/adlc/memory path, falling back to legacy .adlc/memory when only the
@@ -769,8 +770,9 @@ function Invoke-Implement {
     Write-Host "  6. Move Accepted ADRs to canonical location"
     Write-Host "  7. Clean up drafts if all ADRs are Accepted"
     
+    $nextDelta = Get-NextAdDeltaVersion -File $adFile
     if ($Json) {
-        @{status="success"; action="implement"; adr_dir=$adrDir; ad_file=$adFile; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
+        @{status="success"; action="implement"; adr_dir=$adrDir; ad_file=$adFile; adr_count=$adrCount; context=($contextArgs -join " "); next_ad_delta_version=$nextDelta} | ConvertTo-Json
     }
 }
 

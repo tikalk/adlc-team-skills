@@ -320,7 +320,7 @@ def test_detection_is_session_llm_instruction_not_a_fallback_table():
     assert re.search(
         r"Framework lane:\s*<lane>\s*\(<evidence>\)", text
     ), "mission-brief must require the `Framework lane: <lane> (<evidence>)` disclosure"
-    assert ".agents/skills" in text, (
+    assert "{SKILLS_DIR}" in text or "skill packs" in text, (
         "Phase 0 must instruct inspection of installed skill packs"
     )
     assert "plugin" in text.lower(), (

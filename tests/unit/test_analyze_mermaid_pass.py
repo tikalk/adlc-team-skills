@@ -2,7 +2,8 @@
 
 The mermaid rule set is owned by exactly one script (canonical in
 ``architect-clarify``). ``product-analyze`` and ``architect-analyze`` both
-*reference* it; neither forks the thresholds. ``evals-analyze`` is out of
+route validation through the owning skill by invocation; neither names the
+private script path nor forks the thresholds. ``evals-analyze`` is out of
 scope by ruling and must stay byte-identical.
 """
 
@@ -23,7 +24,7 @@ PRODUCT_ANALYZE = SKILLS / "product/product-analyze/SKILL.md"
 ARCHITECT_ANALYZE = SKILLS / "architect/architect-analyze/SKILL.md"
 EVALS_ANALYZE = SKILLS / "evals/evals-analyze/SKILL.md"
 
-CANONICAL_DOC_PATH = ".agents/skills/architect-clarify/scripts/bash/mermaid-lint.sh"
+INVOKE_NEEDLE = "Invoke the `architect-clarify` skill"
 
 
 def rule_ids_in_script():
@@ -51,20 +52,20 @@ def test_no_stale_copies_of_the_linter():
 # ── both analyze skills reference the canonical path ─────────────────────────
 
 @pytest.mark.parametrize("doc", [PRODUCT_ANALYZE, ARCHITECT_ANALYZE], ids=["product", "architect"])
-def test_analyze_skill_points_at_the_canonical_linter(doc):
+def test_analyze_skill_invokes_the_linter_owner(doc):
     content = doc.read_text(encoding="utf-8")
-    assert CANONICAL_DOC_PATH in content, (
-        f"{doc.parent.name}/SKILL.md must reference the canonical linter path"
+    assert INVOKE_NEEDLE in content, (
+        f"{doc.parent.name}/SKILL.md must invoke the skill that owns the linter"
     )
 
 
 @pytest.mark.parametrize("doc", [PRODUCT_ANALYZE, ARCHITECT_ANALYZE], ids=["product", "architect"])
-def test_analyze_skill_does_not_invent_a_local_linter(doc):
-    """A borrower must not reference a per-skill copy of the helper."""
+def test_analyze_skill_does_not_name_a_linter_script(doc):
+    """Borrowers invoke the owner; they never name its private script path."""
     content = doc.read_text(encoding="utf-8")
-    assert "scripts/bash/mermaid-lint.sh" not in content.replace(
-        CANONICAL_DOC_PATH, ""
-    ), f"{doc.parent.name}/SKILL.md references a local copy of the linter"
+    assert "mermaid-lint.sh" not in content, (
+        f"{doc.parent.name}/SKILL.md names a private linter script path"
+    )
 
 
 @pytest.mark.parametrize("doc", [PRODUCT_ANALYZE, ARCHITECT_ANALYZE], ids=["product", "architect"])
@@ -81,8 +82,8 @@ def test_analyze_skill_names_the_rule_owner(doc):
     assert "documented once" in content, (
         f"{doc.parent.name}/SKILL.md must say the rule set is documented once"
     )
-    assert CANONICAL_DOC_PATH in content, (
-        f"{doc.parent.name}/SKILL.md must point at the validator that owns the rules"
+    assert INVOKE_NEEDLE in content, (
+        f"{doc.parent.name}/SKILL.md must point at the skill that owns the rules"
     )
 
 

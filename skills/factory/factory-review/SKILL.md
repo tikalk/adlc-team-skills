@@ -172,6 +172,14 @@ factory-review --pr <id> --self-heal
 - Package the rule as a CDR draft (via `factory-learn`) targeting the `team-ai-directives` repository.
 - Flag any changes that make current directives outdated.
 
+### 6. Pre-PR Verdict Preview (`--preview`)
+
+- **`--preview` command**: `skills/factory/factory-review/scripts/bash/review-preview.sh` (plus the `scripts/powershell/review-preview.ps1` twin) renders the would-be verdict against the working tree before a PR is opened.
+- **Advisory only**: output is labeled "draft". It carries no head-SHA marker, no outcome/importance fields, and is never posted to the tracker. No sensor reads preview output.
+- **Read-only**: reuses the existing evidence-intake passes (bugs, security, spec-compliance, test-integrity, ci-integrity, quality) structurally; performs no tracker writes and modifies nothing.
+- **Provenance intake**: missing provenance ("which files came from where" + AI-contribution-policy compliance) is requested; no verdict is produced until provenance is provided.
+- **Policy fields are owner-authored**: the formal REVIEW.md policy fields and questionnaire values (severity appetite, drive-by bar, docs-only policy, refactoring policy, AI-contribution policy, provenance, report grouping) are captured through the owner sign-off path (named owner, sign-off PR required) — never agent-written from conversation.
+
 ---
 
 ## Safety & Operating Constraints

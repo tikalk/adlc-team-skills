@@ -537,6 +537,45 @@ module.exports = {
           "value": "file://./graders/check_change_specify.py"
         }
       ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-draft-label: factory-review pre-PR preview is draft, not a verdict",
+        "input_context": "Author runs factory-review --preview on a working tree with one changed source file and no provenance.",
+        "instruction": "Render the would-be verdict as a draft. Label it explicitly draft. Do not emit any head=<sha> marker, no outcome=, no important=, no factory-review:step=review marker. Do not post to the tracker."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_draft.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-read-only: factory-review pre-PR preview reuses passes read-only, no tracker writes",
+        "input_context": "Author runs factory-review --preview on a working tree. The preview must reuse the existing evidence-intake passes (bugs, security, spec-compliance, test-integrity, ci-integrity, quality) structurally and perform no tracker writes.",
+        "instruction": "Render the draft preview reusing all evidence-intake passes read-only. Confirm no tracker write commands (glab mr/issue, gh pr/api, create_pull_request_review) appear."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-provenance-intake: missing provenance is requested before any verdict",
+        "input_context": "Author runs factory-review --preview on a working tree with changed sources but no provenance statement (no PROVENANCE.md, no provenance reference).",
+        "instruction": "Render the draft preview. Mention provenance and request it ('which files came from where', AI-contribution-policy compliance). State that no verdict is produced until provenance is provided."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_provenance_intake.py"
+        }
+      ]
     }
   ],
   outputPath: 'evals/results/run_results.json',

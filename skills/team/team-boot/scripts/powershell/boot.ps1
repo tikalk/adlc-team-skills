@@ -157,27 +157,34 @@ Write-Output ""
 # .adlc/memory; counts sum both roots (migration overlap tolerated).
 $AdrCount = @(Get-ChildItem "docs/adlc/memory/adr/ADR-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/adr/ADR-*.md" -ErrorAction SilentlyContinue).Count
 $PdrCount = @(Get-ChildItem "docs/adlc/memory/pdr/PDR-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/pdr/PDR-*.md" -ErrorAction SilentlyContinue).Count
-$ChdrCount = 0
-# Index rows count at most one index per memory root — first found wins within
-# each root (docs: canonical chdr/chdr.md, then the older root-level chdr.md;
-# legacy: .adlc/memory/chdr.md), matching the dual-read readers. Rows still
-# sum across the docs and legacy roots (migration overlap tolerated, as above)
-# — but never within one root: a migrated repo's stale root chdr.md would
-# otherwise double-count every row alongside the canonical chdr/chdr.md.
-foreach ($chdrIndex in @("docs/adlc/memory/chdr/chdr.md", "docs/adlc/memory/chdr.md")) {
-    if (Test-Path $chdrIndex) {
-        $ChdrCount += @(Select-String -Path $chdrIndex -Pattern '^\| ChDR' -ErrorAction SilentlyContinue).Count
-        break
+$ChdrFileCount = @(Get-ChildItem "docs/adlc/memory/chdr/ChDR-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/chdr/ChDR-*.md" -ErrorAction SilentlyContinue).Count
+# File-preferred: record files exist, so they are the inventory — the index
+# mirrors them and summing both would double-count every record.
+if ($ChdrFileCount -gt 0) {
+    $ChdrCount = $ChdrFileCount
+} else {
+    # Index-only fallback: no record files, so rows in the first-found index
+    # per memory root are the inventory. Never sum index + files.
+    $ChdrCount = 0
+    # Index rows count at most one index per memory root — first found wins within
+    # each root (docs: canonical chdr/chdr.md, then the older root-level chdr.md;
+    # legacy: .adlc/memory/chdr.md), matching the dual-read readers. Rows still
+    # sum across the docs and legacy roots (migration overlap tolerated, as above)
+    # — but never within one root: a migrated repo's stale root chdr.md would
+    # otherwise double-count every row alongside the canonical chdr/chdr.md.
+    foreach ($chdrIndex in @("docs/adlc/memory/chdr/chdr.md", "docs/adlc/memory/chdr.md")) {
+        if (Test-Path $chdrIndex) {
+            $ChdrCount += @(Select-String -Path $chdrIndex -Pattern '^\| ChDR' -ErrorAction SilentlyContinue).Count
+            break
+        }
+    }
+    foreach ($chdrIndex in @(".adlc/memory/chdr.md")) {
+        if (Test-Path $chdrIndex) {
+            $ChdrCount += @(Select-String -Path $chdrIndex -Pattern '^\| ChDR' -ErrorAction SilentlyContinue).Count
+            break
+        }
     }
 }
-foreach ($chdrIndex in @(".adlc/memory/chdr.md")) {
-    if (Test-Path $chdrIndex) {
-        $ChdrCount += @(Select-String -Path $chdrIndex -Pattern '^\| ChDR' -ErrorAction SilentlyContinue).Count
-        break
-    }
-}
-$ChdrCount += @(Get-ChildItem "docs/adlc/memory/chdr/ChDR-*.md" -ErrorAction SilentlyContinue).Count
-$ChdrCount += @(Get-ChildItem ".adlc/memory/chdr/ChDR-*.md" -ErrorAction SilentlyContinue).Count
 $EvalCount = @(Get-ChildItem "docs/adlc/memory/evals/EVAL-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/evals/EVAL-*.md" -ErrorAction SilentlyContinue).Count
 # Normalized pending-status set — one dialect for every class (-match is
 # case-insensitive; [ *]* tolerates "Status:** Proposed" shapes).
@@ -293,6 +300,9 @@ $pendingPdrs = Add-PendingRow "pdr" "PDR" "/product-clarify"
 $pendingChdrs = Add-PendingRow "chdr" "ChDR" "/change-clarify"
 $pendingEvals = Add-PendingRow "evals" "Eval" "/evals-clarify"
 # Pending CDRs — local drafts PLUS adlc orphan branch in team-ai-directives.
+# `$TEAM_AI_DIRECTIVES/.git` may be a directory (plain clone) or a file
+# (submodule/worktree gitfile); Test-Path finds either, so unlike a
+# directory-only check it never hides the branch on submodules.
 $pendingCdrs = 0
 $localCdr = @(Get-ChildItem ".adlc/drafts/cdr/*.md" -ErrorAction SilentlyContinue | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue) -match $PendingStatus }).Count
 $pendingCdrs = [int]$localCdr

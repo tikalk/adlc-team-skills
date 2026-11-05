@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **team-boot ChDR counting + submodule CDR discovery** (`skills/team/team-boot/scripts/`):
+  ChDR scope count is now file-preferred with index-only fallback — record
+  files are the inventory when they exist, index rows only when they don't —
+  so a 13-line `chdr.md` holding one row plus its matching record file reports
+  exactly `1 ChDRs` instead of `14` (BRE `^\| ChDR` matched every line plus
+  index+file double-count). Fixed `^\| ChDR` → `^| ChDR` in both Bash and
+  PowerShell. Pending-CDR discovery now detects `TEAM_AI_DIRECTIVES/.git` with
+  existence (`-e`/`Test-Path`) instead of directory-only (`-d`), so submodule
+  and worktree checkouts (gitfile `.git`) contribute their `adlc` branch drafts
+  to the pending total instead of being silently skipped. Pinned by
+  `tests/unit/test_team_boot_counts.py`.
+
 ## [0.33.0] - 2026-11-05
 
 ## [0.32.0] - 2026-10-29

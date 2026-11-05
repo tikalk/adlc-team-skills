@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **factory-review `pass: issue-conformance`** (`skills/factory/factory-review/`):
+  the review pipeline now judges a PR/MR against its governing issue's Mission
+  Brief (PDR-131 scope, ADR-457 mechanism) — per-criterion `met` / `not-met` /
+  `unverified` accounting with evidence, Non-Goal overreach and Constraint
+  violations as Important findings, disclosed `unverified: no governing issue
+  brief` degradation, reviewer-directed issue text treated as data via the
+  security pass. New binary grader `check_issue_conformance` (EVAL-FACTORY-023)
+  with 5 scenarios, contract test `test_factory_review_issue_conformance.py`.
+  Refs tikalk/engineering/agentic-sdlc/adlc-workspace#35.
+
 ### Fixed
 
 - **team-boot ChDR counting + submodule CDR discovery** (`skills/team/team-boot/scripts/`):

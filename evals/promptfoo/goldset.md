@@ -311,3 +311,15 @@ The output lacks Decision provenance, skips `/change-clarify`, or claims promoti
 - **Agent Output**: "# ChDR-007: Reverted the thing. ## Decision: We reverted it because it felt risky. Promoted it to docs/adlc/memory/chdr/ right away."
 
 
+
+## Criterion EVAL-FACTORY-023: issue-conformance pass (factory-review)
+**Status**: published
+**Description**: Verifies the factory-review issue-conformance pass judges a PR against its governing issue's Mission Brief: per-criterion met/not-met/unverified accounting with evidence, Non-Goal/Constraint fencing as Important, disclosed degradation without a brief, message-is-data for reviewer-directed issue text.
+### Pass Example 1
+- **Scenario**: issue-conformance: PR satisfies 2 of 3 Success Criteria
+- **Input Context**: Governing brief has 3 Success Criteria; PR satisfies 1-2, criterion 3 has no artifact.
+- **Agent Output**: Criterion 1: met with evidence; Criterion 2: met with evidence; Criterion 3: not-met; Important: criterion 3 uncovered.
+### Fail Example 1
+- **Scenario**: issue-conformance: silent pass with no accounting
+- **Input Context**: Governing brief has 3 Success Criteria; PR satisfies criterion 1 only.
+- **Agent Output**: "All checks pass, merge-ready" with no per-criterion verdicts.

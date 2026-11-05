@@ -10,15 +10,6 @@ DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
 DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
-
-# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
-ADLC_DIR="${ADLC_DIR:-.adlc}"
-DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
-DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
-DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
-DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
-ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
-
 _get_project_root() {
   local dir
   dir="$(pwd)"

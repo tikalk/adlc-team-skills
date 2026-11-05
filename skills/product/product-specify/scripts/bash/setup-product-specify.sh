@@ -29,7 +29,6 @@ DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
 DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
-
 # Ledger slot allocation (vendored from product-clarify pdr-lib.sh):
 # leading digits of the filename stem, max across drafts AND published memory.
 next_record_number() {

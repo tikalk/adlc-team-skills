@@ -46,5 +46,16 @@ is confirm-gated label creation (step 4); everything else is read-only.
    --description` / `glab label edit --description`). Then re-list to
    confirm and report. On decline, or in headless runs, stop at the report —
    the human creates them.
-5. Report "wired" (provider + credential presence + labels present) or the
+5. Lifecycle backfill (interactive runs only — never headless). When the
+   factory-tickets lifecycle lint reports violations, take its `--json` plan
+   and run `scripts/bash/lifecycle-backfill.sh --plan <file> --provider <p> --project <path>`
+   (PowerShell: `scripts/powershell/lifecycle-backfill.ps1`). With no flag it
+   prints the dry-run table (issue, current labels, proposed label) and makes
+   no tracker call. Show the table to the human.
+   Run `lifecycle-backfill --apply` only after the human confirms that exact table.
+   Each row then gets one Set Lifecycle call: the proposed label is added and
+   every other lifecycle label is removed in the same call, and the labels
+   are re-read to verify. Rows proposed as `-` are skipped for a human
+   decision. Re-run the lint afterwards and report its summary line.
+6. Report "wired" (provider + credential presence + labels present) or the
    specific gap and the fix.

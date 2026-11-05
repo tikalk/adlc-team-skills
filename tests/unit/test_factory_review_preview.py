@@ -191,6 +191,7 @@ def test_preview_pwsh_twin_matches_bash(tmp_path):
     subprocess.run(
         ["git", "config", "user.name", "T"], cwd=tree, capture_output=True, check=True
     )
+    (tree / "src").mkdir(parents=True, exist_ok=True)
     (tree / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=tree, capture_output=True, check=True)
     subprocess.run(

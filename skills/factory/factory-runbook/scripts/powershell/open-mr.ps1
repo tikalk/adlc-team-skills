@@ -141,7 +141,7 @@ if ($provider -eq 'gitlab') {
     if ($LASTEXITCODE -ne 0) {
         $deniedScope = 'api'
         $reasonPayload = json 'console.log(JSON.stringify({provider: "gitlab", issue: {}, mr: {}, initiator: "", runner: null, denied_scope: "api"}))'
-        $reasonAnswer = ($reasonPayload | & "${PSScriptRoot}/resolve-mr-ownership.ps1") -join "`n"
+        $reasonAnswer = Invoke-ResolveMrOwnershipFile $reasonPayload
         $reason = json 'console.log(JSON.parse(process.argv[1] || "{}").reason || "api")' @($reasonAnswer)
         Die "tracker token lacks the 'api' scope needed to open the merge request ($reason)"
     }
@@ -159,6 +159,22 @@ if ($provider -eq 'gitlab') {
 
 function Enc([string]$S) { json 'console.log(encodeURIComponent(process.argv[1]))' @($S) }
 
+# Invoke-ResolveMrOwnershipFile <json-string> — pass a JSON payload to
+# resolve-mr-ownership.ps1 via a temp file (never a script-to-script pipe:
+# `[Console]::In` is the process console, not the pipe, so `payload |
+# resolve-mr-ownership.ps1` arrives empty). Prints the resolver's JSON answer.
+function Invoke-ResolveMrOwnershipFile([string]$Payload) {
+    $payloadFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($payloadFile, $Payload)
+        $answer = & "${PSScriptRoot}/resolve-mr-ownership.ps1" $payloadFile
+        if ($LASTEXITCODE -ne 0) { Die 'cannot resolve MR ownership' }
+        return ($answer -join "`n")
+    } finally {
+        Remove-Item -Force $payloadFile -ErrorAction SilentlyContinue
+    }
+}
+
 # Invoke-ResolveMrOwnership <provider> <issueJson> <mrJson> <initiator> <runnerJson> <deniedJson>
 # builds the {provider,issue,mr,initiator,runner,denied_scope} payload and
 # invokes resolve-mr-ownership.ps1; prints the resolver's JSON answer.
@@ -172,9 +188,7 @@ function Invoke-ResolveMrOwnership([string]$Provider_, [string]$IssueJson, [stri
       initiator: initiator || "", runner: parse(runner_raw, null),
       denied_scope: parse(denied_raw, null),
     }));' @($Provider_, $IssueJson, $MrJson, $Initiator_, $RunnerJson, $DeniedJson)
-    $answer = ($payload | & "${PSScriptRoot}/resolve-mr-ownership.ps1") -join "`n"
-    if ($LASTEXITCODE -ne 0) { Die 'cannot resolve MR ownership' }
-    return $answer
+    return Invoke-ResolveMrOwnershipFile $payload
 }
 
 # Assert-OwnershipNotBlocked <resolverJson> — exits non-zero naming the scope

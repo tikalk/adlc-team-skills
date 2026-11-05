@@ -94,7 +94,7 @@ Working tree: $SafeTreeLabel
 Changed files:
 "@ | Out-String
 
-if ($changed) {
+if (($changed -is [string] -and $changed -ne "") -or ($changed -is [array] -and $changed.Count -gt 0)) {
     $changed | ForEach-Object { Write-Output "  $_" }
 } else {
     Write-Output "  (none)"

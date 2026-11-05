@@ -5,9 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.32.0] - 2026-10-29
-
 ## [Unreleased]
+
+## [0.33.0] - 2026-11-05
+
+## [0.32.0] - 2026-10-29
 
 ### Changed
 - **`open-mr` twins delegate ownership to `resolve-mr-ownership`** (adlc-workspace#20) — `open-mr.sh`/`open-mr.ps1` invoke the deterministic resolver twins for the milestone/assignee decision (payload `{provider,issue,mr,initiator,runner,denied_scope}`), sending only resolver-returned fields in the create body; reuse path returns the open MR untouched with no issue read and no resolver call; denied scope blocks before push naming the scope; GitHub path gains parity (bare create, then patch-only-returned). Pinned by delegation tests in `tests/unit/test_intent_run_helpers{,_pwsh}.py`.

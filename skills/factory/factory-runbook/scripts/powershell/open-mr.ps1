@@ -300,9 +300,9 @@ if ($provider -eq 'gitlab') {
             $milestoneToSet = json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(o.milestone === null || o.milestone === undefined ? "" : o.milestone)' @($ownership)
             $assigneesToSet = json '
         const o = JSON.parse(process.argv[1] || "{}");
-        if (o.assignee === null || o.assignee === undefined) { console.log(""); return; }
+        if (o.assignee === null || o.assignee === undefined) { console.log(""); } else {
         const a = Array.isArray(o.assignee) ? o.assignee : [o.assignee];
-        console.log(a.map(v => (v && typeof v === "object" ? (v.login || "") : String(v))).filter(Boolean).join(" "));
+        console.log(a.map(v => (v && typeof v === "object" ? (v.login || "") : String(v))).filter(Boolean).join(" ")); }
       ' @($ownership)
             if ($milestoneToSet) {
                 Api @('-X', 'PATCH', "repos/$project/issues/$number", '-F', "milestone=$milestoneToSet") *> $null

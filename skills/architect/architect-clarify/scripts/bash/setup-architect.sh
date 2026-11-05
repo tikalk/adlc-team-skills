@@ -902,6 +902,9 @@ move_adr() {
     fi
     if [[ -f "$src_file" ]]; then
         mv "$src_file" "$to_dir/$(basename "$src_file")"
+    else
+        echo "[ERROR] move_adr: source file not found: $src_file" >&2
+        return 1
     fi
 
     # Regenerate both scopes

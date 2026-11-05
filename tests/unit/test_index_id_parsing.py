@@ -179,3 +179,20 @@ def test_regenerate_is_idempotent(adlc_tree):
     first = _generate_all(adlc_tree, SETUP_ARCH, PDR_LIB)
     second = _generate_all(adlc_tree, SETUP_ARCH, PDR_LIB)
     assert first == second
+
+
+def test_adr_move_accepts_full_id_with_prefix(adlc_tree):
+    """move_adr accepts full IDs (`ADR-003`) as well as stems (`003-...`).
+
+    Regression: move_adr built `ADR-$adr_id.md` verbatim, so a full-ID caller
+    resolved `ADR-ADR-003.md` (missing) and the numeric fallback skipped it
+    (`ADR-003` is not bare-numeric) — a silent no-op with exit 0. Callers
+    (agents, docs) pass the full ID from index rows; the resolver
+    (get_adr_by_id) must agree with the mover on what an ID looks like.
+    """
+    harness = _extract_adr_harness(adlc_tree)
+    r = _run_bash(f'source "{harness}"; move_adr "ADR-003" drafts memory', adlc_tree)
+    assert r.returncode == 0, r.stderr
+    assert (adlc_tree / "docs/adlc/memory/adr/ADR-003.md").exists(), \
+        "move_adr ADR-003 drafts→memory silently no-oped (double-prefix ADR-ADR-003.md)"
+    assert not (adlc_tree / ".adlc/drafts/adr/ADR-003.md").exists()

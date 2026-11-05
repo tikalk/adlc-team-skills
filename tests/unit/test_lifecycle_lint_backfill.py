@@ -114,7 +114,7 @@ def test_backfill_dry_run_prints_the_table_and_writes_nothing(fixture_file, tmp_
 def test_backfill_apply_swaps_each_row_and_skips_human_rows(fixture_file, tmp_path):
     lint_plan(fixture_file, tmp_path)
     planfile = tmp_path / "plan.json"
-    state = {str(i["iid"]): i["labels"] for i in FIXTURE}
+    state = {str(i["iid"]): {"labels": i["labels"], "state": i["state"]} for i in FIXTURE}
     statefile = tmp_path / "state.json"
     statefile.write_text(json.dumps(state))
     stub = tmp_path / "bin"
@@ -130,13 +130,13 @@ rm = [x.split("=", 1)[1] for x in a if x.startswith("remove_labels=")]
 if "PUT" in a:
     with open({str(tmp_path / 'puts.log')!r}, "a") as f:
         f.write(json.dumps({{"iid": iid, "add": add, "rm": rm}}) + "\\n")
-    labels = [l for l in s[iid] if l not in ",".join(rm).split(",")]
+    labels = [l for l in s[iid]["labels"] if l not in ",".join(rm).split(",")]
     for l in ",".join(add).split(","):
         if l and l not in labels:
             labels.append(l)
-    s[iid] = labels
+    s[iid]["labels"] = labels
     json.dump(s, open({str(statefile)!r}, "w"))
-print(json.dumps({{"labels": s[iid]}}))
+print(json.dumps(s[iid]))
 """)
     (stub / "glab").chmod(0o755)
     r = run(BACKFILL, "--plan", str(planfile), "--provider", "gitlab", "--project", "g/p", "--apply",
@@ -147,7 +147,7 @@ print(json.dumps({{"labels": s[iid]}}))
     final = json.loads(statefile.read_text())
     lifecycle = {"intent", "spec-gated", "executing", "parked", "validation", "done", "cancelled"}
     for iid in ("2", "3", "5", "7", "8", "9", "10"):
-        assert len([l for l in final[iid] if l in lifecycle]) == 1, (iid, final[iid])
+        assert len([l for l in final[iid]["labels"] if l in lifecycle]) == 1, (iid, final[iid])
     assert "skipped #4" in r.stdout
 
 
@@ -167,3 +167,83 @@ def test_twins_exist():
     for bash in (LINT, BACKFILL):
         ps = bash.parent.parent / "powershell" / (bash.stem + ".ps1")
         assert ps.exists(), f"missing PowerShell twin {ps}"
+
+
+# ── security review fixes ──────────────────────────────────────────────────
+
+def _glab_state_stub(tmp_path, state):
+    statefile = tmp_path / "live.json"
+    statefile.write_text(json.dumps(state))
+    stub = tmp_path / "bin2"
+    stub.mkdir()
+    (stub / "glab").write_text(f"""#!/usr/bin/env python3
+import json, sys
+s = json.load(open({str(statefile)!r}))
+a = sys.argv[1:]
+iid = [x for x in a if "/issues/" in x][0].rsplit("/", 1)[1]
+if "PUT" in a:
+    open({str(tmp_path / 'puts2.log')!r}, "a").write(iid + "\\n")
+print(json.dumps(s[iid]))
+""")
+    (stub / "glab").chmod(0o755)
+    return stub
+
+
+def test_backfill_skips_rows_whose_live_state_drifted(tmp_path):
+    plan = {"project": "g/p", "issues": 3, "interactive": [], "violations": [
+        {"iid": 1, "state": "opened", "labels": ["autonomous", "intent", "parked"],
+         "lifecycle": ["intent", "parked"], "violation": "open, 2 lifecycle labels", "proposed": "parked"},
+        {"iid": 2, "state": "opened", "labels": ["autonomous", "intent", "parked"],
+         "lifecycle": ["intent", "parked"], "violation": "open, 2 lifecycle labels", "proposed": "parked"},
+        {"iid": 3, "state": "opened", "labels": ["supervised", "intent", "parked"],
+         "lifecycle": ["intent", "parked"], "violation": "open, 2 lifecycle labels", "proposed": "parked"}]}
+    planfile = tmp_path / "plan.json"
+    planfile.write_text(json.dumps(plan))
+    live = {"1": {"state": "opened", "labels": ["autonomous", "parked", "intent"]},       # unchanged
+            "2": {"state": "opened", "labels": ["autonomous", "executing"]},              # drifted
+            "3": {"state": "opened", "labels": ["interactive", "intent", "parked"]}}      # now interactive
+    stub = _glab_state_stub(tmp_path, live)
+    r = run(BACKFILL, "--plan", str(planfile), "--provider", "gitlab", "--project", "g/p", "--apply",
+            env={"PATH": f"{stub}:{os.environ['PATH']}"})
+    puts = (tmp_path / "puts2.log").read_text().split() if (tmp_path / "puts2.log").exists() else []
+    assert puts == ["1"], r.stdout + r.stderr
+    assert "stale #2" in r.stdout and "stale #3" in r.stdout
+
+
+def test_backfill_refuses_a_plan_for_another_project(fixture_file, tmp_path):
+    planfile = tmp_path / "plan.json"
+    planfile.write_text(json.dumps({"project": "g/other", "violations": []}))
+    r = run(BACKFILL, "--plan", str(planfile), "--provider", "gitlab", "--project", "g/p")
+    assert r.returncode == 2 and "project" in r.stderr
+
+
+def test_scripts_refuse_an_active_label_mapping(fixture_file, tmp_path):
+    cfg = tmp_path / "issues-provider.yml"
+    cfg.write_text("provider: gitlab\nlabels:\n  executing: running\n")
+    r = run(LINT, "--issues", str(fixture_file), "--config", str(cfg))
+    assert r.returncode == 2 and "labels:" in r.stderr
+    planfile = tmp_path / "plan.json"
+    planfile.write_text(json.dumps({"violations": []}))
+    r = run(BACKFILL, "--plan", str(planfile), "--provider", "gitlab", "--project", "g/p", "--config", str(cfg))
+    assert r.returncode == 2 and "labels:" in r.stderr
+
+
+def test_github_merge_evidence_requires_a_merged_pr(tmp_path):
+    stub = tmp_path / "bin3"
+    stub.mkdir()
+    (stub / "gh").write_text("""#!/usr/bin/env python3
+import json, sys
+a = sys.argv[1:]
+if a[:2] == ["issue", "list"]:
+    print(json.dumps([{"number": 5, "state": "CLOSED", "labels": [{"name": "autonomous"}, {"name": "validation"}]}]))
+elif a[:2] == ["api", "graphql"]:
+    print(json.dumps({"data": {"repository": {"issue": {"closedByPullRequestsReferences": {"nodes": [{"merged": False}]}}}}}))
+else:
+    sys.exit(3)
+""")
+    (stub / "gh").chmod(0o755)
+    plan = tmp_path / "plan.json"
+    r = run(LINT, "--provider", "github", "--project", "o/r", "--json", str(plan),
+            env={"PATH": f"{stub}:{os.environ['PATH']}"})
+    assert r.returncode == 1, r.stderr
+    assert json.loads(plan.read_text())["violations"][0]["proposed"] == "cancelled"

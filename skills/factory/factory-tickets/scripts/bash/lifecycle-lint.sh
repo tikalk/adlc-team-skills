@@ -13,27 +13,36 @@
 #
 # This script never writes to the tracker.
 #
+# The names are the canonical lifecycle labels. A repo with an active `labels:`
+# mapping in its provider config (--config, default .adlc/issues-provider.yml)
+# is refused rather than linted against the wrong names.
+#
 # Usage:
-#   lifecycle-lint.sh --provider <gitlab|github> --project <path|owner/repo> [--json <file>]
-#   lifecycle-lint.sh --issues <file> [--json <file>]        # offline
+#   lifecycle-lint.sh --provider <gitlab|github> --project <path|owner/repo> [--json <file>] [--config <file>]
+#   lifecycle-lint.sh --issues <file> [--json <file>] [--config <file>]        # offline
 #     --issues: JSON array of {iid, state: opened|closed, labels: [..], closed_by_merged}
 #
 # Exit codes: 0 = no violations, 1 = violations found, 2 = usage or tracker error.
 set -euo pipefail
 
-PROVIDER="" PROJECT="" ISSUES="" JSON_OUT=""
+PROVIDER="" PROJECT="" ISSUES="" JSON_OUT="" CONFIG=".adlc/issues-provider.yml"
 while [ $# -gt 0 ]; do
   case "$1" in
     --provider) PROVIDER="${2:-}"; shift 2 ;;
     --project)  PROJECT="${2:-}"; shift 2 ;;
     --issues)   ISSUES="${2:-}"; shift 2 ;;
     --json)     JSON_OUT="${2:-}"; shift 2 ;;
-    -h|--help)  sed -n '2,25p' "$0"; exit 0 ;;
+    --config)   CONFIG="${2:-}"; shift 2 ;;
+    -h|--help)  sed -n '2,/^set -euo/p' "$0" | sed '$d'; exit 0 ;;
     *) echo "lifecycle-lint: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 
 command -v jq >/dev/null || { echo "lifecycle-lint: jq is required" >&2; exit 2; }
+if [ -f "$CONFIG" ] && grep -q '^labels:' "$CONFIG"; then
+  echo "lifecycle-lint: $CONFIG has an active labels: mapping; this lint only knows the canonical names. Lint by hand, or remove the mapping." >&2
+  exit 2
+fi
 
 LIFECYCLE='["intent","spec-gated","executing","parked","validation","done","cancelled"]'
 
@@ -60,8 +69,13 @@ closed_by_merged() {
       glab api "projects/$enc/issues/$1/closed_by" | jq 'map(select(.state == "merged")) | length > 0'
       ;;
     github)
-      gh issue view "$1" -R "$PROJECT" --json closedByPullRequestsReferences \
-        | jq '(.closedByPullRequestsReferences // []) | length > 0'
+      # A linked PR is not enough: it must be merged.
+      gh api graphql -f owner="${PROJECT%%/*}" -f name="${PROJECT#*/}" -F number="$1" -f query='
+        query($owner: String!, $name: String!, $number: Int!) {
+          repository(owner: $owner, name: $name) { issue(number: $number) {
+            closedByPullRequestsReferences(first: 100, includeClosedPrs: true) { nodes { merged } } } } }' \
+        | jq 'if .data.repository.issue == null then error("issue not found")
+              else .data.repository.issue.closedByPullRequestsReferences.nodes | map(.merged == true) | any end'
       ;;
   esac
 }
@@ -121,7 +135,8 @@ PLAN="$(printf '%s' "$DATA" | jq --argjson L "$LIFECYCLE" '
       interactive: map(select(.interactive) | del(.interactive)) }
 ')"
 TOTAL="$(printf '%s' "$DATA" | jq 'length')"
-PLAN="$(printf '%s' "$PLAN" | jq --argjson n "$TOTAL" '{issues: $n} + .')"
+PLAN="$(printf '%s' "$PLAN" | jq --argjson n "$TOTAL" --arg p "$PROJECT" \
+  '{project: (if $p == "" then null else $p end), issues: $n} + .')"
 
 V="$(printf '%s' "$PLAN" | jq '.violations | length')"
 I="$(printf '%s' "$PLAN" | jq '.interactive | length')"

@@ -4,8 +4,9 @@
 # exit codes. This script never writes to the tracker.
 #
 # Usage:
-#   lifecycle-lint.ps1 -Provider <gitlab|github> -Project <path|owner/repo> [-Json <file>]
-#   lifecycle-lint.ps1 -Issues <file> [-Json <file>]          # offline
+#   lifecycle-lint.ps1 -Provider <gitlab|github> -Project <path|owner/repo> [-Json <file>] [-Config <file>]
+#   lifecycle-lint.ps1 -Issues <file> [-Json <file>] [-Config <file>]          # offline
+# An active `labels:` mapping in -Config (default .adlc/issues-provider.yml) is refused.
 #
 # Exit codes: 0 = no violations, 1 = violations found, 2 = usage or tracker error.
 [CmdletBinding()]
@@ -13,9 +14,15 @@ param(
   [string]$Provider = "",
   [string]$Project = "",
   [string]$Issues = "",
-  [string]$Json = ""
+  [string]$Json = "",
+  [string]$Config = ".adlc/issues-provider.yml"
 )
 $ErrorActionPreference = "Stop"
+
+if ((Test-Path $Config) -and (Select-String -Path $Config -Pattern '^labels:' -Quiet)) {
+  [Console]::Error.WriteLine("lifecycle-lint: $Config has an active labels: mapping; this lint only knows the canonical names. Lint by hand, or remove the mapping.")
+  exit 2
+}
 
 $Lifecycle = @("intent", "spec-gated", "executing", "parked", "validation", "done", "cancelled")
 $Rank = @{ "intent" = 0; "spec-gated" = 1; "executing" = 2; "parked" = 3; "validation" = 4 }
@@ -47,11 +54,20 @@ function Get-Issues {
 function Test-ClosedByMerged([int]$iid) {
   if ($Provider -eq "gitlab") {
     $enc = Get-Enc $Project
-    $mrs = (& glab api "projects/$enc/issues/$iid/closed_by") -join "`n" | ConvertFrom-Json
-    return [bool](@($mrs | Where-Object { $_.state -eq "merged" }).Count -gt 0)
+    $raw = & glab api "projects/$enc/issues/$iid/closed_by"
+    if ($LASTEXITCODE -ne 0) { throw "closed_by lookup failed for #$iid" }
+    $mrs = ($raw -join "`n") | ConvertFrom-Json
+    if ($null -eq $mrs) { $mrs = @() }
+    return [bool](@($mrs | Where-Object { $_ -and $_.state -eq "merged" }).Count -gt 0)
   }
-  $v = (& gh issue view $iid -R $Project --json closedByPullRequestsReferences) -join "`n" | ConvertFrom-Json
-  return [bool](@($v.closedByPullRequestsReferences).Count -gt 0)
+  # A linked PR is not enough: it must be merged.
+  $owner, $name = $Project.Split("/", 2)
+  $q = 'query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { closedByPullRequestsReferences(first: 100, includeClosedPrs: true) { nodes { merged } } } } }'
+  $raw = & gh api graphql -f "owner=$owner" -f "name=$name" -F "number=$iid" -f "query=$q"
+  if ($LASTEXITCODE -ne 0) { throw "closed_by lookup failed for #$iid" }
+  $v = ($raw -join "`n") | ConvertFrom-Json
+  if ($null -eq $v -or $null -eq $v.data.repository.issue) { throw "issue #$iid not found" }
+  return [bool](@($v.data.repository.issue.closedByPullRequestsReferences.nodes | Where-Object { $_ -and $_.merged -eq $true }).Count -gt 0)
 }
 
 try {
@@ -119,7 +135,7 @@ if ($interactive.Count -gt 0) {
 "lifecycle-lint: $($data.Count) issues, $($violations.Count) violations, $($interactive.Count) interactive (reported, not counted)"
 
 if ($Json) {
-  [ordered]@{ issues = $data.Count; violations = $violations; interactive = $interactive } |
+  [ordered]@{ project = $(if ($Project) { $Project } else { $null }); issues = $data.Count; violations = $violations; interactive = $interactive } |
     ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 $Json
 }
 if ($violations.Count -gt 0) { exit 1 }

@@ -26,6 +26,7 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 PDR_LIB = ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh"
+SETUP_IMPLEMENT = ROOT / "skills/product/product-implement/scripts/bash/setup-product-implement.sh"
 SETUP_SPECIFY = ROOT / "skills/product/product-specify/scripts/bash/setup-product-specify.sh"
 SETUP_INIT = ROOT / "skills/product/product-init/scripts/bash/setup-product-init.sh"
 SETUP_ARCH = ROOT / "skills/architect/architect-clarify/scripts/bash/setup-architect.sh"
@@ -656,6 +657,46 @@ def test_count_pdr_accepted_matches_derived_index(tmp_path):
                 env={**_os.environ, "REPO_ROOT": str(tmp_path)})
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip() == "2", f"frontmatter accepted undercounted: {r.stdout!r}"
+
+
+def test_setup_product_implement_count_matches_canonical(tmp_path):
+    """The vendored count_pdr_accepted in setup-product-implement.sh must
+    agree with the canonical one in product-clarify pdr-lib.sh on every
+    PDR status shape the parser contract supports (regression: the first
+    vendored copy only saw frontmatter and `### Status:` inline-bold lines,
+    so heading-shaped H2/H3 PDRs were silently dropped from the gate)."""
+    from pathlib import Path as _P
+    import subprocess as _sp, os as _os
+    drafts = _P(tmp_path) / ".adlc/drafts/pdr"
+    drafts.mkdir(parents=True, exist_ok=True)
+    (drafts / "PDR-001.md").write_text(
+        "# One\n\n## Status\n\n**Accepted**\n", encoding="utf-8")
+    (drafts / "PDR-002.md").write_text(
+        "# Two\n\n### Status\n\n**Accepted**\n", encoding="utf-8")
+    (drafts / "PDR-003.md").write_text(
+        "---\nstatus: accepted\ndate: 2026-09-27\n---\n\n# Three\n",
+        encoding="utf-8")
+    (drafts / "PDR-004.md").write_text(
+        "# Four\n\n**Accepted**\n", encoding="utf-8")
+    (drafts / "PDR-005.md").write_text(
+        "# Five\n\n### Status: Proposed\n", encoding="utf-8")
+    env = {**_os.environ, "REPO_ROOT": str(tmp_path)}
+    canon = _sp.run(
+        ["bash", "-c", f'source "{PDR_LIB}"; count_pdr_accepted '
+         f'"{drafts}"'],
+        capture_output=True, text=True, timeout=60, env=env)
+    assert canon.returncode == 0, canon.stderr
+    # NB: setup-product-implement.sh probes --json in "$@" at source time
+    # and only defines JSON_MODE; sourcing with --json emits the JSON body
+    # (side-effect-free) so the counter can be exercised inline.
+    impl = _sp.run(
+        ["bash", "-c", f'source "{SETUP_IMPLEMENT}" --json >/dev/null; '
+         f'count_pdr_accepted "{drafts}"'],
+        capture_output=True, text=True, timeout=60, env=env)
+    assert canon.stdout.strip() == "3", canon.stdout
+    assert impl.stdout.strip() == canon.stdout.strip(), (
+        f"vendored counter diverged from canonical: {impl.stdout!r} vs "
+        f"{canon.stdout!r} (stderr: {impl.stderr!r})")
 
 
 def test_setup_architect_preview_flag_exists(tmp_path):

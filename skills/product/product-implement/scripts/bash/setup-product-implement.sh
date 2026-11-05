@@ -25,17 +25,106 @@ _get_project_root() {
 }
 REPO_ROOT="${REPO_ROOT:-$(_get_project_root)}"
 
+# ============================================================================
+# Frontmatter + heading status parsers (vendored from product-clarify
+# pdr-lib.sh per the scope rule: scripts stay skill-local, helpers are
+# vendored, never sourced across skills; keep these copies in sync with
+# product-clarify, plus next_record_number and the three PRD.md slot
+# scanners below).
+# ============================================================================
+
+# Parse a YAML frontmatter field from a markdown file.
+# Usage: parse_fm_field "file" "fieldname"
+# Returns the field value with quotes, inline comments, and surrounding whitespace stripped.
+parse_fm_field() {
+    local file="$1"
+    local field="$2"
+    [ -f "$file" ] || return 0
+    awk -v fld="^[[:space:]]*${field}:[[:space:]]*" '
+        /^---[[:space:]]*$/ { fm++; next }
+        fm == 1 && $0 ~ fld {
+            sub(fld, "")
+            sub(/[[:space:]]+#.*$/, "")
+            gsub(/^["'\'']|["'\'']$/, "")
+            gsub(/^\[|\]$/, "")
+            sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
+            print
+            exit
+        }
+    ' "$file"
+}
+
+# Parse a metadata field from Markdown headings (## or ###).
+# Looks for a heading line matching "^###+ <field>$", returns the next non-empty
+# non-heading line with ** bold markers stripped.
+# Usage: parse_pdr_heading_field "file" "Status"  (case-sensitive field name)
+parse_pdr_heading_field() {
+    local file="$1"
+    local field="$2"
+    [ -f "$file" ] || return 0
+    awk -v fld="$field" '
+        $0 ~ "^#+[[:space:]]*" fld "[[:space:]]*$" { found=1; next }
+        found && /^#+/ { exit }
+        found && NF > 0 {
+            gsub(/\*\*/, "")
+            sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
+            print
+            exit
+        }
+    ' "$file"
+}
+
+# Parse a PDR metadata field: tries YAML frontmatter first, falls back to headings.
+# Usage: parse_pdr_field "file" "status"  (frontmatter field name, lowercase hyphenated)
+#        parse_pdr_field "file" "Status"  (heading field name, Title Case)
+# Note: frontmatter uses lowercase hyphenated keys (status, feature-area);
+#       headings use Title Case (Status, Feature-Area). This function tries both.
+parse_pdr_field() {
+    local file="$1"
+    local field="$2"
+    local value=""
+
+    # Try frontmatter (lowercase the field name for YAML key matching)
+    local fm_field
+    fm_field=$(echo "$field" | tr '[:upper:]' '[:lower:]')
+    value=$(parse_fm_field "$file" "$fm_field")
+    if [ -n "$value" ]; then
+        echo "$value"
+        return
+    fi
+
+    # Fallback: heading-based (Title Case the field name for heading matching)
+    # Accept both "Feature-Area" and "feature-area" heading styles
+    local title_field
+    title_field=$(echo "$field" | awk -F'-' '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS='-')
+    value=$(parse_pdr_heading_field "$file" "$title_field")
+    if [ -n "$value" ]; then
+        echo "$value"
+        return
+    fi
+    # Try the raw field name (handles "Feature-Area" where only first letter caps)
+    value=$(parse_pdr_heading_field "$file" "$field")
+    if [ -n "$value" ]; then
+        echo "$value"
+        return
+    fi
+
+    # Empty string — caller should apply defaults
+    echo ""
+}
+
+# Accepted-PDR counter.
+# Both legacy H2 (## Status) and current H3 (### Status) shapes count;
+# frontmatter `status: accepted` counts, inline-bold and next-line values count.
 count_pdr_accepted() {
   local dir="$1"
   [ -d "$dir" ] || return 0
   local count=0 f status
   for f in "$dir"/PDR-*.md; do
     [ -f "$f" ] || continue
-    # status in frontmatter (status: accepted) or heading (### Status: **Accepted**)
-    status=$(grep -E '^[[:space:]]*status:[[:space:]]*[A-Za-z]+' "$f" 2>/dev/null | head -1 | sed -E 's/^[[:space:]]*status:[[:space:]]*([A-Za-z]+).*/\1/' | tr '[:upper:]' '[:lower:]' || true)
-    if [ -z "$status" ]; then
-      status=$(grep -E '^###[[:space:]]+Status:[[:space:]]*\*\*[A-Za-z]+\*\*' "$f" 2>/dev/null | head -1 | sed -n 's/.*Status:[[:space:]]*\*\*\([A-Za-z]*\)\*\*.*/\1/p' | tr '[:upper:]' '[:lower:]' || true)
-    fi
+    status=$(parse_pdr_field "$f" "status")
+    # Normalize: strip ** bold, lowercase, trim
+    status=$(printf '%s' "$status" | sed 's/\*\*//g' | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     if [ "$status" = "accepted" ] || [ "$status" = "completed" ]; then
       count=$((count + 1))
     fi

@@ -22,11 +22,75 @@ New-Item -ItemType Directory -Force -Path $SectionsDir | Out-Null
 #  compiled PRD lives under docs/adlc/product/ — ensure the parent exists.
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot "docs/adlc/product") | Out-Null
 
+# ============================================================================
+# Frontmatter + heading status parsers (vendored from product-clarify
+# pdr-lib.ps1 per the scope rule: scripts stay skill-local, helpers are
+# vendored, never sourced across skills; keep these copies in sync with
+# product-clarify).
+# ============================================================================
+function Parse-FrontmatterField {
+  param([string]$File, [string]$Field)
+  if (-not (Test-Path $File)) { return "" }
+  $lines = Get-Content $File
+  $inFm = $false
+  foreach ($line in $lines) {
+    if ($line -match '^---\s*$') {
+      if ($inFm) { break }
+      $inFm = $true
+      continue
+    }
+    if ($inFm -and ($line -match "^\s*$Field\s*:\s*(.*)$")) {
+      $val = $Matches[1]
+      $val = $val -replace '\s+#.*$', ''
+      $val = $val -replace '^["'']|[''"]$', ''
+      $val = $val -replace '^\[|\]$', ''
+      return $val.Trim()
+    }
+  }
+  return ""
+}
+
+function Parse-PdrHeadingField {
+  param([string]$File, [string]$Field)
+  if (-not (Test-Path $File)) { return "" }
+  $lines = Get-Content $File
+  $found = $false
+  foreach ($line in $lines) {
+    if (-not $found) {
+      if ($line -match "^###+\s*$Field\s*$") { $found = $true; continue }
+    } else {
+      if ($line -match '^###+') { break }
+      if ($line.Trim() -ne "") {
+        $val = $line -replace '\*\*', ''
+        return $val.Trim()
+      }
+    }
+  }
+  return ""
+}
+
+function Parse-PdrField {
+  param([string]$File, [string]$Field)
+  $fmField = $Field.ToLower()
+  $val = Parse-FrontmatterField -File $File -Field $fmField
+  if ($val) { return $val }
+  $titleField = ($Field -split '-' | ForEach-Object { $_.Substring(0, 1).ToUpper() + $_.Substring(1).ToLower() }) -join '-'
+  $val = Parse-PdrHeadingField -File $File -Field $titleField
+  if ($val) { return $val }
+  $val = Parse-PdrHeadingField -File $File -Field $Field
+  return $val
+}
+
 $acceptedCount = 0
 if (Test-Path $PdrDraftsDir) {
+  # Accepted-PDR counter (uses the vendored frontmatter-primary +
+  # heading-fallback status parser above: legacy H2 and current H3 shapes
+  # count; frontmatter `status: accepted` counts; inline-bold and next-line
+  # values count).
   Get-ChildItem -Path $PdrDraftsDir -Filter 'PDR-*.md' | ForEach-Object {
-    $content = Get-Content $_.FullName -Raw
-    if ($content -match '\*\*Accepted\*\*') { $acceptedCount++ }
+    $status = Parse-PdrField -File $_.FullName -Field "status"
+    $status = ($status -replace '\*\*', '').ToLower().Trim()
+    if ($status -eq "accepted" -or $status -eq "completed") { $acceptedCount++ }
   }
 }
 
@@ -35,18 +99,21 @@ if (Test-Path $PdrDraftsDir) {
 # across skills). A record's number is the LEADING DIGITS of its filename
 # stem; the maximum spans drafts AND published memory.
 function Get-NextRecordNumber {
-  param([string]$Prefix, [string[]]$Dirs)
+  param(
+    [Parameter(Mandatory = $true)][string]$Prefix,
+    [Parameter(Mandatory = $true)][string[]]$Dirs
+  )
   $max = 0
   foreach ($dir in $Dirs) {
     if (-not (Test-Path -LiteralPath $dir)) { continue }
     foreach ($file in Get-ChildItem -LiteralPath $dir -Filter "$Prefix-*.md" -File -ErrorAction SilentlyContinue) {
-      if ($file.BaseName -match "^$Prefix-(\d+)") {
+      if ($file.BaseName -match ('^' + [regex]::Escape($Prefix) + '-(\d+)')) {
         $n = [int]$Matches[1]
         if ($n -gt $max) { $max = $n }
       }
     }
   }
-  return ('{0:d3}' -f ($max + 1))
+  return ('{0:D3}' -f ($max + 1))
 }
 
 # The three document-internal PRD.md slots. Each scan is deliberately
@@ -56,7 +123,7 @@ function Get-NextPrdSection {
   $max = 0
   if (Test-Path -LiteralPath $Path) {
     foreach ($line in Get-Content -LiteralPath $Path) {
-      if ($line -match '^## (\d+)\. ') {
+      if ($line -cmatch '^## (\d+)\. ') {
         $n = [int]$Matches[1]
         if ($n -gt $max) { $max = $n }
       }
@@ -82,7 +149,7 @@ function Get-NextFeatureNumber {
   $max = 0
   if (Test-Path -LiteralPath $Path) {
     foreach ($line in Get-Content -LiteralPath $Path) {
-      if ($line -match '^\| (\d+) \|') {
+      if ($line -cmatch '^\|\s*(\d+)\s*\|') {
         $n = [int]$Matches[1]
         if ($n -gt $max) { $max = $n }
       }

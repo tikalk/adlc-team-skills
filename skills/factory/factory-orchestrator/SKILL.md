@@ -85,6 +85,7 @@ Most steps continue automatically. Stop and wait for a human at:
 Runs on a later entry, when the merge notification arrives or the user says it landed:
 
 - Move the issue's lifecycle label to `done` through the Set Lifecycle step (tracker-integration Operation 9), which removes any other lifecycle label in the same call.
+- An issue closed without a merge (work abandoned, superseded or rejected) ends `cancelled` through the same step, never with its last working label.
 - Release-gated work: hand off to `factory-deploy` (exact-head merge, canary rollout, SemVer tag — its own gated procedure).
 - Send a short wrap-up to the user. Nothing else completes work for you.
 

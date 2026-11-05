@@ -164,6 +164,7 @@ factory-review --pr <id> --self-heal
   - Automatically fix failing checks or address review comments, pushing updates until the PR is green.
   - **Every fix push invalidates the standing review verdict** — after pushing, re-run the review passes on the new head (§2 step 8) before re-declaring merge-readiness.
   - Leave the PR in a merge-ready state awaiting final human approval.
+  - When the PR merges and closes its issue, move the issue to `done` through the Set Lifecycle step (tracker-integration Operation 9). When the PR is closed unmerged and its issue is closed too, move the issue to `cancelled` the same way. Either way, no other lifecycle label stays. The lane close Sensor settles closes the factory never sees.
 
 ### 5. Findings to Directives Feedback Loop
 

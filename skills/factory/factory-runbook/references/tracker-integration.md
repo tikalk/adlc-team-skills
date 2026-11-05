@@ -58,8 +58,8 @@ An issue carries exactly one lifecycle label. `done` and `cancelled` are termina
 | 6 | `executing` → `parked` | a gate's in-pod wait expires with no verdict | gate runtime (agentic-container) | supervised only — autonomous runs have no gates |
 | 7 | `parked` → `executing` | human adds `resume` (or re-sends the issue) and the run restores | gate runtime (agentic-container) | supervised only |
 | 8 | `executing` → `validation` | draft MR/PR opened at mission completion | `factory-mission` | supervised: after its gates are answered |
-| 9 | `validation` → `done` | MR/PR that closes the issue is merged | `factory-orchestrator` (completion) · `factory-review` (babysit) | none |
-| 10 | any non-terminal → `cancelled` | issue closed without a merge | `factory-orchestrator` (completion) · lane close-event path | a parked run is released: run marked cancelled, draft MR closed |
+| 9 | `validation` → `done` | MR/PR that closes the issue is merged | `factory-orchestrator` (completion) · `factory-review` (babysit) · lane close Sensor (merges outside the factory) | none |
+| 10 | any non-terminal → `cancelled` | issue closed without a merge | `factory-orchestrator` (completion) · `factory-review` (babysit) · lane close Sensor | a parked run is released: run marked cancelled, draft MR closed |
 
 `validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A failed run has no edge yet and stays `executing`. Every edge swaps labels through the Set Lifecycle step of Operation 9, which also removes any other lifecycle label it finds.
 

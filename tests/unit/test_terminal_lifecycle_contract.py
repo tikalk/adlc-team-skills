@@ -7,7 +7,7 @@ A closed issue always ends with one terminal lifecycle label:
   Set Lifecycle step; the lane close Sensor covers closes outside the factory
 - factory-setup Mode 3 verifies every lifecycle label exists with a
   description, offers to create `cancelled` and fill descriptions only on
-  confirmation, and removes a stray `factory-stage:` label only on explicit
+  confirmation, and removes a label with the retired prefix form only on explicit
   confirmation
 """
 from pathlib import Path

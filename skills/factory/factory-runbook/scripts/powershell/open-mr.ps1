@@ -234,7 +234,7 @@ if ($provider -eq 'gitlab') {
         }
         $initiator = if ($env:ADLC_INITIATOR) { $env:ADLC_INITIATOR } else { '' }
         $runnerRaw = (Api @('user')) -join "`n"
-        $runnerJson = json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.stringify(JSON.parse(s).id))}catch(e){console.log("null")}})' @($runnerRaw)
+        $runnerJson = json 'try { console.log(JSON.stringify(JSON.parse(process.argv[1] || "{}").id)) } catch { console.log("null") }' @($runnerRaw)
         if ($deniedScope -eq 'api') { $deniedJson = '"api"' } else { $deniedJson = 'null' }
         $ownership = Invoke-ResolveMrOwnership 'gitlab' $issueJson '{}' $initiator $runnerJson $deniedJson
         Assert-OwnershipNotBlocked $ownership
@@ -299,7 +299,7 @@ if ($provider -eq 'gitlab') {
             }
             $initiator = if ($env:ADLC_INITIATOR) { $env:ADLC_INITIATOR } else { '' }
             $runnerRaw = (Api @('user')) -join "`n"
-            $runnerJson = json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.stringify(JSON.parse(s).login))}catch(e){console.log("null")}})' @($runnerRaw)
+            $runnerJson = json 'try { console.log(JSON.stringify(JSON.parse(process.argv[1] || "{}").login)) } catch { console.log("null") }' @($runnerRaw)
             if ($deniedScope -eq 'repo') { $deniedJson = '"repo"' } else { $deniedJson = 'null' }
             # mr = the created PR's current issue fields ({ } when unreadable).
             $mrJson = json '

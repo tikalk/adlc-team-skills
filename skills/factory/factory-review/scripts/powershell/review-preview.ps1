@@ -43,7 +43,7 @@ if ($head) {
     $changed = ""
     $untracked = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
 }
-$changed = @($changed, $untracked) | Where-Object { $_ -ne $null -and $_ -ne "" }
+$changed = @($changed, $untracked) | Where-Object { [bool]$_ }
 
 # Provenance: detected by inspecting PROVENANCE.md content and the contents
 # of changed files for provenance references. A filename containing

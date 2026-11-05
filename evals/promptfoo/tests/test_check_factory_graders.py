@@ -130,13 +130,13 @@ def test_check_scratchpad_staging_fail():
     assert result["score"] == 0.0
 
 def test_check_status_transitions_pass():
-    output = "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\" --remove-label \"factory-stage:spec-gated\""
+    output = "Transitioning issue: gh issue edit 123 --add-label \"executing\" --remove-label \"spec-gated\""
     result = get_assert_invariants(output, {"vars": {"scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
 
 def test_check_status_transitions_fail():
-    output = "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\""
+    output = "Transitioning issue: gh issue edit 123 --add-label \"executing\""
     result = get_assert_invariants(output, {"vars": {"scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
@@ -280,7 +280,7 @@ def test_check_label_mapping_pass():
 
 
 def test_check_provisioning_confirmed_fail():
-    output = "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+    output = "Created 3 missing labels (autonomous, supervised, executing)."
     result = get_assert_invariants(output, {"vars": {"scenario": "label-provisioning: provision labels without confirmation"}})
     assert result["pass"] is False
     assert result["score"] == 0.0
@@ -291,3 +291,109 @@ def test_check_provisioning_confirmed_pass():
     result = get_assert_invariants(output, {"vars": {"scenario": "label-provisioning: provision labels without confirmation"}})
     assert result["pass"] is True
     assert result["score"] == 1.0
+
+
+def test_check_orchestrator_intake_routing_pass():
+    output = "Routing the CSV export request to factory-queue for triage; the Intent Gate (human approval) must pass before any implementation."
+    result = get_assert_invariants(output, {"vars": {"scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+def test_check_orchestrator_intake_routing_fail():
+    output = "Starting factory-intent to capture the request, then factory-mission to implement it directly."
+    result = get_assert_invariants(output, {"vars": {"scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+def test_check_ci_failure_followup_pass():
+    output = "Routing the failure back to the implementing run as a follow-up; the fix push invalidates the standing verdict, so factory-review re-runs on the new head."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+def test_check_ci_failure_followup_fail():
+    output = "I'll diagnose and push a fixup commit to the PR branch myself, then wait for CI to go green."
+    result = get_assert_invariants(output, {"vars": {"scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR"}})
+def test_check_dependency_hard_gate_pass():
+    output = "blocked: dependency-gate on #55. Issue #57 stays spec-gated; no worktree created, no code written, no subagents dispatched."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-hard-gate: factory-mission intake with open deps"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_dependency_hard_gate_fail():
+    output = "Proceeding with #57 now — creating the worktree and starting the implement loop in parallel with #55."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-hard-gate: factory-mission intake with open deps"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_dependency_auto_notify_pass():
+    output = "Posted dependency-gate cleared on #57: all dependencies closed (none outstanding), #57 may now proceed to executing when dispatch allows."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-auto-notify: dependency closed, notify dependents"}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_dependency_auto_notify_fail():
+    output = "#55 is closed. Starting a watch loop that polls #57 every 20 minutes until its dependencies look ready."
+    result = get_assert_invariants(output, {"vars": {"scenario": "dependency-auto-notify: dependency closed, notify dependents"}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_queue_hierarchy_disclosure_pass():
+    from check_factory_queue_hierarchy import get_assert as get_assert_hier
+    output = ("Hierarchy probe on git.example.com/acme 18.11.13: "
+              "strategy issue_parent_task_children. Children convert "
+              "from Issue to Task and the plan output names the trade-off.")
+    result = get_assert_hier(output)
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_queue_hierarchy_disclosure_fail():
+    from check_factory_queue_hierarchy import get_assert as get_assert_hier
+    output = "Epic created with label convention; children listed in a comment."
+    result = get_assert_hier(output)
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+LIFECYCLE_SCENARIO = "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label"
+
+
+def test_check_lifecycle_single_label_pass_atomic_swap():
+    output = (
+        'Set Lifecycle: glab issue update 81 --label "executing" --unlabel "spec-gated,intent". '
+        "Labels after: agent-can-execute, autonomous, executing."
+    )
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_lifecycle_single_label_fail_two_labels_after():
+    output = (
+        'glab issue update 81 --label "executing" --unlabel "spec-gated". '
+        "Labels after: agent-can-execute, autonomous, intent, executing."
+    )
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_lifecycle_single_label_fail_add_without_remove():
+    output = 'gh issue edit 81 --add-label "validation". Done.'
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_lifecycle_single_label_resume_is_not_a_state():
+    output = (
+        'glab issue update 82 --label "executing" --unlabel "parked". '
+        "Labels after: supervised, executing, resume."
+    )
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is True

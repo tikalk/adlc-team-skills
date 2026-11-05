@@ -9,7 +9,9 @@ description: Use when reviewing PRs for severity-ranked policy compliance agains
 
 `factory-review` is the PR-review compliance engine of the software factory. It acts as the automated component of **The Great Filter**, reviewing Pull Requests against organizational policy-as-code (`REVIEW.md`) and babysitting agent-opened PRs until they are ready for merge.
 
-It operates as a **Kind-B control-plane skill** integrated with the PR hosting provider (GitHub / GitLab) via the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
+It operates as a **Kind-B control-plane skill** integrated with the PR hosting provider (GitHub / GitLab) via the tracker-agnostic integration layer (`factory-runbook/references/tracker-integration.md`).
+
+**Requires:** the `factory-runbook` skill (provides tracker integration, lanes, and the executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `factory-mission` Phase 5's test/code/converge pattern. Three separate sub-agents — Review Agent (read-only), Fix Agent (writeable src/), Converge Agent (independent judge) — are dispatched per iteration via lane-based dispatch, communicating only through the comment bus. The converge step returns `DONE` / `CONTINUE` / `SPEC_CORRECTION_NEEDED`, bounded by a circuit breaker and score-regression counter.
 
@@ -44,12 +46,12 @@ In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `
 
 When triggered with `--pr <id>` (without `--self-heal`):
 
-1. Discover credentials and PR hosting tools (`factory-mission/references/tracker-integration.md`).
+1. Discover credentials and PR hosting tools (`factory-runbook/references/tracker-integration.md`).
 2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
 3. Fetch the PR diff and description.
 4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings`.
 5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP. The review comment MUST name the reviewed revision (head SHA in the marker `head=<sha>`). The `head=<sha>` field is what makes the verdict checkable: `scripts/bash/check-verdict-head.sh` reads the verdict back, compares the head it names with the head being merged, and fails when they differ. Never post a verdict without it. Post the marker as ONE HTML comment at the top of the comment — the checker reads `head=` from inside that marker and requires the full 40-character SHA. Submit the verdict as a native Review-type COMMENT submission — never Approve: `create_pull_request_review(event=COMMENT)` (MCP) or `gh pr review <pr> --comment --body-file <file>` (CLI). Verdicts go through Review-type submissions; general comments stay reserved for status, lease, and decisions (tracker-integration.md Operation 4).
-6. Set the PR label to `validation` in either case: it names the lifecycle stage the PR occupies, and a PR with open `Important` findings stays in that stage until they are resolved — the label is not a verdict. Merge-readiness is carried by the marker's `outcome=` (and enforced mechanically by the gate in §2 step 5), never by the label: advise the code-owner of merge-readiness only when the verdict is `merge-ready`, and say plainly that the PR is blocked when it is `not-merge-ready`.
+6. Set the PR label to `validation` in either case: it names the lifecycle stage the PR occupies, and a PR with open `Important` findings stays in that stage until they are resolved — the label is not a verdict. The linked issue keeps `validation`: when its lifecycle label is anything else, restore `validation` through the Set Lifecycle step (tracker-integration Operation 9) and never add a second lifecycle label. Merge-readiness is carried by the marker's `outcome=` (and enforced mechanically by the gate in §2 step 5), never by the label: advise the code-owner of merge-readiness only when the verdict is `merge-ready`, and say plainly that the PR is blocked when it is `not-merge-ready`.
 7. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
 8. **Re-review after any fix push (mandatory)**: A fix commit — whether from babysit, self-heal, or a human addressing review feedback — invalidates the prior review verdict. The verdict applies to exactly one head SHA; once the head moves, it is stale. Before declaring merge-readiness (or letting a merged-state audit stand), re-run all REVIEW.md passes on the new head and post the updated verdict with the new `head=<sha>`. The merge-ready comment must name the head it certifies; a merge-ready claim on a superseded head is a contract violation. (Evidence: MR !21 — iter-1 verdict on `b1221aa` went stale after the babysit fix `913504a`; the merged head was never re-reviewed and carried 2 Important findings found only in a post-merge audit.) **Enforced mechanically** by `scripts/bash/check-verdict-head.sh` (see §2 step 5) — the same rule recurred on adlc-cli #41, where the verdict for `003cf8a` went stale across four fix commits and the PR merged carrying the finding.
 
@@ -162,6 +164,7 @@ factory-review --pr <id> --self-heal
   - Automatically fix failing checks or address review comments, pushing updates until the PR is green.
   - **Every fix push invalidates the standing review verdict** — after pushing, re-run the review passes on the new head (§2 step 8) before re-declaring merge-readiness.
   - Leave the PR in a merge-ready state awaiting final human approval.
+  - When the PR merges and closes its issue, move the issue to `done` through the Set Lifecycle step (tracker-integration Operation 9). When the PR is closed unmerged and its issue is closed too, move the issue to `cancelled` the same way. Either way, no other lifecycle label stays. The lane close Sensor settles closes the factory never sees.
 
 ### 5. Findings to Directives Feedback Loop
 
@@ -188,9 +191,9 @@ factory-review --pr <id> --self-heal
 
 - `references/review-loop.md` — Converge loop controller specification (three-sub-agent dispatch, convergence detection, circuit breaker, score-regression)
 - `references/review-policy.md` — REVIEW.md format and review pass definitions
-- `factory-mission/references/tracker-integration.md` — Tracker-agnostic integration (comment bus, label gates, distributed lease)
-- `factory-mission/references/executor.md` — Shared executor contract (step schema, lane dispatch, reads_from pattern)
-- `factory-mission/references/lanes.md` — Lane profiles and cross-runtime dispatch
+- `factory-runbook/references/tracker-integration.md` — Tracker-agnostic integration (comment bus, label gates, distributed lease)
+- `factory-runbook/references/executor.md` — Shared executor contract (step schema, lane dispatch, reads_from pattern)
+- `factory-runbook/references/lanes.md` — Lane profiles and cross-runtime dispatch
 - The factory-review Converge Loop — Three-Sub-Agent PR Repair
 - The factory-review Converge Loop architecture
 - The PR/MR comment thread as inter-agent memory bus

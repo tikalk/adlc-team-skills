@@ -36,13 +36,17 @@ ID_RE = re.compile(r"\b(?:ADR|PDR)-\d{3,4}(?:-[a-z0-9-]+)?\b")
 # the templates and docs; ADR-012 / PDR-009 are examples in the eval
 # scenarios; ADR-0123 / PDR-0123 are the status-vocabulary placeholders; the
 # "-amendment-2" forms are the suffixed ids the parser fixtures use; PDR-127
-# and PDR-128 are the drafts the intent-run helpers' fixtures create.
+# and PDR-128 are the drafts the intent-run helpers' fixtures create. The
+# remaining suffixed forms are fixtures created by
+# tests/unit/test_ledger_slot_numbering.py.
 LOCAL_EXAMPLE_IDS = {
     "ADR-000", "ADR-001", "ADR-002", "ADR-003", "ADR-003-amendment-2",
-    "ADR-004", "ADR-005", "ADR-006", "ADR-007", "ADR-008", "ADR-009",
-    "ADR-012", "ADR-0123",
+    "ADR-004", "ADR-004-workspace-profile", "ADR-005", "ADR-006", "ADR-007",
+    "ADR-008", "ADR-008-amendment-2", "ADR-009", "ADR-009-workspace-profile",
+    "ADR-012", "ADR-0123", "ADR-017-monitoring-connector",
     "PDR-000", "PDR-001", "PDR-002", "PDR-002-amendment-2", "PDR-003",
-    "PDR-004", "PDR-005", "PDR-008", "PDR-009", "PDR-012", "PDR-0123",
+    "PDR-004", "PDR-005", "PDR-008", "PDR-009", "PDR-009-amendment-2",
+    "PDR-012", "PDR-0123", "PDR-021-agentic-verification-depth",
     "PDR-127", "PDR-128",
 }
 
@@ -56,9 +60,10 @@ LOCAL_EXAMPLE_IDS = {
 #   ADR-432            MR/PR milestone + assignee propagation
 #   ADR-433            lifecycle write scope (the staging allowlist)
 #   ADR-444            agent step run context and step output
+#   ADR-473            shared factory run mechanics live in factory-runbook
 GOVERNING_RECORDS = {
     "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
-    "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444",
+    "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-473",
 }
 
 # The surfaces the rule covers.

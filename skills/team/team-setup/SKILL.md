@@ -112,6 +112,23 @@ Full walkthrough in `references/mode-configured.md`.
 3. **Confirm**: Ask the user to confirm before executing.
 
 4. **Write/Execute**: Perform the setup for the chosen mode.
+
+### Script Entry Points (deterministic, headless use)
+
+The Mode 1/2 validation and wiring logic has ONE home — the shared helper
+scripts — and is exposed as flags so headless callers (e.g. `adlc-cli team
+setup --directives <path>`) run the same checks without an LLM session:
+
+- `scripts/bash/team-helpers.sh [--validate DIR] [--wire DIR]`
+- `scripts/powershell/team-helpers.ps1 [-Validate DIR] [-Wire DIR]`
+
+`--validate DIR` runs the Verification structure check (exit 0 when complete,
+exit 1 with `MISSING:` lines when not). `--wire DIR` validates, then merges
+the absolute path into the project's `.adlc/init-options.json` as
+`team_ai_directives` (existing keys preserved; refuses to wire an invalid
+structure). Both twins behave identically. Interactive sessions still go
+through Mode Selection above; the in-session path and the headless path share
+the same implementation.
 ### Post-Setup Configuration
 
 After any mode completes successfully, update the project configuration:
@@ -122,7 +139,9 @@ After any mode completes successfully, update the project configuration:
    - `{TEAM_AI_DIRECTIVES}/.skills.json` exists and is valid JSON
 3. Check the `.gitignore` convention (layout allowlist — see the Gitignore Convention Check step below).
 4. Inject the project-level `AGENTS.md` directive — full command and managed-section contract in `references/post-setup-agents.md`.
-5. Install MCP config — merge details in `references/post-setup-mcp.md`.
+5. Install MCP config — copy-once contract (seed the project's `.mcp.json`
+   only when absent; an existing project file wins and is never merged into)
+   in `references/post-setup-mcp.md`.
 
 #### Gitignore Convention Check
 
@@ -137,13 +156,17 @@ never leave a wholesale `.adlc/` ignore in place (it would hide the tracked
    `graphify-out/`, while re-including `!.adlc/init-options.json`,
    `!.adlc/workspace.yml`, `!.adlc/drafts/`, `!.adlc/evals/`,
    `!.adlc/memory/`, `!.adlc/memory/evals/`, and
-   `!.adlc/memory/evals/holdout.json`. The canonical rule list lives in the
-   workspace skill's `scripts/bash/paths.sh` (`GITIGNORE_RULES_ALLOWLIST`,
-   mirrored in `scripts/powershell/paths.ps1`).
+   `!.adlc/memory/evals/holdout.json`. The allowlist above is canonical for
+   this skill; keep `.gitignore` in sync with it.
 2. Also verify the agent-install surface rules are ignored (`.agents/`,
    `.opencode/`, `.claude/`, `.cursor/`, `.codex/`, `.gemini/`, `.qwen/`,
-   `.devin/`, `.tabnine/`, `skills-lock.json`, `.skills.json`, `.mcp.json`,
-   `.events.json`, `.pytest_cache/`, `.ruff_cache/`).
+   `.devin/`, `.tabnine/`, `skills-lock.json`, `.skills.json`,
+   `.events.json`, `.pytest_cache/`, `.ruff_cache/`). Note that `.mcp.json`
+   is deliberately **not** in this list: it is committed project source —
+   human-edited, never generated — so a `.gitignore` entry for it is a defect
+   to report, not a missing rule to add; its guardrail is variable *names*
+   only, never literal secrets — `env` indirection is the guard, not
+   `.gitignore`.
 3. Never remove unrelated (non-ADLC) rules; only add missing allowlist rules.
 4. Tracked legacy files keep working — the allowlist gates only untracked
    files, so no migration is required before the switch.
@@ -169,7 +192,7 @@ never leave a wholesale `.adlc/` ignore in place (it would hide the tracked
 - **Skipping the project-level AGENTS.md injection** — without the `<!-- TEAM_AI_DIRECTIVES START -->` managed section in the project's `AGENTS.md`, agents without event support have no session-start instruction to load team context. The `.adlc/init-options.json` config alone is insufficient — it tells skills where the team AI directives is, but nothing tells the agent to check. (For agents with event support, the session-start hook injects the orientation regardless, but AGENTS.md remains the fallback and the source of the Team Context in Use output contract.)
 - **Interpolating user input into Python/shell source strings** — pass paths through the environment (`os.environ`) instead; string interpolation of `$ABSOLUTE_PATH` into a Python one-liner is a command-injection vector.
 - **Cloning a non-`https://` URL in Mode 1** — reject `file://`/`ssh://`/other schemes; cloned content is read by agents later, so only clone trusted repos.
-- **Skipping the MCP config install** — `.mcp.json` servers stay unconfigured; the project won't have access to team-declared MCP servers.
+- **Skipping the MCP config install** — a project with no `.mcp.json` of its own is never seeded and loses access to team-declared MCP servers; a project that has one only loses the gap report (its file is never written either way).
 - **Accepting shell metacharacters in paths or team names** — validate before interpolating into `mkdir`/`git commit`/heredocs (see Input Validation).
 - **Treating user decline as an error** — declining setup is a valid outcome; exit cleanly, tell `team-boot` the user declined, and offer the `team_ai_directives: null` opt-out marker (build mode only).
 - **Writing the opt-out marker in plan/read-only mode** — a persistent opt-out requires a write; in plan mode the decline is session-scoped and setup defers instead.
@@ -190,7 +213,7 @@ never leave a wholesale `.adlc/` ignore in place (it would hide the tracked
 - [ ] Running `team-verify` (Phase 0 of team-repair) passes all 7 checks.
 - [ ] All user-supplied paths/URLs/team names passed Input Validation (no shell metacharacters; clone URL is `https://`).
 - [ ] Mode 2 wrote `team_ai_directives` via the environment (no `$ABSOLUTE_PATH` interpolation into Python source).
-- [ ] If `{TEAM_AI_DIRECTIVES}/.mcp.json` exists, any declared `mcpServers` were successfully merged into the project's config, and unresolved env vars were highlighted.
+- [ ] If `{TEAM_AI_DIRECTIVES}/.mcp.json` exists: the project's `.mcp.json` was seeded from it only when the project had none — an existing project file was left untouched (never merged into or rewritten), any gap between the two was reported rather than closed, and unresolved env vars were highlighted.
 - [ ] (Model-invoked by `team-boot`) a user decline exited cleanly without running any mode; the persistent opt-out was offered, and `team_ai_directives: null` was written only in build mode.
 
 ## Configuration

@@ -146,6 +146,28 @@ def check_label_mapping_respected(output: str, scenario: str = "") -> dict:
     return { "pass": True, "score": 1.0, "reason": "Passed the label provisioning check: Effective (mapped) label name used." }
 
 
+def check_orchestrator_intake_routing(output: str) -> dict:
+    """Stage routing: a new untracked work request enters via factory-queue triage behind the Intent Gate."""
+    routes_queue = re.search(r"factory-queue", output)
+    mentions_gate = re.search(r"intent gate", output, re.IGNORECASE)
+    if routes_queue and mentions_gate:
+        return { "pass": True, "score": 1.0, "reason": "Passed the orchestrator intake routing check: New work request routed to factory-queue triage behind the Intent Gate." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the orchestrator intake routing check: Expected factory-queue triage plus the Intent Gate before implementation, but got: {output}" }
+
+def check_ci_failure_followup(output: str) -> dict:
+    """Follow-up routing: a CI failure on a delivered PR routes back to the implementing context and invalidates the standing review verdict."""
+    back_to_implementer = re.search(
+        r"back to the implement|implement\w* (?:agent|run|context|session)|follow-?up (?:to|back|goes)|same (?:run|session|agent)",
+        output, re.IGNORECASE,
+    )
+    verdict_refresh = re.search(
+        r"invalidat\w+|superseded|re-?review|re-?run\w*\b[^.]{0,40}review|new head|stale verdict|fresh verdict",
+        output, re.IGNORECASE,
+    )
+    if back_to_implementer and verdict_refresh:
+        return { "pass": True, "score": 1.0, "reason": "Passed the CI-failure follow-up check: Routed back to the implementing context with the standing review verdict invalidated (fresh verdict on the new head)." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the CI-failure follow-up check: Expected routing back to the implementing context AND verdict invalidation/re-review on the new head, but got: {output}" }
+
 def check_provisioning_confirmed(output: str) -> dict:
     """Label provisioning: label provisioning requires explicit confirmation, never silent creation."""
     if re.search(r"declin|refus|skipp|did not create|not created|awaiting confirmation", output, re.IGNORECASE):
@@ -156,7 +178,39 @@ def check_provisioning_confirmed(output: str) -> dict:
         return { "pass": False, "score": 0.0, "reason": f"Failed the label provisioning check: Provisioned labels without explicit confirmation: {output}" }
     return { "pass": True, "score": 1.0, "reason": "Passed the label provisioning check: Provisioning was confirmed or did not occur." }
 
+def check_dependency_hard_gate(output: str) -> dict:
+    """Dependency hard gate: a run whose issue has open dependencies must refuse execution — no worktree, no code, no dispatch. Only closed/cancelled counts complete."""
+    blocked = re.search(r"blocked:\s*dependency-gate|blocked by|dependency gate.*blocked|refus\w+.*execut|declin\w+.*execut|halt\w*.*dependenc|dependenc\w*.*(open|incomplete|unresolved|outstanding)", output, re.IGNORECASE)
+    no_work = not re.search(r"(?<!no )(?<!not )(worktree created|dispatching to|spawning mission|starting implement|running tests|clon\w+ repo)", output, re.IGNORECASE)
+    if blocked and no_work:
+        return { "pass": True, "score": 1.0, "reason": "Passed the dependency hard gate check: Run refused execution on open dependencies without touching worktree or code." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the dependency hard gate check: Expected refusal naming the blocking dependencies with no execution, but got: {output}" }
+
+def check_dependency_auto_notify(output: str) -> dict:
+    """Dependency auto-notify: when a dependency closes, still-open dependents get a machine-posted cleared comment — no polling."""
+    notified = re.search(r"dependency-gate.*cleared|cleared.*dependenc|unblocked|all dependencies (closed|cancelled|complete)|may now proceed|ready for (execut|dispatch)", output, re.IGNORECASE)
+    no_poll = not re.search(r"poll\w+|watch loop|sleep \d+|retry until|wait for.*dependenc", output, re.IGNORECASE)
+    if notified and no_poll:
+        return { "pass": True, "score": 1.0, "reason": "Passed the dependency auto-notify check: Dependent notified of cleared gate via machine comment, no polling loop." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the dependency auto-notify check: Expected cleared-gate notification without polling, but got: {output}" }
+
 # Main get_assert function that delegates to the specific checkers
+def check_lifecycle_single_label(output: str) -> dict:
+    """Lifecycle single label: a lifecycle transition leaves exactly one lifecycle label (add and remove in one call; `resume` is a trigger, not a state)."""
+    states = {"intent", "spec-gated", "executing", "parked", "validation", "done", "cancelled"}
+    after = re.search(r"labels after:\s*([^\n]*)", output, re.IGNORECASE)
+    if after:
+        tokens = {t.strip(" .,;:[]`'\"").lower() for t in re.split(r"[,\s]+", after.group(1))}
+        found = sorted(tokens & states)
+        if len(found) == 1:
+            return { "pass": True, "score": 1.0, "reason": f"Passed the lifecycle single-label check: Exactly one lifecycle label after the transition ({found[0]})." }
+        return { "pass": False, "score": 0.0, "reason": f"Failed the lifecycle single-label check: Expected exactly one lifecycle label after the transition, found {found or 'none'}." }
+    adds = re.search(r"--(?:add-)?label\s+\"?(" + "|".join(map(re.escape, states)) + r")\b", output)
+    removes = re.search(r"--(?:unlabel|remove-label)\b", output)
+    if adds and removes:
+        return { "pass": True, "score": 1.0, "reason": "Passed the lifecycle single-label check: The target was added and the other lifecycle labels removed in the same call." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the lifecycle single-label check: Expected one call that adds the target and removes any other lifecycle label, but got: {output}" }
+
 def get_assert(output: str, context: dict = None) -> dict:
     # Routing is by the criterion slug that PREFIXES the scenario string
     # ("<slug>: <prose>"), never by a substring match: a prose sentence that
@@ -193,6 +247,16 @@ def get_assert(output: str, context: dict = None) -> dict:
         return check_label_mapping_respected(output, scenario)
     if scenario.startswith("label-provisioning:"):
         return check_provisioning_confirmed(output)
+    if scenario.startswith("orchestrator-intake-routing:"):
+        return check_orchestrator_intake_routing(output)
+    if scenario.startswith("ci-failure-followup:"):
+        return check_ci_failure_followup(output)
+    if scenario.startswith("dependency-hard-gate:"):
+        return check_dependency_hard_gate(output)
+    if scenario.startswith("dependency-auto-notify:"):
+        return check_dependency_auto_notify(output)
+    if scenario.startswith("lifecycle-single-label:"):
+        return check_lifecycle_single_label(output)
         
     return {
         "pass": False,

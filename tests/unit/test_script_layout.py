@@ -227,6 +227,31 @@ def test_helpers_bare_next_cdr_resolves_paths(levelup_sandbox):
     assert result.stdout.strip() == "008"
 
 
+def test_helpers_next_cdr_counts_stemmed_records(levelup_sandbox):
+    """A CDR named with a prose stem must not be skipped.
+
+    Regression guard for the silent-skip class: both twins matched
+    `CDR-<digits>.md`, which requires the number to be immediately followed by
+    `.md`, so `CDR-012-some-long-title.md` never matched and slot 012 was
+    handed out again. The fix landed on main without a test; this pins it the
+    way test_ledger_slot_numbering.py pins the PDR/ADR siblings. Verified to
+    fail against the pre-fix helper (returned 008, expected 013).
+    """
+    project, directives = levelup_sandbox
+    (directives / "drafts/cdr/CDR-012-some-long-title.md").write_text(
+        "### Target Module: `src/c.py`\n### Context Type: Example\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "-A"], cwd=directives, capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-qm", "more"], cwd=directives,
+                   capture_output=True, check=True)
+    result = subprocess.run(
+        ["bash", str(LEVELUP / "bash/helpers.sh"), "--next-cdr"],
+        cwd=project, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, f"aborted: {result.stderr}"
+    assert result.stdout.strip() == "013"
+
+
 requires_pwsh = pytest.mark.skipif(
     shutil.which("pwsh") is None or shutil.which("git") is None,
     reason="pwsh/git not installed (CI runs the twin)",
@@ -270,3 +295,32 @@ def test_helpers_next_cdr_twin_parity(levelup_sandbox):
         outs[name] = (result.returncode, result.stdout.strip())
     assert outs["sh"] == outs["ps"], f"twins diverge: {outs}"
     assert outs["sh"][1] == "008"
+
+
+@requires_pwsh
+def test_helpers_next_cdr_stemmed_twin_parity(levelup_sandbox):
+    """Both twins must count a stemmed CDR -- not merely agree with each other.
+
+    The base parity test above uses only a bare `CDR-007.md`, which the old
+    buggy match also handled, so it could pass while both twins skipped
+    stemmed records in lockstep. This asserts the value too.
+    """
+    project, directives = levelup_sandbox
+    (directives / "drafts/cdr/CDR-012-some-long-title.md").write_text(
+        "### Target Module: `src/c.py`\n### Context Type: Example\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "-A"], cwd=directives, capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-qm", "more"], cwd=directives,
+                   capture_output=True, check=True)
+    outs = {}
+    for name, script in [
+        ("sh", LEVELUP / "bash/helpers.sh"),
+        ("ps", LEVELUP / "powershell/helpers.ps1"),
+    ]:
+        cmd = ["bash", str(script)] if name == "sh" else ["pwsh", "-NoProfile", "-File", str(script)]
+        result = subprocess.run(
+            [*cmd, "--next-cdr"], cwd=project, capture_output=True, text=True,
+        )
+        outs[name] = (result.returncode, result.stdout.strip())
+    assert outs["sh"] == outs["ps"], f"twins diverge: {outs}"
+    assert outs["sh"][1] == "013"

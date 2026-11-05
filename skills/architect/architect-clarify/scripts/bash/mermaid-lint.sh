@@ -296,7 +296,19 @@ lint_file() {
                                     # untrustworthy. What genuinely breaks the
                                     # parse is a name carrying characters
                                     # outside mermaid's entity-name grammar.
-                                    if printf '%s' "$body_first" | grep -qE '[{}]|\}\||\|o|o\{|\}\|--|\.\.'; then
+                                    #
+                                    # Relation test = the full mermaid v2
+                                    # arrow grammar: left cardinality
+                                    # (|o zero-or-one, || exactly-one, }o
+                                    # zero-or-more, }| one-or-more), arrow
+                                    # (-- or ..), right cardinality (o|, ||,
+                                    # o{, {|). An earlier partial pattern
+                                    # (|[{}]|}|o|o{|}--|..) missed every
+                                    # brace-less arrow, so `A ||--|| B` and
+                                    # `A ||--| B` fell through to the
+                                    # entity-name check and fired a false
+                                    # HIGH on valid one-to-one relations.
+                                    if printf '%s' "$body_first" | grep -qE '(\|o|\|\||\}o|\}\|)(--|\.\.)(o\||\|\||o\{|\|\{)|[{}]'; then
                                         :
                                     elif printf '%s' "$body_first" | grep -qE '[#@!?%():;,+=~|<>`'"'"']'; then
                                         emit HIGH M008-malformed-entity-diagram "$file" "$body_first_line" "$fence_index" \

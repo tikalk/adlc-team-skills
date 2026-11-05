@@ -101,6 +101,8 @@ child_head_sha() {
   git -C "$1" rev-parse HEAD 2>/dev/null || echo ""
 }
 
+# JSON output always goes through jq -n (no manual string building).
+
 # --- pre-flight --------------------------------------------------------------
 
 if ! has_git; then
@@ -216,20 +218,21 @@ for repo_name in "${CHILD_REPOS[@]:-}"; do
   has_adlc=false
   [[ -d "$repo_path/.adlc" ]] && has_adlc=true
 
-  # Build the per-repo record with Python so paths/remotes with
-  # quotes, backslashes, or newlines cannot break JSON output.
-  record=$(python3 - "$repo_name" "$repo_path" "$remote" "$branch" "$dirty" "$unpushed" "$submod" "$p_sha" "$c_sha" "$drift" "$has_adlc" <<'PY'
-import json, sys
-name, path, remote, branch, dirty, unpushed, submod, p_sha, c_sha, drift, has_adlc = sys.argv[1:12]
-print(json.dumps({
-  "name": name, "path": path, "remote": remote, "branch": branch,
-  "dirty": dirty == "true", "unpushed": int(unpushed or 0),
-  "is_submodule": submod == "true",
-  "parent_sha": p_sha, "child_sha": c_sha,
-  "sha_drift": drift == "true", "has_adlc": has_adlc == "true"
-}))
-PY
-)
+  # Build the per-repo record with jq -n (strings via --arg; booleans
+  # and counts via --argjson using pre-computed literal true/false strings).
+  record=$(jq -n -c \
+    --arg name "$repo_name" \
+    --arg path "$repo_path" \
+    --arg remote "$remote" \
+    --arg branch "$branch" \
+    --argjson dirty "$dirty" \
+    --argjson unpushed "$unpushed" \
+    --argjson is_submodule "$submod" \
+    --arg parent_sha "$p_sha" \
+    --arg child_sha "$c_sha" \
+    --argjson sha_drift "$drift" \
+    --argjson has_adlc "$has_adlc" \
+    '{name:$name,path:$path,remote:$remote,branch:$branch,dirty:$dirty,unpushed:$unpushed,is_submodule:$is_submodule,parent_sha:$parent_sha,child_sha:$child_sha,sha_drift:$sha_drift,has_adlc:$has_adlc}')
   REPO_RECORDS+=("$record")
   DISPLAY_NAME+=("$repo_name")
   DISPLAY_BRANCH+=("$branch")
@@ -302,36 +305,24 @@ if $JSON_MODE; then
   for e in "${ERRORS[@]:-}"; do
     [[ -z "$e" ]] && continue
     [[ $first -eq 0 ]] && errors_json+=","
-    errors_json+=$(python3 - "$e" <<'PY'
-import json, sys
-print(json.dumps(sys.argv[1]))
-PY
-)
+    errors_json+=$(printf '%s\n' "$e" | jq -R .)
     first=0
   done
   errors_json+="]"
 
-  python3 - "$REPO_ROOT" "$PARENT_BRANCH" "$PARENT_HAS_ADLC" "$MODE" "$DRY_RUN" \
-    "${#CHILD_REPOS[@]}" "${#REGISTERED[@]}" "${#SKIPPED[@]}" "${#ERRORS[@]}" \
-    "$repos_json" "$errors_json" <<'PY'
-import json, sys
-parent_repo, parent_branch, has_adlc, mode, dry_run = sys.argv[1:6]
-discovered, registered, skipped, errors = (int(x) for x in sys.argv[6:10])
-repos, errs = (json.loads(sys.argv[10]), json.loads(sys.argv[11]))
-print(json.dumps({
-  "PARENT_REPO": parent_repo,
-  "PARENT_BRANCH": parent_branch,
-  "PARENT_HAS_ADLC": has_adlc == "true",
-  "MODE": mode,
-  "DRY_RUN": dry_run == "true",
-  "DISCOVERED_COUNT": discovered,
-  "REGISTERED_COUNT": registered,
-  "SKIPPED_COUNT": skipped,
-  "ERROR_COUNT": errors,
-  "REPOS": repos,
-  "ERRORS": errs
-}))
-PY
+  jq -n \
+    --arg parent_repo "$REPO_ROOT" \
+    --arg parent_branch "$PARENT_BRANCH" \
+    --argjson parent_has_adlc "$PARENT_HAS_ADLC" \
+    --arg mode "$MODE" \
+    --argjson dry_run "$DRY_RUN" \
+    --argjson discovered_count "${#CHILD_REPOS[@]}" \
+    --argjson registered_count "${#REGISTERED[@]}" \
+    --argjson skipped_count "${#SKIPPED[@]}" \
+    --argjson error_count "${#ERRORS[@]}" \
+    --argjson repos "$repos_json" \
+    --argjson errors "$errors_json" \
+    '{PARENT_REPO:$parent_repo,PARENT_BRANCH:$parent_branch,PARENT_HAS_ADLC:$parent_has_adlc,MODE:$mode,DRY_RUN:$dry_run,DISCOVERED_COUNT:$discovered_count,REGISTERED_COUNT:$registered_count,SKIPPED_COUNT:$skipped_count,ERROR_COUNT:$error_count,REPOS:$repos,ERRORS:$errors}'
 else
   echo "=========================================="
   case "$MODE" in

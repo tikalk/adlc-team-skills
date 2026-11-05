@@ -108,7 +108,7 @@ mkdir -p "$SCRATCH/.adlc"
 printf '{\n  "team_ai_directives": "%s"\n}\n' "$DIRECTIVES" > "$SCRATCH/.adlc/init-options.json"
 
 BOOT_OUT="$SCRATCH/boot.out"
-( cd "$SCRATCH" && bash .agents/skills/team-boot/scripts/boot.sh ) > "$BOOT_OUT" 2>&1 \
+( cd "$SCRATCH" && bash .agents/skills/team-boot/scripts/bash/boot.sh ) > "$BOOT_OUT" 2>&1 \
   || fail "boot.sh exited non-zero"
 
 assert_contains() {

@@ -17,6 +17,7 @@ import pytest
 
 from test_intent_run_helpers import (
     GLAB,
+    posted_body,
     RUN_ENV,
     STEP_ARGS,
     fake_cli,
@@ -25,7 +26,7 @@ from test_intent_run_helpers import (
 )
 
 ROOT = Path(__file__).parent.parent.parent
-SCRIPTS = ROOT / "skills/factory/factory-mission/scripts"
+SCRIPTS = ROOT / "skills/factory/factory-runbook/scripts"
 BASH = SCRIPTS / "bash"
 PS = SCRIPTS / "powershell"
 
@@ -63,7 +64,7 @@ def run(script, cwd, *args, env=None):
                           cwd=cwd, capture_output=True, text=True, env=full_env)
 
 
-# ── twin inventory (CDR-022, scoped to factory-mission) ────────────────────
+# ── twin inventory (CDR-022, scoped to factory-runbook) ────────────────────────
 
 def test_every_bash_helper_has_a_powershell_twin_and_vice_versa():
     bash = {p.name[:-3] for p in BASH.glob("*.sh")}
@@ -185,7 +186,7 @@ def test_commit_step_only_commits_its_paths(repo):
     head = git(w, "rev-parse", "HEAD")
     r = run(PS / "commit-step.ps1", w, *STEP_ARGS, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
     assert r.returncode == 0, r.stderr
-    assert git(w, "log", "-1", "--format=%B").startswith("docs(adlc): factory-product specify")
+    assert git(w, "log", "-1", "--format=%B").startswith("docs(adlc): factory-intent specify")
     # README.md changed but was not in the step's paths: still uncommitted
     # (git() strips output, so the leading unstaged-space marker is gone —
     # "M README.md" here means worktree-modified, index-clean).
@@ -252,7 +253,7 @@ def test_commit_step_rejects_a_multiline_summary_and_bad_output_type(repo):
     ml[ml.index("two PDR drafts")] = "line one\nSigned-off-by: someone"
     r = run(PS / "commit-step.ps1", w, *ml, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
     assert r.returncode == 0, r.stderr
-    assert git(w, "log", "-1", "--format=%s") == "docs(adlc): factory-product specify — line one Signed-off-by: someone"
+    assert git(w, "log", "-1", "--format=%s") == "docs(adlc): factory-intent specify — line one Signed-off-by: someone"
     assert "Signed-off-by" not in git(w, "log", "-1", "--format=%(trailers:only)")
 
 
@@ -289,9 +290,10 @@ def test_open_mr_creates_a_draft_mr_with_issue_ownership(repo):
     assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"
     import json as _json
     assert _json.loads(out.read_text())["mr_url"] == "https://gl.test/g/adlc-workspace/-/merge_requests/77"
-    calls = log.read_text()
-    assert "milestone_id=407" in calls
-    assert "assignee_ids[]=5" in calls
+    body = posted_body(log)
+    assert body["milestone_id"] == 407
+    assert body["assignee_ids"] == [5]
+    assert body["squash"] is False
 
 
 def test_open_mr_reuses_an_open_mr_and_keeps_other_output_fields(repo):
@@ -315,7 +317,7 @@ def test_open_mr_assignee_falls_back_to_the_runner(repo):
     env, log, out = open_mr_env(repo, glab=glab)
     r = run(PS / "open-mr.ps1", repo["work"], env=env)
     assert r.returncode == 0, r.stderr
-    assert "assignee_ids[]=99" in log.read_text()
+    assert posted_body(log)["assignee_ids"] == [99]
 
 
 def test_open_mr_blocks_when_the_tracker_token_lacks_the_api_scope(repo):
@@ -325,3 +327,39 @@ def test_open_mr_blocks_when_the_tracker_token_lacks_the_api_scope(repo):
     assert r.returncode != 0
     assert "scope" in r.stderr
     assert "merge_requests" not in log.read_text().split("personal_access_tokens/self")[0]
+
+
+def test_open_mr_with_kind_code_creates_code_mr_for_mission_branch(repo):
+    git(repo["work"], "switch", "-q", "-c", "factory/mission/adlc-workspace-12")
+    (repo["work"] / "code.txt").write_text("code\n")
+    git(repo["work"], "add", "-A")
+    git(repo["work"], "commit", "-q", "-m", "code")
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], "--kind", "code", env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"
+    assert git(repo["bare"], "branch", "--list", "factory/mission/adlc-workspace-12") != ""
+    post = next(l for l in log.read_text().splitlines() if "-X POST" in l)
+    assert "--input" in post and "Content-Type: application/json" in post
+    body = posted_body(log)
+    assert body["source_branch"] == "factory/mission/adlc-workspace-12"
+    assert body["title"] == "Draft: factory: adlc-workspace#12 (run r26)"
+    assert "Factory mission run" in body["description"]
+    assert body["squash"] is False
+
+
+def test_open_mr_with_kind_code_refuses_intent_branch(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], "--kind", "code", env=env)
+    assert r.returncode != 0
+    assert "code run branch" in r.stderr or "factory/mission/" in r.stderr
+
+
+def test_open_mr_refuses_unknown_kind(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], "--kind", "bogus", env=env)
+    assert r.returncode != 0
+    assert "--kind" in r.stderr
+

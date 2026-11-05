@@ -30,7 +30,7 @@ SKILL = ROOT / "skills/factory/factory-review"
 SKILL_MD = SKILL / "SKILL.md"
 LOOP_MD = SKILL / "references/review-loop.md"
 TRACKER_MD = (
-    ROOT / "skills/factory/factory-mission/references/tracker-integration.md"
+    ROOT / "skills/factory/factory-runbook/references/tracker-integration.md"
 )
 SYNTH_SH = SKILL / "scripts/bash/synthesize-findings.sh"
 SYNTH_PS = SKILL / "scripts/powershell/synthesize-findings.ps1"

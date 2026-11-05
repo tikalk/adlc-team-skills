@@ -177,7 +177,7 @@ their own; they are held for converge adjudication.
 2. Re-run the synthesis gate locally to verify the tags — never trust the
    review step's claimed tags:
    ```bash
-   skills/factory/factory-review/scripts/bash/synthesize-findings.sh <findings.json>
+   scripts/bash/synthesize-findings.sh <findings.json>
    # PowerShell twin: scripts/powershell/synthesize-findings.ps1 <findings.json>
    ```
    The gate is: cross-validated + consensus Important findings are actionable
@@ -250,7 +250,9 @@ review_self_heal:
 
 ## Sub-Agent Step Schema
 
-Each step is defined as a step in the executor's step list (follows `factory-mission/references/executor.md` Phase 4):
+Each step is defined as a step in the executor's step list (follows `factory-runbook/references/executor.md` Phase 4):
+
+**Requires:** the `factory-runbook` skill (provides the shared executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 ```json
 {

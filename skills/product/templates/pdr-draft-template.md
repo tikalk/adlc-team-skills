@@ -1,5 +1,5 @@
 ---
-# Lightweight PDR draft — written by team-boot continuous capture.
+# Lightweight PDR draft — written by the capture skill (/product-specify).
 # Enriched to full PDR format by /product-clarify before promotion to docs/adlc/memory/.
 status: proposed
 date: YYYY-MM-DD

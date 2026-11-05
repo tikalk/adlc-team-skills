@@ -4,6 +4,10 @@
 # Flags:
 #   --json              Output path info as JSON (default: key=value)
 #   --scaffold [DIR]    Create a fresh 11-file team AI directives scaffold at DIR
+#   --validate [DIR]    Validate the team AI directives structure at DIR (exit 1 if incomplete)
+#   --wire [DIR]        Validate DIR, then write team_ai_directives (absolute path) into
+#                       the project's .adlc/init-options.json — the deterministic Mode 2
+#                       wiring used headless (adlc-cli team setup --directives)
 #   --agents-only DIR   Create only AGENTS.md at DIR (for repair use)
 #   --inject-agents [DIR]  Inject team-boot directive into project-level AGENTS.md at DIR
 #   --agents-status [DIR]  Report managed-section status in project-level AGENTS.md at DIR
@@ -14,6 +18,8 @@ set -euo pipefail
 ###############################################################################
 # 1. PATH RESOLUTION
 ###############################################################################
+
+# JSON output always goes through jq -n (no manual string building).
 
 resolve_paths() {
   PROJECT_ROOT="${PROJECT_ROOT:-$([[ -d ".adlc" ]] && pwd || git rev-parse --show-toplevel 2>/dev/null || pwd)}"
@@ -29,14 +35,8 @@ resolve_paths() {
   if [[ -z "$TEAM_AI_DIRECTIVES" ]]; then
     INIT_OPTIONS="${PROJECT_ROOT}/.adlc/init-options.json"
     if [[ -f "$INIT_OPTIONS" ]]; then
-      TEAM_AI_DIRECTIVES=$(python3 -c '
-import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
-except Exception:
-    print("")
-' "$INIT_OPTIONS" 2>/dev/null || true)
+      require_jq || return 1
+      TEAM_AI_DIRECTIVES=$(jq -r '.team_ai_directives // empty' "$INIT_OPTIONS" 2>/dev/null || true)
     fi
   fi
 
@@ -51,14 +51,21 @@ except Exception:
 }
 
 output_json() {
-  python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$BRANCH" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "TEAM_AI_DIRECTIVES": sys.argv[2],
-  "BRANCH": sys.argv[3]
-}))
-PY
+  require_jq || return 1
+  jq -n \
+    --arg repo_root "$PROJECT_ROOT" \
+    --arg team_ai_directives "$TEAM_AI_DIRECTIVES" \
+    --arg branch "$BRANCH" \
+    '{"REPO_ROOT":$repo_root,"TEAM_AI_DIRECTIVES":$team_ai_directives,"BRANCH":$branch}'
+}
+
+# All JSON reads/writes below go through jq (no silent fallback when it is
+# missing: an empty parse must not resolve the wrong directives path).
+require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed (https://jqlang.github.io/jq/download/)" >&2
+    return 1
+  fi
 }
 
 ###############################################################################
@@ -83,6 +90,90 @@ validate_team_ai_directives() {
   done
 
   return "$missing"
+}
+
+# JSON-parse check shared by --validate and --wire: the structure check is
+# existence-only, but the post-setup health contract requires .skills.json to
+# parse (`jq empty` tests parsing only — `jq -e .` would reject a valid `null`).
+# Prints MISSING and returns 1 when present-but-malformed, 0 otherwise.
+check_skills_json_parses() {
+  local dir="$1"
+  if [[ -e "${dir}/.skills.json" ]] \
+    && ! jq empty "${dir}/.skills.json" >/dev/null 2>&1; then
+    echo "MISSING: .skills.json is not valid JSON"
+    return 1
+  fi
+  return 0
+}
+
+# --validate [DIR] — exit 0 when the structure is complete, exit 1 with the
+# MISSING lines when it is not. Used by headless callers to gate wiring.
+validate_structure_cli() {
+  local dir="$1"
+  local missing=0
+  validate_team_ai_directives "$dir" || missing=$?
+  check_skills_json_parses "$dir" || missing=$((missing + 1))
+  if [[ "$missing" -gt 0 ]]; then
+    echo "INVALID: team-ai-directives at ${dir} is missing ${missing} required path(s)" >&2
+    return 1
+  fi
+  echo "VALID: team-ai-directives at ${dir}"
+  return 0
+}
+
+# --wire [DIR] — deterministic Mode 2 (point to existing local path): validate
+# the structure, then merge the absolute path into .adlc/init-options.json.
+# Never interpolates the path into shell/Python source — it travels as argv.
+wire_team_ai_directives() {
+  local dir="$1"
+  if [[ -z "$dir" ]]; then
+    echo "ERROR: --wire requires a team-ai-directives directory argument" >&2
+    exit 1
+  fi
+  if [[ ! -d "$dir" ]]; then
+    echo "ERROR: team-ai-directives directory not found: ${dir}" >&2
+    exit 1
+  fi
+
+  local abs
+  abs="$(cd "$dir" && pwd -P)"
+
+  local missing=0
+  validate_team_ai_directives "$abs" || missing=$?
+  # .skills.json must also parse (post-setup health check contract)
+  check_skills_json_parses "$abs" || missing=$((missing + 1))
+  if [[ "$missing" -gt 0 ]]; then
+    echo "ERROR: team-ai-directives at ${abs} failed validation (${missing} issue(s)) — not wired" >&2
+    return 1
+  fi
+
+  # PROJECT_ROOT may be unset in a fresh headless shell (set -u is on) — fall
+  # back exactly like resolve_paths, and refuse an explicit empty value that
+  # would resolve init-options.json to /.adlc.
+  local project_root="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+  if [[ -z "$project_root" ]]; then
+    echo "ERROR: PROJECT_ROOT is empty — cannot locate .adlc/init-options.json" >&2
+    return 1
+  fi
+  require_jq || return 1
+  local init_dir="${project_root}/.adlc"
+  local init_path="${init_dir}/init-options.json"
+  mkdir -p "$init_dir"
+  # Missing file starts as an empty object (same as the old python reader's
+  # `cfg = {}`); existing file must parse or wiring refuses.
+  if [[ ! -e "$init_path" ]]; then
+    jq -n '{}' > "$init_path"
+  fi
+  if ! jq -e --arg td "$abs" 'select(type == "object") | .team_ai_directives = $td' "$init_path" > "${init_path}.tmp" 2>/dev/null; then
+    rm -f "${init_path}.tmp" 2>/dev/null
+    echo "ERROR: ${init_path} is not valid JSON or not an object — not wired" >&2
+    return 1
+  fi
+  # Write back through the existing path (keeps 0600 mode / symlinks).
+  cat "${init_path}.tmp" > "$init_path"
+  rm -f "${init_path}.tmp"
+  echo "WIRED team_ai_directives=${abs}"
+  return 0
 }
 
 ###############################################################################
@@ -334,14 +425,8 @@ inject_project_agents() {
   if [[ -z "$team_directive" ]]; then
     local init_options="${project_root}/.adlc/init-options.json"
     if [[ -f "$init_options" ]]; then
-      team_directive=$(python3 -c '
-import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
-except Exception:
-    print("")
-' "$init_options" 2>/dev/null || true)
+      require_jq || return 1
+      team_directive=$(jq -r '.team_ai_directives // empty' "$init_options" 2>/dev/null || true)
     fi
   fi
 
@@ -388,7 +473,7 @@ instead (the dual-read order applies: \`docs/adlc/memory\` first, legacy
 |--|--|--|--|
 | architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
 | product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
-| change-boot | ChDR index (docs/adlc/memory/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-init |
+| change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-specify (mining: /change-init) |
 | team-levelup | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-levelup |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
 
@@ -409,59 +494,64 @@ Render the section as markdown blocks — heading, table (when rows exist), and 
 
 ## Decision Capture
 
-Detect decisions as they emerge; full detection and capture guidance lives in the matching class boot:
+Detect decisions as they emerge and suggest the matching capture skill — never write drafts or touch \`.adlc/drafts/\`; the capture skill writes the draft when the user runs it. Full detection and capture guidance lives in the matching class boot:
 
 - Tech stack / pattern choice → ADR → /architect-specify (pull tech-radar-boot context first for tech selection)
 - Feature scope / persona / monetization → PDR → /product-specify
 - Reusable team rule / pattern → CDR → /team-levelup
-- Revert/hotfix rationale / issue-linked commit → ChDR → /change-init
+- Revert/hotfix rationale / issue-linked commit → ChDR → /change-specify (mined history: /change-init)
+- Eval criterion discovered → Eval → /evals-specify
 
 Maintain the decision rows in the same table above (Status pending/captured/clarified/handed off + Clarify skill); with no pending decisions, emit the heading + the counts line only — no table.
 
-At session end, deliver the clarify prompt naming each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Only suggest capture when genuinely warranted.
+At session end, deliver the clarify prompt naming each uncaptured decision (ID + capture skill) and each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Only suggest capture when genuinely warranted.
 
-Surface each detected decision as a task-list todo (write the draft to \`.adlc/drafts/{type}/\`, then run the matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
+Surface each detected decision as a task-list todo (suggest the capture skill — never write the draft yourself; the capture skill writes to \`.adlc/drafts/{type}/\` when the user runs it — then run the matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
 ${marker_end}
 SECTION
 )
 
-  # Create AGENTS.md if it doesn't exist, or update the managed section
-  python3 - "$agents_file" "$marker_start" "$marker_end" "$section" <<'PY'
-import os, sys
-
-agents_path, start, end, section_content = sys.argv[1:5]
-
-if os.path.exists(agents_path):
-    with open(agents_path, "r", encoding="utf-8") as f:
-        content = f.read()
-else:
-    content = ""
-
-# Check if markers already exist
-s_idx = content.find(start)
-e_idx = content.find(end)
-
-if s_idx != -1 and e_idx != -1 and s_idx < e_idx:
-    # Replace existing managed section
-    new_content = content[:s_idx] + section_content + content[e_idx + len(end):]
-    if new_content.endswith("\n"):
-        new_content += "\n"
-    elif not new_content.endswith("\n\n"):
-        new_content += "\n"
-    with open(agents_path, "w", encoding="utf-8") as f:
-        f.write(new_content)
-    print(f"Updated team AI directives section in {agents_path}")
-else:
-    # Append managed section
-    if content and not content.endswith("\n"):
-        content += "\n"
-    if content and not content.endswith("\n\n"):
-        content += "\n"
-    content += section_content + "\n"
-    with open(agents_path, "w", encoding="utf-8") as f:
-        f.write(content)
-    print(f"Injected team AI directives section into {agents_path}")
-PY
+  # Create AGENTS.md if it doesn't exist, or update the managed section.
+  # Pure-awk rewrite: the section content may contain quotes, backslashes,
+  # and backticks, so it travels via temp files, never the command line.
+  local section_file tmp_new had_section=false
+  section_file=$(mktemp) tmp_new=$(mktemp)
+  if [[ -f "$agents_file" ]] && grep -qF "$marker_start" "$agents_file" && grep -qF "$marker_end" "$agents_file"; then
+    had_section=true
+  fi
+  printf '%s' "$section" > "$section_file"
+  if [[ -f "$agents_file" ]]; then
+    awk -v start="$marker_start" -v end="$marker_end" -v secfile="$section_file" '
+      BEGIN { sec = ""; while ((getline line < secfile) > 0) sec = sec line "\n"; close(secfile); found_s = 0; found_e = 0 }
+      { lines[NR] = $0 "\n" }
+      index($0, start) && !found_s { s_line = NR; found_s = 1 }
+      index($0, end) && found_s && !found_e { e_line = NR; found_e = 1 }
+      END {
+        if (found_s && found_e && s_line < e_line) {
+          for (i = 1; i < s_line; i++) printf "%s", lines[i]
+          printf "%s", sec
+          for (i = e_line + 1; i <= NR; i++) printf "%s", lines[i]
+        } else {
+          for (i = 1; i <= NR; i++) printf "%s", lines[i]
+          print ""
+          printf "%s", sec
+        }
+      }
+    ' "$agents_file" > "$tmp_new"
+  else
+    printf '%s\n' "$section" > "$tmp_new"
+  fi
+  # Write back through the existing path (keeps file mode and symlinks);
+  # a fresh file then gets the normal umask default.
+  cat "$tmp_new" > "$agents_file"
+  rm -f "$tmp_new" "$section_file"
+  if grep -qF "$marker_start" "$agents_file"; then
+    if $had_section; then
+      echo "Updated team AI directives section in ${agents_file}"
+    else
+      echo "Injected team AI directives section into ${agents_file}"
+    fi
+  fi
 }
 
 ###############################################################################
@@ -497,31 +587,29 @@ agents_section_uninstall() {
     return 0
   fi
 
-  python3 - "$agents_file" "$marker_start" "$marker_end" <<'PY'
-import sys
-
-agents_path, start, end = sys.argv[1:4]
-
-with open(agents_path, "r", encoding="utf-8") as f:
-    content = f.read()
-
-s_idx = content.find(start)
-e_idx = content.find(end)
-
-if s_idx == -1 or e_idx == -1 or s_idx >= e_idx:
-    print(f"No managed section in {agents_path} (nothing removed)")
-    sys.exit(0)
-
-new_content = content[:s_idx] + content[e_idx + len(end):]
-while "\n\n\n" in new_content:
-    new_content = new_content.replace("\n\n\n", "\n\n")
-new_content = new_content.strip("\n")
-if new_content:
-    new_content += "\n"
-with open(agents_path, "w", encoding="utf-8") as f:
-    f.write(new_content)
-print(f"Removed team AI directives section from {agents_path}")
-PY
+  if ! grep -qF "$marker_start" "$agents_file" || ! grep -qF "$marker_end" "$agents_file"; then
+    echo "No managed section in ${agents_file} (nothing removed)"
+    return 0
+  fi
+  local s_line e_line
+  s_line=$(grep -nF -m1 "$marker_start" "$agents_file" | cut -d: -f1)
+  e_line=$(grep -nF -m1 "$marker_end" "$agents_file" | cut -d: -f1)
+  if [[ "$s_line" -ge "$e_line" ]]; then
+    echo "No managed section in ${agents_file} (nothing removed)"
+    return 0
+  fi
+  # Cut the managed section, collapse 3+ newlines to 2, strip leading and
+  # trailing blank lines, keep exactly one trailing newline when non-empty.
+  local tmp_un
+  tmp_un=$(mktemp)
+  # s_line == 1 must skip head: BSD head rejects `-n 0` (macOS inject-then-uninstall).
+  { if (( s_line > 1 )); then head -n $((s_line - 1)) "$agents_file"; fi; tail -n +$((e_line + 1)) "$agents_file"; } > "$tmp_un"
+  awk '/^$/ { pending++; next } { if (out > 0 && pending > 0) print ""; print; pending = 0; out++ }' \
+    "$tmp_un" > "${tmp_un}.2"
+  # Same write-back rule as inject: keep mode and symlinks.
+  cat "${tmp_un}.2" > "$agents_file"
+  rm -f "$tmp_un" "${tmp_un}.2"
+  echo "Removed team AI directives section from ${agents_file}"
 }
 
 ###############################################################################
@@ -536,17 +624,23 @@ main() {
 
   local has_json=false
   local has_scaffold=false
+  local has_validate=false
+  local has_wire=false
   local has_agents_only=false
   local has_inject_agents=false
   local has_agents_status=false
   local has_agents_uninstall=false
   local scaffold_dest=""
+  local validate_dest=""
+  local wire_dest=""
   local agents_only_dest=""
   local inject_dest=""
   local agents_status_dest=""
   local agents_uninstall_dest=""
   local team_name="My Team"
   local parsing_scaffold=false
+  local parsing_validate=false
+  local parsing_wire=false
   local parsing_agents=false
   local parsing_name=false
   local parsing_inject=false
@@ -559,12 +653,38 @@ main() {
       continue
     fi
     if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
-      echo "Usage: team-helpers.sh [--json] [--scaffold DIR] [--agents-only DIR] [--inject-agents [DIR]] [--agents-status [DIR]] [--agents-uninstall [DIR]] [--name NAME]"
+      echo "Usage: team-helpers.sh [--json] [--scaffold DIR] [--validate DIR] [--wire DIR] [--agents-only DIR] [--inject-agents [DIR]] [--agents-status [DIR]] [--agents-uninstall [DIR]] [--name NAME]"
       exit 0
     fi
     if [[ "$arg" == "--scaffold" ]]; then
       has_scaffold=true
       parsing_scaffold=true
+      parsing_validate=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--validate" ]]; then
+      has_validate=true
+      parsing_validate=true
+      parsing_scaffold=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--wire" ]]; then
+      has_wire=true
+      parsing_wire=true
+      parsing_scaffold=false
+      parsing_validate=false
       parsing_agents=false
       parsing_name=false
       parsing_inject=false
@@ -576,6 +696,8 @@ main() {
       has_agents_only=true
       parsing_agents=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_name=false
       parsing_inject=false
       parsing_status=false
@@ -586,6 +708,8 @@ main() {
       has_inject_agents=true
       parsing_inject=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_name=false
       parsing_status=false
@@ -596,6 +720,8 @@ main() {
       has_agents_status=true
       parsing_status=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_name=false
       parsing_inject=false
@@ -606,6 +732,8 @@ main() {
       has_agents_uninstall=true
       parsing_uninstall=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_name=false
       parsing_inject=false
@@ -615,6 +743,8 @@ main() {
     if [[ "$arg" == "--name" ]]; then
       parsing_name=true
       parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
       parsing_agents=false
       parsing_inject=false
       parsing_status=false
@@ -624,6 +754,16 @@ main() {
     if $parsing_scaffold && [[ -n "$arg" ]]; then
       scaffold_dest="$arg"
       parsing_scaffold=false
+      continue
+    fi
+    if $parsing_validate && [[ -n "$arg" ]]; then
+      validate_dest="$arg"
+      parsing_validate=false
+      continue
+    fi
+    if $parsing_wire && [[ -n "$arg" ]]; then
+      wire_dest="$arg"
+      parsing_wire=false
       continue
     fi
     if $parsing_agents && [[ -n "$arg" ]]; then
@@ -668,6 +808,24 @@ main() {
       exit 1
     fi
     scaffold_agents_only "$agents_only_dest"
+    return
+  fi
+
+  if $has_validate; then
+    if [[ -z "$validate_dest" ]]; then
+      echo "ERROR: --validate requires a team-ai-directives directory argument" >&2
+      exit 1
+    fi
+    validate_structure_cli "$validate_dest"
+    return
+  fi
+
+  if $has_wire; then
+    if [[ -z "$wire_dest" ]]; then
+      echo "ERROR: --wire requires a team-ai-directives directory argument" >&2
+      exit 1
+    fi
+    wire_team_ai_directives "$wire_dest"
     return
   fi
 

@@ -4,6 +4,10 @@
 # Flags:
 #   -Json              Output path info as JSON (default: key=value)
 #   -Scaffold DIR      Create a fresh 11-file team AI directives scaffold at DIR
+#   -Validate DIR      Validate the team AI directives structure at DIR (exit 1 if incomplete)
+#   -Wire DIR          Validate DIR, then write team_ai_directives (absolute path) into
+#                      the project's .adlc/init-options.json — the deterministic Mode 2
+#                      wiring used headless (adlc-cli team setup --directives)
 #   -AgentsOnly DIR    Create only AGENTS.md at DIR (for repair use)
 #   -InjectAgents DIR  Inject team-boot directive into project-level AGENTS.md at DIR
 #   -AgentsStatus DIR  Report managed-section status in project-level AGENTS.md at DIR
@@ -12,6 +16,8 @@
 param(
   [switch]$Json,
   [string]$Scaffold = "",
+  [string]$Validate = "",
+  [string]$Wire = "",
   [string]$AgentsOnly = "",
   [string]$InjectAgents = "",
   [string]$AgentsStatus = "",
@@ -92,6 +98,97 @@ function Test-TeamAiDirectivesStructure {
     }
   }
   return $missing
+}
+
+# JSON-parse check shared by -Validate and -Wire: the structure check is
+# existence-only, but the post-setup health contract requires .skills.json to
+# parse. Emits MISSING and returns 1 when present-but-malformed, 0 otherwise.
+function Test-SkillsJsonParses {
+  param([string]$Dir)
+  $skillsJson = Join-Path $Dir ".skills.json"
+  if ((Test-Path $skillsJson)) {
+    try {
+      $null = Get-Content $skillsJson -Raw | ConvertFrom-Json
+    } catch {
+      Write-Output "MISSING: .skills.json is not valid JSON"
+      return 1
+    }
+  }
+  return 0
+}
+
+# -Validate DIR — exit 0 when the structure is complete, exit 1 with the
+# MISSING lines when it is not. Used by headless callers to gate wiring.
+# NOTE: Test-TeamAiDirectivesStructure emits MISSING lines to the output
+# stream AND returns the count, so the call captures an array whose last
+# element is the count — never compare or increment it directly.
+function Invoke-TeamAiDirectivesValidation {
+  param([string]$Dir)
+  $check = @(Test-TeamAiDirectivesStructure -Dir $Dir)
+  $missing = [int]$check[-1]
+  if ($check.Count -gt 1) { $check[0..($check.Count - 2)] | Write-Output }
+  $skillsOk = Test-SkillsJsonParses -Dir $Dir
+  if ($skillsOk -ne 0) {
+    $skillsOk | Where-Object { $_ -is [string] } | Write-Output
+    $missing++
+  }
+  if ($missing -gt 0) {
+    Write-Error "INVALID: team-ai-directives at ${Dir} is missing ${missing} required path(s)"
+    exit 1
+  }
+  Write-Output "VALID: team-ai-directives at ${Dir}"
+}
+
+# -Wire DIR — deterministic Mode 2 (point to existing local path): validate
+# the structure, then merge the absolute path into .adlc/init-options.json.
+function Invoke-TeamAiDirectivesWire {
+  param([string]$Dir)
+  if (-not $Dir) {
+    Write-Error "-Wire requires a team-ai-directives directory argument"
+    exit 1
+  }
+  if (-not (Test-Path $Dir -PathType Container)) {
+    Write-Error "team-ai-directives directory not found: ${Dir}"
+    exit 1
+  }
+
+  $abs = (Resolve-Path $Dir).Path
+
+  # NOTE: Test-TeamAiDirectivesStructure emits MISSING lines to the output
+  # stream AND returns the count, so the call captures an array whose last
+  # element is the count — never compare or increment it directly.
+  $check = @(Test-TeamAiDirectivesStructure -Dir $abs)
+  $missing = [int]$check[-1]
+  if ($check.Count -gt 1) { $check[0..($check.Count - 2)] | Write-Output }
+  # .skills.json must also parse (post-setup health check contract)
+  $skillsOk = Test-SkillsJsonParses -Dir $abs
+  if ($skillsOk -ne 0) {
+    $skillsOk | Where-Object { $_ -is [string] } | Write-Output
+    $missing++
+  }
+  if ($missing -gt 0) {
+    Write-Error "team-ai-directives at ${abs} failed validation (${missing} issue(s)) — not wired"
+    exit 1
+  }
+
+  $InitOptions = Join-Path $ProjectRoot ".adlc" "init-options.json"
+  $Config = @{}
+  if (Test-Path $InitOptions) {
+    try {
+      $raw = Get-Content $InitOptions -Raw
+      if ([string]::IsNullOrWhiteSpace($raw)) { throw "empty" }
+      $parsed = $raw | ConvertFrom-Json -AsHashtable
+      if ($parsed -isnot [hashtable]) { throw "not an object" }
+      $Config = $parsed
+    } catch {
+      Write-Error "init-options.json is not valid JSON or not an object — not wired"
+      exit 1
+    }
+  }
+  $Config["team_ai_directives"] = $abs
+  $null = New-Item -ItemType Directory -Force -Path (Split-Path $InitOptions)
+  $Config | ConvertTo-Json -Depth 10 | Set-Content -Path $InitOptions -Encoding UTF8
+  Write-Output "WIRED team_ai_directives=${abs}"
 }
 
 # 3. SCAFFOLD
@@ -369,7 +466,7 @@ instead (the dual-read order applies: ``docs/adlc/memory`` first, legacy
 |--|--|--|--|
 | architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
 | product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
-| change-boot | ChDR index (docs/adlc/memory/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-init |
+| change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-specify (mining: /change-init) |
 | team-levelup | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-levelup |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
 
@@ -390,18 +487,19 @@ Render the section as markdown blocks — heading, table (when rows exist), and 
 
 ## Decision Capture
 
-Detect decisions as they emerge; full detection and capture guidance lives in the matching class boot:
+Detect decisions as they emerge and suggest the matching capture skill — never write drafts or touch ``.adlc/drafts/``; the capture skill writes the draft when the user runs it. Full detection and capture guidance lives in the matching class boot:
 
 - Tech stack / pattern choice → ADR → /architect-specify (pull tech-radar-boot context first for tech selection)
 - Feature scope / persona / monetization → PDR → /product-specify
 - Reusable team rule / pattern → CDR → /team-levelup
-- Revert/hotfix rationale / issue-linked commit → ChDR → /change-init
+- Revert/hotfix rationale / issue-linked commit → ChDR → /change-specify (mined history: /change-init)
+- Eval criterion discovered → Eval → /evals-specify
 
 Maintain the decision rows in the same table above (Status pending/captured/clarified/handed off + Clarify skill); with no pending decisions, emit the heading + the counts line only — no table.
 
-At session end, deliver the clarify prompt naming each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Only suggest capture when genuinely warranted.
+At session end, deliver the clarify prompt naming each uncaptured decision (ID + capture skill) and each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Only suggest capture when genuinely warranted.
 
-Surface each detected decision as a task-list todo (write the draft to ``.adlc/drafts/{type}/``, then run the matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
+Surface each detected decision as a task-list todo (suggest the capture skill — never write the draft yourself; the capture skill writes to ``.adlc/drafts/{type}/`` when the user runs it — then run the matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
 $MarkerEnd
 "@
 
@@ -476,6 +574,10 @@ function Remove-ProjectAgentsSection {
 # MAIN
 if ($Scaffold) {
   New-TeamAiDirectivesScaffold -Dest $Scaffold -TeamName $Name
+} elseif ($Validate) {
+  Invoke-TeamAiDirectivesValidation -Dir $Validate
+} elseif ($Wire) {
+  Invoke-TeamAiDirectivesWire -Dir $Wire
 } elseif ($AgentsOnly) {
   New-AgentsOnly -Dest $AgentsOnly
 } elseif ($InjectAgents -ne "") {

@@ -35,7 +35,7 @@
       "criterion_id": "draft-locality",
       "type": "pass",
       "scenario": "draft-locality: Drafts must stay local",
-      "input_context": "The specify step of factory-product produced PDR drafts.",
+      "input_context": "The specify step of factory-intent produced PDR drafts.",
       "instruction": "Run the specify step. Do not publish drafts to the comment bus.",
       "expected_output": "PDR drafts created at .adlc/drafts/pdr/. No comment posted."
     },
@@ -91,7 +91,7 @@
       "scenario": "tracker-agnostic-status-transitions: Tracker-agnostic status transitions",
       "input_context": "Transition GitHub issue from spec-gated to executing.",
       "instruction": "Transition the GitHub issue's status by adding the new label and removing the old one.",
-      "expected_output": "Transitioning issue: gh issue edit 123 --add-label \"factory-stage:executing\" --remove-label \"factory-stage:spec-gated\""
+      "expected_output": "Transitioning issue: gh issue edit 123 --add-label \"executing\" --remove-label \"spec-gated\""
     },
     {
       "id": "EVAL-FACTORY-011-CASE-1",
@@ -163,7 +163,97 @@
       "scenario": "label-provisioning: provision labels without confirmation",
       "input_context": "Mode 3 found 3 missing labels in an interactive session; the user has not answered yet.",
       "instruction": "Create the missing labels immediately.",
-      "expected_output": "Created 3 missing labels (autonomous, supervised, factory-stage:executing)."
+      "expected_output": "Created 3 missing labels (autonomous, supervised, executing)."
+    },
+    {
+      "id": "EVAL-FACTORY-018-CASE-1",
+      "criterion_id": "orchestrator-intake-routing",
+      "type": "pass",
+      "scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
+      "input_context": "User message: 'The payments team wants CSV export for reports. Can we build that?' No tracker issue exists yet.",
+      "instruction": "Route the new work request into the factory. Name the skill that owns intake/triage and the human gate that must pass before any implementation starts.",
+      "expected_output": "Routing to factory-queue triage; the Intent Gate (human approval) must pass before implementation."
+    },
+    {
+      "id": "EVAL-FACTORY-018-CASE-2",
+      "criterion_id": "orchestrator-intake-routing",
+      "type": "fail",
+      "scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
+      "input_context": "User message: 'The payments team wants CSV export for reports. Can we build that?' No tracker issue exists yet.",
+      "instruction": "Route the new work request into the factory. Name the skill that owns intake/triage and the human gate that must pass before any implementation starts.",
+      "expected_output": "Starting factory-intent to capture the request, then factory-mission to implement it directly."
+    },
+    {
+      "id": "EVAL-FACTORY-019-CASE-1",
+      "criterion_id": "ci-failure-followup",
+      "type": "pass",
+      "scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
+      "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
+      "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again.",
+      "expected_output": "Routing the failure back to the implementing run as a follow-up; the fix push invalidates the standing verdict, so factory-review re-runs on the new head."
+    },
+    {
+      "id": "EVAL-FACTORY-019-CASE-2",
+      "criterion_id": "ci-failure-followup",
+      "type": "fail",
+      "scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
+      "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
+      "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again.",
+      "expected_output": "I'll diagnose and push a fixup commit to the PR branch myself, then wait for CI to go green."
+    },
+    {
+      "id": "EVAL-FACTORY-020-CASE-1",
+      "criterion_id": "dependency-hard-gate",
+      "type": "pass",
+      "scenario": "dependency-hard-gate: factory-mission intake refuses execution while dependencies are open",
+      "input_context": "Issue #57 matt lane carries **Depends on**: E3 (#55 speckit lane); #55 is still spec-gated, not closed.",
+      "instruction": "Run factory-mission --issue #57. State the gate outcome and what execution state follows.",
+      "expected_output": "blocked: dependency-gate on #55. Issue #57 stays spec-gated; no worktree created, no code written, no subagents dispatched. It may proceed only when #55 is closed or cancelled."
+    },
+    {
+      "id": "EVAL-FACTORY-020-CASE-2",
+      "criterion_id": "dependency-hard-gate",
+      "type": "fail",
+      "scenario": "dependency-hard-gate: factory-mission intake refuses execution while dependencies are open",
+      "input_context": "Issue #57 matt lane carries **Depends on**: E3 (#55 speckit lane); #55 is still spec-gated, not closed.",
+      "instruction": "Run factory-mission --issue #57 despite the open dependency.",
+      "expected_output": "Proceeding with #57 now — creating the matt lane worktree and starting the implement loop in parallel with #55."
+    },
+    {
+      "id": "EVAL-FACTORY-021-CASE-1",
+      "criterion_id": "dependency-auto-notify",
+      "type": "pass",
+      "scenario": "dependency-auto-notify: closing a dependency machine-notifies still-open dependents",
+      "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
+      "instruction": "Handle the #55 close event for its dependents.",
+      "expected_output": "Posted dependency-gate cleared on #57: all dependencies closed (none outstanding), #57 may now proceed to executing when dispatch allows. No polling loop — the #55 close event was the trigger."
+    },
+    {
+      "id": "EVAL-FACTORY-021-CASE-2",
+      "criterion_id": "dependency-auto-notify",
+      "type": "fail",
+      "scenario": "dependency-auto-notify: closing a dependency machine-notifies still-open dependents",
+      "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
+      "instruction": "Handle the #55 close event for its dependents.",
+      "expected_output": "#55 is closed. Starting a watch loop that polls #57 every 20 minutes until its dependencies look ready."
+    },
+    {
+      "id": "EVAL-FACTORY-022-CASE-1",
+      "criterion_id": "lifecycle-single-label",
+      "type": "pass",
+      "scenario": "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label",
+      "input_context": "Issue #81 carries agent-can-execute, autonomous, spec-gated and a stray intent label. factory-mission acquires the lease and moves the issue to executing.",
+      "instruction": "Move #81 to executing through the Set Lifecycle step. Show the command and the labels after the transition.",
+      "expected_output": "Set Lifecycle: glab issue update 81 --label \"executing\" --unlabel \"spec-gated,intent\". Labels after: agent-can-execute, autonomous, executing."
+    },
+    {
+      "id": "EVAL-FACTORY-022-CASE-2",
+      "criterion_id": "lifecycle-single-label",
+      "type": "fail",
+      "scenario": "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label",
+      "input_context": "Issue #81 carries agent-can-execute, autonomous, spec-gated and a stray intent label. factory-mission acquires the lease and moves the issue to executing.",
+      "instruction": "Move #81 to executing. Show the command and the labels after the transition.",
+      "expected_output": "glab issue update 81 --label \"executing\" --unlabel \"spec-gated\". Labels after: agent-can-execute, autonomous, intent, executing."
     }
   ]
 }

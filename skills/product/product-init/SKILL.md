@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # product-init
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Reverse-engineers product decisions from an **existing product** using a **three-phase analysis pipeline**:
@@ -38,7 +41,7 @@ Reverse-engineers product decisions from an **existing product** using a **three
 sh: scripts/bash/setup-product-init.sh [--json]
 ps: scripts/powershell/setup-product-init.ps1
 ```
-**Requires:** the `product-clarify` skill (provides `pdr-lib.sh`): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
+**Requires:** the `product-clarify` skill for PDR lifecycle operations (index generation, promotion, clarification): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
 
 
 **Setup output** (JSON):
@@ -51,6 +54,7 @@ ps: scripts/powershell/setup-product-init.ps1
   "next_pdr": "001"
 }
 ```
+The script reports `next_pdr` — the next free PDR slot (status line `Next PDR: PDR-{NNN}`); Phase 5 numbers the new PDRs from it
 
 **Create directories**:
 ```bash
@@ -141,7 +145,7 @@ For each discovered PDR:
 
 **PDR file format** (individual file, YAML frontmatter — use the shared template):
 
-Use the template at `{REPO_ROOT}/.agents/skills/product/../templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections.
+Use the canonical template `skills/product/templates/pdr-template.md` in the adlc-team-skills checkout as the canonical PDR format (family-level templates are checkout-only — they do not ship with an installed skill). If the template file is absent in your checkout, use the inline PDR format below instead. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections.
 
 ```markdown
 ---
@@ -266,9 +270,9 @@ Generate `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` from all `PDR-*.md` files:
 
 ## PDR Numbering Rules
 
-- Scan `{REPO_ROOT}/.adlc/drafts/pdr/` for existing `PDR-*.md` files
-- Extract numeric suffix, find maximum
-- Next PDR = max + 1, zero-padded to 3 digits (PDR-001, PDR-002, ...)
+- Number from the **next free slot** the setup script computes and emits (`next_pdr` in its JSON/status output), never from "the highest existing number" guessed by inspection: a stemmed record (e.g. `PDR-002-amendment-2.md`) is easy to miss, and its slot is still taken
+- The slot rule: a record's number is the leading digits of its filename stem; the maximum spans `{REPO_ROOT}/.adlc/drafts/pdr/` **and** published memory (`docs/adlc/memory/pdr/`) — the same source `next_pdr` reports
+- PDR IDs are zero-padded to 3 digits (PDR-001, PDR-002, ...)
 - Never reuse numbers, even for deleted PDRs
 
 ## State Management

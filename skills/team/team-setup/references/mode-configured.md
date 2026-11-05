@@ -24,7 +24,8 @@ No writes needed — the team AI directives is already configured. Then:
 1. Run the **Gitignore Convention Check** (Post-Setup Configuration step 3 in
    `SKILL.md`): verify `.gitignore` carries the layout allowlist and not a
    wholesale `.adlc/` ignore; add missing rules when absent.
-2. Run the **MCP config install** (Post-Setup Configuration step 5): merge
-   `.mcp.json` servers into the project's config if not already present.
+2. Run the **MCP config install** (Post-Setup Configuration step 5): copy the
+   team `.mcp.json` into the project only if absent — an existing project file
+   wins and is never merged into; report the gap instead.
 
 *On success: complete Post-Setup Configuration — write `team_ai_directives` to `.adlc/init-options.json`, run the health check (`SKILL.md`), check the `.gitignore` convention (Gitignore Convention Check, `SKILL.md`), inject `AGENTS.md` (`references/post-setup-agents.md`), install MCP config (`references/post-setup-mcp.md`).*

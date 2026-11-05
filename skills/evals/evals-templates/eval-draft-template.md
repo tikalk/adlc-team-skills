@@ -1,5 +1,5 @@
 ---
-# Lightweight EVAL draft — written by team-boot continuous capture.
+# Lightweight EVAL draft — written by the capture skill (/evals-specify).
 # Enriched to full eval format by /evals-clarify before promotion to evals/{system}/.
 id: EVAL-NNN
 status: draft

@@ -175,7 +175,11 @@ Gap types:
 
 #### Phase 4: Sequential Clarification
 
-**CRITICAL**: Present exactly ONE ChDR per interaction. Do NOT:
+**CRITICAL**: Present exactly ONE ChDR per interaction.
+
+Write every clarification in Simplified Technical English (short sentences, one idea each, active voice, imperative asks, named referents, plain words). Read the contract at `skills/authoring/references/ste-rules.md` before drafting questions.
+
+Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap: **0–1 boundaries** use the plain STE format below, however severe the gap; **2 or more boundaries** draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints. Do NOT:
 
 - Present multiple ChDRs together
 - Auto-select actions

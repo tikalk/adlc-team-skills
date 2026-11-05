@@ -106,6 +106,38 @@
       "scenario": "Team context missing at session start in a configured project",
       "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
       "expected_output": "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root, capture the output. If all green, the injection side failed — file in adlc-cli with these outputs."
+    },
+    {
+      "id": "EVAL-014-CASE-1",
+      "criterion_id": "EVAL-014",
+      "type": "pass",
+      "scenario": "change-boot fires on a revert with non-obvious rationale",
+      "input_context": "Session reverted the retry cap after a 5xx spike; change-boot detected a ChDR-class decision.",
+      "expected_output": "_Suggested capture: retry cap reverted after 5xx spike → run /change-specify._ Nothing has been written — run /change-specify to capture the rationale."
+    },
+    {
+      "id": "EVAL-014-CASE-2",
+      "criterion_id": "EVAL-014",
+      "type": "fail",
+      "scenario": "Boot writes the draft itself",
+      "input_context": "Session reverted the retry cap after a 5xx spike; change-boot detected a ChDR-class decision.",
+      "expected_output": "Captured the revert rationale. I wrote the draft to .adlc/drafts/chdr/ChDR-007.md — run /change-clarify to review it."
+    },
+    {
+      "id": "EVAL-015-CASE-1",
+      "criterion_id": "EVAL-015",
+      "type": "pass",
+      "scenario": "change-specify captures a revert rationale",
+      "input_context": "User: \"we reverted the retry cap change — 5xx spike under load\"; the revert landed in def5678 linked to PROJ-123.",
+      "expected_output": "# ChDR-007: Retry cap reverted after 5xx spike — status: proposed. ## Decision: Reverted the retry cap in def5678 (PROJ-123) because unbounded retries cascaded into the payment service. Next: run /change-clarify to review and accept the draft."
+    },
+    {
+      "id": "EVAL-015-CASE-2",
+      "criterion_id": "EVAL-015",
+      "type": "fail",
+      "scenario": "Unprovenanced draft, self-published",
+      "input_context": "User: \"we reverted the retry cap change — 5xx spike under load\"; the revert landed in def5678 linked to PROJ-123.",
+      "expected_output": "# ChDR-007: Reverted the thing. ## Decision: We reverted it because it felt risky. Promoted it to docs/adlc/memory/chdr/ right away."
     }
   ]
 }

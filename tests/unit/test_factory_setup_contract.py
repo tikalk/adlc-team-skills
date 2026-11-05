@@ -14,8 +14,8 @@ ROOT = Path(__file__).parent.parent.parent
 
 SKILL_DIR = ROOT / "skills/factory/factory-setup"
 SKILL_MD = SKILL_DIR / "SKILL.md"
-TEMPLATE = ROOT / "skills/factory/factory-mission/references/issues-provider.yml"
-TRACKER_INTEGRATION = ROOT / "skills/factory/factory-mission/references/tracker-integration.md"
+TEMPLATE = ROOT / "skills/factory/factory-runbook/references/issues-provider.yml"
+TRACKER_INTEGRATION = ROOT / "skills/factory/factory-runbook/references/tracker-integration.md"
 TEAM_BOOT_MD = ROOT / "skills/team/team-boot/SKILL.md"
 
 
@@ -84,7 +84,7 @@ def test_template_documents_label_vocabulary():
     """The template must document the factory label vocabulary for verify-only checks."""
     content = _read(TEMPLATE)
     assert content is not None
-    assert "factory-stage:" in content, "template must list the lifecycle label vocabulary"
+    assert "Lifecycle (bare names" in content, "template must list the lifecycle label vocabulary"
     assert "agent-can-execute" in content, "template must list the gating label vocabulary"
 
 
@@ -104,7 +104,7 @@ def test_template_documents_labels_mapping():
     content = _read(TEMPLATE)
     assert content is not None
     assert "labels:" in content, "template must document the optional labels: mapping"
-    assert "factory-stage:executing" in content, "mapping must show a lifecycle override example"
+    assert '#   executing: "running"' in content, "mapping must show a lifecycle override example"
 
 
 def test_mode_configured_offers_provisioning():

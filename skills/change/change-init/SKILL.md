@@ -1,6 +1,6 @@
 ---
 name: change-init
-description: Use when you want guided mining of git history, structured change-story clustering, or comprehensive rationale recovery before documenting. Optional for routine capture — team-boot writes lightweight ChDR drafts directly.
+description: Use when you want guided mining of git history, structured change-story clustering, or comprehensive rationale recovery before documenting. Class boots only suggest capture — for in-session change rationale they suggest /change-specify; this skill mines history and writes the lightweight ChDR draft.
 disable-model-invocation: true
 ---
 
@@ -25,17 +25,17 @@ A ChDR captures a decision that was *made in the past* and survives only in comm
 |---|---|---|---|
 | `/team-init` | current code (what IS) | CDR (Context Directive) | what patterns are reusable |
 | `/team-levelup` | current session | CDR | what was learned this session |
+| `/change-specify` | this session (why it CHANGED now) | **ChDR** (Change Decision) | why this revert/hotfix/workaround was chosen |
 | `/change-init` (this skill) | **git history** (why it BECAME) | **ChDR** (Change Decision) | **why this code exists / what was tried and reverted** |
 
 ChDRs are **project-local memory** (this repo's evolution), not team-wide context — they fail the team-levelup "team-wide applicability" signal gate. They publish to `{REPO_ROOT}/docs/adlc/memory/chdr/` (see `/change-publish`), and their index is injected at session start by `team-boot`.
 
 ## When to use
 
-> **Note**: Routine decision capture is handled by team-boot's continuous
-> capture mechanism, which writes lightweight drafts directly to
-> `.adlc/drafts/`. This skill is for **interactive deep-dive exploration**
-> — when you want guided trade-off analysis, multi-option comparison, or
-> structured decision facilitation before documenting.
+> **Note**: Class boots detect in-session change rationale and suggest
+> `/change-specify` (which writes the lightweight draft to `.adlc/drafts/`).
+> This skill is for **interactive deep-dive exploration** — guided history
+> mining, change-story clustering, and rationale recovery before documenting.
 
 - **Brownfield onboarding**: give an agent project memory without anyone writing docs
 - **Before refactoring unfamiliar code**: surface Chesterton's fences — constraints that exist only in old commits + tickets
@@ -47,6 +47,7 @@ ChDRs are **project-local memory** (this repo's evolution), not team-wide contex
 - **Greenfield / no history**: nothing to mine
 - **Documenting current patterns**: use `/team-init` (what IS)
 - **Capturing this session's learnings**: use `/team-levelup`
+- **Capturing this session's change rationale**: use `/change-specify`
 - **Pending ChDRs already exist**: run `/change-clarify` to review them first
 
 ## Process
@@ -305,7 +306,7 @@ Then regenerate `{CHDR_DRAFTS_DIR}/chdr.md` index by listing all `ChDR-*.md` fil
     ↓
 [Run /change-publish] → Promote accepted ChDRs to docs/adlc/memory/chdr/
     ↓
-[team-boot] → Injects docs/adlc/memory/chdr.md index at next session start
+[team-boot] → Injects docs/adlc/memory/chdr/chdr.md index at next session start
 ```
 
 ## Next Steps

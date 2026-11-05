@@ -88,10 +88,12 @@ re-pick, or rewrite.
    confirmation before writing (interactive runs). Headless runs write
    directly — the `--provider` flag IS the confirmation.
 4. **Commit step**: copy the release template
-   (`skills/factory/factory-mission/references/issues-provider.yml`) to
+   (`skills/factory/factory-runbook/references/issues-provider.yml`) to
    `.adlc/issues-provider.yml`, set the `provider:` line, report the path,
    and remind the user to commit it. Never write credentials, never
    overwrite.
+
+**Requires:** the `factory-runbook` skill (provides `references/issues-provider.yml`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 ### Commit Step (shared by Modes 1–2)
 

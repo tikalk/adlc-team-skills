@@ -2,15 +2,13 @@
 # setup-change-clarify.sh — Setup for change-clarify (self-contained)
 set -euo pipefail
 
-# shared layout constants (single definition in paths.sh).
-_ch_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$_ch_dir/../../../../team/workspace/scripts/bash/paths.sh" ]; then
-  # shellcheck disable=SC1091
-  . "$_ch_dir/../../../../team/workspace/scripts/bash/paths.sh"
-elif [ -f "$_ch_dir/../../../workspace/scripts/bash/paths.sh" ]; then
-  # shellcheck disable=SC1091
-  . "$_ch_dir/../../../workspace/scripts/bash/paths.sh"
-fi
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 resolve_project_root() {
   local dir
@@ -73,14 +71,6 @@ for f in "$CHDR_DRAFTS_DIR"/ChDR-*.md; do
 done
 EXISTING_CHDRS=$( { ls -1 "$CHDR_DRAFTS_DIR"/ChDR-*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
 
-python3 - "$PROJECT_ROOT" "$CHDR_DRAFTS_DIR" "$MEMORY_DIR" "$ACCEPTED_CHDRS" "$PENDING_CHDRS" "$EXISTING_CHDRS" << 'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "CHDR_DRAFTS_DIR": sys.argv[2],
-  "MEMORY_DIR": sys.argv[3],
-  "ACCEPTED_CHDRS": int(sys.argv[4]),
-  "PENDING_CHDRS": int(sys.argv[5]),
-  "EXISTING_CHDRS": int(sys.argv[6])
-}))
-PY
+jq -n --arg rr "$PROJECT_ROOT" --arg dd "$CHDR_DRAFTS_DIR" --arg md "$MEMORY_DIR" \
+  --argjson accepted "$ACCEPTED_CHDRS" --argjson pending "$PENDING_CHDRS" --argjson existing "$EXISTING_CHDRS" \
+  '{REPO_ROOT:$rr,CHDR_DRAFTS_DIR:$dd,MEMORY_DIR:$md,ACCEPTED_CHDRS:$accepted,PENDING_CHDRS:$pending,EXISTING_CHDRS:$existing}'

@@ -46,6 +46,7 @@ spot-check) before removal.
 - **Reading**: class boots resolve memory from the current working directory and
   fall back to the workspace root (detected via `.gitmodules`) when no local
   memory exists.
-- **Writing**: draft new decisions to the **workspace root** `.adlc/drafts/`
-  and promote to workspace `docs/adlc/memory/` — never under this repo's
+- **Writing**: class boots only suggest the capture skill; running it drafts
+  the decision to the **workspace root** `.adlc/drafts/` and promotes to
+  workspace `docs/adlc/memory/` — never under this repo's
   `.adlc/`.

@@ -24,19 +24,13 @@ resolve_team_ai_directives() {
   local td="${TEAM_AI_DIRECTIVES:-}"
   [[ -n "$td" ]] && { echo "$td"; return; }
   if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
-    td=$(python3 -c '
-import json,sys
-try:
-    with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
-except Exception:
-    print("")
-' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
+    td=$(jq -r '.team_ai_directives // empty' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
     [[ -n "$td" ]] && { echo "$td"; return; }
   fi
   echo "${project_root}/team-ai-directives"
 }
 
+# JSON output always goes through jq -n (no manual string building).
 ###############################################################################
 # Main
 ###############################################################################
@@ -65,14 +59,11 @@ if [[ -d "$TEAM_AI_DIRECTIVES" ]]; then
   fi
 fi
 
-python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$CONSTITUTION_FILE" "$CONSTITUTION_STATE" "$TD_IS_GIT" "$TD_CLEAN" << 'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "TEAM_AI_DIRECTIVES": sys.argv[2],
-  "CONSTITUTION_FILE": sys.argv[3],
-  "CONSTITUTION_STATE": sys.argv[4],
-  "TD_IS_GIT": sys.argv[5] == "true",
-  "TD_CLEAN": sys.argv[6] == "true"
-}))
-PY
+jq -n \
+  --arg repo_root "$PROJECT_ROOT" \
+  --arg team_ai_directives "$TEAM_AI_DIRECTIVES" \
+  --arg constitution_file "$CONSTITUTION_FILE" \
+  --arg constitution_state "$CONSTITUTION_STATE" \
+  --argjson td_is_git "$TD_IS_GIT" \
+  --argjson td_clean "$TD_CLEAN" \
+  '{"REPO_ROOT":$repo_root,"TEAM_AI_DIRECTIVES":$team_ai_directives,"CONSTITUTION_FILE":$constitution_file,"CONSTITUTION_STATE":$constitution_state,"TD_IS_GIT":$td_is_git,"TD_CLEAN":$td_clean}'

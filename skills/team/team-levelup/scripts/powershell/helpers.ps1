@@ -115,7 +115,15 @@ function Get-NextCdrNumber {
     $max = 0
     $files = @(git -C $Td ls-tree --name-only $script:ADLC_BRANCH 'drafts/cdr/' 2>$null)
     foreach ($f in ($files | Sort-Object)) {
-        if ($f -cmatch '.*CDR-(\d+)\.md$') {
+        # A record's number is the LEADING DIGITS of its filename stem:
+        # CDR-010-amendment-2.md is record 010. Suffixes are preserved and
+        # never arithmetically parsed -- the same rule Get-NextRecordNumber in
+        # product-clarify's pdr-lib.ps1 implements on the filesystem. The old
+        # '.*CDR-(\d+)\.md$' match silently skipped stemmed records and handed
+        # out a slot that was already taken.
+        $name = [System.IO.Path]::GetFileName($f)
+        if ($name -cnotlike '*.md') { continue }
+        if ($name.Substring(0, $name.Length - 3) -cmatch '^CDR-(\d+)') {
             $num = [int]$Matches[1]
             if ($num -gt $max) { $max = $num }
         }

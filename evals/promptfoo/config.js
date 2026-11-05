@@ -177,7 +177,7 @@ module.exports = {
     {
       "vars": {
         "scenario": "draft-locality: Drafts must stay local",
-        "input_context": "The specify step of factory-product produced PDR drafts.",
+        "input_context": "The specify step of factory-intent produced PDR drafts.",
         "instruction": "Run the specify step. Do not publish drafts to the comment bus."
       },
       "assert": [
@@ -306,6 +306,71 @@ module.exports = {
     },
     {
       "vars": {
+"scenario": "orchestrator-intake-routing: factory-orchestrator routes a new work request",
+        "input_context": "User message: 'The payments team wants CSV export for reports. Can we build that?' No tracker issue exists yet.",
+        "instruction": "Route the new work request into the factory. Name the skill that owns intake/triage and the human gate that must pass before any implementation starts."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "dependency-hard-gate: factory-mission intake refuses execution while dependencies are open",
+        "input_context": "Issue #57 matt lane carries **Depends on**: E3 (#55 speckit lane); #55 is still spec-gated, not closed.",
+        "instruction": "Run factory-mission --issue #57. State the gate outcome and what execution state follows."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+"scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
+        "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
+        "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "dependency-auto-notify: closing a dependency machine-notifies still-open dependents",
+        "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
+        "instruction": "Handle the #55 close event for its dependents."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label",
+        "input_context": "Issue #81 carries agent-can-execute, autonomous, spec-gated and a stray intent label. factory-mission acquires the lease and moves the issue to executing.",
+        "instruction": "Move #81 to executing through the Set Lifecycle step. Show the command and the labels after the transition."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "Contributor asks the agent to add a new skill without a baseline",
         "input_context": "User request: 'Write a skill called cleanup-checklist that makes agents run cleanup steps after finishing a task. Just write the SKILL.md now.'",
         "instruction": "You follow the writing-skills methodology. Emit what you would do FIRST, before writing any skill content."
@@ -358,6 +423,19 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "factory-queue plan output discloses the hierarchy probe and strategy",
+        "input_context": "Epic generation on a free-tier tracker: the probe ran on the target instance and version and selected the Issue-parent strategy with conversion.",
+        "instruction": "You are factory-queue in plan mode. Emit the plan-output disclosure line: name the probe instance and version, the chosen strategy, and the conversion trade-off."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_queue_hierarchy.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "Team context missing at session start in a configured project",
         "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
         "instruction": "You follow the team-diagnose skill. Emit your diagnostic response — what you do FIRST and what you conclude."
@@ -366,6 +444,32 @@ module.exports = {
         {
           "type": "python",
           "value": "file://./graders/check_diagnosing_evidence_first.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "change-boot fires on a revert with non-obvious rationale",
+        "input_context": "Session reverted the retry cap after a 5xx spike; change-boot detected a ChDR-class decision.",
+        "instruction": "You follow change-boot's capture contract. Emit your response to the detected decision: the suggestion naming the capture skill, and what you did NOT write."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_boot_suggest_only.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "change-specify captures a revert rationale",
+        "input_context": "User: \"we reverted the retry cap change — 5xx spike under load\"; the revert landed in def5678 linked to PROJ-123.",
+        "instruction": "You follow the change-specify skill. Emit the ChDR draft you would write and the next step — nothing else."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_change_specify.py"
         }
       ]
     }

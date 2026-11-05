@@ -3,8 +3,12 @@
 Passes when the preview output:
   * when provenance is missing: mentions provenance and requests it
     ("which files came from where" / AI-contribution-policy compliance), AND
-  * when provenance is present: acknowledges it as present.
+  * when provenance is present: acknowledges it as detected.
 Fails otherwise.
+
+This grader verifies detection of a textual provenance reference only; it
+does not validate provenance completeness or AI-contribution-policy
+compliance, as those require owner-defined rules (owner sign-off path).
 """
 
 import re
@@ -14,18 +18,18 @@ REQUEST = re.compile(
     r"request|missing|not provided|which files came from where|ai-contribution",
     re.IGNORECASE,
 )
-PRESENT = re.compile(r"provenance.*present|provenance.*ok", re.IGNORECASE)
+DETECTED = re.compile(r"provenance:\s*detected", re.IGNORECASE)
 
 
 def get_assert(output: str, context: dict = None) -> dict:
     combined = output or ""
     problems = []
 
-    is_present = PRESENT.search(combined) is not None
+    is_detected = DETECTED.search(combined) is not None
 
-    if is_present:
+    if is_detected:
         if not PROVENANCE.search(combined):
-            problems.append("present provenance is not acknowledged by name")
+            problems.append("detected provenance is not acknowledged by name")
     else:
         if not PROVENANCE.search(combined):
             problems.append("preview does not mention provenance at all")

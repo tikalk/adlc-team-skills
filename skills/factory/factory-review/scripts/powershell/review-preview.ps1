@@ -20,37 +20,68 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Resolve the target path once to an absolute path. All subsequent checks use
+# this resolved path; we never rely on Push-Location/Pop-Location which can
+# leave the wrong current directory if an error occurs between them.
 if (-not (Test-Path -Path $Tree -PathType Container)) {
     Write-Error "review-preview: cannot access $Tree"
     exit 1
 }
+$ResolvedTree = (Resolve-Path -Path $Tree).Path
 
-Push-Location -Path $Tree | Out-Null
+# Safe git invocation: disable repository-local core.fsmonitor (which can
+# execute attacker-configured commands) and suppress the pager. These flags
+# apply per-invocation and do not alter the repository configuration.
+$GitSafe = "git -c core.fsmonitor= --no-pager"
 
-try {
-    $head = git rev-parse --verify HEAD 2>$null
-    if ($head) {
-        $changed = git diff --name-only HEAD 2>$null
-    } else {
-        $changed = git ls-files 2>$null
-    }
-} finally {
-    Pop-Location | Out-Null
+# Changed files in the working tree: tracked modifications/staged changes,
+# plus untracked, non-ignored files (git diff --name-only HEAD misses
+# untracked files). All commands run against $ResolvedTree.
+$head = & $GitSafe -C "$ResolvedTree" rev-parse --verify HEAD 2>$null
+if ($head) {
+    $changed = & $GitSafe -C "$ResolvedTree" diff --name-only HEAD 2>$null
+    $untracked = & $GitSafe -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
+} else {
+    $changed = ""
+    $untracked = & $GitSafe -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
 }
+$changed = (($changed, $untracked) -join "`n" | Where-Object { $_ -ne "" })
 
+# Provenance: detected by inspecting PROVENANCE.md content and the contents
+# of changed files for provenance references. A filename containing
+# "provenance" alone is not evidence. The format of formal provenance is
+# governed by the owner sign-off path and is not defined here;
+# this preview only reports whether a textual provenance reference was found.
 $provenancePresent = 0
-if (Test-Path -Path "PROVENANCE.md" -PathType Leaf) {
-    $len = (Get-Item "PROVENANCE.md").Length
-    if ($len -gt 0) { $provenancePresent = 1 }
+$provenanceSource = "none"
+$provenancePath = Join-Path $ResolvedTree "PROVENANCE.md"
+if (Test-Path -Path $provenancePath -PathType Leaf) {
+    $content = Get-Content -Path $provenancePath -Raw 2>$null
+    if ($content -match '[^[:space:]]') {
+        $provenancePresent = 1
+        $provenanceSource = "provenance file"
+    }
 }
+# Inspect changed file contents for provenance references (e.g. "which files
+# came from where"). Do not treat a filename as provenance evidence.
 if ($provenancePresent -eq 0 -and $changed) {
-    foreach ($line in $changed) {
-        if ($line -match "provenance|files came from where") {
-            $provenancePresent = 1
-            break
+    foreach ($changedFile in $changed) {
+        $fullPath = Join-Path $ResolvedTree $changedFile
+        if (Test-Path -Path $fullPath -PathType Leaf) {
+            $fileContent = Get-Content -Path $fullPath -Raw 2>$null
+            if ($fileContent -match 'which files came from where|provenance') {
+                $provenancePresent = 1
+                $provenanceSource = "reference in $changedFile"
+                break
+            }
         }
     }
 }
+
+# Display the target tree safely: never print a raw path that could contain
+# verdict-marker-like tokens (head=, outcome=, important=). Use a sanitized
+# label instead.
+$SafeTreeLabel = $ResolvedTree -replace 'head=[0-9a-fA-F]{40}', 'head=<sha>' -replace 'outcome=[a-z-]*', 'outcome=<value>' -replace 'important=[0-9]*', 'important=<n>'
 
 @"
 factory-review pre-PR verdict preview — DRAFT (advisory, not a verdict)
@@ -60,11 +91,10 @@ This is a draft preview only. It is NOT a factory-review verdict: it carries
 no head-SHA marker, no outcome or importance fields, and it is never posted to
 the tracker. No sensor reads this output.
 
-Working tree: $Tree
+Working tree: $SafeTreeLabel
 
 Changed files:
-@"
- | Out-String
+"@ | Out-String
 
 if ($changed) {
     $changed | ForEach-Object { Write-Output "  $_" }
@@ -86,9 +116,10 @@ Provenance:
 
 if ($provenancePresent -eq 1) {
     @"
-  provenance: present — provenance file or provenance reference found in
-  changed files. (Formal REVIEW.md policy fields + owner values are captured
-   through the owner sign-off path; this preview reports presence only.)
+  provenance: detected — $provenanceSource.
+  (A textual provenance reference is not proof of complete or compliant
+   provenance. Formal REVIEW.md policy fields + owner values are captured
+   through the owner sign-off path; this preview reports detection only.)
 "@ | Out-String
 } else {
     @"

@@ -17,6 +17,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../../product-clarify/scripts/bash/pdr
 # product-clarify) instead of dying later on a missing function.
 command -v generate_pdr_index >/dev/null 2>&1 || { echo "ERROR: pdr-lib.sh not loaded — install the product-clarify skill: adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify" >&2; return 1 2>/dev/null || exit 1; }
 
+# JSON output is built with jq -n (jq is required; no fallbacks).
+
 # shared layout constants (single definition in paths.sh; pdr-lib.sh
 # sources it too — this block keeps the script correct standalone).
 _pd_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -94,30 +96,19 @@ FEATURE_AREAS=$(detect_feature_areas)
 NEXT_PDR=$(next_record_number PDR "$PDR_DRAFTS_DIR" \
   "$REPO_ROOT/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr")
 
-# Build feature_areas in Python (bash string-concat cannot escape quotes safely).
-# Pass the newline-separated area list; Python builds id/name pairs with json.dumps.
+# Build feature_areas element-by-element with jq -n (jq is required; no fallbacks).
 PDR_COUNT=$(find "$PDR_DRAFTS_DIR" -name 'PDR-*.md' 2>/dev/null | wc -l)
 
 if $JSON_MODE; then
-  python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PRD_FILE" "$NEXT_PDR" "$PDR_COUNT" "$FEATURE_AREAS" <<'PY'
-import json, sys, re
-repo_root, drafts_dir, prd_file, next_pdr, pdr_count, areas_raw = sys.argv[1:7]
-areas = []
-for area in areas_raw.splitlines():
-    area = area.strip()
-    if not area:
-        continue
-    slug = re.sub(r'\s+', '-', area.strip().lower())
-    areas.append({"id": slug, "name": area})
-print(json.dumps({
-  "REPO_ROOT": repo_root,
-  "PDR_DRAFTS_DIR": drafts_dir,
-  "PRD_FILE": prd_file,
-  "feature_areas": areas,
-  "next_pdr": next_pdr,
-  "pdr_count": int(pdr_count)
-}))
-PY
+  feature_areas_json=$(while IFS= read -r area; do
+    area_trimmed="$(echo "$area" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ -z "$area_trimmed" ]] && continue
+    slug="$(echo "$area_trimmed" | tr '[:upper:]' '[:lower:]' | sed 's/[[:space:]][[:space:]]*/-/g')"
+    jq -n --arg id "$slug" --arg name "$area_trimmed" '{id:$id,name:$name}'
+  done <<< "$FEATURE_AREAS" | jq -cs '.')
+  jq -n --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pf "$PRD_FILE" \
+    --argjson fa "$feature_areas_json" --arg np "$NEXT_PDR" --argjson n "$PDR_COUNT" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PRD_FILE:$pf,feature_areas:$fa,next_pdr:$np,pdr_count:$n}' 
 else
   echo "[INFO] product-init setup"
   echo "  REPO_ROOT: $REPO_ROOT"

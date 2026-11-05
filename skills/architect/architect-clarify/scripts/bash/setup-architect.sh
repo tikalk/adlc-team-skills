@@ -2,6 +2,8 @@
 
 set -e
 
+# JSON output always goes through jq -n (no manual string building).
+
 JSON_MODE=false
 ACTION=""
 ARGS=()
@@ -325,11 +327,7 @@ detect_subsystems() {
             else
                 echo ","
             fi
-            python3 - "$d" <<'PY'
-import json, sys
-d = sys.argv[1]
-print(json.dumps({"id": d, "name": d, "detection_method": "directory", "evidence": "directory: %s/" % d}), end="")
-PY
+            jq -n --arg d "$d" '{"id":$d,"name":$d,"detection_method":"directory","evidence":("directory: "+$d+"/")}'
         done
         echo ""
         echo "]"
@@ -1059,11 +1057,12 @@ action_specify() {
     echo "Next free ADR slot: ADR-$next_adr" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "${ARGS[*]}" "$DECOMPOSE" "$next_adr" <<'PY'
-import json, sys
-adr_dir, context, decompose, next_adr = sys.argv[1:5]
-print(json.dumps({"status": "success", "action": "specify", "adr_dir": adr_dir, "context": context, "decomposition": decompose, "next_adr": next_adr}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg context "${ARGS[*]}" \
+          --arg decomposition "$DECOMPOSE" \
+          --arg next_adr "$next_adr" \
+          '{status:"success",action:"specify",adr_dir:$adr_dir,context:$context,decomposition:$decomposition,next_adr:$next_adr}'
     fi
 }
 
@@ -1122,11 +1121,12 @@ action_clarify() {
     echo "  5. Flag any inconsistencies or gaps" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$adr_count" "$format" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, count, fmt, context = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
-print(json.dumps({"status": "success", "action": "clarify", "adr_dir": adr_dir, "adr_count": count, "format": fmt, "context": context}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --argjson adr_count "$adr_count" \
+          --arg format "$format" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"clarify",adr_dir:$adr_dir,adr_count:$adr_count,format:$format,context:$context}'
     fi
 }
 
@@ -1177,11 +1177,12 @@ action_implement() {
     echo "  8. Clean up drafts if all ADRs are Accepted" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, ad_file, count, context = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
-print(json.dumps({"status": "success", "action": "implement", "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg ad_file "$ad_file" \
+          --argjson adr_count "$adr_count" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"implement",adr_dir:$adr_dir,ad_file:$ad_file,adr_count:$adr_count,context:$context}'
     fi
 }
 
@@ -1277,12 +1278,16 @@ action_init() {
     echo "      After clarification, run /architect-implement to generate AD.md" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$tech_stack" "$existing_docs" "$decompose_status" "$subsystems_json" <<'PY'
-import json, sys
-adr_dir, tech_stack, existing_docs, decompose_status, subsystems_raw = sys.argv[1:6]
-subsystems = json.loads(subsystems_raw) if subsystems_raw.strip() else []
-print(json.dumps({"status": "success", "action": "init", "adr_dir": adr_dir, "tech_stack": tech_stack, "existing_docs": existing_docs, "source": "brownfield", "decomposition": decompose_status, "subsystems": subsystems}))
-PY
+        # _sub_raw is a prebuilt JSON array → pass via --argjson.
+        local _sub_raw="$subsystems_json"
+        [[ -z "${_sub_raw//[[:space:]]/}" ]] && _sub_raw="[]"
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg tech_stack "$tech_stack" \
+          --arg existing_docs "$existing_docs" \
+          --arg decomposition "$decompose_status" \
+          --argjson subsystems "$_sub_raw" \
+          '{status:"success",action:"init",adr_dir:$adr_dir,tech_stack:$tech_stack,existing_docs:$existing_docs,source:"brownfield",decomposition:$decomposition,subsystems:$subsystems}'
     fi
 }
 
@@ -1312,11 +1317,11 @@ action_map() {
     
     # Output structured data for AI agent to populate AD.md
     if $JSON_MODE; then
-        python3 - "$tech_stack" "$dir_structure" "$existing_docs" <<'PY'
-import json, sys
-tech_stack, dir_structure, existing_docs = sys.argv[1:4]
-print(json.dumps({"status": "success", "action": "map", "tech_stack": tech_stack, "directory_structure": dir_structure, "existing_docs": existing_docs}))
-PY
+        jq -n \
+          --arg tech_stack "$tech_stack" \
+          --arg directory_structure "$dir_structure" \
+          --arg existing_docs "$existing_docs" \
+          '{status:"success",action:"map",tech_stack:$tech_stack,directory_structure:$directory_structure,existing_docs:$existing_docs}'
     else
         echo "" >&2
         echo "📋 Mapping complete. Use this information to populate AD.md:" >&2
@@ -1374,11 +1379,10 @@ action_update() {
     echo "  - Add ADR if significant decision was made" >&2
     
     if $JSON_MODE; then
-        python3 - "$AD_FILE" "$adr_dir" <<'PY'
-import json, sys
-ad_file, adr_dir = sys.argv[1:3]
-print(json.dumps({"status": "success", "action": "update", "ad_file": ad_file, "adr_dir": adr_dir}))
-PY
+        jq -n \
+          --arg ad_file "$AD_FILE" \
+          --arg adr_dir "$adr_dir" \
+          '{status:"success",action:"update",ad_file:$ad_file,adr_dir:$adr_dir}'
     fi
 }
 
@@ -1466,19 +1470,19 @@ action_review() {
     
     if $JSON_MODE; then
         if [[ ${#issues[@]} -eq 0 ]]; then
-            python3 - "$AD_FILE" "$adr_mem_dir" <<'PY'
-import json, sys
-ad_file, adr_dir = sys.argv[1:3]
-print(json.dumps({"status": "success", "action": "review", "ad_file": ad_file, "adr_dir": adr_dir, "issues": []}))
-PY
+            jq -n \
+              --arg ad_file "$AD_FILE" \
+              --arg adr_dir "$adr_mem_dir" \
+              --argjson issues "[]" \
+              '{status:"success",action:"review",ad_file:$ad_file,adr_dir:$adr_dir,issues:$issues}'
         else
             # Format issues as JSON array
             issues_json=$(printf '%s\n' "${issues[@]}" | jq -R . | jq -s .)
-            python3 - "$AD_FILE" "$adr_mem_dir" "$issues_json" <<'PY'
-import json, sys
-ad_file, adr_dir, issues_raw = sys.argv[1:4]
-print(json.dumps({"status": "warning", "action": "review", "ad_file": ad_file, "adr_dir": adr_dir, "issues": json.loads(issues_raw)}))
-PY
+            jq -n \
+              --arg ad_file "$AD_FILE" \
+              --arg adr_dir "$adr_mem_dir" \
+              --argjson issues "$issues_json" \
+              '{status:"warning",action:"review",ad_file:$ad_file,adr_dir:$adr_dir,issues:$issues}'
         fi
     fi
 }
@@ -1567,12 +1571,24 @@ action_analyze() {
             feature_adrs_json=$(printf '%s\n' "${feature_adrs[@]}" | jq -R . | jq -s .)
         fi
 
-        python3 - "$ad_file" "$ad_exists" "$adr_dir" "$adr_exists" "$constitution_file" "$constitution_exists" "$feature_ads_json" "$feature_adrs_json" "${ARGS[*]}" <<'PY'
-import json, sys
-ad_file, ad_exists, adr_dir, adr_exists, constitution_file, constitution_exists = sys.argv[1:7]
-feature_ads_raw, feature_adrs_raw, context = sys.argv[7], sys.argv[8], sys.argv[9]
-print(json.dumps({"status": "success", "action": "analyze", "ad_file": ad_file, "ad_exists": ad_exists == "true", "adr_dir": adr_dir, "adr_exists": adr_exists == "true", "constitution_file": constitution_file, "constitution_exists": constitution_exists == "true", "feature_ads": json.loads(feature_ads_raw), "feature_adrs": json.loads(feature_adrs_raw), "context": context}))
-PY
+        # ad_exists/adr_exists/constitution_exists are literal "true"/"false"
+        # strings; pass them via --argjson as JSON booleans. feature_*_json
+        # are prebuilt JSON arrays → pass via --argjson.
+        local _ad_bool=false _adr_bool=false _const_bool=false
+        [[ "$ad_exists" == "true" ]] && _ad_bool=true
+        [[ "$adr_exists" == "true" ]] && _adr_bool=true
+        [[ "$constitution_exists" == "true" ]] && _const_bool=true
+        jq -n \
+          --arg ad_file "$ad_file" \
+          --argjson ad_exists "$_ad_bool" \
+          --arg adr_dir "$adr_dir" \
+          --argjson adr_exists "$_adr_bool" \
+          --arg constitution_file "$constitution_file" \
+          --argjson constitution_exists "$_const_bool" \
+          --argjson feature_ads "$feature_ads_json" \
+          --argjson feature_adrs "$feature_adrs_json" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"analyze",ad_file:$ad_file,ad_exists:$ad_exists,adr_dir:$adr_dir,adr_exists:$adr_exists,constitution_file:$constitution_file,constitution_exists:$constitution_exists,feature_ads:$feature_ads,feature_adrs:$feature_adrs,context:$context}'
     fi
 }
 
@@ -1669,21 +1685,25 @@ action_plan_dag() {
             else
                 subsystems_json+=","
             fi
-            subsystems_json+=$(python3 - "$s" <<'PY'
-import json, sys
-s = sys.argv[1]
-print(json.dumps({"id": s.lower().replace(" ", "-"), "name": s}), end="")
-PY
-)
+            # Exact parity with python s.lower().replace(" ","-"): per-char
+            # replacement of literal spaces ONLY (tabs preserved; jq -n
+            # encodes them correctly). No sed collapsing.
+            local lower slug
+            lower=$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')
+            slug=${lower// /-}
+            subsystems_json+=$(jq -n -c --arg id "$slug" --arg name "$s" '{id:$id,name:$name}')
         done
         subsystems_json+="]"
 
-        python3 - "$adr_dir" "$state_file" "$views_dir" "$adr_count" "$subsystems_json" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, state_file, views_dir = sys.argv[1:4]
-adr_count, subsystems_raw, context = int(sys.argv[4]), sys.argv[5], sys.argv[6]
-print(json.dumps({"status": "success", "action": "plan-dag", "adr_dir": adr_dir, "state_file": state_file, "views_dir": views_dir, "adr_count": adr_count, "subsystems": json.loads(subsystems_raw), "context": context}))
-PY
+        # subsystems_json is a prebuilt JSON array → pass via --argjson.
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg state_file "$state_file" \
+          --arg views_dir "$views_dir" \
+          --argjson adr_count "$adr_count" \
+          --argjson subsystems "$subsystems_json" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"plan-dag",adr_dir:$adr_dir,state_file:$state_file,views_dir:$views_dir,adr_count:$adr_count,subsystems:$subsystems,context:$context}'
     fi
 }
 
@@ -1721,11 +1741,12 @@ action_execute_dag() {
         if [[ -f "$state_file" ]]; then
             local state_content
             state_content=$(cat "$state_file")
-            python3 - "$state_file" "$views_dir" "$state_content" <<'PY'
-import json, sys
-state_file, views_dir, state_raw = sys.argv[1:4]
-print(json.dumps({"status": "success", "action": "execute-dag", "state_file": state_file, "views_dir": views_dir, "state": json.loads(state_raw)}))
-PY
+            # state_content is file CONTENT (JSON) → pass via --argjson.
+            jq -n \
+              --arg state_file "$state_file" \
+              --arg views_dir "$views_dir" \
+              --argjson state "$state_content" \
+              '{status:"success",action:"execute-dag",state_file:$state_file,views_dir:$views_dir,state:$state}'
         else
             echo "{\"status\":\"error\",\"action\":\"execute-dag\",\"error\":\"state_file_not_found\"}"
         fi
@@ -1787,21 +1808,19 @@ action_summarize() {
                 views_json+=","
             fi
             local rel_path="${f#$views_dir/}"
-            views_json+=$(python3 - "$f" "$rel_path" <<'PY'
-import json, sys
-f, rel = sys.argv[1:3]
-print(json.dumps({"path": f, "relative": rel}), end="")
-PY
-)
+            views_json+=$(jq -n --arg f "$f" --arg rel "$rel_path" '{"path":$f,"relative":$rel}' | tr -d '\n')
         done < <(find "$views_dir" -name "*.md" -type f 2>/dev/null)
         views_json+="]"
         
-        python3 - "$state_file" "$views_dir" "$ad_file" "$adr_dir" "$view_count" "$views_json" <<'PY'
-import json, sys
-state_file, views_dir, ad_file, adr_dir = sys.argv[1:5]
-view_count, views_raw = int(sys.argv[5]), sys.argv[6]
-print(json.dumps({"status": "success", "action": "summarize", "state_file": state_file, "views_dir": views_dir, "ad_file": ad_file, "adr_dir": adr_dir, "view_count": view_count, "views": json.loads(views_raw)}))
-PY
+        # views_json is a prebuilt JSON array → pass via --argjson.
+        jq -n \
+          --arg state_file "$state_file" \
+          --arg views_dir "$views_dir" \
+          --arg ad_file "$ad_file" \
+          --arg adr_dir "$adr_dir" \
+          --argjson view_count "$view_count" \
+          --argjson views "$views_json" \
+          '{status:"success",action:"summarize",state_file:$state_file,views_dir:$views_dir,ad_file:$ad_file,adr_dir:$adr_dir,view_count:$view_count,views:$views}'
     fi
 }
 
@@ -1840,11 +1859,11 @@ action_validate() {
     echo "  4. Report findings (READ-ONLY, no modifications)" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$adr_count" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, adr_count, context = sys.argv[1], int(sys.argv[2]), sys.argv[3]
-print(json.dumps({"status": "success", "action": "validate", "adr_dir": adr_dir, "adr_count": adr_count, "context": context}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --argjson adr_count "$adr_count" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"validate",adr_dir:$adr_dir,adr_count:$adr_count,context:$context}'
     fi
 }
 

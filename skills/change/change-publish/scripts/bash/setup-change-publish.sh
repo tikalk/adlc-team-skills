@@ -43,18 +43,13 @@ PUBLISHED_COUNT=$( { grep -l '^### Status: \*\*Published\*\*' "$CHDR_DRAFTS_DIR"
 MEMORY_COUNT=$(( $( { ls -1 "$MEMORY_DIR"/ChDR-*.md 2>/dev/null || true; } | wc -l | tr -d ' ') + $( { ls -1 "$LEGACY_MEMORY_DIR"/ChDR-*.md 2>/dev/null || true; } | wc -l | tr -d ' ') ))
 MEMORY_INDEX_EXISTS=$([[ -f "$MEMORY_INDEX" ]] && echo "true" || echo "false")
 
-python3 - "$PROJECT_ROOT" "$CHDR_DRAFTS_DIR" "$MEMORY_DIR" "$MEMORY_INDEX" "$ACCEPTED_CHDRS" "$ACCEPTED_COUNT" "$PUBLISHED_COUNT" "$MEMORY_COUNT" "$MEMORY_INDEX_EXISTS" << 'PY'
-import json, sys
-accepted = sys.argv[5].split() if sys.argv[5].strip() else []
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "CHDR_DRAFTS_DIR": sys.argv[2],
-  "MEMORY_DIR": sys.argv[3],
-  "MEMORY_INDEX": sys.argv[4],
-  "ACCEPTED_CHDRS": accepted,
-  "ACCEPTED_COUNT": int(sys.argv[6]),
-  "PUBLISHED_COUNT": int(sys.argv[7]),
-  "MEMORY_COUNT": int(sys.argv[8]),
-  "MEMORY_INDEX_EXISTS": sys.argv[9] == "true"
-}))
-PY
+if [ -n "$ACCEPTED_CHDRS" ]; then
+  accepted_json=$(printf '%s\n' $ACCEPTED_CHDRS | jq -R . | jq -s -c .)
+else
+  accepted_json="[]"
+fi
+if [[ "$MEMORY_INDEX_EXISTS" == "true" ]]; then mem_json=true; else mem_json=false; fi
+jq -n --arg rr "$PROJECT_ROOT" --arg dd "$CHDR_DRAFTS_DIR" --arg md "$MEMORY_DIR" --arg mi "$MEMORY_INDEX" \
+  --argjson accepted "$accepted_json" --argjson ac "$ACCEPTED_COUNT" --argjson pc "$PUBLISHED_COUNT" \
+  --argjson mc "$MEMORY_COUNT" --argjson mie "$mem_json" \
+  '{REPO_ROOT:$rr,CHDR_DRAFTS_DIR:$dd,MEMORY_DIR:$md,MEMORY_INDEX:$mi,ACCEPTED_CHDRS:$accepted,ACCEPTED_COUNT:$ac,PUBLISHED_COUNT:$pc,MEMORY_COUNT:$mc,MEMORY_INDEX_EXISTS:$mie}'

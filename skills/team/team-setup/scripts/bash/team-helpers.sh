@@ -19,6 +19,8 @@ set -euo pipefail
 # 1. PATH RESOLUTION
 ###############################################################################
 
+# JSON output always goes through jq -n (no manual string building).
+
 resolve_paths() {
   PROJECT_ROOT="${PROJECT_ROOT:-$([[ -d ".adlc" ]] && pwd || git rev-parse --show-toplevel 2>/dev/null || pwd)}"
   BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
@@ -33,14 +35,7 @@ resolve_paths() {
   if [[ -z "$TEAM_AI_DIRECTIVES" ]]; then
     INIT_OPTIONS="${PROJECT_ROOT}/.adlc/init-options.json"
     if [[ -f "$INIT_OPTIONS" ]]; then
-      TEAM_AI_DIRECTIVES=$(python3 -c '
-import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
-except Exception:
-    print("")
-' "$INIT_OPTIONS" 2>/dev/null || true)
+      TEAM_AI_DIRECTIVES=$(jq -r '.team_ai_directives // empty' "$INIT_OPTIONS" 2>/dev/null || true)
     fi
   fi
 
@@ -55,14 +50,11 @@ except Exception:
 }
 
 output_json() {
-  python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$BRANCH" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "TEAM_AI_DIRECTIVES": sys.argv[2],
-  "BRANCH": sys.argv[3]
-}))
-PY
+  jq -n \
+    --arg repo_root "$PROJECT_ROOT" \
+    --arg team_ai_directives "$TEAM_AI_DIRECTIVES" \
+    --arg branch "$BRANCH" \
+    '{"REPO_ROOT":$repo_root,"TEAM_AI_DIRECTIVES":$team_ai_directives,"BRANCH":$branch}'
 }
 
 ###############################################################################
@@ -95,7 +87,7 @@ validate_team_ai_directives() {
 check_skills_json_parses() {
   local dir="$1"
   if [[ -e "${dir}/.skills.json" ]] \
-    && ! python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "${dir}/.skills.json" 2>/dev/null; then
+    && ! jq -e . "${dir}/.skills.json" >/dev/null 2>&1; then
     echo "MISSING: .skills.json is not valid JSON"
     return 1
   fi
@@ -154,20 +146,14 @@ wire_team_ai_directives() {
   local init_dir="${project_root}/.adlc"
   local init_path="${init_dir}/init-options.json"
   mkdir -p "$init_dir"
-  if ! python3 -c '
-import json, os, sys
-abs_path, path = sys.argv[1], sys.argv[2]
-cfg = {}
-if os.path.exists(path):
-    with open(path) as f:
-        cfg = json.load(f)
-if not isinstance(cfg, dict):
-    sys.exit("not a JSON object")
-cfg["team_ai_directives"] = abs_path
-with open(path, "w") as f:
-    json.dump(cfg, f, indent=2)
-    f.write("\n")
-' "$abs" "$init_path" 2>/dev/null; then
+  # Missing file starts as an empty object (same as the old python reader's
+  # `cfg = {}`); existing file must parse or wiring refuses.
+  if [[ ! -e "$init_path" ]]; then
+    jq -n '{}' > "$init_path"
+  fi
+  if ! jq -e --arg td "$abs" 'select(type == "object") | .team_ai_directives = $td' "$init_path" > "${init_path}.tmp" 2>/dev/null \
+    || ! mv "${init_path}.tmp" "$init_path" 2>/dev/null; then
+    rm -f "${init_path}.tmp" 2>/dev/null
     echo "ERROR: ${init_path} is not valid JSON or not an object — not wired" >&2
     return 1
   fi
@@ -424,14 +410,7 @@ inject_project_agents() {
   if [[ -z "$team_directive" ]]; then
     local init_options="${project_root}/.adlc/init-options.json"
     if [[ -f "$init_options" ]]; then
-      team_directive=$(python3 -c '
-import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
-except Exception:
-    print("")
-' "$init_options" 2>/dev/null || true)
+      team_directive=$(jq -r '.team_ai_directives // empty' "$init_options" 2>/dev/null || true)
     fi
   fi
 
@@ -516,43 +495,38 @@ ${marker_end}
 SECTION
 )
 
-  # Create AGENTS.md if it doesn't exist, or update the managed section
-  python3 - "$agents_file" "$marker_start" "$marker_end" "$section" <<'PY'
-import os, sys
-
-agents_path, start, end, section_content = sys.argv[1:5]
-
-if os.path.exists(agents_path):
-    with open(agents_path, "r", encoding="utf-8") as f:
-        content = f.read()
-else:
-    content = ""
-
-# Check if markers already exist
-s_idx = content.find(start)
-e_idx = content.find(end)
-
-if s_idx != -1 and e_idx != -1 and s_idx < e_idx:
-    # Replace existing managed section
-    new_content = content[:s_idx] + section_content + content[e_idx + len(end):]
-    if new_content.endswith("\n"):
-        new_content += "\n"
-    elif not new_content.endswith("\n\n"):
-        new_content += "\n"
-    with open(agents_path, "w", encoding="utf-8") as f:
-        f.write(new_content)
-    print(f"Updated team AI directives section in {agents_path}")
-else:
-    # Append managed section
-    if content and not content.endswith("\n"):
-        content += "\n"
-    if content and not content.endswith("\n\n"):
-        content += "\n"
-    content += section_content + "\n"
-    with open(agents_path, "w", encoding="utf-8") as f:
-        f.write(content)
-    print(f"Injected team AI directives section into {agents_path}")
-PY
+  # Create AGENTS.md if it doesn't exist, or update the managed section.
+  # Pure-awk rewrite: the section content may contain quotes, backslashes,
+  # and backticks, so it travels via temp files, never the command line.
+  local section_file tmp_new
+  section_file=$(mktemp) tmp_new=$(mktemp)
+  printf '%s' "$section" > "$section_file"
+  if [[ -f "$agents_file" ]]; then
+    awk -v start="$marker_start" -v end="$marker_end" -v secfile="$section_file" '
+      BEGIN { sec = ""; while ((getline line < secfile) > 0) sec = sec line "\n"; close(secfile); found_s = 0; found_e = 0 }
+      { lines[NR] = $0 "\n" }
+      index($0, start) && !found_s { s_line = NR; found_s = 1 }
+      index($0, end) && found_s && !found_e { e_line = NR; found_e = 1 }
+      END {
+        if (found_s && found_e && s_line < e_line) {
+          for (i = 1; i < s_line; i++) printf "%s", lines[i]
+          printf "%s", sec
+          for (i = e_line + 1; i <= NR; i++) printf "%s", lines[i]
+        } else {
+          for (i = 1; i <= NR; i++) printf "%s", lines[i]
+          print ""
+          printf "%s", sec
+        }
+      }
+    ' "$agents_file" > "$tmp_new"
+  else
+    printf '%s\n' "$section" > "$tmp_new"
+  fi
+  mv "$tmp_new" "$agents_file"
+  rm -f "$section_file"
+  if grep -qF "$marker_start" "$agents_file"; then
+    echo "Injected/updated team AI directives section in ${agents_file}"
+  fi
 }
 
 ###############################################################################
@@ -588,31 +562,27 @@ agents_section_uninstall() {
     return 0
   fi
 
-  python3 - "$agents_file" "$marker_start" "$marker_end" <<'PY'
-import sys
-
-agents_path, start, end = sys.argv[1:4]
-
-with open(agents_path, "r", encoding="utf-8") as f:
-    content = f.read()
-
-s_idx = content.find(start)
-e_idx = content.find(end)
-
-if s_idx == -1 or e_idx == -1 or s_idx >= e_idx:
-    print(f"No managed section in {agents_path} (nothing removed)")
-    sys.exit(0)
-
-new_content = content[:s_idx] + content[e_idx + len(end):]
-while "\n\n\n" in new_content:
-    new_content = new_content.replace("\n\n\n", "\n\n")
-new_content = new_content.strip("\n")
-if new_content:
-    new_content += "\n"
-with open(agents_path, "w", encoding="utf-8") as f:
-    f.write(new_content)
-print(f"Removed team AI directives section from {agents_path}")
-PY
+  if ! grep -qF "$marker_start" "$agents_file" || ! grep -qF "$marker_end" "$agents_file"; then
+    echo "No managed section in ${agents_file} (nothing removed)"
+    return 0
+  fi
+  local s_line e_line
+  s_line=$(grep -nF -m1 "$marker_start" "$agents_file" | cut -d: -f1)
+  e_line=$(grep -nF -m1 "$marker_end" "$agents_file" | cut -d: -f1)
+  if [[ "$s_line" -ge "$e_line" ]]; then
+    echo "No managed section in ${agents_file} (nothing removed)"
+    return 0
+  fi
+  # Cut the managed section, collapse 3+ newlines to 2, strip leading and
+  # trailing blank lines, keep exactly one trailing newline when non-empty.
+  local tmp_un
+  tmp_un=$(mktemp)
+  { head -n $((s_line - 1)) "$agents_file"; tail -n +$((e_line + 1)) "$agents_file"; } > "$tmp_un"
+  awk '/^$/ { pending++; next } { if (out > 0 && pending > 0) print ""; print; pending = 0; out++ }' \
+    "$tmp_un" > "${tmp_un}.2"
+  mv "${tmp_un}.2" "$agents_file"
+  rm -f "$tmp_un"
+  echo "Removed team AI directives section from ${agents_file}"
 }
 
 ###############################################################################

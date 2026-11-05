@@ -8,6 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../../product-clarify/scripts/bash/pdr
 # product-clarify) instead of dying later on a missing function.
 command -v generate_pdr_index >/dev/null 2>&1 || { echo "ERROR: pdr-lib.sh not loaded — install the product-clarify skill: adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify" >&2; return 1 2>/dev/null || exit 1; }
 
+# JSON output is built with jq -n (jq is required; no fallbacks).
+
 # shared layout constants (single definition in paths.sh; pdr-lib.sh
 # sources it too — this block keeps the script correct standalone).
 _pd_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,18 +45,10 @@ if [[ -d "$PDR_DRAFTS_DIR" ]]; then
 fi
 
 if $JSON_MODE; then
-  python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PDR_MEMORY_DIR" "$PRD_FILE" "$SECTIONS_DIR" "$STATE_FILE" "$ACCEPTED_COUNT" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "PDR_DRAFTS_DIR": sys.argv[2],
-  "PDR_MEMORY_DIR": sys.argv[3],
-  "PRD_FILE": sys.argv[4],
-  "SECTIONS_DIR": sys.argv[5],
-  "STATE_FILE": sys.argv[6],
-  "accepted_count": int(sys.argv[7])
-}))
-PY
+  jq -n --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pmd "$PDR_MEMORY_DIR" \
+    --arg pf "$PRD_FILE" --arg sd "$SECTIONS_DIR" --arg sf "$STATE_FILE" \
+    --argjson a "$ACCEPTED_COUNT" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PDR_MEMORY_DIR:$pmd,PRD_FILE:$pf,SECTIONS_DIR:$sd,STATE_FILE:$sf,accepted_count:$a}' 
 else
   echo "[INFO] product-implement setup"
   echo "  Accepted PDRs: $ACCEPTED_COUNT"

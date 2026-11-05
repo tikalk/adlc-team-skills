@@ -34,14 +34,7 @@ resolve_team_ai_directives() {
   local td="${TEAM_AI_DIRECTIVES:-}"
   [[ -n "$td" ]] && { echo "$td"; return; }
   if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
-    td=$(python3 -c '
-import json,sys
-try:
-    with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
-except Exception:
-    print("")
-' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
+    td=$(jq -r '.team_ai_directives // empty' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
     [[ -n "$td" ]] && { echo "$td"; return; }
   fi
   echo "${project_root}/team-ai-directives"
@@ -99,18 +92,10 @@ NEXT_CHDR=$(next_chdr_number "$CHDR_DRAFTS_DIR")
 EXISTING_CHDRS=$( { ls -1 "$CHDR_DRAFTS_DIR"/ChDR-*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
 TD_CONFIGURED=$([[ -d "$TEAM_AI_DIRECTIVES" ]] && echo "true" || echo "false")
 
-python3 - "$PROJECT_ROOT" "$CHDR_DRAFTS_DIR" "$CHANGE_STATE_FILE" "$TEAM_AI_DIRECTIVES" "$BRANCH" "$NEXT_CHDR" "$EXISTING_CHDRS" "$TD_CONFIGURED" "$GIT_AVAILABLE" "$DEFAULT_BRANCH" << 'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "CHDR_DRAFTS_DIR": sys.argv[2],
-  "CHANGE_STATE_FILE": sys.argv[3],
-  "TEAM_AI_DIRECTIVES": sys.argv[4],
-  "BRANCH": sys.argv[5],
-  "NEXT_CHDR": sys.argv[6],
-  "EXISTING_CHDRS": int(sys.argv[7]),
-  "TD_CONFIGURED": sys.argv[8] == "true",
-  "GIT_AVAILABLE": sys.argv[9] == "true",
-  "DEFAULT_BRANCH": sys.argv[10]
-}))
-PY
+if [[ "$TD_CONFIGURED" == "true" ]]; then td_json=true; else td_json=false; fi
+if [[ "$GIT_AVAILABLE" == "true" ]]; then git_json=true; else git_json=false; fi
+jq -n --arg rr "$PROJECT_ROOT" --arg dd "$CHDR_DRAFTS_DIR" --arg csf "$CHANGE_STATE_FILE" \
+  --arg td "$TEAM_AI_DIRECTIVES" --arg br "$BRANCH" --arg next "$NEXT_CHDR" \
+  --argjson existing "$EXISTING_CHDRS" --argjson tdc "$td_json" --argjson ga "$git_json" \
+  --arg db "$DEFAULT_BRANCH" \
+  '{REPO_ROOT:$rr,CHDR_DRAFTS_DIR:$dd,CHANGE_STATE_FILE:$csf,TEAM_AI_DIRECTIVES:$td,BRANCH:$br,NEXT_CHDR:$next,EXISTING_CHDRS:$existing,TD_CONFIGURED:$tdc,GIT_AVAILABLE:$ga,DEFAULT_BRANCH:$db}'

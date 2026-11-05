@@ -12,6 +12,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../../product-clarify/scripts/bash/pdr
 # product-clarify) instead of dying later on a missing function.
 command -v generate_pdr_index >/dev/null 2>&1 || { echo "ERROR: pdr-lib.sh not loaded — install the product-clarify skill: adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify" >&2; return 1 2>/dev/null || exit 1; }
 
+# JSON output is built with jq -n (jq is required; no fallbacks).
+
 # shared layout constants (single definition in paths.sh; pdr-lib.sh
 # sources it too — this block keeps the script correct standalone).
 _pd_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,16 +39,9 @@ NEXT_PDR=$(next_record_number PDR "$PDR_DRAFTS_DIR" \
 PDR_COUNT=$(find "$PDR_DRAFTS_DIR" -name 'PDR-*.md' 2>/dev/null | wc -l)
 
 if $JSON_MODE; then
-  python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PRD_FILE" "$NEXT_PDR" "$PDR_COUNT" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "PDR_DRAFTS_DIR": sys.argv[2],
-  "PRD_FILE": sys.argv[3],
-  "next_pdr": sys.argv[4],
-  "pdr_count": int(sys.argv[5])
-}))
-PY
+  jq -n --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pf "$PRD_FILE" \
+    --arg np "$NEXT_PDR" --argjson n "$PDR_COUNT" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PRD_FILE:$pf,next_pdr:$np,pdr_count:$n}' 
 else
   echo "[INFO] product-specify setup"
   echo "  REPO_ROOT: $REPO_ROOT"

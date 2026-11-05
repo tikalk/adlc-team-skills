@@ -129,6 +129,24 @@ function Api([string[]]$ApiArgs) {
     else { gh api --hostname github.com @ApiArgs }
 }
 
+function Enc([string]$S) { json 'console.log(encodeURIComponent(process.argv[1]))' @($S) }
+
+# Invoke-ResolveMrOwnershipFile <json-string> — pass a JSON payload to
+# resolve-mr-ownership.ps1 via a temp file (never a script-to-script pipe:
+# `[Console]::In` is the process console, not the pipe, so `payload |
+# resolve-mr-ownership.ps1` arrives empty). Prints the resolver's JSON answer.
+function Invoke-ResolveMrOwnershipFile([string]$Payload) {
+    $payloadFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($payloadFile, $Payload)
+        $answer = & "${PSScriptRoot}/resolve-mr-ownership.ps1" $payloadFile
+        if ($LASTEXITCODE -ne 0) { Die 'cannot resolve MR ownership' }
+        return ($answer -join "`n")
+    } finally {
+        Remove-Item -Force $payloadFile -ErrorAction SilentlyContinue
+    }
+}
+
 # Scope pre-flight (ADR-432): block before any mutation when the tracker token
 # cannot create the MR/PR. The outcome is carried as denied_scope
 # (api|repo|null) into the resolve-mr-ownership payload below, whose
@@ -154,24 +172,6 @@ if ($provider -eq 'gitlab') {
     if ($scopes) {
         $have = ($scopes -split ',').ForEach({ $_.Trim() }) -contains 'repo'
         if (-not $have) { Die "tracker token lacks the 'repo' scope needed to open the pull request" }
-    }
-}
-
-function Enc([string]$S) { json 'console.log(encodeURIComponent(process.argv[1]))' @($S) }
-
-# Invoke-ResolveMrOwnershipFile <json-string> — pass a JSON payload to
-# resolve-mr-ownership.ps1 via a temp file (never a script-to-script pipe:
-# `[Console]::In` is the process console, not the pipe, so `payload |
-# resolve-mr-ownership.ps1` arrives empty). Prints the resolver's JSON answer.
-function Invoke-ResolveMrOwnershipFile([string]$Payload) {
-    $payloadFile = [System.IO.Path]::GetTempFileName()
-    try {
-        [System.IO.File]::WriteAllText($payloadFile, $Payload)
-        $answer = & "${PSScriptRoot}/resolve-mr-ownership.ps1" $payloadFile
-        if ($LASTEXITCODE -ne 0) { Die 'cannot resolve MR ownership' }
-        return ($answer -join "`n")
-    } finally {
-        Remove-Item -Force $payloadFile -ErrorAction SilentlyContinue
     }
 }
 

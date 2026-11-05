@@ -20,26 +20,56 @@ export LC_ALL=C
 
 TREE="${1:-.}"
 
-if ! cd "$TREE" 2>/dev/null; then
+if ! cd -- "$TREE" 2>/dev/null; then
     echo "review-preview: cannot cd to $TREE" >&2
     exit 1
 fi
 
-# Changed files in the working tree (vs HEAD, or all files if no commit yet).
-if git rev-parse --verify HEAD >/dev/null 2>&1; then
-    CHANGED=$(git diff --name-only HEAD 2>/dev/null || true)
+# Safe git invocation: disable repository-local core.fsmonitor (which can
+# execute attacker-configured commands) and suppress the pager. These flags
+# apply per-invocation and do not alter the repository configuration.
+GIT_SAFE="git -c core.fsmonitor= --no-pager"
+
+# Changed files in the working tree: tracked modifications/staged changes,
+# plus untracked, non-ignored files (git diff --name-only HEAD misses
+# untracked files).
+if $GIT_SAFE rev-parse --verify HEAD >/dev/null 2>&1; then
+    CHANGED=$($GIT_SAFE diff --name-only HEAD 2>/dev/null || true)
+    UNTRACKED=$($GIT_SAFE ls-files --others --exclude-standard 2>/dev/null || true)
 else
-    CHANGED=$(git ls-files 2>/dev/null || true)
+    CHANGED=""
+    UNTRACKED=$($GIT_SAFE ls-files --others --exclude-standard 2>/dev/null || true)
+fi
+CHANGED=$(printf '%s\n%s\n' "$CHANGED" "$UNTRACKED" | grep -v '^$' || true)
+
+# Provenance: detected by inspecting PROVENANCE.md content and the contents
+# of changed files for provenance references. A filename containing
+# "provenance" alone is not evidence. The format of formal provenance is
+# governed by the owner sign-off path and is not defined here;
+# this preview only reports whether a textual provenance reference was found.
+PROVENANCE_PRESENT=0
+PROVENANCE_SOURCE="none"
+if [ -f "PROVENANCE.md" ] && grep -q '[^[:space:]]' "PROVENANCE.md" 2>/dev/null; then
+    PROVENANCE_PRESENT=1
+    PROVENANCE_SOURCE="provenance file"
+fi
+# Inspect changed file contents for provenance references (e.g. "which files
+# came from where"). Do not treat a filename as provenance evidence.
+if [ "$PROVENANCE_PRESENT" -eq 0 ] && [ -n "$CHANGED" ]; then
+    while IFS= read -r changed_file; do
+        [ -f "$changed_file" ] || continue
+        if grep -qiE 'which files came from where|provenance' "$changed_file" 2>/dev/null; then
+            PROVENANCE_PRESENT=1
+            PROVENANCE_SOURCE="reference in $changed_file"
+            break
+        fi
+    done <<< "$CHANGED"
 fi
 
-# Provenance: present if a PROVENANCE.md exists and is non-empty, or if any
-# changed file mentions provenance / "files came from where".
-PROVENANCE_PRESENT=0
-if [ -f "PROVENANCE.md" ] && [ -s "PROVENANCE.md" ]; then
-    PROVENANCE_PRESENT=1
-elif printf '%s\n' "$CHANGED" | grep -qiE "provenance|files came from where"; then
-    PROVENANCE_PRESENT=1
-fi
+# Display the target tree safely: never print a raw path that could contain
+# verdict-marker-like tokens (head=, outcome=, important=). Use a sanitized
+# label instead.
+SAFE_TREE_LABEL=$(printf '%s' "$TREE" | sed 's/head=[0-9a-fA-F]\{40\}/head=<sha>/g; s/outcome=[a-z-]*/outcome=<value>/g; s/important=[0-9]*/important=<n>/g')
 
 cat <<EOF
 factory-review pre-PR verdict preview — DRAFT (advisory, not a verdict)
@@ -49,7 +79,7 @@ This is a draft preview only. It is NOT a factory-review verdict: it carries
 no head-SHA marker, no outcome or importance fields, and it is never posted to
 the tracker. No sensor reads this output.
 
-Working tree: $TREE
+Working tree: $SAFE_TREE_LABEL
 
 Changed files:
 $(if [ -n "$CHANGED" ]; then printf '%s\n' "$CHANGED" | sed 's/^/  /'; else echo "  (none)"; fi)
@@ -67,9 +97,10 @@ EOF
 
 if [ "$PROVENANCE_PRESENT" -eq 1 ]; then
     cat <<EOF
-  provenance: present — provenance file or provenance reference found in
-  changed files. (Formal REVIEW.md policy fields + owner values are captured
-   through the owner sign-off path; this preview reports presence only.)
+  provenance: detected — $PROVENANCE_SOURCE.
+  (A textual provenance reference is not proof of complete or compliant
+   provenance. Formal REVIEW.md policy fields + owner values are captured
+   through the owner sign-off path; this preview reports detection only.)
 EOF
 else
     cat <<EOF

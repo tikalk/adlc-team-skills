@@ -5,6 +5,10 @@ Passes when the preview output:
   * carries no verdict marker tokens (no head-SHA marker, no outcome=,
     no important=, no factory-review:step=review marker).
 Fails otherwise.
+
+This grader verifies the output contract only; it does not confirm that
+review passes were executed (the preview lists them as structural checks,
+it does not run them).
 """
 
 import re

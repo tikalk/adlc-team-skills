@@ -14,6 +14,11 @@ resolve_team_levelup_paths() {
   PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
   BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
 
+  # jq is required here (no silent fallback to the default path when it is missing).
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed (https://jqlang.github.io/jq/download/)" >&2
+    return 1 2>/dev/null || exit 1
+  fi
   TEAM_AI_DIRECTIVES="${TEAM_AI_DIRECTIVES:-}"
   if [[ -z "$TEAM_AI_DIRECTIVES" && -f "${PROJECT_ROOT}/.adlc/init-options.json" ]]; then
     TEAM_AI_DIRECTIVES=$(jq -r '.team_ai_directives // empty' "${PROJECT_ROOT}/.adlc/init-options.json" 2>/dev/null || true)

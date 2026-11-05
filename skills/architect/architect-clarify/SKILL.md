@@ -70,13 +70,14 @@ Each ADR should have:
 
 1. **Load Current State**: Parse ADRs from `{REPO_ROOT}/.adlc/drafts/adr/` (individual file format) and `{REPO_ROOT}/docs/adlc/memory/constitution.md` (legacy `{REPO_ROOT}/.adlc/memory/constitution.md` fallback — dual-read)
 
-**IMPORTANT - Path Resolution**:
+**IMPORTANT - Path Resolution (REPO_ROOT + scope)**:
 
 - The setup script outputs `REPO_ROOT` - use this to determine the correct paths
-- REPO_ROOT is found by searching upward from current directory for `.adlc` directory
+- REPO_ROOT is found by searching upward from current directory for `.adlc` directory (when running helpers from zsh, source the `scripts/bash/` file under `bash -c` or `emulate -L sh`: the scripts rely on `BASH_SOURCE[0]` for path resolution and will not locate helpers under zsh)
 - NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`
 - The setup script reads individual ADR files from the `adr/` directory
 - When running from a subdirectory (e.g., a subproject directory), `.adlc` may be in the parent directory
+- `move_adr`/`get_adr_by_id` accept bare IDs (`8`), zero-padded IDs (`008`), and full suffixed stems (`008-amendment-2`): the `PDR-`/`ADR-` prefix is optional and callers must never pre-strip it. Bare `8` and `008` resolve to the same file.
 
 2. **Analyze ADRs**: Check each ADR against quality checklist
 3. **Identify Gaps**: List areas needing clarification
@@ -90,7 +91,7 @@ Each ADR should have:
 **Objective**: Establish current ADR state
 
 1. **Run Prerequisites Script**:
-   - Execute `scripts/bash/setup-architect.sh` from repo root
+   - Execute `scripts/bash/setup-architect.sh <action>` from repo root — never bare: the script needs an explicit action (`specify` for greenfield, `init` for brownfield, `clarify` to refine, `implement` to compile). With no action and no AD.md it defaults to `init`, not `specify`.
    - Parse JSON for paths to memory files
    - Handle errors gracefully if files don't exist
 

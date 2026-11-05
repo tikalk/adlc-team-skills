@@ -358,3 +358,42 @@ def test_check_queue_hierarchy_disclosure_fail():
     result = get_assert_hier(output)
     assert result["pass"] is False
     assert result["score"] == 0.0
+
+
+LIFECYCLE_SCENARIO = "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label"
+
+
+def test_check_lifecycle_single_label_pass_atomic_swap():
+    output = (
+        'Set Lifecycle: glab issue update 81 --label "executing" --unlabel "spec-gated,intent". '
+        "Labels after: agent-can-execute, autonomous, executing."
+    )
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_lifecycle_single_label_fail_two_labels_after():
+    output = (
+        'glab issue update 81 --label "executing" --unlabel "spec-gated". '
+        "Labels after: agent-can-execute, autonomous, intent, executing."
+    )
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_lifecycle_single_label_fail_add_without_remove():
+    output = 'gh issue edit 81 --add-label "validation". Done.'
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_lifecycle_single_label_resume_is_not_a_state():
+    output = (
+        'glab issue update 82 --label "executing" --unlabel "parked". '
+        "Labels after: supervised, executing, resume."
+    )
+    result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
+    assert result["pass"] is True

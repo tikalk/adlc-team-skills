@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # product-specify
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Transforms a high-level product idea into documented Product Decision Records (PDRs) through **interactive exploration** and trade-off analysis.
@@ -40,7 +43,7 @@ Transforms a high-level product idea into documented Product Decision Records (P
 sh: scripts/bash/setup-product-specify.sh [--json]
 ps: scripts/powershell/setup-product-specify.ps1
 ```
-**Requires:** the `product-clarify` skill (provides `pdr-lib.sh`): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
+**Requires:** the `product-clarify` skill for PDR lifecycle operations (index generation, promotion, clarification): `adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify`
 
 
 **Setup output** (JSON):
@@ -142,7 +145,7 @@ After each decision is confirmed, create a PDR file.
 
 **PDR file format** (individual file, YAML frontmatter — use the shared template):
 
-Use the template at `{REPO_ROOT}/.agents/skills/product/templates/pdr-template.md` as the canonical PDR format. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
+Use the canonical template `skills/product/templates/pdr-template.md` in the adlc-team-skills checkout as the canonical PDR format (family-level templates are checkout-only — they do not ship with an installed skill). If the template file is absent in your checkout, use the inline PDR format below instead. The template includes YAML frontmatter (status, date, owner, category, feature-area, title) as the single source of truth for index generation, plus the standard PDR body sections (Context, Decision, Consequences, Alternatives, Links).
 
 ```markdown
 ---

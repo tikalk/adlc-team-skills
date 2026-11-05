@@ -10,6 +10,11 @@ TEAM_AI_DIRECTIVES=""
 
 INIT_OPTIONS="${PROJECT_ROOT}/.adlc/init-options.json"
 if [[ -f "$INIT_OPTIONS" ]]; then
+  # jq is required for this read — no silent fallback to the default path.
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed (https://jqlang.github.io/jq/download/)" >&2
+    exit 1
+  fi
   TEAM_AI_DIRECTIVES=$(jq -r '.team_ai_directives // empty' "$INIT_OPTIONS" 2>/dev/null || true)
 fi
 

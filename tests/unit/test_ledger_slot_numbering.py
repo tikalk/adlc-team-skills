@@ -8,7 +8,8 @@ whose highest record carries a suffix reports a slot that is already taken. It
 also scanned `.adlc/drafts/pdr/` alone, ignoring published records in
 `docs/adlc/memory/pdr/`, so a promoted record's slot was free to be reissued.
 
-Contract under test (canonical helpers only — borrowers reference these):
+Contract under test (canonical helpers; borrowing skills vendor the ones they
+need per the skill-local script rule):
 - a record's number is the leading digits of its filename stem; suffixes are
   preserved and never arithmetically parsed (same rule `generate_adr_index`
   already pins in test_index_id_parsing.py)
@@ -25,6 +26,7 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 PDR_LIB = ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh"
+SETUP_IMPLEMENT = ROOT / "skills/product/product-implement/scripts/bash/setup-product-implement.sh"
 SETUP_SPECIFY = ROOT / "skills/product/product-specify/scripts/bash/setup-product-specify.sh"
 SETUP_INIT = ROOT / "skills/product/product-init/scripts/bash/setup-product-init.sh"
 SETUP_ARCH = ROOT / "skills/architect/architect-clarify/scripts/bash/setup-architect.sh"
@@ -273,6 +275,36 @@ def test_next_ad_delta_version_bumps_the_minor(docs_tree):
     assert r.stdout.strip() == "v13.20.0"
 
 
+# ── the setup JSON is the documented surface for implement runs ─────────────
+
+SETUP_IMPLEMENT = (ROOT / "skills/product/product-implement/scripts/bash/"
+                   "setup-product-implement.sh")
+
+
+def test_implement_setup_emits_every_ledger_slot(docs_tree):
+    """SKILL.md tells product-implement to read the slots from this JSON, so
+    the fields must be calculated from the same checkout, not eyeballed."""
+    import json as _json
+    r = _run(f'bash "{SETUP_IMPLEMENT}" --json', docs_tree)
+    assert r.returncode == 0, r.stderr
+    data = _json.loads(r.stdout)
+    assert data["next_pdr"] == "010", data
+    assert data["next_prd_section"] == "27", data
+    assert data["next_req_id"] == "217", data
+    assert data["next_feature_number"] == "70", data
+
+
+def test_architect_implement_json_emits_the_delta_slot(docs_tree):
+    """architect-implement reads `ad_file` + `next_ad_delta_version` from the
+    owning skill's setup JSON."""
+    import json as _json
+    r = _run(f'bash "{SETUP_ARCH}" implement --preview --json', docs_tree)
+    assert r.returncode == 0, r.stderr
+    data = _json.loads(r.stdout)
+    assert data["ad_file"].endswith("docs/adlc/architect/AD.md"), data
+    assert data["next_ad_delta_version"] == "v13.20.0", data
+
+
 # ── the staleness precondition: a slot read from a stale base is still wrong ─
 
 PATHS_SH = ROOT / "skills/team/workspace/scripts/bash/paths.sh"
@@ -395,12 +427,13 @@ def test_powershell_twins_are_declared_for_the_new_helpers():
 
 
 def test_setup_architect_sh_is_source_safe(docs_tree):
-    """The SKILL.md "Claiming Ledger Slots" flow sources setup-architect.sh
-    and then calls its helpers, so a source must run no action: the argument
-    parse, the default action and the dispatch belong to execution only.
-    Before the guard, a bare source picked the default action and ran the
-    whole update/init flow -- banner on stderr, `.adlc/` directories seeded
-    into the caller's repo."""
+    """Sourcing setup-architect.sh must only define helpers, never run an
+    action. The SKILL.md flow now invokes the owning skill and reads the
+    setup JSON, but the script keeps its sourcing contract for callers that
+    already source it: the argument parse, the default action and the
+    dispatch belong to execution only. Before the guard, a bare source picked
+    the default action and ran the whole update/init flow -- banner on stderr,
+    `.adlc/` directories seeded into the caller's repo."""
     r = _run(f'source "{SETUP_ARCH}"; '
              f'next_ad_delta_version "{docs_tree}/docs/adlc/architect/AD.md"',
              docs_tree)
@@ -412,3 +445,264 @@ def test_setup_architect_sh_is_source_safe(docs_tree):
         f"sourcing setup-architect.sh must run no action; got stderr={r.stderr!r}")
     assert not (docs_tree / ".adlc" / "memory").exists(), (
         "sourcing setup-architect.sh must not seed directories")
+
+
+# ── octal guard: zero-padded IDs ≥ 008 must not abort index generation ─────────
+
+def _write_fm_status(path: Path, status: str, title: str = "T"):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f"---\nstatus: {status}\ndate: 2026-11-04\n---\n\n# {title}\n",
+        encoding="utf-8",
+    )
+
+
+def test_generate_adr_index_handles_octal_looking_ids(tmp_path):
+    """ADR-008/ADR-009 must render, byte-identical to the PDR-side 10# guard."""
+    for stem, title in (("ADR-008", "Eight"), ("ADR-009", "Nine")):
+        _write_fm_status(tmp_path / f".adlc/drafts/adr/{stem}.md", "proposed", title)
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title", "generate_adr_index")
+    r = _run(f'source "{harness}"; generate_adr_index drafts', tmp_path)
+    assert r.returncode == 0, f"octal abort: {r.stderr}"
+    assert "invalid octal" not in r.stderr
+    out = (tmp_path / ".adlc/drafts/adr/adr.md").read_text(encoding="utf-8")
+    assert "| ADR-008 |" in out
+    assert "| ADR-009 |" in out
+    assert "ADR-000" not in out
+
+
+def test_generate_adr_index_octal_ids_stay_byte_stable(tmp_path):
+    """008/009 render through the same %03d path as 007: one code path."""
+    for stem, title in (("ADR-007", "Seven"), ("ADR-008", "Eight")):
+        _write_fm_status(tmp_path / f".adlc/drafts/adr/{stem}.md", "proposed", title)
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title", "generate_adr_index")
+    r = _run(f'source "{harness}"; generate_adr_index drafts', tmp_path)
+    assert r.returncode == 0, r.stderr
+    out = (tmp_path / ".adlc/drafts/adr/adr.md").read_text(encoding="utf-8")
+    assert "| ADR-007 |" in out and "| ADR-008 |" in out
+
+
+def test_get_adr_by_id_accepts_octal_looking_bare_ids(tmp_path):
+    """get_adr_by_id 8 / 008 must resolve ADR-008.md without an octal error."""
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    for given in ("8", "008"):
+        r = _run(f'source "{harness}"; get_adr_by_id "{given}" drafts', tmp_path)
+        assert r.returncode == 0, f"id {given}: {r.stderr}"
+        assert "Eight" in r.stdout
+        assert "invalid octal" not in r.stderr
+
+
+def test_write_and_move_adr_accept_octal_looking_ids(tmp_path):
+    """write_adr 8 → ADR-008.md; move_adr 8 drafts memory — no octal abort."""
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title",
+                            "generate_adr_index", "move_adr", "write_adr")
+    r = _run(f'source "{harness}"; write_adr 8 "---\\nstatus: proposed\\n---\\n\\n# Eight\\n" drafts',
+             tmp_path)
+    assert r.returncode == 0, f"write_adr octal abort: {r.stderr}"
+    assert (tmp_path / ".adlc/drafts/adr/ADR-008.md").exists()
+    r = _run(f'source "{harness}"; move_adr 8 drafts memory', tmp_path)
+    assert r.returncode == 0, f"move_adr octal abort: {r.stderr}"
+    assert (tmp_path / "docs/adlc/memory/adr/ADR-008.md").exists()
+    assert "invalid octal" not in r.stderr
+
+
+# ── prefixed + suffixed IDs: Important 1+2 fix (callers may pass full IDs) ──
+
+def test_get_adr_by_id_accepts_prefixed_ids(tmp_path):
+    """get_adr_by_id 'ADR-008' must resolve ADR-008.md (Important 1).
+
+    Callers (implement flows, slash-command args) pass the full display ID;
+    without prefix-stripping this looks up ADR-ADR-008.md and returns 1.
+    """
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    r = _run(f'source "{harness}"; get_adr_by_id "ADR-008" drafts', tmp_path)
+    assert r.returncode == 0, f"prefixed id rejected: {r.stderr}"
+    assert "Eight" in r.stdout
+    assert "invalid octal" not in r.stderr
+
+
+def test_move_adr_accepts_prefixed_ids(tmp_path):
+    """move_adr 'ADR-008' drafts memory must move ADR-008.md (Important 2).
+
+    The bare-ID path silently no-ops on prefixed input (rc 0, file stays),
+    so this pins the files, not just the return code.
+    """
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title",
+                            "generate_adr_index", "move_adr")
+    r = _run(f'source "{harness}"; move_adr "ADR-008" drafts memory', tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert (tmp_path / "docs/adlc/memory/adr/ADR-008.md").exists(), (
+        f"prefixed move left no dest: {r.stdout} {r.stderr}")
+    assert not (tmp_path / ".adlc/drafts/adr/ADR-008.md").exists()
+    assert "invalid octal" not in r.stderr
+
+
+def test_move_pdr_accepts_prefixed_ids(tmp_path):
+    """move_pdr 'PDR-008' drafts memory must move PDR-008.md (Important 2, PDR side)."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "Eight")
+    r = _run(f'source "{PDR_LIB}"; move_pdr "PDR-008" drafts memory', tmp_path)
+    assert r.returncode == 0, f"prefixed pdr id rejected: {r.stderr}"
+    assert (tmp_path / "docs/adlc/memory/pdr/PDR-008.md").exists(), (
+        f"prefixed move left no dest: {r.stdout} {r.stderr}")
+    assert not (tmp_path / ".adlc/drafts/pdr/PDR-008.md").exists()
+
+
+def test_get_adr_by_id_accepts_suffixed_ids(tmp_path):
+    """Suffixed stems resolve verbatim: '008-amendment-2' → ADR-008-amendment-2.md.
+
+    Pins that the prefixed-ID fix must not strip or re-parse suffixes
+    (008-amendment-2 is not 0082).
+    """
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008-amendment-2.md",
+                     "proposed", "Eight Amended")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    for given in ("008-amendment-2", "ADR-008-amendment-2"):
+        r = _run(f'source "{harness}"; get_adr_by_id "{given}" drafts', tmp_path)
+        assert r.returncode == 0, f"id {given}: {r.stderr}"
+        assert "Eight Amended" in r.stdout
+        assert "invalid octal" not in r.stderr
+
+
+def test_move_adr_accepts_suffixed_ids(tmp_path):
+    """move_adr moves suffixed stems verbatim, bare or prefixed."""
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008-amendment-2.md",
+                     "proposed", "Eight Amended")
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-009-workspace-profile.md",
+                     "proposed", "Nine Profile")
+    harness = _extract_func(tmp_path, SETUP_ARCH,
+                            "parse_fm_field", "parse_fm_title",
+                            "generate_adr_index", "move_adr")
+    for given, stem in (("008-amendment-2", "ADR-008-amendment-2"),
+                        ("ADR-009-workspace-profile", "ADR-009-workspace-profile")):
+        r = _run(f'source "{harness}"; move_adr "{given}" drafts memory', tmp_path)
+        assert r.returncode == 0, f"id {given}: {r.stderr}"
+        assert (tmp_path / f"docs/adlc/memory/adr/{stem}.md").exists(), (
+            f"suffixed move left no dest: {r.stdout} {r.stderr}")
+        assert not (tmp_path / f".adlc/drafts/adr/{stem}.md").exists()
+
+
+def test_get_adr_by_id_rejects_lowercase_prefix(tmp_path):
+    """'adr-008' must NOT resolve: IDs are case-sensitive (ADR- prefix only)."""
+    _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
+    harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
+    r = _run(f'source "{harness}"; get_adr_by_id "adr-008" drafts; echo "rc=$?"',
+             tmp_path)
+    assert "rc=1" in r.stdout, f"lowercase id must not resolve: {r.stdout} {r.stderr}"
+
+
+# No PS twin for get/move ADR by ID: setup-architect.ps1 defines no
+# Get-AdrById/Move-Adr (only Get-NextAdrNumber and friends), so there is
+# nothing to pin on the PS side. Revisit if the fixer adds them.
+
+
+@needs_pwsh
+def test_powershell_move_pdr_accepts_prefixed_ids(tmp_path):
+    """Move-Pdr 'PDR-008' drafts memory — prefixed IDs resolve (PS twin of
+    test_move_pdr_accepts_prefixed_ids)."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "Eight")
+    r = _pwsh(
+        f'$REPO_ROOT = "{tmp_path}"; . "{PDR_LIB_PS1}"; '
+        f'Move-Pdr "PDR-008" drafts memory')
+    assert r.returncode == 0, r.stderr
+    assert "False" not in r.stdout.split(), f"prefixed move refused: {r.stdout} {r.stderr}"
+    assert (tmp_path / "docs/adlc/memory/pdr/PDR-008.md").exists()
+    assert not (tmp_path / ".adlc/drafts/pdr/PDR-008.md").exists()
+
+
+def test_generate_pdr_index_derives_header_and_titlecase_status(tmp_path):
+    """All-Accepted drafts must not claim 'Proposed PDRs only'; status
+    renders Title-Case like adr.md ('Accepted', not frontmatter 'accepted')."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "All Accepted")
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-009.md", "accepted", "Also Accepted")
+    r = _run(f'source "{PDR_LIB}"; generate_pdr_index drafts', tmp_path)
+    assert r.returncode == 0, r.stderr
+    out = (tmp_path / ".adlc/drafts/pdr/pdr.md").read_text(encoding="utf-8")
+    assert "Proposed PDRs only" not in out
+    assert "| Accepted |" in out
+    assert "| accepted |" not in out
+
+
+def test_generate_pdr_index_mixed_status_keeps_drafts_header(tmp_path):
+    """Mixed Proposed/Accepted drafts keep the Drafts header; both title-cased."""
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-008.md", "accepted", "Done")
+    _write_fm_status(tmp_path / ".adlc/drafts/pdr/PDR-009.md", "proposed", "Pending")
+    r = _run(f'source "{PDR_LIB}"; generate_pdr_index drafts', tmp_path)
+    assert r.returncode == 0, r.stderr
+    out = (tmp_path / ".adlc/drafts/pdr/pdr.md").read_text(encoding="utf-8")
+    assert "(Drafts)" in out
+    assert "| Accepted |" in out and "| Proposed |" in out
+
+
+def test_count_pdr_accepted_matches_derived_index(tmp_path):
+    """count_pdr_accepted must agree with generate_pdr_index status cells:
+    frontmatter lower-case 'accepted' counts (the legacy grep did not)."""
+    from pathlib import Path as _P
+    (_P(tmp_path) / ".adlc/drafts/pdr").mkdir(parents=True, exist_ok=True)
+    for stem, status in (("PDR-008", "accepted"), ("PDR-009", "Accepted"),
+                         ("PDR-012", "proposed")):
+        (_P(tmp_path) / f".adlc/drafts/pdr/{stem}.md").write_text(
+            f"---\nstatus: {status}\ndate: 2026-11-04\nowner: me\ncategory: F\n"
+            f"feature-area: core\ntitle: T\n---\n\n# T\n", encoding="utf-8")
+    import subprocess as _sp, os as _os
+    r = _sp.run(["bash", "-c", f'source \"{PDR_LIB}\"; count_pdr_accepted '
+                 f'\"{tmp_path}/.adlc/drafts/pdr\"'],
+                capture_output=True, text=True, timeout=60,
+                env={**_os.environ, "REPO_ROOT": str(tmp_path)})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "2", f"frontmatter accepted undercounted: {r.stdout!r}"
+
+
+def test_setup_product_implement_count_matches_canonical(tmp_path):
+    """The vendored count_pdr_accepted in setup-product-implement.sh must
+    agree with the canonical one in product-clarify pdr-lib.sh on every
+    PDR status shape the parser contract supports (regression: the first
+    vendored copy only saw frontmatter and `### Status:` inline-bold lines,
+    so heading-shaped H2/H3 PDRs were silently dropped from the gate)."""
+    from pathlib import Path as _P
+    import subprocess as _sp, os as _os
+    drafts = _P(tmp_path) / ".adlc/drafts/pdr"
+    drafts.mkdir(parents=True, exist_ok=True)
+    (drafts / "PDR-001.md").write_text(
+        "# One\n\n## Status\n\n**Accepted**\n", encoding="utf-8")
+    (drafts / "PDR-002.md").write_text(
+        "# Two\n\n### Status\n\n**Accepted**\n", encoding="utf-8")
+    (drafts / "PDR-003.md").write_text(
+        "---\nstatus: accepted\ndate: 2026-09-27\n---\n\n# Three\n",
+        encoding="utf-8")
+    (drafts / "PDR-004.md").write_text(
+        "# Four\n\n**Accepted**\n", encoding="utf-8")
+    (drafts / "PDR-005.md").write_text(
+        "# Five\n\n### Status: Proposed\n", encoding="utf-8")
+    env = {**_os.environ, "REPO_ROOT": str(tmp_path)}
+    canon = _sp.run(
+        ["bash", "-c", f'source "{PDR_LIB}"; count_pdr_accepted '
+         f'"{drafts}"'],
+        capture_output=True, text=True, timeout=60, env=env)
+    assert canon.returncode == 0, canon.stderr
+    # NB: setup-product-implement.sh probes --json in "$@" at source time
+    # and only defines JSON_MODE; sourcing with --json emits the JSON body
+    # (side-effect-free) so the counter can be exercised inline.
+    impl = _sp.run(
+        ["bash", "-c", f'source "{SETUP_IMPLEMENT}" --json >/dev/null; '
+         f'count_pdr_accepted "{drafts}"'],
+        capture_output=True, text=True, timeout=60, env=env)
+    assert canon.stdout.strip() == "3", canon.stdout
+    assert impl.stdout.strip() == canon.stdout.strip(), (
+        f"vendored counter diverged from canonical: {impl.stdout!r} vs "
+        f"{canon.stdout!r} (stderr: {impl.stderr!r})")
+
+
+def test_setup_architect_preview_flag_exists(tmp_path):
+    """`implement --preview` must exist: lists ADRs/views/rewrites without
+    writing AD.md, views, or moving drafts (factory dry-run parity)."""
+    import subprocess as _sp, os as _os
+    src = SETUP_ARCH.read_text(encoding="utf-8")
+    assert "--preview" in src, "setup-architect.sh must accept --preview"
+    assert "PREVIEW" in src, "implement must gate writes behind PREVIEW"

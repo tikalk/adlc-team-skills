@@ -117,6 +117,13 @@
 # provider: jira
 # field_mapping:
 #   project_key: "PROJ"       # Required: your Jira project key
+#   required_fields: []       # Required Jira fields beyond summary/description
+#                             # (e.g. [{ name: customfield_10001, value: x }]).
+#                             # Runs halt naming the missing field instead of
+#                             # failing mid-create on a 400.
+#   default_labels: []        # Applied to every created issue (gating +
+#                             # lifecycle labels are stamped separately).
+#   default_components: []    # Applied to every created issue.
 #   issue_types:
 #     feature: Epic           # Jira issue type for features
 #     task: Story             # Jira issue type for tasks

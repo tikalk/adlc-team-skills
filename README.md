@@ -73,7 +73,7 @@ What it actually looks like to get from zero to a factory, in order.
 
 - A coding agent (opencode, Claude Code, Cursor, Codex, Gemini CLI, …)
 - [`adlc-cli`](https://github.com/tikalk/adlc-cli) — `npx` works, no install needed
-- `jq` — the `team-boot` script parses the directives index with it
+- `jq` — required by the setup scripts (they build all JSON output with `jq -n`; missing `jq` fails loudly instead of silently resolving defaults)
 
 ### 1. Install — one command per project
 

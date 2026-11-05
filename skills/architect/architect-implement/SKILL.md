@@ -6,6 +6,11 @@ disable-model-invocation: true
 
 # architect-implement
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
+**Requires:** the `architect-clarify` skill for architecture setup, ADR index generation, and diagram validation: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`
+
 ## What this skill does
 
 Generate a full Architecture Description (AD.md) from Architecture Decision Records (ADRs) using a **multi-agent DAG orchestration** approach:
@@ -395,30 +400,35 @@ Located in the skill's `templates/` directory:
 ### Claiming Ledger Slots (do this before writing any numbered id)
 
 A number computed from a stale base is wrong even when you compute it
-correctly. Check first, then read the number from the document; never eyeball
-it.
+correctly. Check the base first, then read the number from the document; never
+eyeball it.
 
 ```bash
-# 1. Refuse to proceed on a stale base (returns 1 and explains).
-source {REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh
-require_current_base "${MERGE_TARGET:-origin/main}"   # from paths.sh, already sourced
-
-# 2. Read the next free number for each slot type.
-next_adr_number                              # record id  -> 455 (drafts + memory)
-next_ad_delta_version "{AD_FILE}"            # `## v13.19.0 Delta:` -> v13.20.0
+# 1. Refuse to proceed on a stale base.
+git fetch origin --quiet
+test "$(git rev-list --count "HEAD..${MERGE_TARGET:-origin/main}")" = 0 \
+  || { echo "base is behind ${MERGE_TARGET:-origin/main}; rebase before claiming a slot" >&2; exit 1; }
 ```
+
+2. **Read the next free numbers from the `architect-clarify` skill setup**
+   (invoke that skill; its setup owns the ledger scans — do not source its
+   scripts):
+   - `specify` action JSON → `next_adr` — the ADR record id, counted across
+     drafts and published memory.
+   - `implement` action JSON → `ad_file` and `next_ad_delta_version` — the next
+     `## vN.N.N Delta:` heading for the existing AD.md.
 
 Delta versions bump the **minor** and reset the patch (`v13.18.0` →
 `v13.19.0`). A patch bump (`v13.3.1`) means amending the delta already there —
 a deliberate act, never the next free slot. The PRD.md counterparts
-(`next_prd_section`, `next_req_id`, `next_feature_number`) live in
-`product-clarify`'s `pdr-lib.sh` and belong to `product-implement`.
+(`next_prd_section`, `next_req_id`, `next_feature_number`) are emitted by the
+`product-implement` skill setup and belong to `product-implement`.
 
 ### PHASE 1: PLAN (Plan Agent)
 
 **Objective**: Analyze ADRs, detect sub-systems, generate customized DAG, get user approval
 
-**Script Action**: Run `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh` (Requires the `architect-clarify` skill: `adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). which calls `plan-dag` internally
+**Script Action**: Invoke the `architect-clarify` skill, which plans the DAG internally
 
 #### Step 1.1: Load and Analyze ADRs
 
@@ -604,7 +614,7 @@ For each view in the DAG:
    continue to next view.
 1. **Check Dependencies**: Ensure all dependency views are completed
 2. **Load Dependency Context**: Read completed view files for context
-3. **Load View Template**: Read from `templates/views/{view}.md`
+3. **Load View Template**: Read the canonical template `skills/architect/templates/views/{view}.md` in the adlc-team-skills checkout. Templates ship only with the skill that owns them — the installed `architect-clarify` skill contains no `templates/` directory, so do NOT use a relative `../../architect-clarify/templates/` path (it resolves nowhere). If the template file is absent in your installed layout, generate the view from the Purpose / Key Content catalog in Steps 2.3–2.4 below instead.
 4. **Generate View Content**: Fill template with ADR-derived content
 5. **Write View File**: Save to `{REPO_ROOT}/docs/adlc/architect/views/{subsystem}/{view}.md`
 6. **Update State**: Mark view as "completed" in state.json
@@ -1095,9 +1105,10 @@ After generating AD.md, perform ALL of the following steps:
   "Deprecated", or "Superseded" — these are NOT eligible for promotion
 - **Verification**: After filtering, count non-Accepted ADRs in the promotion
   set. If >0, STOP and fix before proceeding.
+- **Superseded chain**: when a promoted ADR's frontmatter names `superseded-by` (or a draft supersedes a memory ADR), update the superseded record in place: set its `status` to `Superseded` and its `superseded-by` to the new ADR id, then regenerate the memory index. Never leave both the old and the new ADR as `Accepted`.
 
 **Step 2: Copy to Canonical Location (MANDATORY)**
-- Move Accepted ADR files into `{REPO_ROOT}/docs/adlc/memory/adr/` (the shared layout canonical memory root)
+- Move Accepted ADR files into `{REPO_ROOT}/docs/adlc/memory/adr/` (the shared layout canonical memory root) — invoke the `architect-clarify` skill for each promotion (its `move_adr "<id>" drafts memory` operation; never a bulk `mv`), so each move regenerates both scopes' indexes
 - Create the file if it doesn't exist, or merge with existing content
 - **VERIFY**: Read the file back and confirm ADRs are present
 
@@ -1111,12 +1122,7 @@ After generating AD.md, perform ALL of the following steps:
 
 **Step 3b: Generate Memory ADR Index (MANDATORY)**
 
-After moving Accepted ADRs to `docs/adlc/memory/adr/`, generate a memory index file at `{REPO_ROOT}/docs/adlc/memory/adr/adr.md` using the `generate_adr_index` function from the setup script (the same function that generates the drafts index, but with scope=memory —  the memory scope writes the index to the docs root whenever it holds records):
-
-```bash
-source "{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/setup-architect.sh"
-generate_adr_index memory
-```
+After moving Accepted ADRs to `docs/adlc/memory/adr/`, generate a memory index file at `{REPO_ROOT}/docs/adlc/memory/adr/adr.md` by invoking the `architect-clarify` skill and running its `generate_adr_index memory` operation (the same function that generates the drafts index, but with scope=memory — the memory scope writes the index to the docs root whenever it holds records).
 
 This writes `{REPO_ROOT}/docs/adlc/memory/adr/adr.md` with the 7-column schema, parsing YAML frontmatter via `parse_fm_field`. The index format:
 

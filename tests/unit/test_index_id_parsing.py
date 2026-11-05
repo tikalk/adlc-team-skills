@@ -149,8 +149,11 @@ def _generate_all(root: Path, adr_src: Path, pdr_src: Path):
 
 
 def test_bare_numeric_names_byte_stable(tmp_path):
-    """No behavior change for bare-numeric names: new code output must equal
-    old-code (git HEAD) output byte-for-byte on a suffixed-free fixture."""
+    """No display-rule change for bare-numeric names: rows for bare IDs are
+    byte-identical old vs new on a suffixed-free fixture. The index header
+    line is excluded: 'Proposed PDRs only' -> 'All PDRs' is an intended
+    contract change (drafts hold mixed statuses), pinned in
+    test_ledger_slot_numbering.py."""
     new_root, old_root = tmp_path / "new", tmp_path / "old"
     _bare_fixture(new_root)
     _bare_fixture(old_root)
@@ -166,7 +169,9 @@ def test_bare_numeric_names_byte_stable(tmp_path):
                        cwd=ROOT, capture_output=True, text=True, check=True).stdout,
         encoding="utf-8")
     old_out = _generate_all(old_root, old_setup, old_pdr)
-    assert new_out == old_out
+    assert new_out[0] == old_out[0]  # adr.md untouched
+    assert [l for l in new_out[1].splitlines() if not l.startswith("> Auto-generated")] == \
+        [l for l in old_out[1].splitlines() if not l.startswith("> Auto-generated")]
 
 
 def test_regenerate_is_idempotent(adlc_tree):

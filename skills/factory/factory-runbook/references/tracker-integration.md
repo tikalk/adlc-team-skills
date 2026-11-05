@@ -1,5 +1,7 @@
 # Tracker-Agnostic Integration Layer
 
+> **Scope rule**: scripts stay skill-local — invoke `factory-runbook` for publish operations. `scripts/` below is relative to the `factory-runbook` skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 This is the shared reference for all tracker-aware factory skills (`factory-mission`, `factory-queue`, `factory-review`). It details how the platform integrates with any issue tracker (GitHub, GitLab, Linear, Jira) without holding proprietary queue state.
@@ -14,7 +16,7 @@ Resolve the provider in this order (first hit wins):
 2. `.adlc/issues-provider.yml` in the target repo (factory-canonical; the template ships in this release at `skills/factory/factory-runbook/references/issues-provider.yml`).
 3. Neither source resolves a provider: **halt with an error naming the expected locations** (`{{params.tracker_provider}}`, `.adlc/issues-provider.yml`). Never silently default (a wrong guess posts to the wrong tracker). Repos carrying only the legacy spec-kit provider file must add the factory-canonical copy — the factory no longer reads the spec-kit path. Run `/factory-setup` (or `adlc-cli factory setup`) to create it.
 Parse `provider: github | gitlab | linear | jira` from the winning source.
-Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, plus per-provider `remote_override`/`project_id`).
+Read field mappings (`project_key`, `team_id`, `priority_map`, `issue_types`, `required_fields`, `default_labels`, `default_components`, plus per-provider `remote_override`/`project_id`).
 
 ### 2. Credentials & Tools Discovery
 1. Check environment variables: `GITHUB_TOKEN`, `GITLAB_TOKEN`, `LINEAR_API_KEY`, `JIRA_API_TOKEN` / `JIRA_URL` + `JIRA_EMAIL`.
@@ -59,7 +61,7 @@ An issue carries exactly one lifecycle label. `done` and `cancelled` are termina
 | 9 | `validation` → `done` | MR/PR that closes the issue is merged | `factory-orchestrator` (completion) · `factory-review` (babysit) | none |
 | 10 | any non-terminal → `cancelled` | issue closed without a merge | `factory-orchestrator` (completion) · lane close-event path | a parked run is released: run marked cancelled, draft MR closed |
 
-`validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A failed run has no edge yet and stays `executing`. Every edge swaps labels through Operation 9.
+`validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A failed run has no edge yet and stays `executing`. Every edge swaps labels through the Set Lifecycle step of Operation 9, which also removes any other lifecycle label it finds.
 
 ### 3. Write-Back & Comments
 Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored`.
@@ -300,11 +302,17 @@ the transition based on provider type:
 
 1. **Label-Based (GitHub/GitLab)**:
    - Statuses are the bare lifecycle labels of §2 (e.g. `executing`, no prefix), resolved through the `labels:` mapping; the edges and their owners are the §2 transition table.
-   - Transitions must **atomically add the new label and remove the old label**.
-   - CLI/MCP commands:
-     - GitHub CLI: `gh pr edit --add-label "<new>" --remove-label "<old>"`
-     - GitLab CLI: `glab mr update --label "<new>" --unlabel "<old>"`
-     - GitHub MCP: `github` server `update_issue` updating `labels` array.
+   - Transitions must **atomically add the new label and remove the old label**, through the **Set Lifecycle** step below. Every actor that moves an issue's lifecycle label calls this step; none adds or removes a lifecycle label on its own.
+
+   **Set Lifecycle** (the shared step; inputs: the issue and the target state):
+   1. Resolve the effective names of all seven lifecycle states through the `labels:` mapping (§2 name resolution).
+   2. Read the issue's current labels. `<others>` = every current label that is a lifecycle state other than the target. This is **any other lifecycle label**, not only the expected previous one: a stray pair such as `intent` + `parked` is cleaned by the next transition.
+   3. Add the target and remove `<others>` in the **same call** (omit the remove flag when `<others>` is empty):
+      - GitLab CLI: `glab issue update <iid> --label "<target>" --unlabel "<others>"`
+      - GitHub CLI: `gh issue edit <number> --add-label "<target>" --remove-label "<others>"`
+      - GitHub MCP: `github` server `update_issue` with the full `labels` array: current labels minus `<others>`, plus the target.
+   4. Re-read the labels and verify exactly one lifecycle label remains. If not, report the coexisting labels in the step output and on the issue. Never report the transition as done.
+   5. Never add or remove the `resume` trigger: the gate runtime owns it.
 
 2. **State-Based (Jira/Linear/ClickUp)**:
    - Statuses mapped to native workflow states/columns (e.g. `executing` to `In Progress`, `validation` to `In Review`).
@@ -341,7 +349,7 @@ issue matching `factory-<orchestrator>:lease`:
 - **Stale lease exists** (`heartbeat + ttl <= now`):
   **TAKEOVER**: Post a takeover lease marker (`status=takeover previous_run=<old_run> previous_host=<old_host>`) and adopt the existing branch/worktree.
 - **No lease or released**:
-  **ACQUIRE**: Post active lease marker (`status=active`), transition status to `executing`, and proceed.
+  **ACQUIRE**: Post active lease marker (`status=active`), move the issue to `executing` through the Set Lifecycle step (Operation 9), and proceed.
 
 #### 2. Heartbeat Remote Lease
 - Completed steps' `output_marker` comments act as implicit heartbeats.
@@ -368,8 +376,8 @@ pre-flight scope check.
 anything:
 
 ```bash
-bash {REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership.sh <payload.json>
-# PowerShell: pwsh -NoProfile -File {REPO_ROOT}/.agents/skills/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
+bash scripts/bash/resolve-mr-ownership.sh <payload.json>
+# PowerShell: pwsh -NoProfile -File scripts/powershell/resolve-mr-ownership.ps1 <payload.json>
 ```
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and

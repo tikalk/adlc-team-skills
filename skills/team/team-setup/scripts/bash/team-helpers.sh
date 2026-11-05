@@ -35,6 +35,7 @@ resolve_paths() {
   if [[ -z "$TEAM_AI_DIRECTIVES" ]]; then
     INIT_OPTIONS="${PROJECT_ROOT}/.adlc/init-options.json"
     if [[ -f "$INIT_OPTIONS" ]]; then
+      require_jq || return 1
       TEAM_AI_DIRECTIVES=$(jq -r '.team_ai_directives // empty' "$INIT_OPTIONS" 2>/dev/null || true)
     fi
   fi
@@ -50,11 +51,21 @@ resolve_paths() {
 }
 
 output_json() {
+  require_jq || return 1
   jq -n \
     --arg repo_root "$PROJECT_ROOT" \
     --arg team_ai_directives "$TEAM_AI_DIRECTIVES" \
     --arg branch "$BRANCH" \
     '{"REPO_ROOT":$repo_root,"TEAM_AI_DIRECTIVES":$team_ai_directives,"BRANCH":$branch}'
+}
+
+# All JSON reads/writes below go through jq (no silent fallback when it is
+# missing: an empty parse must not resolve the wrong directives path).
+require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed (https://jqlang.github.io/jq/download/)" >&2
+    return 1
+  fi
 }
 
 ###############################################################################
@@ -83,11 +94,12 @@ validate_team_ai_directives() {
 
 # JSON-parse check shared by --validate and --wire: the structure check is
 # existence-only, but the post-setup health contract requires .skills.json to
-# parse. Prints MISSING and returns 1 when present-but-malformed, 0 otherwise.
+# parse (`jq empty` tests parsing only — `jq -e .` would reject a valid `null`).
+# Prints MISSING and returns 1 when present-but-malformed, 0 otherwise.
 check_skills_json_parses() {
   local dir="$1"
   if [[ -e "${dir}/.skills.json" ]] \
-    && ! jq -e . "${dir}/.skills.json" >/dev/null 2>&1; then
+    && ! jq empty "${dir}/.skills.json" >/dev/null 2>&1; then
     echo "MISSING: .skills.json is not valid JSON"
     return 1
   fi
@@ -143,6 +155,7 @@ wire_team_ai_directives() {
     echo "ERROR: PROJECT_ROOT is empty — cannot locate .adlc/init-options.json" >&2
     return 1
   fi
+  require_jq || return 1
   local init_dir="${project_root}/.adlc"
   local init_path="${init_dir}/init-options.json"
   mkdir -p "$init_dir"
@@ -151,12 +164,14 @@ wire_team_ai_directives() {
   if [[ ! -e "$init_path" ]]; then
     jq -n '{}' > "$init_path"
   fi
-  if ! jq -e --arg td "$abs" 'select(type == "object") | .team_ai_directives = $td' "$init_path" > "${init_path}.tmp" 2>/dev/null \
-    || ! mv "${init_path}.tmp" "$init_path" 2>/dev/null; then
+  if ! jq -e --arg td "$abs" 'select(type == "object") | .team_ai_directives = $td' "$init_path" > "${init_path}.tmp" 2>/dev/null; then
     rm -f "${init_path}.tmp" 2>/dev/null
     echo "ERROR: ${init_path} is not valid JSON or not an object — not wired" >&2
     return 1
   fi
+  # Write back through the existing path (keeps 0600 mode / symlinks).
+  cat "${init_path}.tmp" > "$init_path"
+  rm -f "${init_path}.tmp"
   echo "WIRED team_ai_directives=${abs}"
   return 0
 }
@@ -410,6 +425,7 @@ inject_project_agents() {
   if [[ -z "$team_directive" ]]; then
     local init_options="${project_root}/.adlc/init-options.json"
     if [[ -f "$init_options" ]]; then
+      require_jq || return 1
       team_directive=$(jq -r '.team_ai_directives // empty' "$init_options" 2>/dev/null || true)
     fi
   fi
@@ -498,8 +514,11 @@ SECTION
   # Create AGENTS.md if it doesn't exist, or update the managed section.
   # Pure-awk rewrite: the section content may contain quotes, backslashes,
   # and backticks, so it travels via temp files, never the command line.
-  local section_file tmp_new
+  local section_file tmp_new had_section=false
   section_file=$(mktemp) tmp_new=$(mktemp)
+  if [[ -f "$agents_file" ]] && grep -qF "$marker_start" "$agents_file" && grep -qF "$marker_end" "$agents_file"; then
+    had_section=true
+  fi
   printf '%s' "$section" > "$section_file"
   if [[ -f "$agents_file" ]]; then
     awk -v start="$marker_start" -v end="$marker_end" -v secfile="$section_file" '
@@ -522,10 +541,16 @@ SECTION
   else
     printf '%s\n' "$section" > "$tmp_new"
   fi
-  mv "$tmp_new" "$agents_file"
-  rm -f "$section_file"
+  # Write back through the existing path (keeps file mode and symlinks);
+  # a fresh file then gets the normal umask default.
+  cat "$tmp_new" > "$agents_file"
+  rm -f "$tmp_new" "$section_file"
   if grep -qF "$marker_start" "$agents_file"; then
-    echo "Injected/updated team AI directives section in ${agents_file}"
+    if $had_section; then
+      echo "Updated team AI directives section in ${agents_file}"
+    else
+      echo "Injected team AI directives section into ${agents_file}"
+    fi
   fi
 }
 
@@ -577,11 +602,13 @@ agents_section_uninstall() {
   # trailing blank lines, keep exactly one trailing newline when non-empty.
   local tmp_un
   tmp_un=$(mktemp)
-  { head -n $((s_line - 1)) "$agents_file"; tail -n +$((e_line + 1)) "$agents_file"; } > "$tmp_un"
+  # s_line == 1 must skip head: BSD head rejects `-n 0` (macOS inject-then-uninstall).
+  { if (( s_line > 1 )); then head -n $((s_line - 1)) "$agents_file"; fi; tail -n +$((e_line + 1)) "$agents_file"; } > "$tmp_un"
   awk '/^$/ { pending++; next } { if (out > 0 && pending > 0) print ""; print; pending = 0; out++ }' \
     "$tmp_un" > "${tmp_un}.2"
-  mv "${tmp_un}.2" "$agents_file"
-  rm -f "$tmp_un"
+  # Same write-back rule as inject: keep mode and symlinks.
+  cat "${tmp_un}.2" > "$agents_file"
+  rm -f "$tmp_un" "${tmp_un}.2"
   echo "Removed team AI directives section from ${agents_file}"
 }
 

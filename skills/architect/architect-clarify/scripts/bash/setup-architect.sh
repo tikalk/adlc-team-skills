@@ -10,6 +10,7 @@ ARGS=()
 VIEWS="core"
 ADR_HEURISTIC="surprising"
 DECOMPOSE=true
+PREVIEW=false
 
 # Get script directory FIRST (needed for common.sh sourcing)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,15 +48,13 @@ if [[ -z "${REPO_ROOT:-}" ]]; then
   exit 1
 fi
 
-# shared layout constants (single definition in paths.sh; common.sh
-# already sources it — this block keeps the script correct standalone).
-if [ -f "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh"
-elif [ -f "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh"
-fi
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 # dual-read: resolve a memory-relative artifact to the canonical
 # docs/adlc/memory path, falling back to legacy .adlc/memory when only the
@@ -115,6 +114,10 @@ while [[ $# -gt 0 ]]; do
             DECOMPOSE=false
             shift
             ;;
+        --preview)
+            PREVIEW=true
+            shift
+            ;;
         init|map|update|review|specify|implement|clarify|analyze|validate|plan-dag|execute-dag|summarize)
             ACTION="$1"
             shift
@@ -143,6 +146,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --views VIEWS      Architecture views to generate: core (default), all, or comma-separated"
             echo "  --adr-heuristic H  ADR generation heuristic: surprising (default), all, minimal"
             echo "  --no-decompose     Disable automatic sub-system decomposition (default: auto-detect)"
+            echo "  --preview          Preview only: list planned writes (AD.md, views, promotions) without writing"
             echo "  --help             Show this help message"
             echo ""
             echo "Examples:"
@@ -743,7 +747,7 @@ generate_adr_index() {
         # stems render verbatim (printf %03d on them printed ADR-000).
         local disp="$id"
         if [[ "$id" =~ ^[0-9]+$ ]]; then
-            disp=$(printf "%03d" "$id")
+            disp=$(printf "%03d" "$((10#$id))")
         fi
 
         # Extract metadata from MADR frontmatter (fallback to empty + defaults)
@@ -777,6 +781,7 @@ generate_adr_index() {
 # Read a single ADR by ID
 get_adr_by_id() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local scope="${2:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
 
@@ -803,7 +808,7 @@ get_adr_by_id() {
         fi
         if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
             local padded_id
-            padded_id=$(printf "%03d" "$adr_id")
+            padded_id=$(printf "%03d" "$((10#$adr_id))")
             hybrid_file="$_d/ADR-$padded_id.md"
             if [[ -f "$hybrid_file" ]]; then
                 cat "$hybrid_file"
@@ -850,6 +855,7 @@ get_adr_count() {
 # Write a single ADR to disk (regenerates adr.md index)
 write_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local adr_content="$2"
     local scope="${3:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
@@ -858,7 +864,7 @@ write_adr() {
 
     local target_name
     if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        target_name="ADR-$(printf "%03d" "$adr_id").md"
+        target_name="ADR-$(printf "%03d" "$((10#$adr_id))").md"
     else
         case "$adr_id" in *"/"*|.*) echo "write_adr: invalid id: $adr_id" >&2; return 1;; esac
         target_name="ADR-$adr_id.md"
@@ -873,6 +879,7 @@ write_adr() {
 # Move ADR from one scope to another (e.g., drafts -> memory)
 move_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local from_scope="${2:-drafts}"
     local to_scope="${3:-memory}"
 
@@ -891,7 +898,7 @@ move_adr() {
     # Exact stem first; numeric fallback only for bare IDs.
     local src_file="$from_dir/ADR-$adr_id.md"
     if [[ ! -f "$src_file" ]] && [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        src_file="$from_dir/ADR-$(printf "%03d" "$adr_id").md"
+        src_file="$from_dir/ADR-$(printf "%03d" "$((10#$adr_id))").md"
     fi
     if [[ -f "$src_file" ]]; then
         mv "$src_file" "$to_dir/$(basename "$src_file")"
@@ -1147,6 +1154,26 @@ action_implement() {
         exit 1
     fi
 
+    # Ledger slot: the next vN.N.N Delta heading in the existing AD.md.
+    local next_delta
+    next_delta=$(next_ad_delta_version "$ad_file")
+
+    if [[ "${PREVIEW:-false}" == "true" ]]; then
+        echo "Preview (no writes): would init $ad_file from template," >&2
+        echo "  generate views per sub-system, move Accepted ADRs" >&2
+        echo "  $adr_dir -> docs/adlc/memory/adr/, regenerate both indexes." >&2
+        if $JSON_MODE; then
+            jq -n -c \
+              --arg adr_dir "$adr_dir" \
+              --arg ad_file "$ad_file" \
+              --argjson adr_count "$adr_count" \
+              --arg context "${ARGS[*]}" \
+              --arg next_ad_delta_version "$next_delta" \
+              '{status:"success",action:"implement",preview:true,adr_dir:$adr_dir,ad_file:$ad_file,adr_count:$adr_count,context:$context,next_ad_delta_version:$next_ad_delta_version}'
+        fi
+        return 0
+    fi
+
     echo "📐 Setting up for Architecture Description generation..." >&2
 
     # Initialize AD.md from template if it doesn't exist
@@ -1182,7 +1209,8 @@ action_implement() {
           --arg ad_file "$ad_file" \
           --argjson adr_count "$adr_count" \
           --arg context "${ARGS[*]}" \
-          '{status:"success",action:"implement",adr_dir:$adr_dir,ad_file:$ad_file,adr_count:$adr_count,context:$context}'
+          --arg next_ad_delta_version "$next_delta" \
+          '{status:"success",action:"implement",adr_dir:$adr_dir,ad_file:$ad_file,adr_count:$adr_count,context:$context,next_ad_delta_version:$next_ad_delta_version}'
     fi
 }
 
@@ -1685,9 +1713,10 @@ action_plan_dag() {
             else
                 subsystems_json+=","
             fi
-            # Exact parity with python s.lower().replace(" ","-"): per-char
-            # replacement of literal spaces ONLY (tabs preserved; jq -n
-            # encodes them correctly). No sed collapsing.
+            # Parity with python s.lower().replace(" ","-") for ASCII:
+            # per-char replacement of literal spaces ONLY (tabs preserved;
+            # jq -n encodes them correctly). No sed collapsing. Non-ASCII
+            # case mappings may differ (tr is locale-dependent).
             local lower slug
             lower=$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')
             slug=${lower// /-}

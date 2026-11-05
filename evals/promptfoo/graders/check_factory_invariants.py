@@ -195,6 +195,22 @@ def check_dependency_auto_notify(output: str) -> dict:
     return { "pass": False, "score": 0.0, "reason": f"Failed the dependency auto-notify check: Expected cleared-gate notification without polling, but got: {output}" }
 
 # Main get_assert function that delegates to the specific checkers
+def check_lifecycle_single_label(output: str) -> dict:
+    """Lifecycle single label: a lifecycle transition leaves exactly one lifecycle label (add and remove in one call; `resume` is a trigger, not a state)."""
+    states = {"intent", "spec-gated", "executing", "parked", "validation", "done", "cancelled"}
+    after = re.search(r"labels after:\s*([^\n]*)", output, re.IGNORECASE)
+    if after:
+        tokens = {t.strip(" .,;:[]`'\"").lower() for t in re.split(r"[,\s]+", after.group(1))}
+        found = sorted(tokens & states)
+        if len(found) == 1:
+            return { "pass": True, "score": 1.0, "reason": f"Passed the lifecycle single-label check: Exactly one lifecycle label after the transition ({found[0]})." }
+        return { "pass": False, "score": 0.0, "reason": f"Failed the lifecycle single-label check: Expected exactly one lifecycle label after the transition, found {found or 'none'}." }
+    adds = re.search(r"--(?:add-)?label\s+\"?(" + "|".join(map(re.escape, states)) + r")\b", output)
+    removes = re.search(r"--(?:unlabel|remove-label)\b", output)
+    if adds and removes:
+        return { "pass": True, "score": 1.0, "reason": "Passed the lifecycle single-label check: The target was added and the other lifecycle labels removed in the same call." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the lifecycle single-label check: Expected one call that adds the target and removes any other lifecycle label, but got: {output}" }
+
 def get_assert(output: str, context: dict = None) -> dict:
     # Routing is by the criterion slug that PREFIXES the scenario string
     # ("<slug>: <prose>"), never by a substring match: a prose sentence that
@@ -239,6 +255,8 @@ def get_assert(output: str, context: dict = None) -> dict:
         return check_dependency_hard_gate(output)
     if scenario.startswith("dependency-auto-notify:"):
         return check_dependency_auto_notify(output)
+    if scenario.startswith("lifecycle-single-label:"):
+        return check_lifecycle_single_label(output)
         
     return {
         "pass": False,

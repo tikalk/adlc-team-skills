@@ -71,7 +71,8 @@ It implements the following key factory platform capabilities:
    - Discover credentials and MCP/CLI tools (`factory-runbook/references/tracker-integration.md`).
    - Pull the issue content as the primary Brief description.
    - Read the labels. If dispatch is `interactive` or gating is `human-required` -> **HALT execution** (hand back to interactive session).
-   - **Dependency hard gate (Operation 12):** read the issue's `**Depends on**` line, resolve each dependency's state via the connector, and refuse when any dependency is still open (only `closed` / `cancelled` count complete — `spec-gated` does NOT satisfy the gate). On refusal: publish a `blocked: dependency-gate` comment naming the blocking issue(s), set the issue's lifecycle label back to `spec-gated`, release the lease (`ADLC_STEP_OUTPUT` conclusion `blocked: dependency-gate on <refs>`), and return without touching worktree, code, or executor. When the tracker exposes native `blocked_by`/`blocking` relations (GitLab issue links, Linear/Jira relations), use them in addition to the brief's Depends-on line — a `Blocked`/`blocked-by` signal from the tracker also triggers the gate.
+   - **Dependency hard gate (Operation 12):** read the issue's `**Depends on**` line, resolve each dependency's state via the connector, and refuse when any dependency is still open (only `closed` / `cancelled` count complete — `spec-gated` does NOT satisfy the gate). On refusal: publish a `blocked: dependency-gate` comment naming the blocking issue(s), set the issue's lifecycle label back to `spec-gated` through the Set Lifecycle step (tracker-integration Operation 9), release the lease (`ADLC_STEP_OUTPUT` conclusion `blocked: dependency-gate on <refs>`), and return without touching worktree, code, or executor. When the tracker exposes native `blocked_by`/`blocking` relations (GitLab issue links, Linear/Jira relations), use them in addition to the brief's Depends-on line — a `Blocked`/`blocked-by` signal from the tracker also triggers the gate.
+   - When the gate passes, move the issue to `executing` through the Set Lifecycle step (Operation 9; the lease ACQUIRE of Operation 10 does this). Lane runs arrive already `executing`: the step then changes nothing.
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
 4. Validate intake and hand the brief to `mission-brief` — brief construction lives there (per `mission-brief/references/mission-brief-template.md`). The intake bundle (validated intake) plus the `Framework lane` line the session model resolves (see step 5) is a `draft` — not published to the comment bus.
@@ -115,7 +116,7 @@ Knobs specific to a mission run, read from `mission.yml` (the policy home for ex
 3. Write per-implement logs to `iterations.md`.
 4. If tracker-integrated:
    - Post completion summary as a ticket comment (marker: `factory-mission:status=completed:run=<run_id>`).
-   - Transition lifecycle label from `executing` to `validation` (or `done` if merged).
+   - Move the issue from `executing` to `validation` (or `done` if merged) through the Set Lifecycle step (tracker-integration Operation 9), which also removes any other lifecycle label.
    - Stamp `agent-authored` on opened PRs.
    - In a factory run, write the code MR/PR URL as `mr_url` into `ADLC_STEP_OUTPUT` (see "In a factory run" above). Open it via the runbook with `--kind code` so the mission branch (`factory/mission/*`, `factory/code/*`) and mission title are used.
    - Defer PR merge to code-owner approval (never auto-merge without approval).

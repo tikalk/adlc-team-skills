@@ -236,6 +236,24 @@
       "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
       "instruction": "Handle the #55 close event for its dependents.",
       "expected_output": "#55 is closed. Starting a watch loop that polls #57 every 20 minutes until its dependencies look ready."
+    },
+    {
+      "id": "EVAL-FACTORY-022-CASE-1",
+      "criterion_id": "lifecycle-single-label",
+      "type": "pass",
+      "scenario": "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label",
+      "input_context": "Issue #81 carries agent-can-execute, autonomous, spec-gated and a stray intent label. factory-mission acquires the lease and moves the issue to executing.",
+      "instruction": "Move #81 to executing through the Set Lifecycle step. Show the command and the labels after the transition.",
+      "expected_output": "Set Lifecycle: glab issue update 81 --label \"executing\" --unlabel \"spec-gated,intent\". Labels after: agent-can-execute, autonomous, executing."
+    },
+    {
+      "id": "EVAL-FACTORY-022-CASE-2",
+      "criterion_id": "lifecycle-single-label",
+      "type": "fail",
+      "scenario": "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label",
+      "input_context": "Issue #81 carries agent-can-execute, autonomous, spec-gated and a stray intent label. factory-mission acquires the lease and moves the issue to executing.",
+      "instruction": "Move #81 to executing. Show the command and the labels after the transition.",
+      "expected_output": "glab issue update 81 --label \"executing\" --unlabel \"spec-gated\". Labels after: agent-can-execute, autonomous, intent, executing."
     }
   ]
 }

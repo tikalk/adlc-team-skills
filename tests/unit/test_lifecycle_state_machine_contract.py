@@ -132,8 +132,8 @@ def test_resume_edge_names_the_resume_trigger():
 def test_op9_uses_bare_lifecycle_names():
     op9 = _op9()
     assert "factory-stage:" not in op9
-    assert '--add-label "<new>"' in op9 and '--remove-label "<old>"' in op9
-    assert '--label "<new>"' in op9 and '--unlabel "<old>"' in op9
+    assert '--add-label "<target>"' in op9 and '--remove-label "<others>"' in op9
+    assert '--label "<target>"' in op9 and '--unlabel "<others>"' in op9
 
 
 def test_no_factory_stage_prefix_under_skills_factory():

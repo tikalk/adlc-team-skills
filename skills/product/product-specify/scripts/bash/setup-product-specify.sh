@@ -20,6 +20,15 @@ _get_project_root() {
   pwd
 }
 
+# JSON output is built with jq -n -c (jq is required; no fallbacks).
+
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 # Ledger slot allocation (vendored from product-clarify pdr-lib.sh):
 # leading digits of the filename stem, max across drafts AND published memory.
 next_record_number() {
@@ -38,14 +47,6 @@ next_record_number() {
   done
   printf '%03d' "$((max + 1))"
 }
-
-# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
-ADLC_DIR="${ADLC_DIR:-.adlc}"
-DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
-DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
-DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
-DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
-ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 REPO_ROOT="${REPO_ROOT:-$(_get_project_root)}"
 PDR_DRAFTS_DIR="$REPO_ROOT/${ADLC_DRAFTS:-.adlc/drafts}/pdr"
 PRD_FILE="$REPO_ROOT/${DOCS_ADLC_PRODUCT:-docs/adlc/product}/PRD.md"
@@ -61,16 +62,9 @@ NEXT_PDR=$(next_record_number PDR "$PDR_DRAFTS_DIR" \
 PDR_COUNT=$(find "$PDR_DRAFTS_DIR" -name 'PDR-*.md' 2>/dev/null | wc -l)
 
 if $JSON_MODE; then
-  python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PRD_FILE" "$NEXT_PDR" "$PDR_COUNT" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "PDR_DRAFTS_DIR": sys.argv[2],
-  "PRD_FILE": sys.argv[3],
-  "next_pdr": sys.argv[4],
-  "pdr_count": int(sys.argv[5])
-}))
-PY
+  jq -n -c --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pf "$PRD_FILE" \
+    --arg np "$NEXT_PDR" --argjson n "$PDR_COUNT" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PRD_FILE:$pf,next_pdr:$np,pdr_count:$n}'
 else
   echo "[INFO] product-specify setup"
   echo "  REPO_ROOT: $REPO_ROOT"

@@ -3,6 +3,9 @@
 set -euo pipefail
 JSON_MODE=false
 for arg in "$@"; do case "$arg" in --json) JSON_MODE=true ;; esac; done
+
+# JSON output is built with jq -n -c (jq is required; no fallbacks).
+
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
 # shared layout constants (single definition in paths.sh).
@@ -22,16 +25,9 @@ PDR_COUNT=$(find "$PDR_DRAFTS_DIR" -name 'PDR-*.md' 2>/dev/null | wc -l)
 PRD_EXISTS=false
 if [ -f "$PRD_FILE" ] || [ -f "$REPO_ROOT/PRD.md" ]; then PRD_EXISTS=true; fi
 if $JSON_MODE; then
-  python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PRD_FILE" "$PDR_COUNT" "$PRD_EXISTS" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "PDR_DRAFTS_DIR": sys.argv[2],
-  "PRD_FILE": sys.argv[3],
-  "pdr_count": int(sys.argv[4]),
-  "prd_exists": sys.argv[5] == "true"
-}))
-PY
+  jq -n -c --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pf "$PRD_FILE" \
+    --argjson n "$PDR_COUNT" --argjson pe "$PRD_EXISTS" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PRD_FILE:$pf,pdr_count:$n,prd_exists:$pe}'
 else
   echo "[INFO] product-analyze setup"
   echo "  PDRs: $PDR_COUNT"

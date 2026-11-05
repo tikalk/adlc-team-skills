@@ -25,6 +25,8 @@ _get_project_root() {
   pwd
 }
 
+# JSON output is built with jq -n -c (jq is required; no fallbacks).
+
 # Ledger slot allocation (vendored from product-clarify pdr-lib.sh):
 # leading digits of the filename stem, max across drafts AND published memory.
 next_record_number() {
@@ -51,6 +53,24 @@ DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
 DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
+# Ledger slot allocation (vendored from product-clarify pdr-lib.sh):
+# leading digits of the filename stem, max across drafts AND published memory.
+next_record_number() {
+  local prefix="$1"
+  shift
+  local max=0 f num
+  local dir
+  for dir in "$@"; do
+    [ -d "$dir" ] || continue
+    for f in "$dir"/"${prefix}"-*.md; do
+      [ -f "$f" ] || continue
+      num=$(basename "$f" .md | sed -n "s/^${prefix}-\([0-9]\{1,\}\).*/\1/p")
+      [ -n "$num" ] || continue
+      ((10#$num > max)) && max=$((10#$num))
+    done
+  done
+  printf '%03d' "$((max + 1))"
+}
 REPO_ROOT="${REPO_ROOT:-$(_get_project_root)}"
 PDR_DRAFTS_DIR="$REPO_ROOT/${ADLC_DRAFTS:-.adlc/drafts}/pdr"
 PRD_FILE="$REPO_ROOT/${DOCS_ADLC_PRODUCT:-docs/adlc/product}/PRD.md"
@@ -118,30 +138,19 @@ FEATURE_AREAS=$(detect_feature_areas)
 NEXT_PDR=$(next_record_number PDR "$PDR_DRAFTS_DIR" \
   "$REPO_ROOT/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr")
 
-# Build feature_areas in Python (bash string-concat cannot escape quotes safely).
-# Pass the newline-separated area list; Python builds id/name pairs with json.dumps.
+# Build feature_areas element-by-element with jq -n -c (jq is required; no fallbacks).
 PDR_COUNT=$(find "$PDR_DRAFTS_DIR" -name 'PDR-*.md' 2>/dev/null | wc -l)
 
 if $JSON_MODE; then
-  python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PRD_FILE" "$NEXT_PDR" "$PDR_COUNT" "$FEATURE_AREAS" <<'PY'
-import json, sys, re
-repo_root, drafts_dir, prd_file, next_pdr, pdr_count, areas_raw = sys.argv[1:7]
-areas = []
-for area in areas_raw.splitlines():
-    area = area.strip()
-    if not area:
-        continue
-    slug = re.sub(r'\s+', '-', area.strip().lower())
-    areas.append({"id": slug, "name": area})
-print(json.dumps({
-  "REPO_ROOT": repo_root,
-  "PDR_DRAFTS_DIR": drafts_dir,
-  "PRD_FILE": prd_file,
-  "feature_areas": areas,
-  "next_pdr": next_pdr,
-  "pdr_count": int(pdr_count)
-}))
-PY
+  feature_areas_json=$(while IFS= read -r area; do
+    area_trimmed="$(echo "$area" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ -z "$area_trimmed" ]] && continue
+    slug="$(echo "$area_trimmed" | tr '[:upper:]' '[:lower:]' | sed 's/[[:space:]][[:space:]]*/-/g')"
+    jq -n -c --arg id "$slug" --arg name "$area_trimmed" '{id:$id,name:$name}'
+  done <<< "$FEATURE_AREAS" | jq -cs '.')
+  jq -n -c --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pf "$PRD_FILE" \
+    --argjson fa "$feature_areas_json" --arg np "$NEXT_PDR" --argjson n "$PDR_COUNT" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PRD_FILE:$pf,feature_areas:$fa,next_pdr:$np,pdr_count:$n}'
 else
   echo "[INFO] product-init setup"
   echo "  REPO_ROOT: $REPO_ROOT"

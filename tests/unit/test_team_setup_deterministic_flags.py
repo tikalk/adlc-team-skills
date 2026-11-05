@@ -256,3 +256,90 @@ def test_powershell_wire_matches_bash_contract(tmp_path):
     cfg = json.loads(init.read_text())
     assert cfg["team_ai_directives"] == str(d.resolve())
     assert cfg["agent"] == "opencode"
+
+
+# ── inject/uninstall regression (PR #133 review Important 1+2, Nit 1) ──
+# Pins: line-1 section removal (BSD head -n 0), mode + symlink preservation,
+# and idempotent re-inject. No python3 involved — pure bash + jq path.
+
+
+def _run_inject(project):
+    return _run_bash(["--inject-agents", str(project)], cwd=project, project_root=project)
+
+
+def _run_uninstall(project):
+    return _run_bash(["--agents-uninstall", str(project)], cwd=project, project_root=project)
+
+
+def test_inject_then_uninstall_line1_section(tmp_path):
+    """Important 1: section starting on line 1 must uninstall cleanly (rc=0, empty file)."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    r = _run_inject(project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    agents = project / "AGENTS.md"
+    assert agents.exists()
+    r = _run_uninstall(project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    assert "illegal line count" not in r.stderr
+    assert agents.read_text().strip() == ""
+
+
+def test_inject_preserves_file_mode(tmp_path):
+    """Important 2: inject must keep the existing file mode (no mktemp 0600 leak)."""
+    import os
+    import stat
+
+    project = tmp_path / "proj"
+    project.mkdir()
+    agents = project / "AGENTS.md"
+    agents.write_text("# hello\n")
+    os.chmod(agents, 0o644)
+    r = _run_inject(project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    assert stat.S_IMODE(os.stat(agents).st_mode) == 0o644
+
+
+def test_inject_uninstall_preserve_symlink(tmp_path):
+    """Important 2: symlink AGENTS.md stays a symlink; the target is updated."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    target = project / "real-AGENTS.md"
+    target.write_text("# hello\n")
+    link = project / "AGENTS.md"
+    link.symlink_to(target)
+    r = _run_inject(project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    assert link.is_symlink(), "inject replaced the symlink with a regular file"
+    assert "TEAM_AI_DIRECTIVES START" in target.read_text()
+    r = _run_uninstall(project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    assert link.is_symlink(), "uninstall replaced the symlink with a regular file"
+    assert "TEAM_AI_DIRECTIVES START" not in target.read_text()
+
+
+def test_wire_preserves_init_options_mode(tmp_path):
+    """Important 2: --wire keeps init-options.json mode (no mktemp 0600 leak)."""
+    import os
+    import stat
+
+    d = _make_valid_directives(tmp_path)
+    project = tmp_path / "proj"
+    (project / ".adlc").mkdir(parents=True)
+    init = project / ".adlc" / "init-options.json"
+    init.write_text(json.dumps({"agent": "opencode"}))
+    os.chmod(init, 0o600)
+    r = _run_bash(["--wire", str(d)], cwd=project, project_root=project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    assert stat.S_IMODE(os.stat(init).st_mode) == 0o600
+
+
+def test_validate_accepts_null_skills_json(tmp_path):
+    """Nit 2: a `.skills.json` containing `null` is valid JSON and must pass."""
+    d = _make_valid_directives(tmp_path)
+    (d / ".skills.json").write_text("null")
+    project = tmp_path / "proj"
+    project.mkdir()
+    r = _run_bash(["--validate", str(d)], cwd=project, project_root=project)
+    assert r.returncode == 0, f"stdout={r.stdout} stderr={r.stderr}"
+    assert "VALID" in r.stdout

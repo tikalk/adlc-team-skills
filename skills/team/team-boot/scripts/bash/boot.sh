@@ -154,33 +154,37 @@ echo ""
 # .adlc/memory; counts sum both roots (migration overlap tolerated).
 ADR_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/adr/ADR-*.md .adlc/memory/adr/ADR-*.md 2>/dev/null | wc -l || true); ADR_COUNT=$((ADR_COUNT))
 PDR_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/pdr/PDR-*.md .adlc/memory/pdr/PDR-*.md 2>/dev/null | wc -l || true); PDR_COUNT=$((PDR_COUNT))
-_CHDR_FILE=0
-# Index rows count at most one index per memory root — first found wins within
-# each root (docs: canonical chdr/chdr.md, then the older root-level chdr.md;
-# legacy: .adlc/memory/chdr.md), matching the dual-read readers. Rows still
-# sum across the docs and legacy roots (migration overlap tolerated, as above)
-# — but never within one root: a migrated repo's stale root chdr.md would
-# otherwise double-count every row alongside the canonical chdr/chdr.md.
-for _chdr_index in "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr/chdr.md" "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr.md"; do
-  if [ -f "$_chdr_index" ]; then
-    # grep -c prints the count even on exit 1 (no match) — capture it, and map
-    # every other failure shape (empty, multi-line) to 0 via case validation.
-    _chdr_rows=$(grep -c '^\| ChDR' "$_chdr_index" 2>/dev/null || true)
-    case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
-    _CHDR_FILE=$((_CHDR_FILE + _chdr_rows))
-    break
-  fi
-done
-for _chdr_index in ".adlc/memory/chdr.md"; do
-  if [ -f "$_chdr_index" ]; then
-    _chdr_rows=$(grep -c '^\| ChDR' "$_chdr_index" 2>/dev/null || true)
-    case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
-    _CHDR_FILE=$((_CHDR_FILE + _chdr_rows))
-    break
-  fi
-done
 _CHDR_DIR=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/chdr/ChDR-*.md .adlc/memory/chdr/ChDR-*.md 2>/dev/null | wc -l || true); _CHDR_DIR=$((_CHDR_DIR))
-CHDR_COUNT=$((_CHDR_FILE + _CHDR_DIR))
+if [ "$_CHDR_DIR" -gt 0 ]; then
+  # File-preferred: record files exist, so they are the inventory.
+  # The index mirrors them — summing both would double-count every record.
+  CHDR_COUNT=$_CHDR_DIR
+else
+  # Index-only fallback: no record files, so rows in the first-found index
+  # per memory root are the inventory. Never sum index + files.
+  _CHDR_ROWS=0
+  for _chdr_index in "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr/chdr.md" "${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr.md"; do
+    if [ -f "$_chdr_index" ]; then
+      # grep -c prints the count even on exit 1 (no match) — capture it, and map
+      # every other failure shape (empty, multi-line) to 0 via case validation.
+      # BRE: '|' is literal, '\|' is alternation — the old '^\| ChDR'
+      # matched every line (empty ^ alternative). Use '^| ChDR'.
+      _chdr_rows=$(grep -c '^| ChDR' "$_chdr_index" 2>/dev/null || true)
+      case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
+      _CHDR_ROWS=$((_CHDR_ROWS + _chdr_rows))
+      break
+    fi
+  done
+  for _chdr_index in ".adlc/memory/chdr.md"; do
+    if [ -f "$_chdr_index" ]; then
+      _chdr_rows=$(grep -c '^| ChDR' "$_chdr_index" 2>/dev/null || true)
+      case "$_chdr_rows" in ''|*[!0-9]*) _chdr_rows=0 ;; esac
+      _CHDR_ROWS=$((_CHDR_ROWS + _chdr_rows))
+      break
+    fi
+  done
+  CHDR_COUNT=$_CHDR_ROWS
+fi
 EVAL_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/evals/EVAL-*.md .adlc/memory/evals/EVAL-*.md 2>/dev/null | wc -l || true); EVAL_COUNT=$((EVAL_COUNT))
 # Normalized pending-status set — one dialect for every class. Previous
 # per-class greps drifted (ChDR matched Discovered, ADR/PDR did not) and all
@@ -308,7 +312,9 @@ if [ -d "${ADLC_DRAFTS:-.adlc/drafts}/cdr" ]; then
   _local_cdrs=$(grep -ril "$PENDING_STATUS" ${ADLC_DRAFTS:-.adlc/drafts}/cdr/*.md 2>/dev/null | wc -l || true); _local_cdrs=$((_local_cdrs))
   PENDING_CDRS=$((_local_cdrs))
 fi
-if [ -n "$TEAM_AI_DIRECTIVES" ] && [ -d "$TEAM_AI_DIRECTIVES/.git" ]; then
+# `.git` may be a directory (plain clone) or a file (submodule/worktree
+# gitfile) — `-d` misses the latter, hiding the whole adlc branch.
+if [ -n "$TEAM_AI_DIRECTIVES" ] && [ -e "$TEAM_AI_DIRECTIVES/.git" ]; then
   if git -C "$TEAM_AI_DIRECTIVES" show-ref --verify --quiet "refs/heads/adlc" 2>/dev/null; then
     _branch_cdrs=$(git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/" 2>/dev/null | grep -c "CDR-" || true)
     case "$_branch_cdrs" in ''|*[!0-9]*) _branch_cdrs=0 ;; esac

@@ -59,7 +59,7 @@ An issue carries exactly one lifecycle label. `done` and `cancelled` are termina
 | 9 | `validation` → `done` | MR/PR that closes the issue is merged | `factory-orchestrator` (completion) · `factory-review` (babysit) | none |
 | 10 | any non-terminal → `cancelled` | issue closed without a merge | `factory-orchestrator` (completion) · lane close-event path | a parked run is released: run marked cancelled, draft MR closed |
 
-`validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A failed run has no edge yet and stays `executing`. Every edge swaps labels through Operation 9.
+`validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A failed run has no edge yet and stays `executing`. Every edge swaps labels through the Set Lifecycle step of Operation 9, which also removes any other lifecycle label it finds.
 
 ### 3. Write-Back & Comments
 Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored`.
@@ -300,11 +300,17 @@ the transition based on provider type:
 
 1. **Label-Based (GitHub/GitLab)**:
    - Statuses are the bare lifecycle labels of §2 (e.g. `executing`, no prefix), resolved through the `labels:` mapping; the edges and their owners are the §2 transition table.
-   - Transitions must **atomically add the new label and remove the old label**.
-   - CLI/MCP commands:
-     - GitHub CLI: `gh pr edit --add-label "<new>" --remove-label "<old>"`
-     - GitLab CLI: `glab mr update --label "<new>" --unlabel "<old>"`
-     - GitHub MCP: `github` server `update_issue` updating `labels` array.
+   - Transitions must **atomically add the new label and remove the old label**, through the **Set Lifecycle** step below. Every actor that moves an issue's lifecycle label calls this step; none adds or removes a lifecycle label on its own.
+
+   **Set Lifecycle** (the shared step; inputs: the issue and the target state):
+   1. Resolve the effective names of all seven lifecycle states through the `labels:` mapping (§2 name resolution).
+   2. Read the issue's current labels. `<others>` = every current label that is a lifecycle state other than the target. This is **any other lifecycle label**, not only the expected previous one: a stray pair such as `intent` + `parked` is cleaned by the next transition.
+   3. Add the target and remove `<others>` in the **same call** (omit the remove flag when `<others>` is empty):
+      - GitLab CLI: `glab issue update <iid> --label "<target>" --unlabel "<others>"`
+      - GitHub CLI: `gh issue edit <number> --add-label "<target>" --remove-label "<others>"`
+      - GitHub MCP: `github` server `update_issue` with the full `labels` array: current labels minus `<others>`, plus the target.
+   4. Re-read the labels and verify exactly one lifecycle label remains. If not, report the coexisting labels in the step output and on the issue. Never report the transition as done.
+   5. Never add or remove the `resume` trigger: the gate runtime owns it.
 
 2. **State-Based (Jira/Linear/ClickUp)**:
    - Statuses mapped to native workflow states/columns (e.g. `executing` to `In Progress`, `validation` to `In Review`).
@@ -341,7 +347,7 @@ issue matching `factory-<orchestrator>:lease`:
 - **Stale lease exists** (`heartbeat + ttl <= now`):
   **TAKEOVER**: Post a takeover lease marker (`status=takeover previous_run=<old_run> previous_host=<old_host>`) and adopt the existing branch/worktree.
 - **No lease or released**:
-  **ACQUIRE**: Post active lease marker (`status=active`), transition status to `executing`, and proceed.
+  **ACQUIRE**: Post active lease marker (`status=active`), move the issue to `executing` through the Set Lifecycle step (Operation 9), and proceed.
 
 #### 2. Heartbeat Remote Lease
 - Completed steps' `output_marker` comments act as implicit heartbeats.

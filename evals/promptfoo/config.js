@@ -358,6 +358,19 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "lifecycle-single-label: a lifecycle transition leaves exactly one lifecycle label",
+        "input_context": "Issue #81 carries agent-can-execute, autonomous, spec-gated and a stray intent label. factory-mission acquires the lease and moves the issue to executing.",
+        "instruction": "Move #81 to executing through the Set Lifecycle step. Show the command and the labels after the transition."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "Contributor asks the agent to add a new skill without a baseline",
         "input_context": "User request: 'Write a skill called cleanup-checklist that makes agents run cleanup steps after finishing a task. Just write the SKILL.md now.'",
         "instruction": "You follow the writing-skills methodology. Emit what you would do FIRST, before writing any skill content."

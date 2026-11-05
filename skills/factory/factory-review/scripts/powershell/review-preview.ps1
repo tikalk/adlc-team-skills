@@ -32,18 +32,16 @@ $ResolvedTree = (Resolve-Path -Path $Tree).Path
 # Safe git invocation: disable repository-local core.fsmonitor (which can
 # execute attacker-configured commands) and suppress the pager. These flags
 # apply per-invocation and do not alter the repository configuration.
-$GitSafe = "git -c core.fsmonitor= --no-pager"
-
 # Changed files in the working tree: tracked modifications/staged changes,
 # plus untracked, non-ignored files (git diff --name-only HEAD misses
 # untracked files). All commands run against $ResolvedTree.
-$head = & $GitSafe -C "$ResolvedTree" rev-parse --verify HEAD 2>$null
+$head = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" rev-parse --verify HEAD 2>$null
 if ($head) {
-    $changed = & $GitSafe -C "$ResolvedTree" diff --name-only HEAD 2>$null
-    $untracked = & $GitSafe -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
+    $changed = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" diff --name-only HEAD 2>$null
+    $untracked = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
 } else {
     $changed = ""
-    $untracked = & $GitSafe -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
+    $untracked = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
 }
 $changed = (($changed, $untracked) -join "`n" | Where-Object { $_ -ne "" })
 

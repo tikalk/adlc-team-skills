@@ -10,7 +10,6 @@ DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
 DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
-
 _get_project_root() {
   local dir
   dir="$(pwd)"
@@ -207,22 +206,11 @@ NEXT_REQ_ID=$(next_req_id "$PRD_FILE")
 NEXT_FEATURE_NUMBER=$(next_feature_number "$PRD_FILE")
 
 if $JSON_MODE; then
-  python3 - "$REPO_ROOT" "$PDR_DRAFTS_DIR" "$PDR_MEMORY_DIR" "$PRD_FILE" "$SECTIONS_DIR" "$STATE_FILE" "$ACCEPTED_COUNT" "$NEXT_PDR" "$NEXT_PRD_SECTION" "$NEXT_REQ_ID" "$NEXT_FEATURE_NUMBER" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "PDR_DRAFTS_DIR": sys.argv[2],
-  "PDR_MEMORY_DIR": sys.argv[3],
-  "PRD_FILE": sys.argv[4],
-  "SECTIONS_DIR": sys.argv[5],
-  "STATE_FILE": sys.argv[6],
-  "accepted_count": int(sys.argv[7]),
-  "next_pdr": sys.argv[8],
-  "next_prd_section": sys.argv[9],
-  "next_req_id": sys.argv[10],
-  "next_feature_number": sys.argv[11]
-}))
-PY
+  jq -n -c --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pmd "$PDR_MEMORY_DIR" \
+    --arg pf "$PRD_FILE" --arg sd "$SECTIONS_DIR" --arg sf "$STATE_FILE" \
+    --argjson a "$ACCEPTED_COUNT" \
+    --arg np "$NEXT_PDR" --arg nps "$NEXT_PRD_SECTION" --arg nr "$NEXT_REQ_ID" --arg nfn "$NEXT_FEATURE_NUMBER" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PDR_MEMORY_DIR:$pmd,PRD_FILE:$pf,SECTIONS_DIR:$sd,STATE_FILE:$sf,accepted_count:$a,next_pdr:$np,next_prd_section:$nps,next_req_id:$nr,next_feature_number:$nfn}'
 else
   echo "[INFO] product-implement setup"
   echo "  Accepted PDRs: $ACCEPTED_COUNT"

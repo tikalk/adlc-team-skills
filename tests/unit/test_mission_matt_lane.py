@@ -60,8 +60,8 @@ def test_matt_lane_anchors_and_artifacts():
     body = section_body(text, "## Matt lane")
 
     # Installed plugin / skills anchors
-    assert "github.com/mattpocock/skills/skills/" in body or "mattpocock" in body or ".agents/skills/" in body, (
-        "Matt lane must cite installed skill paths (github.com/mattpocock/skills/skills/...) or .agents/skills/"
+    assert "github.com/mattpocock/skills/skills/" in body or "mattpocock" in body or "{SKILLS_DIR}" in body, (
+        "Matt lane must cite installed skill paths (github.com/mattpocock/skills/skills/...) or the skills dir"
     )
 
     # Native matt artifact grammar (linked spec issues, spec.md, plan.md)

@@ -5,6 +5,9 @@ description: Use when the team context did not appear at session start, a skill 
 
 # team-diagnose
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 Evidence-first diagnosis of broken adlc-team-skills wiring. The chain has
@@ -34,8 +37,8 @@ Run the checks **in order** — stop at the first failure, fix, re-run:
 |---|---|---|---|
 | 1 | Not configured | `cat .adlc/init-options.json` | A `team_ai_directives` path that exists |
 | 2 | Missing tool | `command -v jq` | jq on PATH (skills registry needs it) |
-| 3 | Broken handler | `bash .agents/skills/team-boot/scripts/bash/boot.sh` from the project root | The directives index on stdout, wrapped in `EXTREMELY_IMPORTANT` |
-| 4 | Stale install | `pytest tests/unit/test_generated_artifacts_sync.py -q` (in the skills repo) or compare `skills/**/SKILL.md` vs `.agents/skills/` names | Mirror matches source |
+| 3 | Broken handler | Invoke the `team-boot` skill | The directives index on stdout, wrapped in `EXTREMELY_IMPORTANT` |
+| 4 | Stale install | `pytest tests/unit/test_generated_artifacts_sync.py -q` (in the skills repo) or compare `skills/**/SKILL.md` vs installed skill names | Mirror matches source |
 | 5 | Injection side | Generated plugin present and loaded for the agent? | If 1–4 are green and the session still lacks context → **adlc-cli's territory** — file there with the outputs of checks 1–4 attached |
 
 For "a rule didn't load" specifically: confirm the session began with the

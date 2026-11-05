@@ -156,9 +156,8 @@ never leave a wholesale `.adlc/` ignore in place (it would hide the tracked
    `graphify-out/`, while re-including `!.adlc/init-options.json`,
    `!.adlc/workspace.yml`, `!.adlc/drafts/`, `!.adlc/evals/`,
    `!.adlc/memory/`, `!.adlc/memory/evals/`, and
-   `!.adlc/memory/evals/holdout.json`. The canonical rule list lives in the
-   workspace skill's `scripts/bash/paths.sh` (`GITIGNORE_RULES_ALLOWLIST`,
-   mirrored in `scripts/powershell/paths.ps1`).
+   `!.adlc/memory/evals/holdout.json`. The allowlist above is canonical for
+   this skill; keep `.gitignore` in sync with it.
 2. Also verify the agent-install surface rules are ignored (`.agents/`,
    `.opencode/`, `.claude/`, `.cursor/`, `.codex/`, `.gemini/`, `.qwen/`,
    `.devin/`, `.tabnine/`, `skills-lock.json`, `.skills.json`,

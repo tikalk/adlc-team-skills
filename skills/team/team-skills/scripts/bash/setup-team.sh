@@ -11,7 +11,8 @@ if [[ -f "$INIT_OPTIONS" ]]; then
 import json, sys
 try:
     with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
+        value = json.load(f).get("team_ai_directives", "")
+    print(value if isinstance(value, str) else "")
 except Exception:
     print("")
 ' "$INIT_OPTIONS" 2>/dev/null || true)

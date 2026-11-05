@@ -5,6 +5,9 @@ description: Use when a mission brief must become verified work end to end — b
 
 # mission-brief
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 **Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
 
 ## In a local session — you answer the gates
@@ -17,7 +20,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`mission-brief` owns the mission lifecycle end to end as one DAG: it turns the mission's brief into a spec whose acceptance criteria each answer yes or no, into an ordered plan, into tested code, into a converge verdict — judged against the brief, never against the implementer's claims. It works under the shared executor contract (`.agents/skills/factory-runbook/references/executor.md`): the `brief` step emits the Mission Brief draft per `references/mission-brief-template.md`; `specify` reads `brief.md` and emits a draft; `clarify` reads `spec.md` and emits a decision; `plan` reads `spec.md` plus the clarify decision and emits `plan.md`; `test` reads `spec.md` and emits an `artifact-ref`; `code` reads that `test` artifact plus `spec.md` and `plan.md`; `verify` reads the `test` and `code` artifacts and emits severity-ranked findings; `converge` reads `brief.md` and emits one verdict of `DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`. A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate, never to code.
+`mission-brief` owns the mission lifecycle end to end as one DAG: it turns the mission's brief into a spec whose acceptance criteria each answer yes or no, into an ordered plan, into tested code, into a converge verdict — judged against the brief, never against the implementer's claims. It works under the shared executor contract (invoke the `factory-runbook` skill; contract at `references/executor.md` in that skill): the `brief` step emits the Mission Brief draft per `references/mission-brief-template.md`; `specify` reads `brief.md` and emits a draft; `clarify` reads `spec.md` and emits a decision; `plan` reads `spec.md` plus the clarify decision and emits `plan.md`; `test` reads `spec.md` and emits an `artifact-ref`; `code` reads that `test` artifact plus `spec.md` and `plan.md`; `verify` reads the `test` and `code` artifacts and emits severity-ranked findings; `converge` reads `brief.md` and emits one verdict of `DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`. A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate, never to code.
 
 The lane-carrying sections below keep one pointer per framework lane; the lane prose lives in its own home and is linked, never duplicated here. Lane resolution is a session instruction (Phase 0), never a script or table lookup.
 
@@ -29,7 +32,7 @@ The single lane table is `references/lane-routing.yml` (data, not prose): the fi
 
 There is no detector script and no precedence table to run. In the brief step, inspect the well-known install paths yourself and disclose what you found in the brief:
 
-1. Inspect the installed skill packs under `.agents/skills/` (distinctive names: `*speckit*`, `*superpowers*`, `*addy*`, `*matt*`, `*pocock*`).
+1. Inspect the installed skill packs via the Skill tool (distinctive names: `*speckit*`, `*superpowers*`, `*addy*`, `*matt*`, `*pocock*`).
 2. Inspect the plugin entries (the agent registry's plugin list — superpowers-style plugin installs live outside the skills dirs).
 3. Check `specify` CLI availability (`specify --help` on PATH).
 4. Look at repo usage hints (framework-native artifacts: specs dirs, plans dirs, spec-linked issues) — but a hint is never selection evidence on its own.
@@ -93,7 +96,7 @@ Canonical home: superpowers framework integration.
 
 This section translates the shared lifecycle DAG into the mattpocock/skills framework workflow across coding agents (Claude Code, Cursor, Codex, OpenCode, Gemini, etc.); matt keeps its modular discipline while the step contract below remains authoritative. Design, task, and review artifacts are stored in linked tracker spec issues and run-local drafts (`spec.md`, `plan.md`).
 
-- The `specify` step maps to the design workflow of `github.com/mattpocock/skills/skills/engineering/to-spec`, activated when the skill pack is installed (at `github.com/mattpocock/skills/skills/` or `.agents/skills/`). It reads `brief.md` and conversation, publishing a linked tracker spec issue or writing `spec.md`. Shared contract: `output_type` `draft` with `reads_from` `brief.md`.
+- The `specify` step maps to the design workflow of `github.com/mattpocock/skills/skills/engineering/to-spec`, activated when the skill pack is installed (in its checkout or installed via the Skill tool). It reads `brief.md` and conversation, publishing a linked tracker spec issue or writing `spec.md`. Shared contract: `output_type` `draft` with `reads_from` `brief.md`.
 - The `clarify` step maps to the alignment and boundary analysis of `github.com/mattpocock/skills/skills/engineering/grill-with-docs` (and `grilling`), resolving requirements and domain models into `spec.md`. Shared contract: `output_type` `decision` with `reads_from` `spec.md`.
 - The `plan` step maps to `github.com/mattpocock/skills/skills/engineering/to-tickets`, decomposing the spec into tracer-bullet tickets or task plans (`plan.md`). It reads `spec.md` and clarified decisions. Shared contract: `output_type` `draft` with `reads_from` `spec.md, clarify`.
 - The `test` step maps to `github.com/mattpocock/skills/skills/engineering/tdd` (red-green-refactor loop), authoring failing tests staged under the RED gate before code is touched. Shared contract: `output_type` `artifact-ref` with `reads_from` `spec.md`.
@@ -107,7 +110,7 @@ Canonical home: matt framework integration.
 
 This section translates the shared lifecycle DAG into the addyosmani/agent-skills framework workflow across coding agents (Claude Code, Cursor, Codex, OpenCode, Gemini, etc.); addy keeps its own checklist and constraint discipline while the step contract below remains authoritative. Design, task, and quality artifacts are stored under repository constraints files, `tasks/` (`plan.md`, `todo.md`, `spec.md`), and `references/` checklists (`definition-of-done.md`, `testing-patterns.md`, `security-checklist.md`).
 
-- The `specify` step maps to the design workflow of `github.com/addyosmani/agent-skills/skills/spec-driven-development` and `github.com/addyosmani/agent-skills/skills/constraint-driven-development`, activated when the agent-skills pack is installed (at `github.com/addyosmani/agent-skills/skills/` or `.agents/skills/`). It reads `brief.md` and repo quality standards, writing the specification to `tasks/spec.md` (or `spec.md`) and recording non-negotiables into the repository constraints log. Shared contract: `output_type` `draft` with `reads_from` `brief.md`.
+- The `specify` step maps to the design workflow of `github.com/addyosmani/agent-skills/skills/spec-driven-development` and `github.com/addyosmani/agent-skills/skills/constraint-driven-development`, activated when the agent-skills pack is installed (in its checkout or installed via the Skill tool). It reads `brief.md` and repo quality standards, writing the specification to `tasks/spec.md` (or `spec.md`) and recording non-negotiables into the repository constraints log. Shared contract: `output_type` `draft` with `reads_from` `brief.md`.
 - The `clarify` step maps to the ambiguity and boundary analysis of `github.com/addyosmani/agent-skills/skills/doubt-driven-development` (and `interview-me`), resolving requirements, checking edge cases, and recording confirmed decisions into `spec.md` and quality constraints. Shared contract: `output_type` `decision` with `reads_from` `spec.md`.
 - The `plan` step maps to `github.com/addyosmani/agent-skills/skills/planning-and-task-breakdown`, sizing tasks and checking acceptance criteria against `references/definition-of-done.md`, outputting structured task plans to `tasks/plan.md` (or `tasks/todo.md`). It reads `spec.md` and clarified decisions. Shared contract: `output_type` `draft` with `reads_from` `spec.md, clarify`.
 - The `test` step maps to `github.com/addyosmani/agent-skills/skills/test-driven-development` (aligned with `references/testing-patterns.md`), authoring tests in `tests/` and staging them under the RED gate before code is touched. Shared contract: `output_type` `artifact-ref` with `reads_from` `spec.md`.

@@ -1,7 +1,7 @@
 """Sync checks between the source skills tree and CLI-generated artifacts.
 
 The `adlc-cli` install generates artifacts that are gitignored
-(`.agents/skills/` flattened mirror, `.opencode/commands/` slash commands).
+(`{SKILLS_DIR}/` flattened mirror, per-agent commands dir).
 Nothing else verifies they match `skills/` — a stale local install silently
 behaves differently from a fresh one. These tests fail when the generated
 layer drifts from the source of truth.
@@ -44,13 +44,13 @@ def _source_skills() -> dict:
 
 
 def test_mirror_contains_every_skill_with_matching_frontmatter():
-    """The flattened .agents/skills/ mirror must match every source skill's name+description."""
+    """The flattened skills mirror must match every source skill's name+description."""
     skills = _source_skills()
     mirrored = {p.name for p in MIRROR_DIR.iterdir() if p.is_dir()}
 
     missing = sorted(set(skills) - mirrored)
     orphans = sorted(mirrored - set(skills))
-    assert not missing, f"Skills missing from .agents/skills mirror (stale install): {missing}"
+    assert not missing, f"Skills missing from skills mirror (stale install): {missing}"
     assert not orphans, f"Mirror orphans with no source skill (stale install): {orphans}"
 
     mismatches = []

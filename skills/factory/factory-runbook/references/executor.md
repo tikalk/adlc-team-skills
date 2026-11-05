@@ -1,5 +1,8 @@
 # Factory Workflow Executor Engine (Shared Contract)
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 This is the canonical executor contract for all Kind-A factory orchestrators (`factory-mission`, `factory-intent`, `factory-learn`, `factory-init`). It defines how to compile a feature or lifecycle task into a structured step list, execute steps sequentially with state tracking, handle supervision gates, and run correction loops.
@@ -37,7 +40,7 @@ The executor is runtime-independent: it works with any agent CLI in any session.
 
 1. Every orchestrator reads the mission policy: `mission.yml` from the run directory (`.adlc/workflows/runs/<run_id>/mission.yml`) once the run exists, or the template defaults before it starts (`mission-template.yml`, copied into the run dir by `state start`). Policy knobs — `execution`, `supervision`, budgets (`max_iterations`, `max_spec_corrections`, `circuit_breaker`, `quality_threshold`), model tiers, `tdd`, `worktree_root`, `lease_ttl`, `stall_window`, `lanes` — are unchanged from the former `workflow-config.yml`; only the home moved.
 2. Supervision default is `gated` (or `hybrid` for lifecycle runs, meaning gates only at `clarify`⭐ and merge sign-off).
-3. Verify target lifecycle/compliance skills are installed (check `.agents/skills/` directory). Stop if missing.
+3. Verify target lifecycle/compliance skills are installed (check installed skills via the Skill tool). Stop if missing.
 4. If `--issue <ref>` is specified: resolve tracker provider, discover MCP/CLI tools, verify the target PR/MR/issue is accessible (`tracker-integration.md` §1-2). The comment bus is active for this run.
 
 ### Phase 0.5 — Workspace Isolation & Atomic Git Ref Lock
@@ -286,7 +289,7 @@ On successful convergence of all steps:
    - `local`: Write to `.adlc/` and project root.
    - `external-repo`: Open a PR on the `team-ai-directives` repository (used by `factory-learn`).
    - `tracker`: Post a completion summary comment on the PR/MR/issue with the final audit trail.
-4. **Draft MR/PR ownership (the MR-ownership decision)**: whenever the publish target opens or reuses a draft MR/PR, that MR must arrive owned and tracked — it carries the Issue's milestone and a named assignee. Apply `tracker-integration.md` §Operation 11: resolve the propagation with the resolver twins (`{REPO_ROOT}/.agents/skills/factory-runbook/scripts/bash/resolve-mr-ownership.sh` / `{REPO_ROOT}/.agents/skills/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1`), then create or reuse the MR and set the resolved fields. Preserve-only (never overwrite a field a human set), silent skip when the Issue has no milestone, block the run with an actionable error when a read/write scope is missing. Never guess a milestone or an assignee.
+4. **Draft MR/PR ownership (the MR-ownership decision)**: whenever the publish target opens or reuses a draft MR/PR, that MR must arrive owned and tracked — it carries the Issue's milestone and a named assignee. Apply `tracker-integration.md` §Operation 11: resolve the propagation with the resolver twins (`scripts/bash/resolve-mr-ownership.sh` / `scripts/powershell/resolve-mr-ownership.ps1`), then create or reuse the MR and set the resolved fields. Preserve-only (never overwrite a field a human set), silent skip when the Issue has no milestone, block the run with an actionable error when a read/write scope is missing. Never guess a milestone or an assignee.
 5. No archiving move — the run directory (`.adlc/workflows/runs/<run_id>/`) is the durable archive; git-refs Tier-3 transports it. The final `state advance` (last step, completed) closes the run and releases the lease. Marker comments on the PR/MR/issue remain as a permanent, human-visible audit trail.
 6. Print the audit trail.
 

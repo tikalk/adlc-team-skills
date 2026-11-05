@@ -2,12 +2,13 @@
 param([switch]$Json)
 $ErrorActionPreference = "Stop"
 
-# shared layout constants (single definition in paths.ps1).
-$AdlcPathsPs1 = "$PSScriptRoot/../../../../team/workspace/scripts/powershell/paths.ps1"
-if (-not (Test-Path $AdlcPathsPs1)) {
-    $AdlcPathsPs1 = "$PSScriptRoot/../../../workspace/scripts/powershell/paths.ps1"
-}
-if (Test-Path $AdlcPathsPs1) { . $AdlcPathsPs1 }
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+$ADLC_DIR = if ($env:ADLC_DIR) { $env:ADLC_DIR } else { ".adlc" }
+$DOCS_ADLC_DIR = if ($env:DOCS_ADLC_DIR) { $env:DOCS_ADLC_DIR } else { "docs/adlc" }
+$DOCS_ADLC_MEMORY = if ($env:DOCS_ADLC_MEMORY) { $env:DOCS_ADLC_MEMORY } else { "docs/adlc/memory" }
+$DOCS_ADLC_PRODUCT = if ($env:DOCS_ADLC_PRODUCT) { $env:DOCS_ADLC_PRODUCT } else { "docs/adlc/product" }
+$DOCS_ADLC_ARCHITECT = if ($env:DOCS_ADLC_ARCHITECT) { $env:DOCS_ADLC_ARCHITECT } else { "docs/adlc/architect" }
+$ADLC_DRAFTS = if ($env:ADLC_DRAFTS) { $env:ADLC_DRAFTS } else { ".adlc/drafts" }
 $RepoRoot = $(git rev-parse --show-toplevel 2>$null); if (-not $RepoRoot) { $RepoRoot = Get-Location }
 $PdrDraftsDir = Join-Path $RepoRoot ".adlc/drafts/pdr"
 #  canonical PDR memory root (legacy .adlc/memory stays read-compatible).

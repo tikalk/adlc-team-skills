@@ -42,7 +42,8 @@ ID_RE = re.compile(r"\b(?:ADR|PDR)-\d{3,4}(?:-[a-z0-9-]+)?\b")
 LOCAL_EXAMPLE_IDS = {
     "ADR-000", "ADR-001", "ADR-002", "ADR-003", "ADR-003-amendment-2",
     "ADR-004", "ADR-004-workspace-profile", "ADR-005", "ADR-006", "ADR-007",
-    "ADR-008", "ADR-009", "ADR-012", "ADR-0123", "ADR-017-monitoring-connector",
+    "ADR-008", "ADR-008-amendment-2", "ADR-009", "ADR-009-workspace-profile",
+    "ADR-012", "ADR-0123", "ADR-017-monitoring-connector",
     "PDR-000", "PDR-001", "PDR-002", "PDR-002-amendment-2", "PDR-003",
     "PDR-004", "PDR-005", "PDR-008", "PDR-009", "PDR-009-amendment-2",
     "PDR-012", "PDR-0123", "PDR-021-agentic-verification-depth",

@@ -5,7 +5,8 @@
 # `knowledge/technologies/` is the system of record. A shallow clone is cached and
 # refreshed after ADLC_RADAR_TTL seconds (default 3 days). When the repository is
 # unreachable the helper falls back to the stale clone (with a warning), then to the
-# public radar JSON (ConvertFrom-Json), announcing the fallback on stdout.
+# public radar JSON (ConvertFrom-Json). JSON notices go to stderr; each JSON row
+# includes source.mode and source.reason. Markdown notices stay on stdout.
 #
 # Usage:
 #   pwsh radar-search.ps1 <query1> [query2 ...] [-Json] [-Refresh]
@@ -21,6 +22,7 @@
 # Environment: ADLC_RADAR_URL, ADLC_RADAR_BRANCH, ADLC_RADAR_CACHE,
 # ADLC_RADAR_REPO, ADLC_RADAR_TTL, ADLC_RADAR_FALLBACK_URL,
 # ADLC_RADAR_CONNECT_TIMEOUT
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Queries,
@@ -56,8 +58,13 @@ function Format-UnixTime([long]$Epoch) {
 }
 
 function Write-Notice([string]$Message) {
-    Write-Output "> ⚠️ $Message"
-    Write-Output ""
+    if ($Json) {
+        [Console]::Error.WriteLine("> ⚠️ $Message`n")
+    }
+    else {
+        Write-Output "> ⚠️ $Message"
+        Write-Output ""
+    }
 }
 
 function Invoke-Git {
@@ -296,7 +303,7 @@ function Search-Docs($Docs, [string]$Query) {    $results = @()
 }
 
 function Search-FallbackJson([string]$Data) {
-    $radar = $Data | ConvertFrom-Json
+    $radar = $Data | ConvertFrom-Json -ErrorAction Stop
     if (-not $radar.blips) { return @() }
     $results = @()
     foreach ($query in $Queries) {
@@ -338,9 +345,9 @@ $dataUnavailable = $false
 if ($state.Mode -eq "unavailable") {
     Write-Notice "Radar knowledge repository unavailable ($($state.Reason)) — working with the public radar JSON at $FallbackUrl. It is generated from the same knowledge tree and may lag it."
     try {
-        if ($FallbackUrl -like "file://*") { $payload = Get-Content -LiteralPath $FallbackUrl.Substring(7) -Raw }
-        elseif ($FallbackUrl -match '^/') { $payload = Get-Content -LiteralPath $FallbackUrl -Raw }
-        else { $payload = (Invoke-WebRequest -Uri $FallbackUrl -TimeoutSec ([int]$ConnectTimeout) -UseBasicParsing).Content }
+        if ($FallbackUrl -like "file://*") { $payload = Get-Content -LiteralPath $FallbackUrl.Substring(7) -Raw -ErrorAction Stop }
+        elseif ($FallbackUrl -match '^/') { $payload = Get-Content -LiteralPath $FallbackUrl -Raw -ErrorAction Stop }
+        else { $payload = (Invoke-WebRequest -Uri $FallbackUrl -TimeoutSec ([int]$ConnectTimeout) -UseBasicParsing -ErrorAction Stop).Content }
         $results = @(Search-FallbackJson $payload)
     }
     catch {
@@ -378,7 +385,15 @@ switch ($state.Mode) {
 if ($state.Mode -eq "unavailable") { $sourceLabel = "FALLBACK public radar.json ($FallbackUrl)" }
 
 if ($Json) {
-    $results | ConvertTo-Json -Depth 3
+    $sourceMode = if ($state.Mode -eq "unavailable") { "fallback" } else { $state.Mode }
+    $jsonRows = @($results | ForEach-Object {
+        [PSCustomObject]@{
+            name = $_.Title; quadrant = $_.Quadrant; ring = $_.Ring
+            why = $_.Why; path = $_.Path
+            source = [PSCustomObject]@{ mode = $sourceMode; reason = $state.Reason }
+        }
+    })
+    ConvertTo-Json -InputObject $jsonRows -Depth 3
     exit 0
 }
 

@@ -7,7 +7,7 @@
 # clone in a cache directory and refreshes it after ADLC_RADAR_TTL seconds
 # (default 3 days). When the repository is unreachable it falls back — in order —
 # to the stale clone (with a warning) and then to the public radar JSON
-# (https://tikalk.com/radar.json), announcing the fallback on stdout + stderr.
+# (https://tikalk.com/radar.json). JSON notices go to stderr; rows carry source metadata.
 #
 # Usage:
 #   bash radar-search.sh <query1> [query2 ...] [options]
@@ -115,7 +115,11 @@ lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 
 notice() {
   # Visible markdown blockquote — the skill re-emits these lines in its answer.
-  printf '> ⚠️ %s\n\n' "$1"
+  if [ "$OUTPUT_JSON" = true ]; then
+    printf '> ⚠️ %s\n\n' "$1" >&2
+  else
+    printf '> ⚠️ %s\n\n' "$1"
+  fi
 }
 
 file_mtime() {
@@ -198,6 +202,11 @@ ensure_data_source() {
     return 1
   fi
 
+  # The lock is a sibling of the cache, so its parent must exist on first use.
+  if ! mkdir -p "$(dirname "$CACHE_DIR")" 2>/dev/null; then
+    REASON="cache directory unavailable ($CACHE_DIR)"
+    return 1
+  fi
   local have_lock=0
   if mkdir "${CACHE_DIR}.lock" 2>/dev/null; then
     have_lock=1
@@ -487,7 +496,11 @@ COUNT=0
 [ -f "$RESULTS_FILE" ] && COUNT="$(wc -l < "$RESULTS_FILE" | tr -d ' ')"
 
 if [ "$OUTPUT_JSON" = true ]; then
-  jq -R -s 'split("\n") | map(select(length > 0)) | map(split("\t")) | map({name: .[0], quadrant: .[1], ring: .[2], why: .[3], path: .[4]})' "$RESULTS_FILE"
+  jq -R -s --arg mode "$MODE" --arg reason "$REASON" '
+    split("\n") | map(select(length > 0)) | map(split("\t"))
+    | map({name: .[0], quadrant: .[1], ring: .[2], why: .[3], path: .[4],
+           source: {mode: $mode, reason: $reason}})
+  ' "$RESULTS_FILE"
   exit 0
 fi
 

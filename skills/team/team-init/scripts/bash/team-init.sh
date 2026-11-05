@@ -26,16 +26,13 @@ resolve_team_levelup_paths() {
 
 output_json() {
   resolve_team_levelup_paths >/dev/null
-  python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$BRANCH" "$ADLC_BRANCH" "$ADLC_WORKTREE" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "TEAM_AI_DIRECTIVES": sys.argv[2],
-  "BRANCH": sys.argv[3],
-  "ADLC_BRANCH": sys.argv[4],
-  "ADLC_WORKTREE": sys.argv[5]
-}))
-PY
+  jq -n -c \
+    --arg repo_root "$PROJECT_ROOT" \
+    --arg team_ai_directives "$TEAM_AI_DIRECTIVES" \
+    --arg branch "$BRANCH" \
+    --arg adlc_branch "$ADLC_BRANCH" \
+    --arg adlc_worktree "$ADLC_WORKTREE" \
+    '{"REPO_ROOT":$repo_root,"TEAM_AI_DIRECTIVES":$team_ai_directives,"BRANCH":$branch,"ADLC_BRANCH":$adlc_branch,"ADLC_WORKTREE":$adlc_worktree}'
 }
 
 ensure_adlc_branch() {

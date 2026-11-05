@@ -8,15 +8,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 1. PATH RESOLUTION
 ###############################################################################
 
+# JSON output always goes through jq -n (no manual string building).
+
 resolve_team_levelup_paths() {
   PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
   BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
 
+  # jq is required here (no silent fallback to the default path when it is missing).
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed (https://jqlang.github.io/jq/download/)" >&2
+    return 1 2>/dev/null || exit 1
+  fi
   TEAM_AI_DIRECTIVES="${TEAM_AI_DIRECTIVES:-}"
   if [[ -z "$TEAM_AI_DIRECTIVES" && -f "${PROJECT_ROOT}/.adlc/init-options.json" ]]; then
-    TEAM_AI_DIRECTIVES=$(grep '"team_ai_directives"' "${PROJECT_ROOT}/.adlc/init-options.json" \
-      | sed -n 's/.*"team_ai_directives"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-      | head -1)
+    TEAM_AI_DIRECTIVES=$(jq -r '.team_ai_directives // empty' "${PROJECT_ROOT}/.adlc/init-options.json" 2>/dev/null || true)
   fi
   [[ -z "$TEAM_AI_DIRECTIVES" || "$TEAM_AI_DIRECTIVES" = "null" ]] && TEAM_AI_DIRECTIVES="${PROJECT_ROOT}/team-ai-directives"
 
@@ -44,16 +49,13 @@ resolve_team_levelup_paths() {
 
 output_json() {
   resolve_team_levelup_paths >/dev/null
-  python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$BRANCH" "$ADLC_BRANCH" "$ADLC_WORKTREE" <<'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "TEAM_AI_DIRECTIVES": sys.argv[2],
-  "BRANCH": sys.argv[3],
-  "ADLC_BRANCH": sys.argv[4],
-  "ADLC_WORKTREE": sys.argv[5]
-}))
-PY
+  jq -n \
+    --arg repo_root "$PROJECT_ROOT" \
+    --arg team_ai_directives "$TEAM_AI_DIRECTIVES" \
+    --arg branch "$BRANCH" \
+    --arg adlc_branch "$ADLC_BRANCH" \
+    --arg adlc_worktree "$ADLC_WORKTREE" \
+    '{"REPO_ROOT":$repo_root,"TEAM_AI_DIRECTIVES":$team_ai_directives,"BRANCH":$branch,"ADLC_BRANCH":$adlc_branch,"ADLC_WORKTREE":$adlc_worktree}'
 }
 
 ###############################################################################

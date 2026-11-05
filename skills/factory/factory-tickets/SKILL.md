@@ -65,6 +65,25 @@ Assign every retrieved item to exactly one of the following priority sections. *
 
 *Note: Epics and parent issues go in an Appendix below a rule, showing child counts and progress. They are never mixed into the active task list.*
 
+### 5. Lifecycle Lint (read-only)
+
+When the user asks whether the board's lifecycle labels are healthy, run the lint against the whole project. It reads open and closed issues and writes nothing:
+
+- bash: `scripts/bash/lifecycle-lint.sh --provider <gitlab|github> --project <path|owner/repo> [--json <file>]`
+- PowerShell: `scripts/powershell/lifecycle-lint.ps1 -Provider <gitlab|github> -Project <path|owner/repo> [-Json <file>]`
+
+It applies the one-label rule of the lifecycle state machine (`tracker-integration.md` §2):
+- Every non-interactive issue carries exactly one lifecycle label.
+- A closed issue carries `done` or `cancelled`.
+
+Each violation gets one proposed label:
+- A closed issue keeps the single terminal label it has. Otherwise it gets `done` if a merged MR/PR closed it, and `cancelled` if none did.
+- An open issue with no lifecycle label gets `intent`.
+- An open issue with several labels gets the furthest non-terminal state it carries.
+- An open issue with only a terminal label gets `-`: a human decides.
+
+`interactive` issues are listed separately and never counted. Show the table and the summary line (`N issues, V violations, I interactive`). The script exits 1 when there are violations. Corrections are never made here: hand the `--json` plan to the confirm-gated backfill in `factory-setup` Mode 3.
+
 ---
 
 ## Invariants & Safety Constraints

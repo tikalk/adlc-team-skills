@@ -129,13 +129,40 @@ function Api([string[]]$ApiArgs) {
     else { gh api --hostname github.com @ApiArgs }
 }
 
+function Enc([string]$S) { json 'console.log(encodeURIComponent(process.argv[1]))' @($S) }
+
+# Invoke-ResolveMrOwnershipFile <json-string> — pass a JSON payload to
+# resolve-mr-ownership.ps1 via a temp file (never a script-to-script pipe:
+# `[Console]::In` is the process console, not the pipe, so `payload |
+# resolve-mr-ownership.ps1` arrives empty). Prints the resolver's JSON answer.
+function Invoke-ResolveMrOwnershipFile([string]$Payload) {
+    $payloadFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($payloadFile, $Payload)
+        $answer = & "${PSScriptRoot}/resolve-mr-ownership.ps1" $payloadFile
+        if ($LASTEXITCODE -ne 0) { Die 'cannot resolve MR ownership' }
+        return ($answer -join "`n")
+    } finally {
+        Remove-Item -Force $payloadFile -ErrorAction SilentlyContinue
+    }
+}
+
 # Scope pre-flight (ADR-432): block before any mutation when the tracker token
-# cannot create the MR/PR.
+# cannot create the MR/PR. The outcome is carried as denied_scope
+# (api|repo|null) into the resolve-mr-ownership payload below, whose
+# `block` ruling names the missing scope and dies before push.
+$deniedScope = 'null'
 if ($provider -eq 'gitlab') {
     $self = Api @('personal_access_tokens/self') 2>$null
     if ($LASTEXITCODE -ne 0) { Die "cannot read the tracker token's scopes (needs a personal/project access token with 'api' scope)" }
     json 'const t = JSON.parse(process.argv[1] || "{}"); process.exit(Array.isArray(t.scopes) && t.scopes.includes("api") ? 0 : 3)' @($self) *> $null
-    if ($LASTEXITCODE -ne 0) { Die "tracker token lacks the 'api' scope needed to open the merge request" }
+    if ($LASTEXITCODE -ne 0) {
+        $deniedScope = 'api'
+        $reasonPayload = json 'console.log(JSON.stringify({provider: "gitlab", issue: {}, mr: {}, initiator: "", runner: null, denied_scope: "api"}))'
+        $reasonAnswer = Invoke-ResolveMrOwnershipFile $reasonPayload
+        $reason = json 'console.log(JSON.parse(process.argv[1] || "{}").reason || "api")' @($reasonAnswer)
+        Die "tracker token lacks the 'api' scope needed to open the merge request ($reason)"
+    }
 } else {
     $raw = gh api --hostname github.com -i user 2>$null
     if ($LASTEXITCODE -ne 0) { Die "cannot read the tracker token's scopes" }
@@ -148,10 +175,35 @@ if ($provider -eq 'gitlab') {
     }
 }
 
-git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
-if ($LASTEXITCODE -ne 0) { Die "push of $branch failed" }
+# Invoke-ResolveMrOwnership <provider> <issueJson> <mrJson> <initiator> <runnerJson> <deniedJson>
+# builds the {provider,issue,mr,initiator,runner,denied_scope} payload and
+# invokes resolve-mr-ownership.ps1; prints the resolver's JSON answer.
+# (Operation 11: the resolver owns the milestone/assignee decision.)
+function Invoke-ResolveMrOwnership([string]$Provider_, [string]$IssueJson, [string]$MrJson, [string]$Initiator_, [string]$RunnerJson, [string]$DeniedJson) {
+    $payload = json '
+    const [provider, issue_raw, mr_raw, initiator, runner_raw, denied_raw] = process.argv.slice(1);
+    const parse = (s, fb) => { try { const v = JSON.parse(s); return v === undefined ? fb : v; } catch { return fb; } };
+    console.log(JSON.stringify({
+      provider, issue: parse(issue_raw, {}), mr: parse(mr_raw, {}),
+      initiator: initiator || "", runner: parse(runner_raw, null),
+      denied_scope: parse(denied_raw, null),
+    }));' @($Provider_, $IssueJson, $MrJson, $Initiator_, $RunnerJson, $DeniedJson)
+    return Invoke-ResolveMrOwnershipFile $payload
+}
 
-function Enc([string]$S) { json 'console.log(encodeURIComponent(process.argv[1]))' @($S) }
+# Assert-OwnershipNotBlocked <resolverJson> — exits non-zero naming the scope
+# when action == "block".
+function Assert-OwnershipNotBlocked([string]$OwnershipJson) {
+    json '
+    const o = JSON.parse(process.argv[1] || "{}");
+    if (o.action === "block") { console.error("open-mr: " + (o.reason || "blocked by resolve-mr-ownership")); process.exit(3); }
+    console.log("");
+    ' @($OwnershipJson) *> $null
+    if ($LASTEXITCODE -ne 0) {
+        $why = json 'console.log(JSON.parse(process.argv[1] || "{}").reason || "blocked by resolve-mr-ownership")' @($OwnershipJson)
+        Die $why
+    }
+}
 
 $url = ''
 if ($provider -eq 'gitlab') {
@@ -160,33 +212,53 @@ if ($provider -eq 'gitlab') {
     if ($LASTEXITCODE -ne 0) { Die 'cannot list merge requests' }
     $url = json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].web_url || "")' @($existing)
     if (-not $url) {
-        $projJson = (Api @("projects/$p")) -join "`n"
-        $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
-        $milestone = ''
-        $assignees = ''
+        # Create path: push first; reuse path returns the open MR untouched
+        # above — no issue read, no resolve-mr-ownership call.
+        git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
+        if ($LASTEXITCODE -ne 0) { Die "push of $branch failed" }
         if ($iid) {
-            $issue = Api @("projects/$(Enc $issueProject)/issues/$iid")
+            $issueRaw = Api @("projects/$(Enc $issueProject)/issues/$iid")
             if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
-            $milestone = json 'const i = JSON.parse(process.argv[1]); console.log(i.milestone && i.milestone.id || "")' @($issue)
-            $assignees = json 'const i = JSON.parse(process.argv[1]); console.log((i.assignees || []).map(a => a.id).join(" "))' @($issue)
+            # Normalize the connector GET into resolver verbatim form
+            # {milestone_id, assignees:[ids]}.
+            $issueJson = json '
+        const i = JSON.parse(process.argv[1] || "{}");
+        const mid = (i.milestone_id !== undefined && i.milestone_id !== null && i.milestone_id !== "")
+          ? i.milestone_id : (i.milestone && i.milestone.id || null);
+        const ids = (i.assignees || []).map(a => (a && typeof a === "object" ? a.id : a)).filter(v => v !== undefined && v !== null);
+        const num = mid === null || mid === "" ? null : Number(mid);
+        console.log(JSON.stringify({ milestone_id: (mid === null || mid === "") ? null : num, assignees: ids.map(Number).filter(n => !Number.isNaN(n)) }));
+      ' @($issueRaw)
+        } else {
+            $issueJson = '{}'
         }
-        if (-not $assignees) {
-            $userJson = (Api @('user')) -join "`n"
-            $assignees = json 'console.log(JSON.parse(process.argv[1]).id||"")' @($userJson)
-        }
+        $initiator = if ($env:ADLC_INITIATOR) { $env:ADLC_INITIATOR } else { '' }
+        $runnerRaw = (Api @('user')) -join "`n"
+        $runnerJson = json 'try { console.log(JSON.stringify(JSON.parse(process.argv[1] || "{}").id)) } catch { console.log("null") }' @($runnerRaw)
+        if ($deniedScope -eq 'api') { $deniedJson = '"api"' } else { $deniedJson = 'null' }
+        $ownership = Invoke-ResolveMrOwnership 'gitlab' $issueJson '{}' $initiator $runnerJson $deniedJson
+        Assert-OwnershipNotBlocked $ownership
+        # Create body = fixed keys + ONLY resolver-returned non-null fields.
         # One JSON body via --input: current glab refuses bracketed field names
         # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and
         # the milestone as strings.
-        $body = [ordered]@{
-            source_branch = $branch; target_branch = $target; title = $title
-            description = $description; squash = $false
-        }
-        if ($milestone) { $body.milestone_id = [int64]$milestone }
-        $ids = @(($assignees -split ' ') | Where-Object { $_ } | ForEach-Object { [int64]$_ })
-        if ($ids.Count -gt 0) { $body.assignee_ids = $ids }
+        $projJson = (Api @("projects/$p")) -join "`n"
+        $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
+        $createBody = json '
+      const [source_branch, target_branch, title, description, ownership] = process.argv.slice(1);
+      const o = JSON.parse(ownership || "{}");
+      const b = { source_branch, target_branch, title, description, squash: false };
+      if (o.milestone !== null && o.milestone !== undefined && o.milestone_field === "milestone_id") b.milestone_id = Number(o.milestone);
+      if (o.assignee !== null && o.assignee !== undefined && o.assignee_field === "assignee_ids") {
+        const ids = Array.isArray(o.assignee) ? o.assignee : [o.assignee];
+        const nums = ids.map(Number).filter(n => !Number.isNaN(n));
+        if (nums.length) b.assignee_ids = nums;
+      }
+      console.log(JSON.stringify(b));
+    ' @($branch, $target, $title, $description, $ownership)
         $bodyFile = [System.IO.Path]::GetTempFileName()
         try {
-            [System.IO.File]::WriteAllText($bodyFile, ($body | ConvertTo-Json -Compress -Depth 3))
+            [System.IO.File]::WriteAllText($bodyFile, $createBody)
             $created = Api @('-X', 'POST', "projects/$p/merge_requests", '-H', 'Content-Type: application/json', '--input', $bodyFile)
             $createExit = $LASTEXITCODE
         } finally {
@@ -201,6 +273,10 @@ if ($provider -eq 'gitlab') {
     if ($LASTEXITCODE -ne 0) { Die 'cannot list pull requests' }
     $url = json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].html_url || "")' @($existing)
     if (-not $url) {
+        # Create path: push first; reuse path returns the open PR untouched
+        # above — no issue read, no resolve-mr-ownership call.
+        git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
+        if ($LASTEXITCODE -ne 0) { Die "push of $branch failed" }
         $projJson = (Api @("repos/$project")) -join "`n"
         $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
         $ghTitle = $title -replace '^Draft: ', ''
@@ -209,20 +285,44 @@ if ($provider -eq 'gitlab') {
         if ($LASTEXITCODE -ne 0) { Die 'the tracker refused to create the pull request (missing scope?)' }
         $url = json 'console.log(JSON.parse(process.argv[1]).html_url || "")' @($created)
         $number = json 'console.log(JSON.parse(process.argv[1]).number || "")' @($created)
-        if ($iid -and $number) {
-            $issue = Api @("repos/$issueProject/issues/$iid")
-            if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
-            $milestone = json 'const i = JSON.parse(process.argv[1]); console.log(i.milestone && i.milestone.number || "")' @($issue)
-            if ($milestone) {
-                Api @('-X', 'PATCH', "repos/$project/issues/$number", '-F', "milestone=$milestone") *> $null
+        # GitHub via resolve-mr-ownership: bare PR create first, then PATCH
+        # milestone / POST assignees ONLY for resolver-returned non-null fields.
+        if ($number) {
+            if ($iid) {
+                $mrIssueRaw = Api @("repos/$project/issues/$number") 2>$null
+                if ($LASTEXITCODE -ne 0) { $mrIssueRaw = '{}' }
+                $issueJson = Api @("repos/$issueProject/issues/$iid")
+                if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
+            } else {
+                $mrIssueRaw = '{}'
+                $issueJson = '{}'
+            }
+            $initiator = if ($env:ADLC_INITIATOR) { $env:ADLC_INITIATOR } else { '' }
+            $runnerRaw = (Api @('user')) -join "`n"
+            $runnerJson = json 'try { console.log(JSON.stringify(JSON.parse(process.argv[1] || "{}").login)) } catch { console.log("null") }' @($runnerRaw)
+            if ($deniedScope -eq 'repo') { $deniedJson = '"repo"' } else { $deniedJson = 'null' }
+            # mr = the created PR's current issue fields ({ } when unreadable).
+            $mrJson = json '
+        const m = JSON.parse(process.argv[1] || "{}");
+        const o = {};
+        if (m.milestone !== undefined) o.milestone = m.milestone;
+        if (m.assignees !== undefined) o.assignees = m.assignees;
+        console.log(JSON.stringify(o));
+      ' @($mrIssueRaw)
+            $ownership = Invoke-ResolveMrOwnership 'github' $issueJson $mrJson $initiator $runnerJson $deniedJson
+            Assert-OwnershipNotBlocked $ownership
+            $milestoneToSet = json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(o.milestone === null || o.milestone === undefined ? "" : o.milestone)' @($ownership)
+            $assigneesToSet = json '
+        const o = JSON.parse(process.argv[1] || "{}");
+        if (o.assignee === null || o.assignee === undefined) { console.log(""); } else {
+        const a = Array.isArray(o.assignee) ? o.assignee : [o.assignee];
+        console.log(a.map(v => (v && typeof v === "object" ? (v.login || "") : String(v))).filter(Boolean).join(" ")); }
+      ' @($ownership)
+            if ($milestoneToSet) {
+                Api @('-X', 'PATCH', "repos/$project/issues/$number", '-F', "milestone=$milestoneToSet") *> $null
                 if ($LASTEXITCODE -ne 0) { Die 'cannot set milestone' }
             }
-            $logins = json 'const i = JSON.parse(process.argv[1]); console.log((i.assignees || []).map(a => a.login).join(" "))' @($issue)
-            if (-not $logins) {
-                $userJson = (Api @('user')) -join "`n"
-                $logins = json 'console.log(JSON.parse(process.argv[1]).login||"")' @($userJson)
-            }
-            foreach ($l in ($logins -split ' ')) {
+            foreach ($l in ($assigneesToSet -split ' ')) {
                 if ($l) {
                     Api @('-X', 'POST', "repos/$project/issues/$number/assignees", '-f', "assignees[]=$l") *> $null
                     if ($LASTEXITCODE -ne 0) { Die 'cannot set assignee' }

@@ -363,3 +363,115 @@ def test_open_mr_refuses_unknown_kind(repo):
     assert r.returncode != 0
     assert "--kind" in r.stderr
 
+
+
+# ── open-mr delegates to resolve-mr-ownership (factory-mission-issue-20, RED) ──
+
+PS_RESOLVER = BASH / "resolve-mr-ownership.sh"
+
+
+def ps_resolve_ownership(payload):
+    import json as _json
+
+    proc = subprocess.run(
+        ["bash", str(PS_RESOLVER)],
+        input=_json.dumps(payload),
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return _json.loads(proc.stdout)
+
+
+def test_open_mr_delegates_to_the_resolver_script(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    src = (PS / "open-mr.ps1").read_text()
+    assert "resolve-mr-ownership" in src
+    ownership = ps_resolve_ownership(
+        {
+            "provider": "gitlab",
+            "issue": {"milestone_id": 407, "assignees": [5]},
+            "mr": {},
+            "initiator": "",
+            "runner": 99,
+            "denied_scope": None,
+        }
+    )
+    assert ownership["action"] == "set"
+    assert ownership["assignee"] == 5
+    body = posted_body(log)
+    assert body["milestone_id"] == ownership["milestone"]
+    assert body["assignee_ids"] == [ownership["assignee"]]
+
+
+def test_open_mr_sends_only_resolver_fields(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    body = posted_body(log)
+    assert set(body) == {
+        "source_branch",
+        "target_branch",
+        "title",
+        "description",
+        "squash",
+        "milestone_id",
+        "assignee_ids",
+    }
+    preserved = ps_resolve_ownership(
+        {
+            "provider": "gitlab",
+            "issue": {"milestone_id": 407, "assignees": [5]},
+            "mr": {"milestone_id": 1},
+            "initiator": "",
+            "runner": 99,
+            "denied_scope": None,
+        }
+    )
+    assert preserved["milestone"] is None
+    src = (PS / "open-mr.ps1").read_text()
+    out_vals = [m for m in ("407", "[5]", '"assignees"') if m in src]
+    assert not out_vals, f"inline ownership values leak in source: {out_vals}"
+
+
+def test_open_mr_github_path_uses_the_resolver(repo):
+    git(repo["work"], "remote", "set-url", "origin", "https://github.com/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://github.com/g/adlc-workspace.git")
+    on_run_branch(repo)
+    src = (PS / "open-mr.ps1").read_text()
+    assert "resolve-mr-ownership" in src and "github" in src
+    ownership = ps_resolve_ownership(
+        {
+            "provider": "github",
+            "issue": {"milestone": {"number": 3}, "assignees": [{"login": "octo"}]},
+            "mr": {},
+            "initiator": "",
+            "runner": "runner-bot",
+            "denied_scope": None,
+        }
+    )
+    assert ownership["action"] == "set"
+    assert ownership["milestone"] == 3
+    assert ownership["milestone_field"] == "milestone"
+
+
+def test_open_mr_block_names_the_scope_before_push(repo):
+    on_run_branch(repo)
+    blocked = ps_resolve_ownership(
+        {
+            "provider": "gitlab",
+            "issue": {"milestone_id": None, "assignees": []},
+            "mr": {},
+            "initiator": "",
+            "runner": 99,
+            "denied_scope": "api",
+        }
+    )
+    assert blocked["action"] == "block"
+    assert "api" in blocked["reason"]
+    src = (PS / "open-mr.ps1").read_text()
+    assert "denied_scope" in src or '"block"' in src

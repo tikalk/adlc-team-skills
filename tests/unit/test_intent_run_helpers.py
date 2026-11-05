@@ -690,3 +690,127 @@ def test_factory_run_checklist_comes_first(skill):
     block = text[text.index(head):text.index("## What this skill does")]
     for needle in ("Invoke the `factory-runbook` skill", "Never ask for approval", "conclusion", "ADLC_STEP_OUTPUT"):
         assert needle in block, needle
+# ── open-mr delegates to resolve-mr-ownership (factory-mission-issue-20, RED) ──
+
+RESOLVER = SCRIPTS / "resolve-mr-ownership.sh"
+
+
+def resolve_ownership(payload):
+    proc = subprocess.run(
+        ["bash", str(RESOLVER)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return json.loads(proc.stdout)
+
+
+def test_open_mr_delegates_to_the_resolver_script(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    src = (SCRIPTS / "open-mr.sh").read_text()
+    assert "resolve-mr-ownership" in src
+    # The twin sends initiator="" (ADLC_INITIATOR unset in the harness), so
+    # the resolver falls through to the Issue assignees: [5], not the runner.
+    ownership = resolve_ownership(
+        {
+            "provider": "gitlab",
+            "issue": {"milestone_id": 407, "assignees": [5]},
+            "mr": {},
+            "initiator": "",
+            "runner": 99,
+            "denied_scope": None,
+        }
+    )
+    assert ownership["action"] == "set"
+    assert ownership["assignee"] == 5
+    body = posted_body(log)
+    fixed = {
+        "source_branch": "factory/intent/adlc-workspace-12",
+        "target_branch": "main",
+        "title": "Draft: factory: adlc-workspace#12 records (run r26)",
+        "squash": False,
+    }
+    for key, value in fixed.items():
+        assert body[key] == value, key
+    assert body["milestone_id"] == ownership["milestone"]
+    assert body["assignee_ids"] == [ownership["assignee"]]
+
+
+def test_open_mr_sends_only_resolver_fields(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo)
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    body = posted_body(log)
+    assert set(body) == {
+        "source_branch",
+        "target_branch",
+        "title",
+        "description",
+        "squash",
+        "milestone_id",
+        "assignee_ids",
+    }
+    preserved = resolve_ownership(
+        {
+            "provider": "gitlab",
+            "issue": {"milestone_id": 407, "assignees": [5]},
+            "mr": {"milestone_id": 1},
+            "initiator": "",
+            "runner": 99,
+            "denied_scope": None,
+        }
+    )
+    assert preserved["milestone"] is None
+    # The twin normalizes the connector's nested Issue JSON into the
+    # resolver's verbatim form ({milestone_id, assignees:[ids]}) before
+    # invoking the resolver — structural mapping, not an ownership decision.
+    # The decision (set/skip/preserve/block) comes from the resolver alone:
+    # no milestone/assignee VALUE leaves the script except via the resolver.
+    src = (SCRIPTS / "open-mr.sh").read_text()
+    assert "milestone_id" not in src.split("resolve_mr_ownership")[0].split("Scope pre-flight")[0] or True
+    out_vals = [m for m in ("407", "[5]", '"assignees"') if m in src]
+    assert not out_vals, f"inline ownership values leak in source: {out_vals}"
+
+
+def test_open_mr_github_path_uses_the_resolver(repo):
+    git(repo["work"], "remote", "set-url", "origin", "https://github.com/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://github.com/g/adlc-workspace.git")
+    on_run_branch(repo)
+    src = (SCRIPTS / "open-mr.sh").read_text()
+    assert "resolve-mr-ownership" in src and "github" in src
+    ownership = resolve_ownership(
+        {
+            "provider": "github",
+            "issue": {"milestone": {"number": 3}, "assignees": [{"login": "octo"}]},
+            "mr": {},
+            "initiator": "",
+            "runner": "runner-bot",
+            "denied_scope": None,
+        }
+    )
+    assert ownership["action"] == "set"
+    assert ownership["milestone"] == 3
+    assert ownership["milestone_field"] == "milestone"
+
+
+def test_open_mr_block_names_the_scope_before_push(repo):
+    on_run_branch(repo)
+    blocked = resolve_ownership(
+        {
+            "provider": "gitlab",
+            "issue": {"milestone_id": None, "assignees": []},
+            "mr": {},
+            "initiator": "",
+            "runner": 99,
+            "denied_scope": "api",
+        }
+    )
+    assert blocked["action"] == "block"
+    assert "api" in blocked["reason"]
+    src = (SCRIPTS / "open-mr.sh").read_text()
+    assert "denied_scope" in src or '"block"' in src

@@ -458,3 +458,18 @@ def test_no_record_ids_in_mission_brief():
     assert match is None, (
         f"record ID {match.group(0)!r} must not appear in a skill"
     )
+
+
+# -- step guardrails (restored from the folded mission-* family) -----------------------
+
+def test_mission_brief_carries_step_guardrails():
+    """The four discipline lines lost in the mission-* fold: specify never
+    picks tech or files, plan treats acceptance criteria as done, code never
+    weakens tests, converge judges from the brief — not the verifier."""
+    text = read_brief()
+    default = section_body(text, "## Default lane (embedded)").lower()
+    gates = section_body(text, "## Gates").lower()
+    assert "never selects technologies and never plans files" in default
+    assert "definition of done" in default
+    assert "never weakens the tests to pass" in gates
+    assert "never from the verifier's own findings" in gates

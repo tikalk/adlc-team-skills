@@ -31,7 +31,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`factory-mission` is the execution-harness orchestrator of the software factory. It takes a feature description, structures it into a **Mission Brief** (goal, constraints, non-goals, success criteria), generates an ordered **step list**, and executes those steps via sequential subagent runs. 
+`factory-mission` is the execution-harness orchestrator of the software factory. It takes a feature description, hands brief construction to `mission-brief` (goal, constraints, non-goals, success criteria — `mission-brief/references/mission-brief-template.md`), generates an ordered **step list**, and executes those steps via sequential subagent runs. 
 
 It implements the following key factory platform capabilities:
 1. **Universal Skill Routing**: Decoupled step dispatching. It scans installed skills and hands the inventory to subagents (the model picks which tool fits the step).
@@ -84,7 +84,7 @@ It implements the following key factory platform capabilities:
 
 ## Lifecycle DAG & Step Resolution
 
-`factory-mission` resolves each lifecycle step to `mission-brief`, the lane-carrying core skill that owns it. Step order, inputs, and outputs follow the table; the owning skill defines the discipline.
+`factory-mission` resolves each lifecycle step to `mission-brief`, the lane-carrying core skill that owns it. The `brief` step is produced by `mission-brief` during Phase 0 intake, before the workflow is compiled; the table below is the dispatched lifecycle. Step order, inputs, and outputs follow the table; the owning skill defines the discipline.
 
 | Step | Skill | output_type | reads_from |
 | --- | --- | --- | --- |

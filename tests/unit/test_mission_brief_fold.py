@@ -60,8 +60,13 @@ CANONICAL_G4 = (
 
 # Old brief-construction ownership: factory-mission Phase 4 built the brief.
 # After the fold the brief step lives in mission-brief; factory-mission only
-# validates intake and hands off.
-OLD_BRIEF_CONSTRUCTION = "Structure the Mission Brief"
+# validates intake and hands off. Catches both the legacy imperative
+# ("Structure the Mission Brief") and the descriptive present tense
+# ("structures it into a **Mission Brief**").
+OLD_BRIEF_CONSTRUCTION_RE = re.compile(
+    r"structure[sd]?\s+(?:it\s+into\s+)?(?:a\s+|the\s+)?\**\s*mission\s+brief",
+    re.IGNORECASE,
+)
 
 RECORD_ID_RE = re.compile(
     r"ADR-\d{3}|PDR-\d{3}|CDR-\d{4}|ChDR-\d{3}"
@@ -434,9 +439,9 @@ def test_factory_mission_delegates_lifecycle_to_mission_brief():
         "factory-mission must keep the canonical correction route: "
         f"{CANONICAL_G4!r}"
     )
-    assert OLD_BRIEF_CONSTRUCTION not in text, (
+    assert OLD_BRIEF_CONSTRUCTION_RE.search(text) is None, (
         "factory-mission must not construct the brief - "
-        "Phase 2 is intake validation + handoff only"
+        "brief construction belongs to mission-brief"
     )
 
 

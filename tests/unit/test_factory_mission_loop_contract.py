@@ -69,3 +69,30 @@ def test_phase_numbering_is_continuous():
     assert step_nums == sorted(set(step_nums)), (
         f"duplicate step numbers in setup section: {step_nums}"
     )
+
+
+def test_review_loop_states_phase5_routing_consistently():
+    """factory-review's review-loop mirrors factory-mission Phase 5; its
+    description of the SPEC_CORRECTION_NEEDED routing must match the
+    restored semantics — the owning clarify gate, never Phase 6."""
+    review_loop = (
+        ROOT
+        / "skills/factory/factory-review/references/review-loop.md"
+    ).read_text(encoding="utf-8")
+    assert "Phase 6 routing" not in review_loop, (
+        "review-loop must not describe Phase 5's SPEC_CORRECTION_NEEDED "
+        "routing as '→ Phase 6' — the restored Phase 5 routes to the "
+        "owning clarify gate"
+    )
+    mirror = next(
+        (
+            ln
+            for ln in review_loop.splitlines()
+            if "mirrors factory-mission Phase 5" in ln
+        ),
+        "",
+    )
+    assert mirror, "review-loop must keep its factory-mission Phase 5 mirror line"
+    assert "clarify" in mirror.lower(), (
+        "the mirror line must name the clarify-gate routing"
+    )

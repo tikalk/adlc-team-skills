@@ -478,6 +478,20 @@ def test_mission_brief_carries_step_guardrails():
     assert "definition of done" in default
     assert "never weakens the tests to pass" in gates
     assert "never from the verifier's own findings" in gates
+    # Placement: the specify guardrail belongs to the spec-writing item
+    # (where spec.md is authored), not the clarify-resolution item.
+    guardrail_item = next(
+        (
+            ln
+            for ln in default.splitlines()
+            if "never selects technologies" in ln
+        ),
+        "",
+    )
+    assert "spec.md" in guardrail_item, (
+        "the specify guardrail must live on the spec.md-writing item, "
+        "not the clarify item"
+    )
 
 
 def test_factory_mission_delegates_lane_detection():

@@ -18,8 +18,9 @@ REF_MD = ROOT / "skills/factory/factory-mission/references/agent-integrations.md
 
 def test_skill_routing_is_harness_native_not_scanned():
     text = FACTORY_MD.read_text(encoding="utf-8")
-    assert "Skill tool" in text, (
-        "skill resolution must go through the harness Skill tool"
+    assert "resolves them through its own Skill tool" in text, (
+        "skill resolution must go through the harness Skill tool — "
+        "the capability bullet must state the mechanism"
     )
     assert "scans installed skills" not in text
     assert "Local skills inventory" not in text

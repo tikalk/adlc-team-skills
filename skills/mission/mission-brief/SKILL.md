@@ -49,9 +49,9 @@ Default lane built into this skill.
 
 1. Read the intake: in a factory run the issue ref, otherwise the spec description from arguments. Write the Mission Brief per `references/mission-brief-template.md`: Goal, Constraints, Non-Goals, Success Criteria with a measurement method each, plus the `Framework lane` disclosure.
 2. Restate every success criterion as a binary, measurable outcome — each one answers a yes/no question through a command that exits, an artifact that exists, or a diff that shows the change.
-3. Write `spec.md`: outcome, constraints, non-goals, acceptance criteria, and out of scope. Each acceptance criterion stays traceable to the success criterion it restates.
+3. Write `spec.md`: outcome, constraints, non-goals, acceptance criteria, and out of scope. Each acceptance criterion stays traceable to the success criterion it restates. Specify never selects technologies and never plans files; those belong to the plan and code steps.
 4. Surface any criterion that cannot be measured and any constraint that conflicts with another; do not paper over either in prose.
-5. Resolve each surfaced item at the clarify phase — ask the person in a gated run, or in autonomous mode record the decision with its basis. The resulting decision is the `clarify` output. Specify never selects technologies and never plans files; those belong to the plan and code steps.
+5. Resolve each surfaced item at the clarify phase — ask the person in a gated run, or in autonomous mode record the decision with its basis. The resulting decision is the `clarify` output.
 6. Treat the spec's acceptance criteria as the plan's definition of done. List every file to create or modify, each with a one-line purpose. Order the work so each step leaves the tree valid — no step relies on a later step to make it correct or runnable.
 7. Name the exact test command that will prove the change, and put the test-first order ahead of the implementation steps.
 8. Write `plan.md`: the files table, the test-first order, and the risk notes for anything that could invalidate that order.

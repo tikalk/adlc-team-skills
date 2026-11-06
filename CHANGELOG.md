@@ -26,7 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   subagent resolves them via its Skill tool), with
   `references/agent-integrations.md` shrunk to a commands-dir fallback and
   the `tests/e2e/test_universal_skill_orchestration.py` simulation suite
-  removed. Pinned by `tests/unit/test_mission_brief_fold.py`,
+  removed. `skills/factory/factory-review/references/review-loop.md`'s
+  factory-mission Phase-5 mirror line re-pointed at the clarify-gate routing
+  (was "→ Phase 6"). Pinned by `tests/unit/test_mission_brief_fold.py`,
   `tests/unit/test_factory_mission_loop_contract.py`, and
   `tests/unit/test_factory_mission_skill_routing.py`.
 

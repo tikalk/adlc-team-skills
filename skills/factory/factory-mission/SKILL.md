@@ -76,7 +76,7 @@ It implements the following key factory platform capabilities:
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
 4. Validate intake and hand the brief to `mission-brief` — brief construction lives there (per `mission-brief/references/mission-brief-template.md`). The intake bundle (validated intake) plus the `Framework lane` line the session model resolves (see step 5) is a `draft` — not published to the comment bus.
-5. Resolve the framework lane (`framework:` in mission.yml is an explicit pin; otherwise the session model inspects installed skill packs via the Skill tool) using the well-known skill-pack paths first and the CLI default last. Disclose the resolution one line (`Framework lane: <lane> (<evidence>)`); if no framework is installed, disclose that and fall back to Default. Record the lane in the run brief.
+5. Resolve the framework lane per `mission-brief`'s detection section (a `framework:` pin in mission.yml overrides it) and record the disclosed `Framework lane: <lane> (<evidence>)` line in the run brief. If no framework is installed, disclose that and fall back to Default.
 6. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
 7. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
 

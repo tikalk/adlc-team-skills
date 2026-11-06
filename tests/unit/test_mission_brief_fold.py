@@ -478,3 +478,20 @@ def test_mission_brief_carries_step_guardrails():
     assert "definition of done" in default
     assert "never weakens the tests to pass" in gates
     assert "never from the verifier's own findings" in gates
+
+
+def test_factory_mission_delegates_lane_detection():
+    """factory-mission's setup step points at mission-brief's detection
+    section; it must not restate resolution criteria of its own."""
+    text = FACTORY_MD.read_text(encoding="utf-8")
+    setup = section_body(text, "### Phase 0 to 4: Setup & Compilation")
+    lane_step = next(
+        (ln for ln in setup.splitlines() if ln.strip().startswith("5.")), ""
+    )
+    assert lane_step, "setup step 5 (framework lane) must exist"
+    assert "mission-brief" in lane_step, (
+        "lane resolution step must point at mission-brief's detection section"
+    )
+    assert "well-known skill-pack paths first" not in lane_step, (
+        "factory-mission must not restate its own lane-resolution criteria"
+    )

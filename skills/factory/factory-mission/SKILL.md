@@ -110,6 +110,16 @@ Knobs specific to a mission run, read from `mission.yml` (the policy home for ex
 2. **Quality threshold**: `quality_threshold` travels in as a converge input owned by `mission-brief`; the orchestrator carries it, never applies it.
 3. **Test/code split**: selected per run — whether the build dispatches separate test and code steps.
 
+### Phase 5: Converge Loop Control
+
+The orchestrator runs `test`/`code` → `verify` → `converge` as a loop and owns the loop's counters; the verdict itself belongs to `mission-brief`.
+
+1. **DONE** at or above `quality_threshold` → the loop exits and the run proceeds to Phase 6. `DONE` below `quality_threshold` is treated as `CONTINUE`.
+2. **CONTINUE** → increment `consecutive_tasks_appended` (persisted in the run state `runs/<run_id>/state.json`, surviving resume), attach the verify findings, and loop back to `test` (TDD split on) or `code`. When the counter reaches `circuit_breaker` from `mission.yml` (default 3), stop the run as failed: "circuit breaker: N consecutive iterations did not converge — human review needed."
+3. **Score regression:** track `consecutive_score_regressions` (persisted in the run state, surviving resume). A converge quality score below the previous iteration increments it; equal or higher resets it to 0. Reaching `circuit_breaker` stops the run: "N consecutive score regressions — quality trending downward, human review needed."
+4. **SPEC_CORRECTION_NEEDED** → the owning clarify gate, bounded by `max_spec_corrections` (default 2); exceeding it halts for human review.
+5. The `code`-step retry loop (`mission-brief` GREEN gate) never consumes these counters — only completed iterations do.
+
 ### Phase 6: Completion & Write-Back
 1. If tracker-integrated: read all marker comments from the PR/MR/issue to compile the audit trail (converge decisions, test findings, implement artifact references, convergence history).
 2. Close the shared run: final `adlc-cli workflow state advance <run_id> --step <last> --status completed` (the run dir is the durable archive; no separate move).

@@ -214,8 +214,7 @@ _Searched 408 documents, 2 matched._
   - Fallback: `FALLBACK public radar.json (<url>)`.
 - `N` = documents scanned (`blips` on the fallback path); `K` = rows shown in
   the table. **K MUST equal the table rows shown.** 0 rows matched → emit the
-  section heading + the `_Source:` line only — no table. A 0-row table header
-  collapses into unrendered single-line markdown; never emit one.
+  section heading + the `_Source:` line only — no table, never a table header.
 
 If no candidate technology matches any document, state that plainly with the
 heading + `_Source:` line (e.g. `_Source: … · 0 technologies matched._`) — no

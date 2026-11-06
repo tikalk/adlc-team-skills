@@ -13,7 +13,7 @@ description: Use when executing a spec-gated mission from the queue — inner lo
 When `ADLC_RUN_ID` is set, the workflow engine runs this skill unattended as its `execute` step, and the completion gate follows it. Do exactly this:
 
 1. **The mission is the run's issue.** Take it from `--issue <ref>` in the arguments; when that is missing or empty, use `ADLC_ISSUE_REF`. With neither, do not ask: write `{"conclusion":"blocked: factory run without an issue"}` into `ADLC_STEP_OUTPUT` and return.
-2. Run the mission for that issue end to end (Phases 0–6 below): brief, test (RED), code (GREEN), converge, then Invoke the `factory-runbook` skill to open or reuse the draft code MR/PR in the repository the change belongs to.
+2. Run the mission for that issue end to end (Phases 0–6 below): brief, specify, clarify, plan, test (RED), code (GREEN), verify, converge, then Invoke the `factory-runbook` skill to open or reuse the draft code MR/PR in the repository the change belongs to.
 3. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
 4. **Never ask a question or wait for an answer.** The completion gate after this step is the approval; a question here ends the step with nothing implemented.
 
@@ -78,7 +78,7 @@ It implements the following key factory platform capabilities:
 4. Validate intake and hand the brief to `mission-brief` — brief construction lives there (per `mission-brief/references/mission-brief-template.md`). The intake bundle (validated intake) plus the `Framework lane` line the session model resolves (see step 5) is a `draft` — not published to the comment bus.
 5. Resolve the framework lane (`framework:` in mission.yml is an explicit pin; otherwise the session model inspects installed skill packs via the Skill tool) using the well-known skill-pack paths first and the CLI default last. Disclose the resolution one line (`Framework lane: <lane> (<evidence>)`); if no framework is installed, disclose that and fall back to Default. Record the lane in the run brief.
 6. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
-6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
+7. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
 
 **Team index fallback:** when no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line. Never block on the missing injection.
 

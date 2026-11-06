@@ -54,3 +54,18 @@ def test_loop_policy_defaults_exist_in_template():
     template = MISSION_TEMPLATE.read_text()
     assert "circuit_breaker: 3" in template
     assert "max_spec_corrections: 2" in template
+
+
+def test_phase_numbering_is_continuous():
+    """Phase headings run 0-4, 5, 6 with no gaps; steps inside the setup
+    section are uniquely numbered (a duplicate '6.' once lived here)."""
+    text = FACTORY_MD.read_text()
+    headings = re.findall(r"(?m)^### Phase (\d+)", text)
+    nums = [int(n) for n in headings]
+    assert nums == sorted(nums), f"phase headings out of order: {nums}"
+    assert 5 in nums and 6 in nums, f"missing Phase 5/6: {nums}"
+    setup = section_body(text, "### Phase 0 to 4: Setup & Compilation")
+    step_nums = [int(n) for n in re.findall(r"(?m)^(\d+)\.\s", setup)]
+    assert step_nums == sorted(set(step_nums)), (
+        f"duplicate step numbers in setup section: {step_nums}"
+    )

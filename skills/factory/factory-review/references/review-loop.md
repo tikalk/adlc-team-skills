@@ -353,7 +353,7 @@ When converge returns `SPEC_CORRECTION_NEEDED`:
 3. Route to `factory-queue` for re-triage — the issue will be re-evaluated and potentially routed to `product-clarify` or `architect-clarify`.
 4. Exit the loop. The PR is left in its current state (the fix step's fixes are pushed; the spec issue is documented).
 
-This mirrors factory-mission Phase 5's `SPEC_CORRECTION_NEEDED` → Phase 6 routing.
+This mirrors factory-mission Phase 5's `SPEC_CORRECTION_NEEDED` routing — to the owning clarify gate, never to code.
 
 ---
 

@@ -1,41 +1,22 @@
-# Agent Integrations — Command & Skills Discovery
+# Agent Integrations — Commands-Dir Fallback
 
-Reference table for the factory-mission executor. Lists every known agent
-integration and where its commands/skills live in a project. Used at
-generation time (Phase 4) to discover which directories actually exist in the
-current project and record them in `.mission-state.json` under
-`discovered.skills_dirs` and `discovered.commands_dirs`.
+Fallback reference for the factory-mission executor. Skill routing is
+harness-native: step prompts name skills by exact name and the dispatched
+subagent resolves them through its own Skill tool — no filesystem scan.
+This table covers the one case the harness cannot see: commands-based
+frameworks whose integrations are command files on disk.
 
 Sourced from the spec-kit integration registry
-(`specify_cli/integrations/*/`). Update this file when new agents are added or
-conventions change.
+(`specify_cli/integrations/*/`). Update this file when new agents are added
+or conventions change.
 
 ## Three patterns
 
 | Pattern | Extension | Notes |
 |---|---|---|
-| **Skills-based** | `/SKILL.md` | One directory per skill: `<skills_dir>/<skill-name>/SKILL.md` |
+| **Skills-based** | `/SKILL.md` | Resolved by the harness Skill tool — not this file |
 | **Commands-based** | `.md` | One file per command: `<commands_dir>/<command-name>.md` |
 | **Other formats** | `.toml`, `.yaml`, `.mdc` | Format differs; the prompt may not map 1:1 — note the extension |
-
-## Skills-based agents
-
-| Agent | Skills dir | Notes |
-|---|---|---|
-| claude | `.claude/skills` | multi_install_safe |
-| cursor | `.cursor/skills` | multi_install_safe |
-| codex | `.agents/skills` | multi_install_safe |
-| agy | `.agents/skills` | shared with codex/zed |
-| zed | `.agents/skills` | shared |
-| copilot | `.github/skills` | also `.github/agents` (`.agent.md`) |
-| devin | `.devin/skills` | |
-| kimi | `.kimi-code/skills` | |
-| lingma | `.lingma/skills` | |
-| rovodev | `.rovodev/skills` | |
-| trae | `.trae/skills` | |
-| vibe | `.vibe/skills` | |
-| zcode | `.zcode/skills` | |
-| hermes | `~/.hermes/skills` | home-level, not project-level |
 
 ## Commands-based agents
 
@@ -61,43 +42,16 @@ conventions change.
 | gemini | `.gemini/commands` | `.toml` | non-markdown |
 | goose | `.goose/recipes` | `.yaml` | non-markdown |
 
-## Discovery algorithm (executor, at generation time)
+## Fallback
 
-1. Read this table.
-2. For each **skills dir**, check if `<project_root>/<dir>` exists and contains
-   at least one `<name>/SKILL.md`. If yes, add `dir` to
-   `discovered.skills_dirs`.
-3. For each **commands dir**, check if `<project_root>/<dir>` exists and
-   contains at least one matching file (any `.md`/`.toml`/`.yaml`/`.mdc`).
-   If yes, add `dir` + its extension to `discovered.commands_dirs`.
-4. For **home-level** dirs (e.g. `~/.hermes/skills`), expand `~` and check
-   existence.
-5. **Local skills inventory** — for each `skills_dir` discovered in step 2,
-   scan every `<skills_dir>/<skill-name>/` subdirectory that contains a
-   `SKILL.md`. Read the YAML frontmatter and extract `name` and
-   `description` (fall back to directory name if frontmatter is missing).
-   Append each entry to `discovered.local_skills` as
-   `{"name": "...", "path": "<skills_dir>/<skill-name>", "description": "..."}`.
-   This inventory is vendor-agnostic: it captures skills from any source
-   (mattpocock/skills, addy osmani/agent-skills, superpowers, custom team
-   skills, or any Agent-Skills-standard repo).
-6. Record results in `.mission-state.json.discovered`:
-   ```json
-   "discovered": {
-     "skills_dirs": [".claude/skills"],
-     "commands_dirs": [{"dir": ".opencode/commands", "ext": ".md"}],
-     "local_skills": [
-       {"name": "tdd", "path": ".claude/skills/tdd", "description": "Test-driven development..."},
-       {"name": "grill-me", "path": ".claude/skills/grill-me", "description": "Get relentlessly interviewed..."}
-     ]
-   }
-   ```
-7. If `discovered` is empty, the delegation prompt falls back to instructing
-   the subagent to consult this reference file, or to proceed with direct
-   execution (path 3 of the three-path delegation prompt).
+When a step prompt targets a commands-based framework, check whether the
+commands dir from the table above exists in the project; if it does, name
+the command file in the step prompt. If the dir is absent, the step
+executes directly — the subagent consults this file only as the fallback,
+never as a skills inventory.
 
 ## Maintenance
 
 When spec-kit adds a new integration or an agent changes its directory
-convention, update this file. The executor reads it at generation time, so no
-code changes are needed — just this reference.
+convention, update this file. The executor reads it at step-list
+generation, so no code changes are needed — just this reference.

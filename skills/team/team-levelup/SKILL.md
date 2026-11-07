@@ -19,8 +19,7 @@ Replaces the former `levelup-specify`, `levelup-clarify`, and `levelup-publish`
 skills with a single streamlined workflow.
 
 _Searched N CDRs, K matched._ 0 rows matched → emit the section heading +
-the searched line only — no table. A 0-row table header collapses into
-unrendered single-line markdown; never emit one.
+the searched line only — no table, never a table header.
 
 When no local context-module records exist in the current working directory
 and the directory sits inside a workspace (detected via a `.gitmodules` marker

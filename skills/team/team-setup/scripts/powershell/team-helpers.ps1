@@ -481,9 +481,9 @@ Each class boot emits its class context section and its own searched line (_Sear
 | CDR-YYYY-NNN | <name> | <type> | <relevance> | in use | — |
 | — | <decision> | <ADR/PDR/CDR/ChDR/Eval> | <trigger> | pending | <clarify skill> |
 
-Plus: ``_Scope: N CDRs · A ADRs · P PDRs · C ChDRs · E evals · M skills — J rows shown · Unrecorded: N pending · Unclarified: M captured drafts._`` — **J MUST equal the number of rows (any indexed type). Status ``in use`` + Clarify ``—`` = grounding context (accepted records only); Status ``pending``/``captured``/``clarified``/``handed off`` + Clarify skill = owed decisions. No draft row may carry Status ``in use`` — drafts appear only as pending decision rows. 0 rows matched → emit the section heading + the counts line only — no table. A 0-row table header collapses into unrendered single-line markdown; never emit one (do not copy a hard-coded row or inflate the count).** Scope names the always-available layer and class indexes (counts only, never content) plus the session's open decisions; class boots append their own scope line when fired.
+Plus: ``_Scope: N CDRs · A ADRs · P PDRs · C ChDRs · E evals · M skills — J rows shown · Unrecorded: N pending · Unclarified: M captured drafts._`` — **J MUST equal the number of rows (any indexed type). Status ``in use`` + Clarify ``—`` = grounding context (accepted records only); Status ``pending``/``captured``/``clarified``/``handed off`` + Clarify skill = owed decisions. No draft row may carry Status ``in use`` — drafts appear only as pending decision rows. 0 rows matched → emit the section heading + the counts line only — no table. Zero rows means heading plus counts line only — never a table header. Emit one table row per line. (do not copy a hard-coded row or inflate the count).** Scope names the always-available layer and class indexes (counts only, never content) plus the session's open decisions; class boots append their own scope line when fired.
 
-Render the section as markdown blocks — heading, table (when rows exist), and counts line each on their own lines; never collapse the table into a single line.
+Render the section as markdown blocks — heading, table (when rows exist), and counts line each on their own lines. Before sending, if the section contains a pipe character but no newline, rewrite it.
 
 ## Decision Capture
 

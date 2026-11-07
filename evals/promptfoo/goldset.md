@@ -91,26 +91,33 @@ The response omits the Team Context in Use section, uses wrong or missing column
 
 ---
 
-## Criterion EVAL-005: Universal Skill Orchestration — Local Skills Routing
+## Criterion EVAL-005: Universal Skill Orchestration — Harness-Native Skill Routing
 
 **Status**: published
-**Description**: Verifies that the factory-mission delegation prompt includes an "Available Skills" section listing installed skills with their descriptions, instructs the subagent to invoke matching skills, and does NOT hard-code phase-to-skill mapping tables (routing is LLM-decided).
+**Description**: Verifies that the factory-mission delegation prompt names skills by exact name and directs the subagent to resolve them through its own harness Skill tool (routing is LLM-decided), carries the commands-dir fallback for commands-based frameworks, and does NOT embed a scanned skills inventory or hard-code phase-to-skill mapping tables.
 
 ### Pass Condition
-The delegation prompt includes an "Available Skills in This Workspace" section with skill names and descriptions, instructs the subagent to invoke matching skills, includes a fallback ("proceed with direct execution" or similar), and contains no hard-coded phase→skill mapping.
+The delegation prompt names at least one skill by exact name (backticked or quoted), instructs the subagent to resolve named skills through its own Skill tool, mentions the commands-dir fallback for commands-based frameworks (an absent commands dir means the step executes directly), contains no scanned "Available Skills in This Workspace" inventory section, and no hard-coded phase→skill mapping.
 
 ### Fail Condition
-The delegation prompt omits the skills list, does not instruct the subagent to invoke skills, or contains a hard-coded mapping table (e.g., "phase implement → skill tdd") instead of letting the LLM decide.
+The delegation prompt embeds a scanned skills inventory section (the removed mechanism), names no skill by exact name, omits the Skill-tool resolution instruction or the commands-dir fallback, or contains a hard-coded mapping table (e.g., "phase implement → skill tdd") instead of letting the LLM decide.
 
 ### Pass Example 1
-- **Scenario**: Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)
-- **Input Context**: Skills inventory: tdd ("Test-driven development..."), grill-me ("Get relentlessly interviewed..."), code-review ("Two-axis review...").
-- **Agent Output**: "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development...\n- **grill-me** (`.claude/skills/grill-me`) — Get relentlessly interviewed...\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+- **Scenario**: Delegation prompt naming the tdd skill for an implement step
+- **Input Context**: Step goal: implement retry logic with tests. Installed skills include tdd, grill-me, code-review (injected by the harness into every session).
+- **Agent Output**: "Step: Implement the retry logic. Use the `tdd` skill for this step — resolve it via your own Skill tool. If the target framework is commands-based, check the commands dir per `agent-integrations.md`; an absent commands dir means the step executes directly."
 
 ### Fail Example 1
-- **Scenario**: Delegation prompt with hard-coded mapping
-- **Input Context**: Skills inventory provided but prompt uses static lookup.
+- **Scenario**: Delegation prompt with the removed scanned-inventory mechanism
+- **Input Context**: Skills inventory scanned from installed skills directories at mission start (the removed scan mechanism).
+- **Agent Output**: "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development...\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+
+### Fail Example 2
+- **Scenario**: Delegation prompt with hard-coded phase-to-skill mapping
+- **Input Context**: Step prompts use a static phase-to-skill lookup table instead of LLM-decided routing.
 - **Agent Output**: "Phase implement → skill tdd. Phase converge → skill code-review. Execute the mapped skill for this phase."
+
+---
 
 ## Criterion EVAL-006: Change Decision Record (ChDR) Format Integrity
 

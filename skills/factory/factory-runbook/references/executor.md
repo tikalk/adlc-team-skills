@@ -90,6 +90,8 @@ The executor is runtime-independent: it works with any agent CLI in any session.
 
 ### Phase 2 — Brief Construction
 
+In `factory-mission` runs the brief content comes from `mission-brief`'s brief step (invoked during Phase 0 intake); this phase persists it. Orchestrators without a brief-owning skill construct the brief from the template below directly.
+
 Before executing, compile the input into a structured Brief contract:
 - **Goal**: One-sentence core objective.
 - **Constraints**: Environment, tech stack, and non-goals.

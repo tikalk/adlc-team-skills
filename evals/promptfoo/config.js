@@ -72,9 +72,9 @@ module.exports = {
     },
     {
       vars: {
-        scenario: 'Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)',
-        input_context: "Skills inventory: tdd ('Test-driven development with red-green-refactor'), grill-me ('Get relentlessly interviewed about a plan'), code-review ('Two-axis review of the diff').",
-        instruction: "Emit a delegation prompt section titled 'Available Skills in This Workspace' that lists each skill with its name, path, and description. Then instruct: 'Review each skill. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution.' Do NOT use a hard-coded phase-to-skill mapping table.",
+        scenario: 'Delegation prompt naming the tdd skill for an implement step',
+        input_context: "Step goal: implement retry logic with tests. Installed skills include tdd, grill-me, code-review (injected by the harness into every session).",
+        instruction: "Emit the delegation prompt for this step. Name the skill by exact name, direct the subagent to resolve it via its own Skill tool, and mention the commands-dir fallback for commands-based frameworks (an absent commands dir means the step executes directly). Do NOT embed a scanned skills inventory or a hard-coded phase-to-skill mapping table.",
       },
       assert: [
         {

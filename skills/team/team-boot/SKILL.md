@@ -125,6 +125,10 @@ Status `pending`/`captured`/`clarified`/`handed off` + Clarify skill = owed
 decisions. No draft row may carry Status `in use` — drafts appear only as
 pending decision rows. J = all rows shown.
 
+One table row per line. Zero rows means heading plus the counts line only —
+never a table header. Before sending, if the section contains `|` but no
+newline, rewrite it.
+
 - **Detect**: match session decisions against triggers above.
 - **Classify**: assign record type (ADR/PDR/CDR/ChDR).
 - **Suggest**: name the capture skill in one line — `_Suggested capture: <decision name> → run <capture skill>._` Never write drafts or touch `.adlc/drafts/`; the capture skill writes the draft when the user runs it.

@@ -60,8 +60,13 @@ CANONICAL_G4 = (
 
 # Old brief-construction ownership: factory-mission Phase 4 built the brief.
 # After the fold the brief step lives in mission-brief; factory-mission only
-# validates intake and hands off.
-OLD_BRIEF_CONSTRUCTION = "Structure the Mission Brief"
+# validates intake and hands off. Catches both the legacy imperative
+# ("Structure the Mission Brief") and the descriptive present tense
+# ("structures it into a **Mission Brief**").
+OLD_BRIEF_CONSTRUCTION_RE = re.compile(
+    r"structure[sd]?\s+(?:it\s+into\s+)?(?:a\s+|the\s+)?\**\s*mission\s+brief",
+    re.IGNORECASE,
+)
 
 RECORD_ID_RE = re.compile(
     r"ADR-\d{3}|PDR-\d{3}|CDR-\d{4}|ChDR-\d{3}"
@@ -434,9 +439,9 @@ def test_factory_mission_delegates_lifecycle_to_mission_brief():
         "factory-mission must keep the canonical correction route: "
         f"{CANONICAL_G4!r}"
     )
-    assert OLD_BRIEF_CONSTRUCTION not in text, (
+    assert OLD_BRIEF_CONSTRUCTION_RE.search(text) is None, (
         "factory-mission must not construct the brief - "
-        "Phase 2 is intake validation + handoff only"
+        "brief construction belongs to mission-brief"
     )
 
 
@@ -457,4 +462,50 @@ def test_no_record_ids_in_mission_brief():
     match = RECORD_ID_RE.search(read_brief())
     assert match is None, (
         f"record ID {match.group(0)!r} must not appear in a skill"
+    )
+
+
+# -- step guardrails (restored from the folded mission-* family) -----------------------
+
+def test_mission_brief_carries_step_guardrails():
+    """The four discipline lines lost in the mission-* fold: specify never
+    picks tech or files, plan treats acceptance criteria as done, code never
+    weakens tests, converge judges from the brief — not the verifier."""
+    text = read_brief()
+    default = section_body(text, "## Default lane (embedded)").lower()
+    gates = section_body(text, "## Gates").lower()
+    assert "never selects technologies and never plans files" in default
+    assert "definition of done" in default
+    assert "never weakens the tests to pass" in gates
+    assert "never from the verifier's own findings" in gates
+    # Placement: the specify guardrail belongs to the spec-writing item
+    # (where spec.md is authored), not the clarify-resolution item.
+    guardrail_item = next(
+        (
+            ln
+            for ln in default.splitlines()
+            if "never selects technologies" in ln
+        ),
+        "",
+    )
+    assert "spec.md" in guardrail_item, (
+        "the specify guardrail must live on the spec.md-writing item, "
+        "not the clarify item"
+    )
+
+
+def test_factory_mission_delegates_lane_detection():
+    """factory-mission's setup step points at mission-brief's detection
+    section; it must not restate resolution criteria of its own."""
+    text = FACTORY_MD.read_text(encoding="utf-8")
+    setup = section_body(text, "### Phase 0 to 4: Setup & Compilation")
+    lane_step = next(
+        (ln for ln in setup.splitlines() if ln.strip().startswith("5.")), ""
+    )
+    assert lane_step, "setup step 5 (framework lane) must exist"
+    assert "mission-brief" in lane_step, (
+        "lane resolution step must point at mission-brief's detection section"
+    )
+    assert "well-known skill-pack paths first" not in lane_step, (
+        "factory-mission must not restate its own lane-resolution criteria"
     )

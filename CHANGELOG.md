@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **factory-mission / mission-brief functionality restoration** (`skills/factory/factory-mission/`, `skills/mission/mission-brief/`):
+  converge-loop control (counters, circuit breaker, score regression,
+  `max_spec_corrections` bound) restored to `factory-mission` as a new
+  `### Phase 5: Converge Loop Control` — the harness owns the counters, the
+  verdicts stay in `mission-brief`; four step guardrails lost in the
+  mission-* fold restored to `mission-brief` (specify never selects
+  technologies or plans files; plan treats acceptance criteria as the
+  definition of done; code never weakens the tests to pass; converge judges
+  from `brief.md` and non-goals, never from the verifier's own findings);
+  single `brief.md` owner (mission-brief constructs, the executor phase only
+  persists); continuous phase numbering with the line-16 checklist matching
+  the DAG; framework-lane resolution deduplicated to a pointer at
+  mission-brief's detection section; scan-based skill routing demoted to
+  harness Skill-tool resolution (step prompts name skills by exact name, the
+  subagent resolves them via its Skill tool), with
+  `references/agent-integrations.md` shrunk to a commands-dir fallback and
+  the `tests/e2e/test_universal_skill_orchestration.py` simulation suite
+  removed. `skills/factory/factory-review/references/review-loop.md`'s
+  factory-mission Phase-5 mirror line re-pointed at the clarify-gate routing
+  (was "→ Phase 6"). EVAL-005 rewritten to grade the new contract
+  (`evals/promptfoo/goldset.md`, `goldset.json`, `config.js`,
+  `graders/check_universal_skill_routing.py`): the criterion now requires
+  delegation prompts to name skills by exact name with Skill-tool resolution
+  and the commands-dir fallback, and treats the removed scanned-inventory
+  prompt ("Available Skills in This Workspace") as a **fail** case
+  (EVAL-005-CASE-2); README's "Universal orchestration" section states the
+  harness-native mechanism (was "scans installed skills directories").
+  Pinned by `tests/unit/test_mission_brief_fold.py`,
+  `tests/unit/test_factory_mission_loop_contract.py`,
+  `tests/unit/test_factory_mission_skill_routing.py`, and
+  `tests/unit/test_eval005_skill_routing_contract.py`.
+
 - **team-boot ChDR counting + submodule CDR discovery** (`skills/team/team-boot/scripts/`):
   ChDR scope count is now file-preferred with index-only fallback — record
   files are the inventory when they exist, index rows only when they don't —

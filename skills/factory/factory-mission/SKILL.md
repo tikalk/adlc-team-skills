@@ -13,7 +13,7 @@ description: Use when executing a spec-gated mission from the queue — inner lo
 When `ADLC_RUN_ID` is set, the workflow engine runs this skill unattended as its `execute` step, and the completion gate follows it. Do exactly this:
 
 1. **The mission is the run's issue.** Take it from `--issue <ref>` in the arguments; when that is missing or empty, use `ADLC_ISSUE_REF`. With neither, do not ask: write `{"conclusion":"blocked: factory run without an issue"}` into `ADLC_STEP_OUTPUT` and return.
-2. Run the mission for that issue end to end (Phases 0–6 below): brief, test (RED), code (GREEN), converge, then Invoke the `factory-runbook` skill to open or reuse the draft code MR/PR in the repository the change belongs to.
+2. Run the mission for that issue end to end (Phases 0–6 below): brief, specify, clarify, plan, test (RED), code (GREEN), verify, converge, then Invoke the `factory-runbook` skill to open or reuse the draft code MR/PR in the repository the change belongs to.
 3. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
 4. **Never ask a question or wait for an answer.** The completion gate after this step is the approval; a question here ends the step with nothing implemented.
 
@@ -31,10 +31,10 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`factory-mission` is the execution-harness orchestrator of the software factory. It takes a feature description, structures it into a **Mission Brief** (goal, constraints, non-goals, success criteria), generates an ordered **step list**, and executes those steps via sequential subagent runs. 
+`factory-mission` is the execution-harness orchestrator of the software factory. It takes a feature description, hands brief construction to `mission-brief` (goal, constraints, non-goals, success criteria — `mission-brief/references/mission-brief-template.md`), generates an ordered **step list**, and executes those steps via sequential subagent runs. 
 
 It implements the following key factory platform capabilities:
-1. **Universal Skill Routing**: Decoupled step dispatching. It scans installed skills and hands the inventory to subagents (the model picks which tool fits the step).
+1. **Skill routing via the harness**: step prompts name skills by exact name; the dispatched subagent resolves them through its own Skill tool (the runtime injects the installed inventory — no filesystem scan). For commands-based frameworks the model cannot see, consult `references/agent-integrations.md`.
 2. **Tracker-Agnostic Integration** (`factory-runbook/references/tracker-integration.md`): When invoked with `--issue <ref>`, it pulls ticket context, respects automation/dispatch labels (`autonomous`/`supervised`), and writes back status comments + iteration logs.
 3. **Inter-Agent Comment Bus** (`factory-runbook/references/tracker-integration.md` §Inter-Agent Comment Bus): When tracker-integrated, each step's terminal output (decisions, findings, artifact references — never drafts) is published as a structured comment on the PR/MR/issue. The next step reads previous markers before starting. This is the durable inter-agent memory that survives session boundaries, runtime switches, and pod crashes. Drafts stay on local disk.
 4. **Self-Contained Worker Brief**: The Mission Brief is persisted to `.adlc/workflows/runs/<run_id>/brief.md` as a draft. Resumed runs and cross-runtime workers read it from disk — no session-context dependency.
@@ -76,15 +76,15 @@ It implements the following key factory platform capabilities:
    - The comment bus is active for this run — step outputs will be published as marker comments on the PR/MR/issue.
 3. If no issue (outside a factory run): read spec description from arguments. The comment bus is inactive — steps communicate through local files only.
 4. Validate intake and hand the brief to `mission-brief` — brief construction lives there (per `mission-brief/references/mission-brief-template.md`). The intake bundle (validated intake) plus the `Framework lane` line the session model resolves (see step 5) is a `draft` — not published to the comment bus.
-5. Resolve the framework lane (`framework:` in mission.yml is an explicit pin; otherwise the session model inspects installed skill packs via the Skill tool) using the well-known skill-pack paths first and the CLI default last. Disclose the resolution one line (`Framework lane: <lane> (<evidence>)`); if no framework is installed, disclose that and fall back to Default. Record the lane in the run brief.
+5. Resolve the framework lane per `mission-brief`'s detection section (a `framework:` pin in mission.yml overrides it) and record the disclosed `Framework lane: <lane> (<evidence>)` line in the run brief. If no framework is installed, disclose that and fall back to Default.
 6. Resolve hierarchical Context Parameters from `agent < workflow < repository < project < default` and embed the frozen value map in the brief.
-6. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract.
+7. Generate the step list based on route classification (`spec`, `change`, `quick`). Each step declares `output_type` (`draft`/`decision`/`findings`/`artifact-ref`) and `reads_from` (markers or local paths) per the executor contract. Step prompts carry the exact skill name; the subagent resolves it via its Skill tool. If the target is a commands-based framework, check the commands dir per `references/agent-integrations.md`; an absent dir means the step executes directly.
 
 **Team index fallback:** when no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line. Never block on the missing injection.
 
 ## Lifecycle DAG & Step Resolution
 
-`factory-mission` resolves each lifecycle step to `mission-brief`, the lane-carrying core skill that owns it. Step order, inputs, and outputs follow the table; the owning skill defines the discipline.
+`factory-mission` resolves each lifecycle step to `mission-brief`, the lane-carrying core skill that owns it. The `brief` step is produced by `mission-brief` during Phase 0 intake, before the workflow is compiled; the table below is the dispatched lifecycle. Step order, inputs, and outputs follow the table; the owning skill defines the discipline.
 
 | Step | Skill | output_type | reads_from |
 | --- | --- | --- | --- |
@@ -109,6 +109,16 @@ Knobs specific to a mission run, read from `mission.yml` (the policy home for ex
 1. **Supervision**: the run's supervision mode — unattended runs never ask a question.
 2. **Quality threshold**: `quality_threshold` travels in as a converge input owned by `mission-brief`; the orchestrator carries it, never applies it.
 3. **Test/code split**: selected per run — whether the build dispatches separate test and code steps.
+
+### Phase 5: Converge Loop Control
+
+The orchestrator runs `test`/`code` → `verify` → `converge` as a loop and owns the loop's counters; the verdict itself belongs to `mission-brief`.
+
+1. **DONE** at or above `quality_threshold` → the loop exits and the run proceeds to Phase 6. `DONE` below `quality_threshold` is treated as `CONTINUE`.
+2. **CONTINUE** → increment `consecutive_tasks_appended` (persisted in the run state `runs/<run_id>/state.json`, surviving resume), attach the verify findings, and loop back to `test` (TDD split on) or `code`. When the counter reaches `circuit_breaker` from `mission.yml` (default 3), stop the run as failed: "circuit breaker: N consecutive iterations did not converge — human review needed."
+3. **Score regression:** track `consecutive_score_regressions` (persisted in the run state, surviving resume). A converge quality score below the previous iteration increments it; equal or higher resets it to 0. Reaching `circuit_breaker` stops the run: "N consecutive score regressions — quality trending downward, human review needed."
+4. **SPEC_CORRECTION_NEEDED** → the owning clarify gate, bounded by `max_spec_corrections` (default 2); exceeding it halts for human review.
+5. The `code`-step retry loop (`mission-brief` GREEN gate) never consumes these counters — only completed iterations do.
 
 ### Phase 6: Completion & Write-Back
 1. If tracker-integrated: read all marker comments from the PR/MR/issue to compile the audit trail (converge decisions, test findings, implement artifact references, convergence history).

@@ -39,16 +39,24 @@
       "id": "EVAL-005-CASE-1",
       "criterion_id": "EVAL-005",
       "type": "pass",
-      "scenario": "Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)",
-      "input_context": "Skills inventory: tdd ('Test-driven development with red-green-refactor'), grill-me ('Get relentlessly interviewed about a plan'), code-review ('Two-axis review of the diff').",
-      "expected_output": "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development with red-green-refactor\n- **grill-me** (`.claude/skills/grill-me`) — Get relentlessly interviewed about a plan\n- **code-review** (`.claude/skills/code-review`) — Two-axis review of the diff\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+      "scenario": "Delegation prompt naming the tdd skill for an implement step",
+      "input_context": "Step goal: implement retry logic with tests. Installed skills include tdd, grill-me, code-review (injected by the harness into every session).",
+      "expected_output": "Step: Implement the retry logic. Use the `tdd` skill for this step — resolve it via your own Skill tool. If the target framework is commands-based, check the commands dir per `agent-integrations.md`; an absent commands dir means the step executes directly."
     },
     {
       "id": "EVAL-005-CASE-2",
       "criterion_id": "EVAL-005",
       "type": "fail",
+      "scenario": "Delegation prompt with the removed scanned-inventory mechanism",
+      "input_context": "Skills inventory scanned from installed skills directories at mission start (the removed scan mechanism).",
+      "expected_output": "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development...\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+    },
+    {
+      "id": "EVAL-005-CASE-3",
+      "criterion_id": "EVAL-005",
+      "type": "fail",
       "scenario": "Delegation prompt with hard-coded phase-to-skill mapping",
-      "input_context": "Skills inventory provided but prompt uses static lookup table instead of LLM-decided routing.",
+      "input_context": "Step prompts use a static phase-to-skill lookup table instead of LLM-decided routing.",
       "expected_output": "Phase implement maps to skill tdd. Phase converge maps to skill code-review. Execute the mapped skill for this phase."
     },
     {

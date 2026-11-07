@@ -573,3 +573,19 @@ def test_boot_sh_no_fragile_jq_or_pattern():
 def test_boot_sh_validates_skill_count_is_integer():
     """boot.sh must validate jq output is a pure integer before arithmetic."""
     assert "^[0-9]+$" in BOOT_SH
+
+
+CONTRACT_FILES = [
+    "skills/team/team-boot/scripts/bash/boot.sh",
+    "skills/team/team-boot/scripts/powershell/boot.ps1",
+    "skills/team/team-setup/scripts/bash/team-helpers.sh",
+    "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
+]
+
+
+def test_contract_does_not_prime_single_line_collapse():
+    for rel in CONTRACT_FILES:
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "collapses into unrendered single-line markdown" not in text, rel
+        assert "one table row per line" in text.lower(), rel
+        assert "never a table header" in text.lower() or "no table" in text.lower(), rel

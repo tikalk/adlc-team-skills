@@ -60,10 +60,13 @@ LOCAL_EXAMPLE_IDS = {
 #   ADR-432            MR/PR milestone + assignee propagation
 #   ADR-433            lifecycle write scope (the staging allowlist)
 #   ADR-444            agent step run context and step output
+#   ADR-457            issue-conformance pass mechanism (governing brief judged)
 #   ADR-473            shared factory run mechanics live in factory-runbook
+#   PDR-131            factory-review issue-conformance pass scope
 GOVERNING_RECORDS = {
     "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
-    "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-473",
+    "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-457",
+    "ADR-473", "PDR-131",
 }
 
 # The surfaces the rule covers.

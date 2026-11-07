@@ -328,10 +328,13 @@ flowchart LR
 
 ## Universal orchestration
 
-`factory-mission` doesn't force a proprietary ecosystem. At mission start it
-scans installed skills directories, reads each `SKILL.md` frontmatter, and
-hands the inventory to the subagent — the model picks the skill that fits
-each step. Works alongside:
+`factory-mission` doesn't lock you into a proprietary ecosystem. Step prompts
+name skills by exact name; the dispatched subagent resolves them through its
+own harness Skill tool (the runtime injects the installed-skills inventory —
+no filesystem scan). For commands-based frameworks the model cannot see, the
+commands-dir fallback in `references/agent-integrations.md` covers discovery.
+Routing stays LLM-decided — no hard-coded phase-to-skill mapping. Works
+alongside:
 
 | Source | Examples |
 |---|---|

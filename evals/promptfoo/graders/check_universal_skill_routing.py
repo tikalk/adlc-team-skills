@@ -1,47 +1,62 @@
 import re
 
 def get_assert(output: str, context: dict = None) -> dict:
-    """Grader for EVAL-005: Universal Skill Orchestration — local skills routing.
+    """Grader for EVAL-005: Universal Skill Orchestration — harness-native skill routing.
 
     Verifies that the factory-mission delegation prompt:
-    1. Includes an "Available Skills" section listing installed skills.
-    2. Shows skill names with descriptions (not just bare names).
-    3. Instructs the subagent to invoke matching skills.
-    4. Does NOT hard-code specific vendor skill names (must be dynamic).
+    1. Names at least one skill by exact name (routing stays LLM-decided).
+    2. Directs the subagent to resolve named skills through its own Skill tool.
+    3. Carries the commands-dir fallback for commands-based frameworks.
+    4. Does NOT embed a scanned "Available Skills" inventory section
+       (the removed scan mechanism).
+    5. Does NOT hard-code phase-to-skill mapping tables.
     """
-    # Must have an "Available Skills" section
-    has_available_section = re.search(
-        r"available\s+skills", output, re.IGNORECASE
+    # Removed mechanism: scanned skills inventory embedded in the prompt
+    # (pre-rewrite delegation prompts carried a filesystem-scanned inventory)
+    has_scanned_inventory = re.search(
+        r"available\s+skills(\s+in\s+(this|the)\s+workspace)?\s*[:\-\n|]",
+        output,
+        re.IGNORECASE,
     )
 
-    # Must list at least one skill with a description (name + description pattern)
-    has_skill_with_desc = re.search(
-        r"\*{0,2}[\w-]+\*{0,2}\s*[`(`].*?[)`]?\s*[—\-:]\s*\w+", output
-    ) or re.search(
-        r"[\w-]+.*?(red-green|interview|review|test|plan|implement|skill)", output, re.IGNORECASE
+    # Must name at least one skill by exact name (backticked or quoted)
+    names_exact_skill = re.search(r"[`\"'][\w-]+[`\"']", output)
+
+    # Must direct resolution through the subagent's own Skill tool
+    resolves_via_skill_tool = re.search(
+        r"(your|its|their|the)\s+(own\s+)?skill\s+tool"
+        r"|via\s+(the\s+|your\s+|its\s+)?skill\s+tool"
+        r"|resolve[sd]?\s+[^.\n]{0,40}skill\s+tool",
+        output,
+        re.IGNORECASE,
     )
 
-    # Must instruct the subagent to invoke matching skills
-    has_invoke_instruction = re.search(
-        r"invoke|use\s+(it|this|the)|call\s+(the\s+)?skill", output, re.IGNORECASE
+    # Must carry the commands-dir fallback for commands-based frameworks
+    has_commands_fallback = re.search(
+        r"commands?[- ]dir|commands[- ]based|agent-integrations"
+        r"|absent[^.\n]{0,60}direct|execute[sd]?\s+directly",
+        output,
+        re.IGNORECASE,
     )
 
-    # Must NOT hard-code a specific vendor mapping table (e.g., "phase X → skill Y")
-    # The routing must be LLM-decided, not a static lookup
+    # Must NOT hard-code phase-to-skill mapping (routing is LLM-decided)
     has_hardcoded_mapping = re.search(
         r"phase\s+\w+\s*(→|->|maps?\s+to)\s*skill", output, re.IGNORECASE
     )
 
-    # Must mention fallback ("proceed with direct execution" or similar)
-    has_fallback = re.search(
-        r"direct\s+execution|proceed\s+directly|if\s+none\s+apply", output, re.IGNORECASE
-    )
-
     reasons = []
-    if not has_available_section:
-        reasons.append("missing 'Available Skills' section")
-    if not has_invoke_instruction:
-        reasons.append("missing instruction to invoke matching skills")
+    if has_scanned_inventory:
+        reasons.append(
+            "embeds a scanned 'Available Skills' inventory (removed mechanism — "
+            "skills are named by exact name and resolved via the subagent's "
+            "Skill tool)"
+        )
+    if not names_exact_skill:
+        reasons.append("does not name a skill by exact name")
+    if not resolves_via_skill_tool:
+        reasons.append("missing Skill-tool resolution instruction")
+    if not has_commands_fallback:
+        reasons.append("missing commands-dir fallback for commands-based frameworks")
     if has_hardcoded_mapping:
         reasons.append("contains hard-coded phase-to-skill mapping (should be LLM-decided)")
 
@@ -49,11 +64,13 @@ def get_assert(output: str, context: dict = None) -> dict:
         return {
             "pass": True,
             "score": 1.0,
-            "reason": "Delegation prompt includes available skills section, invoke instruction, and no hard-coded mappings."
+            "reason": "Delegation prompt names skills by exact name, resolves them "
+            "via the subagent's own Skill tool, carries the commands-dir "
+            "fallback, and embeds no scanned inventory or hard-coded mapping.",
         }
 
     return {
         "pass": False,
         "score": 0.0,
-        "reason": f"Universal skill routing check failed: {'; '.join(reasons)}. Output was: {output}"
+        "reason": f"Universal skill routing check failed: {'; '.join(reasons)}. Output was: {output}",
     }

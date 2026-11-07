@@ -1,4 +1,4 @@
-# factory-release (skill copy — plan of record for the skill's 10-step pipeline)
+# factory-release (skill copy — plan of record for the skill's 12-step pipeline)
 
 # Plan-of-record for the factory-release release orchestration.
 # Dual-executor: in-session the LLM executor drives these steps via
@@ -8,7 +8,7 @@
 schema_version: "1.0"
 workflow:
   id: factory-release
-  name: Deploy Release Orchestration
+  name: Release Orchestration
   version: "1.0.0"
 inputs:
   route:
@@ -119,7 +119,7 @@ steps:
   - id: close-milestone
     type: prompt
     prompt: |
-      Close the shipped milestone Resolve the milestone from the
+      Close the shipped milestone. Resolve the milestone from the
       shipped MR/issue linkage (factory MR/issue milestone inheritance). No milestone linked:
       record `milestone: none` and skip — a no-op, not a halt. Open issues
       remain in the milestone: HALT and list them; close-anyways is not

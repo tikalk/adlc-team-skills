@@ -7,7 +7,6 @@ evals/promptfoo/tests/test_check_factory_release_gates.py (pure-python,
 passes independently); two wiring tests at the end only pin that the
 grader skeleton exists with the required shape.
 """
-import pathlib
 from pathlib import Path
 
 import pytest

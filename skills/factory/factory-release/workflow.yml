@@ -1,14 +1,14 @@
-# factory-deploy (skill copy — plan of record for the skill's 10-step pipeline)
+# factory-release (skill copy — plan of record for the skill's 12-step pipeline)
 
-# Plan-of-record for the factory-deploy release orchestration.
+# Plan-of-record for the factory-release release orchestration.
 # Dual-executor: in-session the LLM executor drives these steps via
 # `workflow state` helpers (gates inline); headless `adlc-cli workflow run`
 # executes the same file inside the skill. Generated once here, rendered twice
 # (run home + skill copy) so prose and program never drift.
 schema_version: "1.0"
 workflow:
-  id: factory-deploy
-  name: Deploy Release Orchestration
+  id: factory-release
+  name: Release Orchestration
   version: "1.0.0"
 inputs:
   route:
@@ -114,6 +114,30 @@ steps:
     type: prompt
     prompt: |
       Release cut in merge → tag → changelog order with a dry-run
-      preview, then the monitor handoff packet and the conditional change
-      record. See references/release-cut.md and references/release-chdr.md.
+      preview. See references/release-cut.md.
+    tier: strong
+  - id: close-milestone
+    type: prompt
+    prompt: |
+      Close the shipped milestone. Resolve the milestone from the
+      shipped MR/issue linkage (factory MR/issue milestone inheritance). No milestone linked:
+      record `milestone: none` and skip — a no-op, not a halt. Open issues
+      remain in the milestone: HALT and list them; close-anyways is not
+      offered — fix the milestone first. Write only through the
+      issues-provider milestone API; never direct provider HTTP from the
+      skill. Provider lacks milestone write support: HALT with a manual
+      instruction (human closes the milestone, re-run) — never silently
+      skip. Dry-run preview lists the milestone and its open-issue count
+      before any mutation.
+    tier: strong
+  - id: update-roadmap
+    type: prompt
+    prompt: |
+      Flip the milestone row in docs/adlc/product/roadmap.md from active to
+      closed, recording the release version and date Order:
+      tag/changelog → milestone close → roadmap update; the monitor handoff
+      packet and the conditional change record (references/release-chdr.md)
+      come last. The roadmap edit is committed through the run's normal
+      publish path (factory-runbook step commits) — never an uncommitted
+      local edit.
     tier: strong

@@ -1,7 +1,7 @@
-"""Unit test for check_factory_deploy_gates.py grader.
+"""Unit test for check_factory_release_gates.py grader.
 
 Verifies the grader produces correct pass/fail results for the
-factory-deploy both-merge-gates-green-on-same-SHA criterion (no auto-approve
+factory-release both-merge-gates-green-on-same-SHA criterion (no auto-approve
 tier, halt-on-head-move, budget-override recorded).
 
 The two merge gates are:
@@ -17,7 +17,7 @@ from pathlib import Path
 graders_dir = Path(__file__).parent.parent / "graders"
 sys.path.insert(0, str(graders_dir))
 
-from check_factory_deploy_gates import get_assert
+from check_factory_release_gates import get_assert
 
 SHA_A = "a" * 40
 SHA_B = "b" * 40

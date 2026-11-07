@@ -366,7 +366,7 @@ alongside:
 - **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, mandated TDD RED/GREEN gates (Test Agent writes failing tests first, Implement Agent writes code to pass them), circuit breaker.
 - **`factory-intent`** — merged intent orchestrator (product + architecture lanes, two gates).
 - **`factory-runbook`** — shared run mechanics, invoked by orchestrators: publish procedure (run branch → step commits → draft MR/PR with milestone/assignee ownership) plus the run contracts (executor, tracker integration, lanes, brief/provider templates) borrowed by path, never copied.
-- **`factory-deploy`** — post-merge release orchestration: exact-head gated merge → staged rollout with threshold verdicts → SemVer-tagged, noted release with monitor handoff.
+- **`factory-release`** — post-merge release orchestration: exact-head gated merge → staged rollout with threshold verdicts → SemVer-tagged, noted release with monitor handoff.
 - **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.
 - **`factory-clean`** — resource inventory and reclamation (approval-gated).

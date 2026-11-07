@@ -7,7 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`factory-deploy` renamed to `factory-release`** (`skills/factory/factory-release/`,
+  was `skills/factory/factory-deploy/`): the release orchestrator now carries the
+  name of the lifecycle phase it owns end-to-end. Alias-free rename per the
+  factory-intent precedent — source-tree `git mv`, full reference sweep
+  (SKILL.md, `workflow.yml` id, orchestrator routing, README, grader and its
+  tests renamed `check_factory_release_gates`), consumers regenerate shims via
+  `adlc-cli skills add`. History (past changelog entries, PRD/AD delta sections)
+  keeps the `factory-deploy` name verbatim.
+
 ### Added
+
+- **factory-release `close-milestone` and `update-roadmap` steps**: the release
+  workflow gains two terminal steps after `publish` (10 → 12 steps).
+  `close-milestone` resolves the shipped milestone from the MR/issue milestone
+  inheritance, records a no-op when none is linked, halts listing open issues,
+  and writes only through the issues-provider milestone API. `update-roadmap`
+  flips the milestone row in `docs/adlc/product/roadmap.md` (active → closed
+  with release version and date) through the run's normal publish path; monitor
+  handoff and the conditional change record come last. Contract tests extended
+  in `tests/unit/test_factory_release_skill.py` (12-step shape, terminal
+  ordering, step semantics, no-alias guard).
 
 - **factory-review `pass: issue-conformance`** (`skills/factory/factory-review/`):
   the review pipeline now judges a PR/MR against its governing issue's Mission

@@ -1,9 +1,9 @@
 ---
-name: factory-deploy
-description: Use when an approved PR head must reach production through a gated release — exact-head merge, staged canary rollout with threshold verdicts, and a SemVer-tagged release with notes plus a monitor handoff. Triggers on post-merge rollout work; not for continuous monitoring, review depth, or infra provisioning.
+name: factory-release
+description: Use when an approved PR head must reach production through a gated release — exact-head merge, staged canary rollout with threshold verdicts, a SemVer-tagged release with notes, milestone close and roadmap update, plus a monitor handoff. Triggers on post-merge rollout work; not for continuous monitoring, review depth, or infra provisioning.
 ---
 
-# factory-deploy
+# factory-release
 
 Post-merge release orchestrator that closes the factory loop: approved head
 → gated merge → staged rollout with threshold verdicts → SemVer-tagged,
@@ -12,7 +12,7 @@ rationale only.
 
 ## Overview
 
-`factory-deploy` takes a human-approved head and carries it to production
+`factory-release` takes a human-approved head and carries it to production
 without inventing new authority: merge happens only when **both gates green
 on the same SHA** at the **exact-head** under review, rollout advances on
 measured threshold verdicts (green advances, yellow holds, red rolls back),
@@ -20,7 +20,7 @@ and the release is cut merge → tag → changelog with a dry-run preview and a
 handoff packet. There is **no auto-approve** tier — never auto-approve,
 never auto-merge past a human gate.
 
-The 10-step program (`workflow.yml`) is the single source of truth; this prose
+The 12-step program (`workflow.yml`) is the single source of truth; this prose
 never overrides it. Heavy detail lives in `references/`.
 
 ## When to Use / When NOT Use
@@ -30,6 +30,7 @@ Use when:
 - A reviewed PR has an approved head and needs merging at that exact head.
 - A merged head needs staging, canary rollout, expansion, and a terminal verdict.
 - A release must be cut: SemVer tag, impact-grouped notes, monitor handoff.
+- A shipped release must close its tracker milestone and update the roadmap.
 
 **When NOT Use:**
 
@@ -40,7 +41,7 @@ Use when:
 
 ## Core Process
 
-The 10 steps run in order; gates halt, never warn.
+The 12 steps run in order; gates halt, never warn.
 
 1. **verify** — Halt-first entry checks. Confirm the approved head SHA, the
    rollback plan requirement (a rollback plan must exist before `stage`
@@ -74,8 +75,18 @@ The 10 steps run in order; gates halt, never warn.
    annotation (invariant 8).
 9. **full** — Terminal verdict on the expanded rollout.
 10. **publish** — Release cut in merge → tag → changelog order with a dry-run
-   preview, then the monitor handoff packet and the conditional change
-   record. See `references/release-cut.md` and `references/release-chdr.md`.
+   preview. See `references/release-cut.md`.
+11. **close-milestone** — Close the shipped milestone. Resolve the milestone
+    from the shipped MR/issue linkage (factory MR/issue milestone inheritance). No milestone
+    linked → recorded no-op (`milestone: none`). Open issues remain → halt
+    listing them (close-anyways is not offered). Tracker write through the
+    issues-provider milestone API only; provider lacks milestone write
+    support → halt with a manual instruction, never silently skip.
+12. **update-roadmap** — Flip the milestone row in
+    `docs/adlc/product/roadmap.md` (active → closed, with release version
+    and date), committed through the run's normal publish path — never an
+    uncommitted local edit. Then the monitor handoff packet and the
+    conditional change record (`references/release-chdr.md`).
 
 The 8 deploy invariants (preconditions on every mutating step):
 

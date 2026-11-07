@@ -7,7 +7,7 @@ description: Use when work arrives at the software factory at any lifecycle stag
 
 ## What this skill does
 
-`factory-orchestrator` is the front door of the software factory. It accepts work at **any stage** of the lifecycle, detects which stage the work is in, and hands it to the factory skill that owns that stage. It is a pure router and communicator: it never implements, reviews, triages, or deploys itself — every stage's work belongs to the skill that owns it (`factory-queue`, `factory-mission`, `factory-review`, `factory-deploy`, `factory-learn`, …).
+`factory-orchestrator` is the front door of the software factory. It accepts work at **any stage** of the lifecycle, detects which stage the work is in, and hands it to the factory skill that owns that stage. It is a pure router and communicator: it never implements, reviews, triages, or deploys itself — every stage's work belongs to the skill that owns it (`factory-queue`, `factory-mission`, `factory-review`, `factory-release`, `factory-learn`, …).
 
 It is the single communicator with the user: acknowledgements, status, questions, and hand-offs all flow through it, in one voice, with the factory's internal dispatching kept out of sight.
 
@@ -57,7 +57,7 @@ Enter the routing table below at the detected stage.
 | CI failure on a delivered PR | Follow-up to the implementing run/context | See §Follow-up routing. Every fix push invalidates the standing review verdict. |
 | Review findings, unambiguous | Revision by the implementing run/context | The review runs once per work item; revisions do not re-trigger it, but every new head needs a fresh verdict. |
 | Review findings, judgment needed | Post the findings on the PR, then **PR hand-off** | Findings only — never an approval or denial. |
-| Merge notification / "it landed" | **Completion** (§6) | Lifecycle → `done`; release-gated work hands off to `factory-deploy`. |
+| Merge notification / "it landed" | **Completion** (§6) | Lifecycle → `done`; release-gated work hands off to `factory-release`. |
 | PR ready but ticket still open after merge | Verify, close the ticket | Surfaced by `factory-tickets` as "Merged, Ticket Still Open". |
 | "Improve the factory itself" (prompts, skills, config) | Normal work item through the same procedure | Factory self-improvement lands via `factory-learn` / `team-levelup`. |
 | Workspace cleanup / tracker wiring / worklist requests | `factory-clean` / `factory-setup` / `factory-tickets` | Direct hand-off, no gating. |
@@ -86,7 +86,7 @@ Runs on a later entry, when the merge notification arrives or the user says it l
 
 - Move the issue's lifecycle label to `done` through the Set Lifecycle step (tracker-integration Operation 9), which removes any other lifecycle label in the same call.
 - An issue closed without a merge (work abandoned, superseded or rejected) ends `cancelled` through the same step, never with its last working label.
-- Release-gated work: hand off to `factory-deploy` (exact-head merge, canary rollout, SemVer tag — its own gated procedure).
+- Release-gated work: hand off to `factory-release` (exact-head merge, canary rollout, SemVer tag — its own gated procedure).
 - Send a short wrap-up to the user. Nothing else completes work for you.
 
 ### 7. Label & attribution hygiene
@@ -151,7 +151,7 @@ You are the only communicator with the end user:
 - [ ] All three human gates held (Intent Gate, spec approval, PR hand-off); no auto-merge, no auto-approval
 - [ ] Follow-ups routed to existing run/context (run state + comment bus markers), never a fresh dispatch while a live run owns the item
 - [ ] Fix pushes followed by a fresh review verdict on the new head before any merge-readiness claim
-- [ ] Completed work: lifecycle label `done`, wrap-up sent; release-gated work handed to `factory-deploy`
+- [ ] Completed work: lifecycle label `done`, wrap-up sent; release-gated work handed to `factory-release`
 - [ ] User communication: immediate acknowledgement, one voice, every named PR/issue linked, no internals exposed
 
 ## References
@@ -160,6 +160,6 @@ You are the only communicator with the end user:
 - `factory-runbook/references/executor.md` — shared executor contract (step schema, run state, lanes)
 - `factory-queue/SKILL.md` — intake, triage, Intent Gate
 - `factory-review/SKILL.md` — The Great Filter, verdict invalidation on fix push, PR hand-off
-- `factory-deploy/SKILL.md` — post-merge gated release
+- `factory-release/SKILL.md` — post-merge gated release
 - `factory-tickets/SKILL.md` — read-only worklist ("Merged, Ticket Still Open")
 - `factory-learn/SKILL.md` — factory self-improvement

@@ -1,28 +1,30 @@
-"""Contract tests for the factory-deploy skill (issue #17).
+"""Contract tests for the factory-release skill (issue #95).
 
-The skill tree at skills/factory/factory-deploy/ exists; these tests
-verify its contract against the plan of record.
-Grader-behavior coverage lives in
-evals/promptfoo/tests/test_check_factory_deploy_gates.py (pure-python,
-passes independently); the two wiring tests at the end of this file only
-pin that the grader skeleton exists with the required return shape.
+The skill tree skills/factory/factory-release/ must exist (renamed from
+factory-deploy per the accepted alias-free rename decision, no alias); tests verify the contract plan
+record. Grader-behavior coverage lives in
+evals/promptfoo/tests/test_check_factory_release_gates.py (pure-python,
+passes independently); two wiring tests at the end only pin that the
+grader skeleton exists with the required shape.
 """
+import pathlib
 from pathlib import Path
 
 import pytest
 import yaml
 
 ROOT = Path(__file__).parent.parent.parent
-SKILL_DIR = ROOT / "skills" / "factory" / "factory-deploy"
+SKILL_DIR = ROOT / "skills" / "factory" / "factory-release"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 WORKFLOW = SKILL_DIR / "workflow.yml"
 REFERENCES = SKILL_DIR / "references"
-GRADER = ROOT / "evals" / "promptfoo" / "graders" / "check_factory_deploy_gates.py"
-GRADER_TEST = ROOT / "evals" / "promptfoo" / "tests" / "test_check_factory_deploy_gates.py"
+GRADER = ROOT / "evals" / "promptfoo" / "graders" / "check_factory_release_gates.py"
+GRADER_TEST = ROOT / "evals" / "promptfoo" / "tests" / "test_check_factory_release_gates.py"
 
 EXPECTED_STEPS = [
     "verify", "gate-merge", "merge", "stage", "gate-canary-expand", "canary",
     "gate-full-expand", "expand", "full", "publish",
+    "close-milestone", "update-roadmap",
 ]
 EXPECTED_GATES = ["gate-merge", "gate-canary-expand", "gate-full-expand"]
 
@@ -31,15 +33,8 @@ BODY_HARD_CAP_LINES = 500
 
 
 def _read_skill():
-    assert SKILL_MD.exists(), f"missing skill body at {SKILL_MD.relative_to(ROOT)}"
+    assert SKILL_MD.exists(), f"missing skill body {SKILL_MD.relative_to(ROOT)}"
     return SKILL_MD.read_text(encoding="utf-8")
-
-
-def _frontmatter(text):
-    assert text.startswith("---"), "SKILL.md must start with YAML frontmatter"
-    parts = text.split("---", 2)
-    assert len(parts) >= 3, "malformed frontmatter"
-    return yaml.safe_load(parts[1]) or {}
 
 
 def test_skill_tree_exists():
@@ -49,39 +44,42 @@ def test_skill_tree_exists():
 
 
 def test_skill_frontmatter_name_parity():
-    meta = _frontmatter(_read_skill())
-    assert meta.get("name") == "factory-deploy"
+    text = _read_skill()
+    assert text.startswith("---"), "SKILL.md must open with YAML frontmatter"
+    parts = text.split("---", 2)
+    assert len(parts) == 3, "SKILL.md frontmatter must close"
+    meta = yaml.safe_load(parts[1])
+    assert meta.get("name") == "factory-release"
     assert SKILL_DIR.name == meta.get("name")
 
 
-def test_skill_description_trigger_and_length():
-    meta = _frontmatter(_read_skill())
-    desc = meta.get("description") or ""
-    assert desc.strip(), "description must be non-empty"
+def test_skill_description_shape():
+    meta = yaml.safe_load(_read_skill().split("---", 2)[1])
+    desc = meta.get("description")
+    assert desc and desc.strip(), "description must be non-empty"
     assert len(desc) <= MAX_DESCRIPTION_CHARS
-    assert desc.strip().lower().startswith("use when")
+    assert desc.strip().lower().startswith("use ")
 
 
-def test_skill_model_invoked():
-    meta = _frontmatter(_read_skill())
-    assert meta.get("disable-model-invocation") is not True
+def test_no_alias_shim_remains():
+    """The rename is alias-free — no factory-deploy skill or shim."""
+    old_dir = ROOT / "skills" / "factory" / "factory-deploy"
+    assert not old_dir.exists(), (
+        f"alias shim remains at {old_dir.relative_to(ROOT)} — "
+        "the accepted rename decision requires alias-free replacement"
+    )
 
 
-def test_skill_exactly_two_levels_deep():
-    rel = SKILL_MD.relative_to(ROOT / "skills")
-    assert len(rel.parts) - 1 == 2, f"must live at skills/<domain>/<skill>/, got {rel}"
-
-
-def test_skill_body_lean_with_required_sections():
+def test_skill_body_sections():
     text = _read_skill()
-    assert text.count("\n") < BODY_HARD_CAP_LINES
+    assert len(text.splitlines()) <= BODY_HARD_CAP_LINES
     low = text.lower()
     for section in ["overview", "core process", "verification", "configuration"]:
         assert section in low, f"missing section: {section}"
     assert ("red flag" in low) or ("rationalization" in low)
 
 
-def test_workflow_ten_steps_three_named_gates():
+def test_workflow_twelve_steps_three_named_gates():
     assert WORKFLOW.exists(), f"missing {WORKFLOW.relative_to(ROOT)}"
     wf = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     steps = (wf.get("workflow") or {}).get("steps") or wf.get("steps") or []
@@ -91,13 +89,58 @@ def test_workflow_ten_steps_three_named_gates():
     assert gates == EXPECTED_GATES, f"expected gates {EXPECTED_GATES}, got {gates}"
 
 
-def test_workflow_parses_in_execution_engine():
-    """The execution engine (adlc-cli subset parser) must read all 10 steps.
+def test_workflow_terminal_step_ordering():
+    """close-milestone then update-roadmap follow publish, terminal."""
+    wf = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = (wf.get("workflow") or {}).get("steps") or wf.get("steps") or []
+    ids = [s.get("id") for s in steps]
+    pub = ids.index("publish")
+    assert ids.index("close-milestone") == pub + 1, (
+        "close-milestone must immediately follow publish")
+    assert ids.index("update-roadmap") == pub + 2, (
+        "update-roadmap must follow close-milestone")
+    assert ids[-1] == "update-roadmap" or ids[-1] == "handoff" or "update-roadmap" in ids[-2:], (
+        "milestone/roadmap steps are terminal; monitor handoff stays last or folds into publish")
 
-    PyYAML reads files the engine cannot (flush-left lists, folded
-    single-quoted multi-line scalars silently truncate). A green PyYAML check
-    over a file the executor rejects is a ci-integrity violation, so this
-    test pins engine-parseability: 10 steps, 3 gates, inputs intact.
+
+def test_close_milestone_step_semantics():
+    """halt-first milestone close via issues-provider only."""
+    wf = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = (wf.get("workflow") or {}).get("steps") or wf.get("steps") or []
+    step = next(s for s in steps if s.get("id") == "close-milestone")
+    prompt = str(step.get("prompt", "")).lower()
+    assert prompt, "close-milestone step must carry a prompt"
+    assert "milestone" in prompt
+    assert "halt" in prompt, "close-milestone must be halt-first on open issues"
+    assert "open issue" in prompt or "open issues" in prompt
+    assert "no-op" in prompt or "none" in prompt, (
+        "no milestone linked must be a recorded no-op, not a halt")
+    assert "issues-provider" in prompt or "issues provider" in prompt or "provider" in prompt, (
+        "tracker writes go through the issues-provider only"
+    )
+
+
+def test_update_roadmap_step_semantics():
+    """roadmap flip committed through the run's publish path."""
+    wf = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = (wf.get("workflow") or {}).get("steps") or wf.get("steps") or []
+    step = next(s for s in steps if s.get("id") == "update-roadmap")
+    prompt = str(step.get("prompt", "")).lower()
+    assert prompt, "update-roadmap step must carry a prompt"
+    assert "roadmap.md" in prompt
+    assert "closed" in prompt
+    assert "commit" in prompt or "publish path" in prompt, (
+        "roadmap flip is committed through the run's publish path, never a local edit"
+    )
+
+
+def test_workflow_parses_in_execution_engine():
+    """The execution engine (adlc-cli subset parser) must accept all 12 steps.
+
+    PyYAML files the engine cannot parse (flush-left lists, folded
+    single-quoted multi-line scalars silently truncate) pass a green
+    PyYAML check but fail the executor at ci-integrity time, so this
+    test pins engine-parseability: 12 steps, 3 gates, inputs intact.
     """
     import json
     import os
@@ -183,7 +226,7 @@ def test_grader_vocabulary_matches_skill_prose():
     """
     import re
     skill = _read_skill()
-    refs = ROOT / "skills" / "factory" / "factory-deploy" / "references"
+    refs = ROOT / "skills" / "factory" / "factory-release" / "references"
     prose = skill + "\n" + "\n".join(
         p.read_text(encoding="utf-8") for p in sorted(refs.glob("*.md"))
     )

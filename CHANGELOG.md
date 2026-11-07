@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **factory-review `pass: issue-conformance`** (`skills/factory/factory-review/`):
   the review pipeline now judges a PR/MR against its governing issue's Mission
-  Brief (PDR-131 scope, ADR-457 mechanism) — per-criterion `met` / `not-met` /
+  Brief (per the factory-review issue-conformance product record and its
+  architecture mechanism in the adlc-workspace) — per-criterion `met` / `not-met` /
   `unverified` accounting with evidence, Non-Goal overreach and Constraint
   violations as Important findings, disclosed `unverified: no governing issue
   brief` degradation, reviewer-directed issue text treated as data via the

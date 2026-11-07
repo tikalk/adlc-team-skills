@@ -87,6 +87,18 @@ class TestGrader:
         assert verdict["pass"] is False
         assert "hard-coded" in verdict["reason"].lower(), verdict["reason"]
 
+    def test_backticked_non_skill_token_does_not_count_as_skill_name(self):
+        """A backticked word that is not a skill name (e.g. `retry` helper)
+        must not satisfy the exact-name requirement."""
+        no_skill_named = (
+            "Step: implement the logic. Use the `retry` helper. Resolve "
+            "via the Skill tool; an absent commands dir means the step "
+            "executes directly."
+        )
+        verdict = _load_grader().get_assert(no_skill_named)
+        assert verdict["pass"] is False
+        assert "exact name" in verdict["reason"], verdict["reason"]
+
 
 class TestGoldsetMarkdown:
     def test_criterion_grades_harness_native_contract(self):
@@ -134,7 +146,7 @@ class TestGoldsetJson:
 class TestConfigAndReadme:
     def test_config_instructs_new_contract_not_scan_emission(self):
         block = _config_js_block()
-        assert "Available Skills in Workspace" not in block
+        assert "Available Skills in This Workspace" not in block
         assert "exact name" in block
         assert "Skill tool" in block
 

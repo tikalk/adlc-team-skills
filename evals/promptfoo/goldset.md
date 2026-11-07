@@ -117,6 +117,8 @@ The delegation prompt embeds a scanned skills inventory section (the removed mec
 - **Input Context**: Step prompts use a static phase-to-skill lookup table instead of LLM-decided routing.
 - **Agent Output**: "Phase implement → skill tdd. Phase converge → skill code-review. Execute the mapped skill for this phase."
 
+---
+
 ## Criterion EVAL-006: Change Decision Record (ChDR) Format Integrity
 
 **Status**: published

@@ -19,8 +19,14 @@ def get_assert(output: str, context: dict = None) -> dict:
         re.IGNORECASE,
     )
 
-    # Must name at least one skill by exact name (backticked or quoted)
-    names_exact_skill = re.search(r"[`\"'][\w-]+[`\"']", output)
+    # Must name at least one skill by exact name — a backticked/quoted token
+    # adjacent to the word "skill" (e.g. "the `tdd` skill"), so a backticked
+    # non-skill token (e.g. "the `retry` helper") does not satisfy the check
+    names_exact_skill = re.search(
+        r"[`\"'][\w-]+[`\"']\s+skill\b|skill\s+[`\"'][\w-]+[`\"']",
+        output,
+        re.IGNORECASE,
+    )
 
     # Must direct resolution through the subagent's own Skill tool
     resolves_via_skill_tool = re.search(

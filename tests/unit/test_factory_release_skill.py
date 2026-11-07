@@ -180,6 +180,15 @@ def test_workflow_parses_in_execution_engine():
     assert report["gateErrors"] == [], f"engine gates: {report['gateErrors']}"
 
 
+def test_changelog_scope_spans_previous_tag():
+    """Changelog notes span previous SemVer tag → new tag (between versions)."""
+    cut = (REFERENCES / "release-cut.md").read_text(encoding="utf-8")
+    low = cut.lower()
+    assert "previous semver tag" in low, (
+        "release-cut.md must pin the changelog range: previous SemVer tag → new tag"
+    )
+
+
 def test_skill_both_gates_green_same_sha_no_autoapprove():
     low = _read_skill().lower()
     assert "both gates green" in low

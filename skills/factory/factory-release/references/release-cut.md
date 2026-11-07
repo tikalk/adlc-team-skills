@@ -8,6 +8,8 @@ Cut order is merge → tag → changelog → flag cleanup. Never reorder.
 2. **tag** — SemVer tag next; tag-as-truth (no tag = no release).
 3. **changelog** — impact-grouped tracker notes (Added / Fixed / Deprecated /
    Removed / Security) generated after the tag, approved via dry-run preview.
+   Notes span previous SemVer tag → new tag (equivalently, the closing
+   milestone's merged work).
 4. **flag cleanup** — rollout flags removed last.
 
 ## SemVer decision tree

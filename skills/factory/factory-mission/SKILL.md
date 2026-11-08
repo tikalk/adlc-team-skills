@@ -14,8 +14,9 @@ When `ADLC_RUN_ID` is set, the workflow engine runs this skill unattended as its
 
 1. **The mission is the run's issue.** Take it from `--issue <ref>` in the arguments; when that is missing or empty, use `ADLC_ISSUE_REF`. With neither, do not ask: write `{"conclusion":"blocked: factory run without an issue"}` into `ADLC_STEP_OUTPUT` and return.
 2. Run the mission for that issue end to end (Phases 0–6 below): brief, specify, clarify, plan, test (RED), code (GREEN), verify, converge, then Invoke the `factory-runbook` skill to open or reuse the draft code MR/PR in the repository the change belongs to.
-3. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
-4. **Never ask a question or wait for an answer.** The completion gate after this step is the approval; a question here ends the step with nothing implemented.
+3. **Once the code MR/PR is open,** move the issue from `executing` to `validation` through the Set Lifecycle step (`factory-runbook/references/tracker-integration.md` Operation 9). That step adds `validation` and removes any other lifecycle label in the same call. With no MR, leave the label as it is and say so in the `conclusion`.
+4. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
+5. **Never ask a question or wait for an answer.** The completion gate after this step is the approval; a question here ends the step with nothing implemented.
 
 **Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 

@@ -55,7 +55,10 @@ $provenanceSource = "none"
 $provenancePath = Join-Path $ResolvedTree "PROVENANCE.md"
 if (Test-Path -Path $provenancePath -PathType Leaf) {
     $content = Get-Content -Path $provenancePath -Raw 2>$null
-    if ($content -match '[^[:space:]]') {
+    # NOTE: .NET regex has no POSIX [:space:] class — '[^[:space:]]' would
+    # mean "non-excluded char followed by a literal ']'", missing normal
+    # content. Use IsNullOrWhiteSpace so empty/whitespace-only stays missing.
+    if (-not [string]::IsNullOrWhiteSpace($content)) {
         $provenancePresent = 1
         $provenanceSource = "provenance file"
     }

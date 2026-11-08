@@ -335,6 +335,27 @@ def test_preview_whitespace_only_provenance_is_missing(tmp_path):
     )
 
 
+def test_preview_normal_content_provenance_is_detected(tmp_path):
+    """Normal PROVENANCE.md content counts as present provenance.
+
+    Regression: the PowerShell twin used '[^[:space:]]', which is not a
+    whitespace class in .NET regex, so it missed normal content. Both
+    twins must treat ordinary non-whitespace content as present.
+    """
+    tree = seed_tree(
+        tmp_path,
+        {
+            "src/foo.py": "print(1)\n",
+            "PROVENANCE.md": "src/foo.py: implemented by factory-review run abc\n",
+        },
+    )
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    combined = proc.stdout + proc.stderr
+    assert "provenance: detected" in combined.lower(), (
+        "normal PROVENANCE.md content must be treated as present provenance"
+    )
+
+
 def test_preview_never_blocks_exit_zero(tmp_path):
     tree = seed_tree(tmp_path, {"src/foo.py": "print(1)\n"})
     proc = run_preview_on_tree(PREVIEW_SH, tree)

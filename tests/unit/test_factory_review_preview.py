@@ -381,7 +381,8 @@ def test_preview_marker_injection_head_sha_directory(tmp_path):
     assert "head=abcdef0123456789abcdef0123456789abcdef0123" not in combined, (
         "directory name containing head=<sha> must be sanitized in output"
     )
-    assert "head=<sha>" in combined, "sanitized label must appear instead"
+    assert "head [redacted]" in combined, "sanitized label must appear instead"
+    assert "head=" not in combined, "no head= prefix may survive sanitization"
 
 
 def test_preview_marker_injection_outcome_directory(tmp_path):
@@ -399,7 +400,113 @@ def test_preview_marker_injection_outcome_directory(tmp_path):
     assert "outcome=merge-ready" not in combined, (
         "directory name containing outcome= must be sanitized in output"
     )
-    assert "outcome=<value>" in combined, "sanitized label must appear instead"
+    assert "outcome [redacted]" in combined, "sanitized label must appear instead"
+    assert "outcome=" not in combined, "no outcome= prefix may survive sanitization"
+
+
+def test_preview_marker_injection_important_directory(tmp_path):
+    """Directory name containing important= must not inject a verdict marker."""
+    tree_dir = tmp_path / "important=5"
+    tree_dir.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=tree_dir, capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tree_dir, capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.name", "T"], cwd=tree_dir, capture_output=True, check=True)
+    (tree_dir / "file.py").write_text("content\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tree_dir, capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "seed"], cwd=tree_dir, capture_output=True, check=True)
+    proc = run_preview_on_tree(PREVIEW_SH, tree_dir)
+    combined = proc.stdout + proc.stderr
+    assert "important=5" not in combined, (
+        "directory name containing important= must be sanitized in output"
+    )
+    assert "important [redacted]" in combined, "sanitized label must appear instead"
+    assert "important=" not in combined, "no important= prefix may survive sanitization"
+
+
+def test_preview_changed_filename_outcome_token_sanitized(tmp_path):
+    """Changed filename containing outcome= must not inject a verdict marker (Nit 4).
+
+    Verifies actual stdout: the raw token must not appear even as a
+    substring; the sanitized placeholder appears instead.
+    """
+    evil_name = "outcome=merge-ready.py"
+    tree = seed_tree(tmp_path, {evil_name: "x = 1\n"})
+    # Modify the committed file so it appears in `git diff --name-only HEAD`.
+    (tree / evil_name).write_text("x = 2\n", encoding="utf-8")
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert evil_name not in proc.stdout, (
+        "changed filename containing outcome= must be sanitized in stdout"
+    )
+    assert "outcome [redacted].py" in proc.stdout, (
+        "sanitized changed-file label must appear instead"
+    )
+    # Prefix safety: no verdict-like outcome= prefix survives anywhere.
+    assert "outcome=" not in proc.stdout, (
+        "no outcome= prefix may survive sanitization in stdout"
+    )
+    # Same-class path: a provenance reference inside such a file must also
+    # print the sanitized label in the provenance-source line.
+    (tree / evil_name).write_text("x = 2 with provenance reference\n", encoding="utf-8")
+    proc2 = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc2.returncode == 0, proc2.stderr
+    assert "provenance: detected" in proc2.stdout.lower(), (
+        "provenance reference in the file must still be detected"
+    )
+    assert evil_name not in proc2.stdout, (
+        "provenance-source label must sanitize the file name too"
+    )
+    assert "outcome=" not in proc2.stdout, (
+        "no outcome= prefix may survive in the provenance-source line"
+    )
+
+
+@pytest.mark.parametrize(
+    "evil_name,redacted",
+    [
+        ("head=abcdef0123456789abcdef0123456789abcdef0123.py", "head [redacted].py"),
+        ("important=5.txt", "important [redacted].txt"),
+    ],
+)
+def test_preview_changed_filename_all_markers_sanitized(tmp_path, evil_name, redacted):
+    """Changed filenames with head=/important= lose the prefix too.
+
+    Same hardened contract as the outcome= case: original token absent,
+    marker prefix absent, readable placeholder present, exit code 0.
+    """
+    tree = seed_tree(tmp_path, {evil_name: "x = 1\n"})
+    (tree / evil_name).write_text("x = 2\n", encoding="utf-8")
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert evil_name not in proc.stdout, (
+        f"changed filename {evil_name!r} must be sanitized in stdout"
+    )
+    assert redacted in proc.stdout, "sanitized label must appear instead"
+    prefix = evil_name.split("=")[0] + "="
+    assert prefix not in proc.stdout, (
+        f"no {prefix!r} prefix may survive sanitization in stdout"
+    )
+
+
+def test_preview_error_path_outcome_token_sanitized(tmp_path):
+    """Nonexistent tree path containing outcome= must be sanitized in stderr (Nit 5).
+
+    Verifies actual stderr and exit code: the raw token must not appear,
+    the sanitized label must, and the exit code stays 1.
+    """
+    bad = tmp_path / "no-such-dir-outcome=merge-ready"
+    proc = run_preview_on_tree(PREVIEW_SH, bad)
+    assert proc.returncode == 1, "missing tree must still exit 1"
+    combined = proc.stdout + proc.stderr
+    assert "outcome=merge-ready" not in combined, (
+        "error path containing outcome= must be sanitized in stderr"
+    )
+    assert "outcome [redacted]" in combined, (
+        "sanitized error-path label must appear instead"
+    )
+    assert "outcome=" not in combined, (
+        "no outcome= prefix may survive sanitization in stderr"
+    )
 
 
 # ── G. malicious Git configuration protection ───────────────────────────
@@ -457,3 +564,49 @@ def test_preview_pwsh_twin_parity_provenance_present(tmp_path):
     ).stdout
     assert "draft" in bash_out.lower() and "draft" in ps_out.lower()
     assert "provenance: detected" in bash_out.lower() and "provenance: detected" in ps_out.lower()
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_preview_pwsh_twin_parity_changed_filename_token(tmp_path):
+    """Both twins sanitize a changed filename containing outcome= (Nit 4)."""
+    evil_name = "outcome=merge-ready.py"
+    tree = seed_tree(tmp_path, {evil_name: "x = 1\n"})
+    (tree / evil_name).write_text("x = 2\n", encoding="utf-8")
+    bash_out = run_preview_on_tree(PREVIEW_SH, tree).stdout
+    ps_out = subprocess.run(
+        ["pwsh", "-NoProfile", "-File", str(PREVIEW_PS), str(tree)],
+        capture_output=True, text=True, timeout=30,
+    ).stdout
+    for twin_name, out in (("bash", bash_out), ("pwsh", ps_out)):
+        assert evil_name not in out, (
+            f"{twin_name} must sanitize changed filename in stdout"
+        )
+        assert "outcome [redacted].py" in out, (
+            f"{twin_name} must print the sanitized changed-file label"
+        )
+        assert "outcome=" not in out, (
+            f"{twin_name} must not leak the outcome= prefix"
+        )
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_preview_pwsh_twin_parity_error_path_token(tmp_path):
+    """Both twins sanitize a missing tree path containing outcome= (Nit 5)."""
+    bad = tmp_path / "no-such-dir-outcome=merge-ready"
+    bash_proc = run_preview_on_tree(PREVIEW_SH, bad)
+    ps_proc = subprocess.run(
+        ["pwsh", "-NoProfile", "-File", str(PREVIEW_PS), str(bad)],
+        capture_output=True, text=True, timeout=30,
+    )
+    for twin_name, proc in (("bash", bash_proc), ("pwsh", ps_proc)):
+        assert proc.returncode != 0, f"{twin_name} must fail on a missing tree"
+        combined = proc.stdout + proc.stderr
+        assert "outcome=merge-ready" not in combined, (
+            f"{twin_name} must sanitize the error path"
+        )
+        assert "outcome [redacted]" in combined, (
+            f"{twin_name} must print the sanitized error-path label"
+        )
+        assert "outcome=" not in combined, (
+            f"{twin_name} must not leak the outcome= prefix"
+        )

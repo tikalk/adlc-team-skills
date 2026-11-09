@@ -23,8 +23,21 @@ $ErrorActionPreference = "Stop"
 # Resolve the target path once to an absolute path. All subsequent checks use
 # this resolved path; we never rely on Push-Location/Pop-Location which can
 # leave the wrong current directory if an error occurs between them.
+# Sanitize any path-like label before printing: never emit a raw path that
+# could contain verdict-marker-like tokens (head=, outcome=, important=).
+# Reused for the error message below and every printed file/tree display.
+# The placeholder drops the '=' entirely ("outcome [redacted]"): the draft
+# grader matches bare substrings like "outcome=", so even a "<value>"
+# placeholder would still match. NOTE: keep this replacement list identical
+# to the sed program in the bash twin (SAFE_TREE_LABEL, SAFE_CHANGED,
+# SAFE_PROVENANCE_SOURCE).
+function Sanitize-PreviewLabel([string]$Label) {
+    return $Label -replace 'head=[0-9a-fA-F]{40,}', 'head [redacted]' -replace 'outcome=[a-z-]*', 'outcome [redacted]' -replace 'important=[0-9]*', 'important [redacted]'
+}
+
 if (-not (Test-Path -Path $Tree -PathType Container)) {
-    Write-Error "review-preview: cannot access $Tree"
+    $SafeTreeArg = Sanitize-PreviewLabel $Tree
+    Write-Error "review-preview: cannot access $SafeTreeArg"
     exit 1
 }
 $ResolvedTree = (Resolve-Path -Path $Tree).Path
@@ -81,8 +94,9 @@ if ($provenancePresent -eq 0 -and $changed) {
 
 # Display the target tree safely: never print a raw path that could contain
 # verdict-marker-like tokens (head=, outcome=, important=). Use a sanitized
-# label instead.
-$SafeTreeLabel = $ResolvedTree -replace 'head=[0-9a-fA-F]{40}', 'head=<sha>' -replace 'outcome=[a-z-]*', 'outcome=<value>' -replace 'important=[0-9]*', 'important=<n>'
+# label instead, and apply the same substitution to each changed-file name
+# so a file named e.g. outcome=merge-ready.py cannot inject a token either.
+$SafeTreeLabel = Sanitize-PreviewLabel $ResolvedTree
 
 @"
 factory-review pre-PR verdict preview — DRAFT (advisory, not a verdict)
@@ -99,7 +113,7 @@ Changed files:
 
 $changedFiles = @($changed, $untracked) | Where-Object { $_ -ne $null -and $_.Length -gt 0 }
 if ($changedFiles.Count -gt 0) {
-    $changedFiles | ForEach-Object { Write-Output "  $_" }
+    $changedFiles | ForEach-Object { Write-Output ("  " + (Sanitize-PreviewLabel $_)) }
 } else {
     Write-Output "  (none)"
 }
@@ -117,8 +131,11 @@ Provenance:
 "@ | Out-String
 
 if ($provenancePresent -eq 1) {
+    # Sanitize the source label: it may embed a changed-file name holding
+    # verdict-marker-like tokens (same class as Nit 4).
+    $SafeProvenanceSource = Sanitize-PreviewLabel $provenanceSource
     @"
-  provenance: detected — $provenanceSource.
+  provenance: detected — $SafeProvenanceSource.
   (A textual provenance reference is not proof of complete or compliant
    provenance. Formal REVIEW.md policy fields + owner values are captured
    through the owner sign-off path; this preview reports detection only.)

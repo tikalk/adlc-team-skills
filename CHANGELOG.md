@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **factory-queue plan mode no longer stamps gating or dispatch labels at creation** (adlc-workspace#100–#103). Plan mode's "Push to Q" step told the agent to stamp automation-gating and dispatch labels on each generated issue. A dispatch label on a newly opened issue triggers the Argo lane, so the four M17 issues started missions while still at `intent`. Generated issues are now created at `intent` plus grouping labels only; the AI-triage proposal lives in the plan output, and the labels land on Intent Gate approval. New invariant 4, "Dispatch Labels Only on Approval". Pinned by `tests/unit/test_factory_queue_dispatch_labels.py`.
 - **factory-mission moves the issue to `validation` in factory runs** (adlc-workspace#92). Under `ADLC_RUN_ID` the agent follows only the "In a factory run — do exactly this" section, which had no lifecycle step. A workflow-path run could therefore leave its issue `executing` after opening the code MR, as #88 did, while the raw path set `validation` from Phase 6. The section now has a step 3: once the code MR/PR is open, move `executing` → `validation` through the Set Lifecycle step; with no MR, leave the label and say so in the `conclusion`. Pinned by `test_factory_run_section_moves_the_issue_to_validation`.
 - **`factory-deploy` renamed to `factory-release`** (`skills/factory/factory-release/`,
   was `skills/factory/factory-deploy/`): the release orchestrator now carries the

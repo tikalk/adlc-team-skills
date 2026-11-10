@@ -76,14 +76,24 @@ if (Test-Path -Path $provenancePath -PathType Leaf) {
         $provenanceSource = "provenance file"
     }
 }
-# Inspect changed file contents for provenance references (e.g. "which files
-# came from where"). Do not treat a filename as provenance evidence.
+# Inspect added lines of changed files for provenance references (e.g. "which
+# files came from where"). Do not treat a filename as provenance evidence.
+# Only newly added lines count: pre-existing committed content mentioning
+# provenance (e.g. a historical CHANGELOG entry) is not new evidence, so an
+# unrelated edit to such a file must not suppress the missing-provenance
+# request. Untracked files are entirely new, so their full content counts.
 if ($provenancePresent -eq 0 -and $changed) {
     foreach ($changedFile in $changed) {
         $fullPath = Join-Path $ResolvedTree $changedFile
         if (Test-Path -Path $fullPath -PathType Leaf) {
-            $fileContent = Get-Content -Path $fullPath -Raw 2>$null
-            if ($fileContent -match 'which files came from where|provenance') {
+            git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --error-unmatch -- $changedFile 2>$null | Out-Null
+            if ($?) {
+                $addedLines = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" diff -U0 HEAD -- $changedFile 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' }
+                $scanText = $addedLines -join "`n"
+            } else {
+                $scanText = Get-Content -Path $fullPath -Raw 2>$null
+            }
+            if ($scanText -match 'which files came from where|provenance') {
                 $provenancePresent = 1
                 $provenanceSource = "reference in $changedFile"
                 break

@@ -130,3 +130,69 @@ def test_provenance_never_blocks_exit_zero(tmp_path):
     tree = seed_tree(tmp_path, {"src/foo.py": "print(1)\n"})
     proc = run_preview(tree)
     assert proc.returncode == 0, "preview must exit 0 even when provenance is missing"
+def test_provenance_baseline_word_is_not_new_evidence(tmp_path):
+    """Historical 'provenance' in the committed baseline must not count.
+
+    Regression (PR #136 verdict): CHANGELOG already contains the word in a
+    historical entry. An unrelated new change to that file must still yield
+    "missing", since no added line carries provenance evidence.
+    """
+    tree = seed_tree(
+        tmp_path,
+        {"CHANGELOG.md": "# Changelog\n\n## 1.0 - provenance intake added\n\nHistorical entry.\n"},
+    )
+    (tree / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## 1.0 - provenance intake added\n\nHistorical entry.\n\n## 1.1 - fix typo in docs\n",
+        encoding="utf-8",
+    )
+    proc = run_preview(tree)
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert "missing" in combined, (
+        "unchanged baseline provenance must not suppress the missing-provenance request"
+    )
+    assert "provenance: detected" not in combined, (
+        "no added provenance evidence, so nothing may be reported as detected"
+    )
+
+
+def test_provenance_added_line_is_detected(tmp_path):
+    """Genuine provenance evidence in added lines is still detected."""
+    tree = seed_tree(
+        tmp_path,
+        {"CHANGELOG.md": "# Changelog\n\n## 1.0 - provenance intake added\n\nHistorical entry.\n"},
+    )
+    (tree / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## 1.0 - provenance intake added\n\nHistorical entry.\n\n## 1.1 - provenance: backports upstream fix xyz\n",
+        encoding="utf-8",
+    )
+    proc = run_preview(tree)
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert "provenance: detected" in combined, (
+        "added-line provenance evidence must be detected"
+    )
+
+
+def test_provenance_untracked_file_content_detected(tmp_path):
+    """A brand-new untracked file carrying provenance counts (entirely new)."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "print(1)\n"})
+    (tree / "NOTES.md").write_text("provenance: drafted from upstream design doc\n", encoding="utf-8")
+    proc = run_preview(tree)
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert "provenance: detected" in combined, (
+        "untracked new file content is new evidence and must be detected"
+    )
+
+
+def test_provenance_ordinary_change_stays_missing(tmp_path):
+    """Ordinary changed files without provenance evidence stay missing."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "print(1)\n"})
+    (tree / "src" / "foo.py").write_text("print(2)\n", encoding="utf-8")
+    proc = run_preview(tree)
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert "missing" in combined, (
+        "ordinary change without provenance evidence must request provenance"
+    )

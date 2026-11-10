@@ -63,12 +63,21 @@ if [ -f "PROVENANCE.md" ] && grep -q '[^[:space:]]' "PROVENANCE.md" 2>/dev/null;
     PROVENANCE_PRESENT=1
     PROVENANCE_SOURCE="provenance file"
 fi
-# Inspect changed file contents for provenance references (e.g. "which files
-# came from where"). Do not treat a filename as provenance evidence.
+# Inspect added lines of changed files for provenance references (e.g. "which
+# files came from where"). Do not treat a filename as provenance evidence.
+# Only newly added lines count: pre-existing committed content mentioning
+# provenance (e.g. a historical CHANGELOG entry) is not new evidence, so an
+# unrelated edit to such a file must not suppress the missing-provenance
+# request. Untracked files are entirely new, so their full content counts.
 if [ "$PROVENANCE_PRESENT" -eq 0 ] && [ -n "$CHANGED" ]; then
     while IFS= read -r changed_file; do
         [ -f "$changed_file" ] || continue
-        if grep -qiE 'which files came from where|provenance' "$changed_file" 2>/dev/null; then
+        if $GIT_SAFE ls-files --error-unmatch -- "$changed_file" >/dev/null 2>&1; then
+            _scan=$($GIT_SAFE diff -U0 HEAD -- "$changed_file" 2>/dev/null | grep '^+' | grep -v '^+++' || true)
+        else
+            _scan=$(cat -- "$changed_file" 2>/dev/null || true)
+        fi
+        if printf '%s\n' "$_scan" | grep -qiE 'which files came from where|provenance'; then
             PROVENANCE_PRESENT=1
             PROVENANCE_SOURCE="reference in $changed_file"
             break

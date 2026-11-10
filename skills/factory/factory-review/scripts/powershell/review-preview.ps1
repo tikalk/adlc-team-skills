@@ -32,7 +32,7 @@ $ErrorActionPreference = "Stop"
 # to the sed program in the bash twin (SAFE_TREE_LABEL, SAFE_CHANGED,
 # SAFE_PROVENANCE_SOURCE).
 function Sanitize-PreviewLabel([string]$Label) {
-    return $Label -replace 'head=[0-9a-fA-F]{40,}', 'head [redacted]' -replace 'outcome=[a-z-]*', 'outcome [redacted]' -replace 'important=[0-9]*', 'important [redacted]'
+    return $Label -replace 'head=[0-9a-fA-F]*', 'head [redacted]' -replace 'outcome=[a-z-]*', 'outcome [redacted]' -replace 'important=[0-9]*', 'important [redacted]'
 }
 
 if (-not (Test-Path -Path $Tree -PathType Container)) {
@@ -111,7 +111,7 @@ Working tree: $SafeTreeLabel
 Changed files:
 "@ | Out-String
 
-$changedFiles = @($changed, $untracked) | Where-Object { $_ -ne $null -and $_.Length -gt 0 }
+$changedFiles = @($changed) | Where-Object { $_ -ne $null -and $_.Length -gt 0 }
 if ($changedFiles.Count -gt 0) {
     $changedFiles | ForEach-Object { Write-Output ("  " + (Sanitize-PreviewLabel $_)) }
 } else {

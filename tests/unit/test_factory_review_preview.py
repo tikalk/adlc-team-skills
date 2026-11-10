@@ -24,26 +24,11 @@ SKILL = ROOT / "skills/factory/factory-review"
 PREVIEW_SH = SKILL / "scripts/bash/review-preview.sh"
 PREVIEW_PS = SKILL / "scripts/powershell/review-preview.ps1"
 
-PREVIEW_TWINS = [(("bash"), PREVIEW_SH)] + (
-    [(("pwsh"), PREVIEW_PS)] if shutil.which("pwsh") else []
-)
-
 DRAFT_LABEL = "draft"
 MARKER_TOKENS = ("head=", "outcome=", "important=", "factory-review:step=review")
 
 
 # ── helpers ──────────────────────────────────────────────────────────────
-
-
-def run_preview(script, cwd, input_text=None):
-    """Run one preview twin; return CompletedProcess."""
-    if script.suffix == ".sh":
-        cmd = ["bash", str(script)]
-    else:
-        cmd = ["pwsh", "-NoProfile", "-File", str(script)]
-    return subprocess.run(
-        cmd, input=input_text, capture_output=True, text=True, timeout=30, cwd=cwd
-    )
 
 
 def seed_tree(tmp_path, files):
@@ -610,3 +595,103 @@ def test_preview_pwsh_twin_parity_error_path_token(tmp_path):
         assert "outcome=" not in combined, (
             f"{twin_name} must not leak the outcome= prefix"
         )
+
+
+@pytest.mark.parametrize(
+    "evil_name,redacted",
+    [
+        ("head=deadbeef.py", "head [redacted].py"),
+        ("head=abcdef0123456789abcdef0123456789abcdef01.py", "head [redacted].py"),
+        ("head=abcdef0123456789abcdef0123456789abcdef0123456789.py", "head [redacted].py"),
+    ],
+)
+def test_preview_changed_filename_short_and_long_head_sanitized(tmp_path, evil_name, redacted):
+    """Changed filenames with short, exact-40, and overlong head= values.
+
+    The sanitizer must strip the whole token regardless of hex length —
+    the draft grader rejects any bare head= substring. Exit code 0.
+    """
+    tree = seed_tree(tmp_path, {evil_name: "x = 1\n"})
+    (tree / evil_name).write_text("x = 2\n", encoding="utf-8")
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert evil_name not in proc.stdout, (
+        f"changed filename {evil_name!r} must be sanitized in stdout"
+    )
+    assert redacted in proc.stdout, "sanitized label must appear instead"
+    assert "head=" not in proc.stdout, (
+        "no head= prefix may survive sanitization in stdout"
+    )
+
+
+def test_preview_ordinary_filenames_unchanged(tmp_path):
+    """Sanitization must not touch ordinary filenames and paths."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    (tree / "src/foo.py").write_text("x = 2\n", encoding="utf-8")
+    (tree / "docs").mkdir(exist_ok=True)
+    (tree / "docs/notes doc.txt").write_text("brand new\n", encoding="utf-8")
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert "src/foo.py" in proc.stdout, "ordinary path must print verbatim"
+    assert "docs/notes doc.txt" in proc.stdout or '"docs/notes doc.txt"' in proc.stdout, (
+        "ordinary spaced path must print (git may quote it)"
+    )
+    assert "redacted" not in proc.stdout, "clean tree must show no placeholders"
+
+
+def _changed_entries(out):
+    """Parse indented Changed files entries, ignoring header prose."""
+    lines = out.splitlines()
+    try:
+        start = next(
+            i for i, ln in enumerate(lines) if ln.strip() == "Changed files:"
+        )
+    except StopIteration:
+        return []
+    entries = []
+    for ln in lines[start + 1:]:
+        if ln.startswith("  ") and ln.strip():
+            entries.append(ln.strip())
+        elif ln.strip() == "(none)":
+            return []
+        elif ln.strip() and not ln.startswith((" ", "\t")):
+            break
+    return sorted(entries)
+
+
+def test_preview_untracked_listed_exactly_once_bash(tmp_path):
+    """Untracked files appear exactly once in bash Changed files output."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    (tree / "src/foo.py").write_text("x = 2\n", encoding="utf-8")
+    (tree / "new-file.py").write_text("brand new\n", encoding="utf-8")
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    entries = _changed_entries(proc.stdout)
+    assert entries == ["new-file.py", "src/foo.py"], (
+        f"each changed file exactly once, got: {entries!r}"
+    )
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_preview_pwsh_twin_parity_untracked_listed_once(tmp_path):
+    """Both twins list an untracked file exactly once (multiset equality)."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    (tree / "src/foo.py").write_text("x = 2\n", encoding="utf-8")
+    (tree / "new-file.py").write_text("brand new\n", encoding="utf-8")
+    bash_out = run_preview_on_tree(PREVIEW_SH, tree).stdout
+    ps_out = subprocess.run(
+        ["pwsh", "-NoProfile", "-File", str(PREVIEW_PS), str(tree)],
+        capture_output=True, text=True, timeout=30,
+    ).stdout
+
+    def changed_entries(out):
+        return _changed_entries(out)
+
+    bash_entries = changed_entries(bash_out)
+    ps_entries = changed_entries(ps_out)
+    assert bash_entries == ["new-file.py", "src/foo.py"], (
+        f"bash must list each file once, got: {bash_entries!r}"
+    )
+    assert ps_entries == bash_entries, (
+        f"pwsh must match bash entries, bash={bash_entries!r} pwsh={ps_entries!r}"
+    )

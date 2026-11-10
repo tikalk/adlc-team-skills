@@ -28,7 +28,7 @@ TREE="${1:-.}"
 # like "outcome=", so even a "<value>" placeholder would still match.
 # NOTE: keep this sed program byte-identical everywhere it is used below
 # (SAFE_TREE_LABEL, SAFE_CHANGED, SAFE_PROVENANCE_SOURCE).
-SAFE_TREE_LABEL=$(printf '%s' "$TREE" | sed 's/head=[0-9a-fA-F]\{40,\}/head [redacted]/g; s/outcome=[a-z-]*/outcome [redacted]/g; s/important=[0-9]*/important [redacted]/g')
+SAFE_TREE_LABEL=$(printf '%s' "$TREE" | sed 's/head=[0-9a-fA-F]*/head [redacted]/g; s/outcome=[a-z-]*/outcome [redacted]/g; s/important=[0-9]*/important [redacted]/g')
 
 if ! cd -- "$TREE" 2>/dev/null; then
     echo "review-preview: cannot cd to $SAFE_TREE_LABEL" >&2
@@ -80,7 +80,7 @@ fi
 # verdict-marker-like tokens (head=, outcome=, important=). Use the sanitized
 # label defined above; apply the same substitution to each changed-file name
 # so a file named e.g. outcome=merge-ready.py cannot inject a token either.
-SAFE_CHANGED=$(printf '%s\n' "$CHANGED" | sed 's/head=[0-9a-fA-F]\{40,\}/head [redacted]/g; s/outcome=[a-z-]*/outcome [redacted]/g; s/important=[0-9]*/important [redacted]/g')
+SAFE_CHANGED=$(printf '%s\n' "$CHANGED" | sed 's/head=[0-9a-fA-F]*/head [redacted]/g; s/outcome=[a-z-]*/outcome [redacted]/g; s/important=[0-9]*/important [redacted]/g')
 
 cat <<EOF
 factory-review pre-PR verdict preview — DRAFT (advisory, not a verdict)
@@ -109,7 +109,7 @@ EOF
 if [ "$PROVENANCE_PRESENT" -eq 1 ]; then
     # Sanitize the source label: it may embed a changed-file name that
     # itself contains verdict-marker-like tokens (same class as Nit 4).
-    SAFE_PROVENANCE_SOURCE=$(printf '%s' "$PROVENANCE_SOURCE" | sed 's/head=[0-9a-fA-F]\{40,\}/head [redacted]/g; s/outcome=[a-z-]*/outcome [redacted]/g; s/important=[0-9]*/important [redacted]/g')
+    SAFE_PROVENANCE_SOURCE=$(printf '%s' "$PROVENANCE_SOURCE" | sed 's/head=[0-9a-fA-F]*/head [redacted]/g; s/outcome=[a-z-]*/outcome [redacted]/g; s/important=[0-9]*/important [redacted]/g')
     cat <<EOF
   provenance: detected — $SAFE_PROVENANCE_SOURCE.
   (A textual provenance reference is not proof of complete or compliant

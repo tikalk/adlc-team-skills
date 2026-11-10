@@ -34,6 +34,17 @@ jobs:
       - name: Run Pytest
         run: |
           pytest tests/ evals/promptfoo/tests/ -v
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Node dependencies
+        # --ignore-scripts for the same reason as the PromptFoo install below
+        # (incident 2026-08-04, commit 74f317d): blocks pre/postinstall
+        # scripts in any transitive dependency.
+        run: npm ci --ignore-scripts
+      - name: Run oracle-detector unit tests
+        run: node tests/unit/oracle-independence-detection.test.js
 
   evaluate-skills:
     name: Run PromptFoo (Skill Evals)

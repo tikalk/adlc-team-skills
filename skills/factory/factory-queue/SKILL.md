@@ -57,7 +57,7 @@ Operates post-lifecycle convergence to populate the backlog:
 
 4. **Attach Children & Verify**: Attach each epic's generated issues as children (converting Issue to Task where the tracker requires it for parenting). Snapshot-compare milestone, labels, and description before and after every conversion — a conversion that alters any of them is a failure, not a silent edit. Read back each epic: it must report `hasChildren` plus the child count. When a hierarchy operation fails at use time, fall back to the label convention for the affected epic only, disclosed as `degraded: no tree` with the failing operation named — the plan's issues still land, with or without the tree. Trackers with no hierarchy support use the label convention from the start, always disclosed as `degraded: no tree`, never silent.
 5. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
-6. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.
+6. **Push to Q**: Push epics and milestone issues to the tracker via MCP at lifecycle `intent`, plus grouping labels (e.g. `epic`) only. **Never stamp automation-gating or dispatch labels at creation**: a dispatch label (`supervised`/`autonomous`) on a newly opened issue is a lane trigger, and generated issues have not passed the Intent Gate. Record the AI-triage proposal (gating + dispatch) in the plan output and the dry-run preview instead; the labels land only on approval, through triage mode's Label Stamping.
 7. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
 ---
 
@@ -66,3 +66,4 @@ Operates post-lifecycle convergence to populate the backlog:
 1. **Stateless**: The platform holds no queue state of its own. All queries and mutations are performed live via the tracker's MCP/CLI connectors.
 2. **Dry-Run Gating**: **No tracker write may occur without dry-run confirmation**. The skill must output a detailed preview of all issues, comments, or label changes, requiring the user to explicitly confirm before execution.
 3. **Advisory Scores**: Scores are advisory metadata and never bypass human gates.
+4. **Dispatch Labels Only on Approval**: Automation-gating (`agent-can-execute`/`human-required`) and dispatch (`autonomous`/`supervised`/`interactive`) labels are stamped only when the human approves at the Intent Gate, never on intake or plan-mode creation. An issue created with a dispatch label can start a lane run before anyone triages it.

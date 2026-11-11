@@ -64,6 +64,13 @@ def comment(ts, who, assoc, body):
 
 
 def test_run_appends_valid_live_head(tmp_path):
+    """Same-second rerun: byte-identical candidate re-confirmed as duplicate.
+
+    ADR-448 observation identity: duplicate = same key + same provenance with
+    verified-at excluded. A rerun in the same UTC second is byte-identical
+    and takes the exact-match shortcut; the cross-second case is pinned by
+    test_run_rerun_cross_second_is_duplicate below.
+    """
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     make_gh(bin_dir, H1, [comment("2026-01-02T00:00:00Z", "alice", "MEMBER", MARKER.format(h=H1) + " ok")])
@@ -77,10 +84,155 @@ def test_run_appends_valid_live_head(tmp_path):
     assert len(rows) == 1
     c = rows[0].split("\t")
     assert c[0] == "12" and c[3] == H1 and c[8] == "live-head" and c[10] == "live-head-at-verification"
-    # idempotent rerun
+    before = ledger.read_bytes()
+    # idempotent rerun: no duplicate row appended
     p2 = run_cmd(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr), "--ledger", str(ledger)], env_with(bin_dir))
-    assert p2.returncode == 0
-    assert ledger.read_text().splitlines() == ledger.read_text().splitlines()
+    assert p2.returncode == 0, p2.stdout + p2.stderr
+    assert "DUPLICATE" in (p2.stdout + p2.stderr), "rerun must report DUPLICATE, not a new observation"
+    assert "provenance conflict" not in (p2.stdout + p2.stderr)
+    assert ledger.read_bytes() == before, "rerun must leave ledger bytes unchanged"
+
+
+def test_run_rerun_cross_second_is_duplicate(tmp_path):
+    """Cross-second rerun: fresh verified-at is still a duplicate (ADR-448).
+
+    Deterministic clock injection (no real sleep): a `date` shim on PATH
+    returns T1 on the first run and T2 != T1 on the second for the same
+    observation. The rerun must exit 0, report DUPLICATE, leave the stored
+    row (with T1) untouched, and append nothing.
+    """
+    import shutil
+    if shutil.which("flock") is None:
+        pytest.skip("flock unavailable on this host")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    make_gh(bin_dir, H1, [comment("2026-01-02T00:00:00Z", "alice", "MEMBER", MARKER.format(h=H1) + " ok")])
+    rr = make_runroot(tmp_path)
+    ledger = tmp_path / "ledger.tsv"
+    stamps = ["2026-01-02T00:00:00Z", "2026-01-02T00:01:30Z"]
+    date_shim = bin_dir / "date"
+    date_shim.write_text(
+        "#!/bin/bash\n"
+        f'idx_file="{tmp_path}/date_idx"\n'
+        'idx=$(cat "$idx_file" 2>/dev/null || echo 0)\n'
+        'echo $((idx + 1)) > "$idx_file"\n'
+        f'stamps=({" ".join(stamps)})\n'
+        'echo "${stamps[$idx]:-${stamps[-1]}}"\n'
+    )
+    date_shim.chmod(date_shim.stat().st_mode | stat.S_IEXEC)
+    (tmp_path / "date_idx").write_text("0")
+
+    p = run_cmd(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr), "--ledger", str(ledger)], env_with(bin_dir))
+    assert p.returncode == 0, p.stdout + p.stderr
+    rows = [l for l in ledger.read_text().splitlines() if not l.startswith("PR")]
+    assert len(rows) == 1
+    stored_at = rows[0].split("\t")[9]
+    before = ledger.read_bytes()
+    p2 = run_cmd(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr), "--ledger", str(ledger)], env_with(bin_dir))
+    combined2 = p2.stdout + p2.stderr
+    assert p2.returncode == 0, combined2
+    assert "DUPLICATE" in combined2, "cross-second rerun must report DUPLICATE"
+    assert "provenance conflict" not in combined2, combined2
+    assert ledger.read_bytes() == before, "ledger must be byte-identical after duplicate rerun"
+    rows2 = [l for l in ledger.read_text().splitlines() if not l.startswith("PR")]
+    assert len(rows2) == 1 and rows2[0].split("\t")[9] == stored_at, "stored row must never be restamped"
+
+
+def test_run_rerun_near_miss_provenance_conflicts(tmp_path, monkeypatch):
+    """Near-miss provenance differences on the same key fail closed (ADR-448).
+
+    Same key (12, ci, vh, iter 0), changed verdict-head / author / run /
+    standing in turn: each rerun must exit 2, name the conflicting key on
+    stderr, leave the ledger byte-identical, and emit no VALID/DUPLICATE.
+    """
+    import shutil
+    if shutil.which("flock") is None:
+        pytest.skip("flock unavailable on this host")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    make_gh(bin_dir, H1, [comment("2026-01-02T00:00:00Z", "alice", "MEMBER", MARKER.format(h=H1) + " ok")])
+    rr = make_runroot(tmp_path)
+    ledger = tmp_path / "ledger.tsv"
+    p = run_cmd(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr), "--ledger", str(ledger)], env_with(bin_dir))
+    if "flock(1) is required but unavailable" in (p.stdout + p.stderr):
+        pytest.skip("flock unavailable on this host")
+    assert p.returncode == 0, p.stdout + p.stderr
+
+    H3 = "c" * 40
+
+    def rerun_with(head=H1, findings=None, who="alice", assoc="MEMBER",
+                   brief_head=None, findings_text=None,
+                   mutate_row=None, tag="case"):
+        brief_head = head if brief_head is None else brief_head
+        bin2 = tmp_path / f"bin_{tag}"
+        bin2.mkdir(exist_ok=True)
+        make_gh(bin2, head, [comment("2026-01-02T00:00:00Z", who, assoc, MARKER.format(h=head) + " ok")])
+        rr2 = tmp_path / f"rr_{tag}"
+        rr2.mkdir(exist_ok=True)
+        d2 = rr2 / "runs" / "r1" / "scratchpads"
+        d2.mkdir(parents=True, exist_ok=True)
+        (rr2 / "runs" / "r1" / "brief.md").write_text(
+            f"review-target-repo: o/r\nreview-target-pr: 12\nreviewed-head: {brief_head}\n")
+        (d2 / "review-findings.txt").write_text(
+            findings_text or findings or "- [ ] pass:CI check:VH | text here\n")
+        if mutate_row is not None:
+            rows = ledger.read_text().splitlines()
+            rows[1] = mutate_row(rows[1])
+            ledger.write_text("\n".join(rows) + "\n")
+        before = ledger.read_bytes()
+        pp = run_cmd(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr2),
+                      "--ledger", str(ledger)], env_with(bin2))
+        return pp, before
+
+    # Case 1: different verdict-head (H3) on the same key. run-home corroborates
+    # H3 (brief + findings identical shape), so the conflict reaches the lock.
+    p1, before1 = rerun_with(head=H3, tag="headdiff",
+                             findings_text="- [ ] pass:CI check:VH | sibling observation\n", mutate_row=None)
+    c1 = p1.stdout + p1.stderr
+    assert p1.returncode == 2, c1
+    assert "provenance conflict for 12\tci\tvh\t0" in c1, c1
+    assert ledger.read_bytes() == before1
+    assert "DUPLICATE" not in c1 and "VALID" not in p1.stdout
+
+    # Case 2: different author (bob) on the same key/head.
+    p2, before2 = rerun_with(who="bob", tag="authordiff")
+    c2 = p2.stdout + p2.stderr
+    assert p2.returncode == 2, c2
+    assert "provenance conflict for 12\tci\tvh\t0" in c2, c2
+    assert ledger.read_bytes() == before2
+
+    # Case 3: different run name (r2) on the same key. A distinct run-home
+    # names r2 in its marker so validation resolves there; same check pair
+    # keeps recurrence key (12, ci, vh, iter 0) identical.
+    rr_r2 = tmp_path / "rr_rundiff_r2"
+    rr_r2.mkdir(exist_ok=True)
+    d_r2 = rr_r2 / "runs" / "r2" / "scratchpads"
+    d_r2.mkdir(parents=True, exist_ok=True)
+    (rr_r2 / "runs" / "r2" / "brief.md").write_text(
+        "review-target-repo: o/r\nreview-target-pr: 12\nreviewed-head: " + H1 + "\n")
+    (d_r2 / "review-findings.txt").write_text("- [ ] pass:CI check:VH | text here\n")
+    bin_r2 = tmp_path / "bin_rundiff"
+    bin_r2.mkdir(exist_ok=True)
+    marker_r2 = MARKER.replace("run=r1", "run=r2")
+    make_gh(bin_r2, H1, [comment("2026-01-02T00:00:00Z", "alice", "MEMBER", marker_r2.format(h=H1) + " ok")])
+    before3 = ledger.read_bytes()
+    p3 = run_cmd(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr_r2),
+                  "--ledger", str(ledger)], env_with(bin_r2))
+    c3 = p3.stdout + p3.stderr
+    assert p3.returncode == 2, c3
+    assert "provenance conflict for 12\tci\tvh\t0" in c3, c3
+    assert ledger.read_bytes() == before3
+
+    # Case 4: different standing on the same key (ledger-level near-miss).
+    def flip_standing(row):
+        c = row.split("\t")
+        c[10] = "tampered-standing"
+        return "\t".join(c)
+    p4, before4 = rerun_with(mutate_row=flip_standing, tag="standingdiff")
+    c4 = p4.stdout + p4.stderr
+    assert p4.returncode == 2, c4
+    assert "provenance conflict for 12\tci\tvh\t0" in c4, c4
+    assert ledger.read_bytes() == before4
 
 
 def test_run_rejects_stale_head(tmp_path):

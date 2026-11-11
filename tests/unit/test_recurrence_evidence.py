@@ -54,8 +54,10 @@ def test_finding_line_parsing_and_normalization():
     assert norm(m.group(2)) == "verdict-head"
 
 def test_idempotent_and_conflict_rules():
+    """ADR-448 identity: key + provenance define a duplicate; verified-at excluded."""
     row = f"12\tci\tvh\t{H1}\tr1\t0\talice\tMEMBER\tlive-head\t2026-01-01T00:00:00Z\tlive-head-at-verification\t\tok"
-    assert row == row, "full-row equality is reflexive"
+    row_same_obs_new_ts = row.replace("2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z")
+    assert row != row_same_obs_new_ts, "timestamps differ across reruns"
     key = "\t".join(row.split("\t")[0:3] + [row.split("\t")[5]])
     row2 = row.replace("alice", "bob")
     assert "\t".join(row2.split("\t")[0:3] + [row2.split("\t")[5]]) == key

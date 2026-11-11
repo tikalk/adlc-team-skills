@@ -29,6 +29,14 @@
 # retire removes exactly the rows whose (PR,pass,check-item,iter) key matches.
 # recurrence-view prints (pass,check-item) pairs observed on >= 2 distinct PRs.
 #
+# Commands mirror the aggregate ORIG rule: duplicate identity is the
+# recurrence key (PR,pass,check-item,iter) plus provenance columns
+# (verdict-head case-folded, run, author, assoc, verified-how, standing,
+# tier, note); verified-at is confirmation metadata and excluded (ADR-448).
+# Re-runs of the same observation report DUPLICATE, leave ledger bytes
+# unchanged, and never restamp the stored row. Any other provenance
+# difference on the same key fails closed (exit 2, ledger unchanged).
+#
 # Exit codes: 0 = completed (validation rejections are rows, not failures).
 # 2 = infra error (lock-held, fetch failed, fixture misuse, provenance abort).
 #
@@ -368,6 +376,7 @@ cmd_ingest_or_run() {
     fi
     if [ ! -f "$LEDGER" ]; then printf '%s\n' "$LEDGER_HEADER" > "$LEDGER" || exit 2; fi
     _lock="$LEDGER.lock"
+    _dup_tmp=$(mktemp) || exit 2
     (
         _lfd=9
         eval "exec $_lfd>\"$_lock\""
@@ -379,19 +388,39 @@ cmd_ingest_or_run() {
         _cur=$(mktemp) || exit 2
         cp "$LEDGER" "$_cur" || { rm -f "$_cur"; exit 2; }
         _conflict=0
+        : > "$_dup_tmp" || exit 2
         while IFS= read -r _row; do
             [ -z "$_row" ] && continue
             _key=$(printf '%s' "$_row" | cut -f1-4,6)
             _pkey=$(printf '%s' "$_row" | awk -F'\t' '{print $1"\t"$2"\t"$3"\t"$6}')
             grep -qFx -- "$_row" "$_cur"; _gres=$?
-            if [ "$_gres" -eq 0 ]; then continue; fi
-            if [ "$_gres" -ne 1 ]; then echo "verify-recurrence: ledger read error during idempotency check" >&2; rm -f "$_cur" "$_cand_tmp" "$_rej_tmp"; exit 2; fi
-            if awk -F'\t' -v k="$_pkey" 'NR>1{kk=$1"\t"$2"\t"$3"\t"$6; if(kk==k){print}}' "$_cur" | grep -q .; then
+            if [ "$_gres" -eq 0 ]; then printf 'DUPLICATE\t%s\n' "$_row" >> "$_dup_tmp"; continue; fi
+            if [ "$_gres" -ne 1 ]; then echo "verify-recurrence: ledger read error during idempotency check" >&2; rm -f "$_cur" "$_cand_tmp" "$_rej_tmp" "$_dup_tmp"; exit 2; fi
+            # ADR-448: identity is (key + provenance); verified-at is metadata.
+            # A same-observation rerun with a fresh timestamp is a duplicate,
+            # not a conflict. Any other provenance difference fails closed.
+            _idem=$(awk -F'\t' -v k="$_pkey" '
+                NR>1 {
+                    kk=$1"\t"$2"\t"$3"\t"$6
+                    if (kk==k) {
+                        prov=$4"\t"$5"\t"$7"\t"$8"\t"$9"\t"$11"\t"$12"\t"$13
+                        print prov
+                    }
+                }' "$_cur")
+            if [ -n "$_idem" ]; then
+                _row_prov=$(printf '%s' "$_row" | awk -F'\t' '{print $4"\t"$5"\t"$7"\t"$8"\t"$9"\t"$11"\t"$12"\t"$13}')
+                _idem_lc=$(printf '%s' "$_idem" | cut -f1 | tr '[:upper:]' '[:lower:]')
+                _row_lc=$(printf '%s' "$_row_prov" | cut -f1 | tr '[:upper:]' '[:lower:]')
+                _idem_rest=$(printf '%s' "$_idem" | cut -f2-)
+                _row_rest=$(printf '%s' "$_row_prov" | cut -f2-)
+                if [ "$_idem_lc" = "$_row_lc" ] && [ "$_idem_rest" = "$_row_rest" ]; then
+                    printf 'DUPLICATE\t%s\n' "$_row" >> "$_dup_tmp"; continue
+                fi
                 echo "verify-recurrence: provenance conflict for $_pkey; use retire" >&2; _conflict=1; break
             fi
             printf '%s\n' "$_row" >> "$_cur"
         done < "$_cand_tmp"
-        if [ "$_conflict" = "1" ]; then rm -f "$_cur" "$_cand_tmp" "$_rej_tmp"; exit 2; fi
+        if [ "$_conflict" = "1" ]; then rm -f "$_cur" "$_cand_tmp" "$_rej_tmp" "$_dup_tmp"; exit 2; fi
         mv "$_cur" "$LEDGER" || exit 2
     )
     _rc=$?
@@ -399,11 +428,15 @@ cmd_ingest_or_run() {
         rm -f "$_cand_tmp" "$_rej_tmp"
         exit $_rc
     fi
+    if [ -s "$_dup_tmp" ]; then
+        echo "--- duplicates (re-confirmed, ledger unchanged) ---"
+        cat "$_dup_tmp"
+    fi
     cat "$_cand_tmp"
     echo "--- rejects ---"
     cat "$_rej_tmp"
     if [ -n "$REJECT_LOG" ]; then cat "$_rej_tmp" > "$REJECT_LOG" 2>/dev/null || true; fi
-    rm -f "$_cand_tmp" "$_rej_tmp"
+    rm -f "$_cand_tmp" "$_rej_tmp" "$_dup_tmp"
     exit $_rc
 }
 cmd_recurrence_view() {

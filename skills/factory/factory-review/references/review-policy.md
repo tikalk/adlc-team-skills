@@ -186,12 +186,12 @@ Checks:
 
 ---
 
-## Twice-Mistake Threshold
+## Twice-Mistake Threshold — Correction-Elimination Ladder
 
-If the review detects the same policy violation (same pass + same check item) on a second PR:
+If the review detects the same policy violation (same pass + same check item) on a second PR, route the recurring correction through the ordered ladder (structural-first, mechanical-second, judgment-last). Classify before scoring; scoring never overrides classification:
 
-1. Automatically trigger a local `team-levelup` call to extract a preventive rule.
-2. Package the rule as a CDR draft targeting the `team-ai-directives` repository.
-3. Flag any changes that make current directives outdated.
+1. **Tier 1 — Structural elimination.** Prefer architecture, types, schemas, or data structures that make the mistake impossible or structurally difficult. Route to `/architect-specify` and an ADR. No prose CDR.
+2. **Tier 2 — Mechanical enforcement.** Concrete vehicle: REVIEW.md pass, lint rule, unit test, pre-commit hook, CI job, or binary eval grader. Prefer team-levelup action P; `/evals-specify` where a new criterion is the vehicle. A CDR carries at most a thin pointer — never the primary mechanism.
+3. **Tier 3 — Judgment.** Prose CDR only for genuine judgment calls coverable by neither structure nor a check. Package as a CDR draft targeting `team-ai-directives`; flag outdated directives.
 
 This implements Principle VIII (The Ratchet Effect): "Treat agent mistakes as permanent signals by implementing a continuous integration loop for agent behavior."

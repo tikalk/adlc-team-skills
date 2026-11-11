@@ -264,4 +264,36 @@ The output offers generic advice (reinstall, restart, update) with no chain chec
 - **Input Context**: Same report.
 - **Agent Output**: "Looks like a bad install. Reinstall the skills, restart your agent, and try again — that usually fixes it."
 
+## Criterion EVAL-016: Correction-Elimination Ladder Routing
+
+**Status**: draft
+**Scope**: This criterion evaluates recurring **mechanically checkable** mistakes only — whether the primary correction is a concrete elimination vehicle (Tier 1 structural operation or Tier 2 mechanical enforcement). Genuine Tier 3 judgment-only cases are **outside** this criterion's scope and fail the grader by design. The grader checks vehicle naming and primary-route selection; it does not verify semantic correctness of the chosen fix, nor does it adjudicate Tier 1-vs-Tier 2 selection or the full ordered ladder.
+**Description**: Verifies that a recurring mechanically checkable mistake names a concrete structural or mechanical elimination vehicle as the primary correction instead of defaulting to a prose CDR. A prose CDR as the primary action for a mechanically checkable mistake fails.
+
+**Pass Condition**
+The output names a concrete elimination vehicle as the primary correction: a structural operation on the type/invalid state in the same sentence as the `/architect-specify`/ADR route (Tier 1), or a named enforcement vehicle governed by an action verb — REVIEW.md pass, CI job, lint rule, unit test, pre-commit hook, or binary grader (Tier 2, team-levelup action P or `/evals-specify`). A prose CDR as a thin pointer beside the vehicle is acceptable.
+
+**Fail Condition**
+The output makes a prose CDR or context rule the primary action (even if a vehicle is also mentioned), names a route with no concrete structural operation, attaches the route to another issue, or names no concrete elimination vehicle (vague "add a check/rule" with no artifact; a vehicle mentioned only as a possibility).
+
+### Pass Example 1 (Tier 2)
+- **Scenario**: Repeated secret-exposure finding, second PR
+- **Input Context**: factory-review reports pass: security secret-exposure on a second PR (same pass + same check item).
+- **Agent Output**: "Tier 2 — mechanical: add REVIEW.md pass: security check item plus unit test tests/unit/test_no_secret_exposure.py failing on the pattern; route via team-levelup action P. Thin pointer CDR noting the check path."
+
+### Pass Example 2 (Tier 1)
+- **Scenario**: Repeated impossible-state bug, second PR
+- **Input Context**: Same null-variant bug recurs across two PRs; a sum type would make the state unrepresentable.
+- **Agent Output**: "Tier 1 — structural: replace the nullable field with a sum type so the invalid state cannot be constructed; route to /architect-specify and capture through an ADR. No prose CDR."
+
+### Fail Example 1
+- **Scenario**: Mechanical recurrence routed to prose
+- **Input Context**: Same secret-exposure recurrence as Pass Example 1.
+- **Agent Output**: "Classification noted. Primary action: add a context rule CDR so the agent remembers to check for exposed secrets."
+
+### Fail Example 2
+- **Scenario**: Vague vehicle
+- **Input Context**: Same secret-exposure recurrence.
+- **Agent Output**: "We should enforce this better going forward — consider adding some check somewhere."
+
 

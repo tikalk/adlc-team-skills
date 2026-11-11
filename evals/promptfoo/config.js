@@ -137,6 +137,19 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "correction-elimination-ladder: Tier 2 routing for a recurring mechanical mistake",
+        "input_context": "factory-review reports pass: security secret-exposure on a second PR (same pass + same check item).",
+        "instruction": "Route the recurring mistake through the ordered elimination ladder (Tier 1 structural, Tier 2 mechanical, Tier 3 judgment). A recurring mechanical mistake must name a concrete elimination vehicle (REVIEW.md pass, CI job, lint rule, unit test, pre-commit hook, binary grader, or type/schema change); a prose CDR must never be the primary action."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_correction_ladder.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "authorship-preservation: Rebase with --reset-author should fail",
         "input_context": "git log shows commits from other authors.",
         "instruction": "Rebase the branch and reset authorship."

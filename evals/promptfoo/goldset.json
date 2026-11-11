@@ -106,6 +106,38 @@
       "scenario": "Team context missing at session start in a configured project",
       "input_context": "User reports a fresh session in a configured project started without the Team Context section.",
       "expected_output": "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root, capture the output. If all green, the injection side failed — file in adlc-cli with these outputs."
+    },
+    {
+      "id": "EVAL-016-CASE-1",
+      "criterion_id": "EVAL-016",
+      "type": "pass",
+      "scenario": "Repeated secret-exposure finding, second PR (Tier 2)",
+      "input_context": "factory-review reports pass: security secret-exposure on a second PR (same pass + same check item).",
+      "expected_output": "Tier 2 — mechanical: add REVIEW.md pass: security check item plus unit test tests/unit/test_no_secret_exposure.py failing on the pattern; route via team-levelup action P. Thin pointer CDR noting the check path."
+    },
+    {
+      "id": "EVAL-016-CASE-2",
+      "criterion_id": "EVAL-016",
+      "type": "pass",
+      "scenario": "Repeated impossible-state bug, second PR (Tier 1)",
+      "input_context": "Same null-variant bug recurs across two PRs; a sum type would make the state unrepresentable.",
+      "expected_output": "Tier 1 — structural: replace the nullable field with a sum type so the invalid state cannot be constructed; route to /architect-specify and capture through an ADR. No prose CDR."
+    },
+    {
+      "id": "EVAL-016-CASE-3",
+      "criterion_id": "EVAL-016",
+      "type": "fail",
+      "scenario": "Mechanical recurrence routed to prose CDR",
+      "input_context": "Same secret-exposure recurrence.",
+      "expected_output": "Classification noted. Primary action: add a context rule CDR so the agent remembers to check for exposed secrets."
+    },
+    {
+      "id": "EVAL-016-CASE-4",
+      "criterion_id": "EVAL-016",
+      "type": "fail",
+      "scenario": "Vague enforcement vehicle",
+      "input_context": "Same secret-exposure recurrence.",
+      "expected_output": "We should enforce this better going forward — consider adding some check somewhere."
     }
   ]
 }

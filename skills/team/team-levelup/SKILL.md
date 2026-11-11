@@ -85,6 +85,27 @@ For each pattern, create a CDR draft using the shared template at `skills/team/t
 
 Write session trace to `adlc` branch: `reports/sessions/<user>/<YYYY-MM>.md`.
 
+### Phase 1b: Classify Corrections (elimination ladder — before scoring)
+
+For each extracted candidate that is a *recurring correction* (same mistake
+seen before — same review pass + check item, revert/fix-chain evidence, or
+repeated eval failure), classify it through the ordered ladder BEFORE Phase 2
+scoring. Scoring never overrides this classification:
+
+- **Tier 1 — Structural elimination:** the mistake is eliminable by
+  architecture, types, schemas, or data structures → route to
+  `/architect-specify` and an ADR. No CDR is created.
+- **Tier 2 — Mechanical enforcement:** the mistake is checkable by a
+  concrete vehicle (REVIEW.md pass, lint rule, unit test, pre-commit hook,
+  CI job, binary eval grader) → route to action **P — Promote to check**
+  (Phase 3, preferred) or `/evals-specify` where a new eval criterion is
+  the vehicle. A CDR carries at most a thin pointer to the check.
+- **Tier 3 — Judgment:** the issue genuinely requires human judgment and is
+  coverable by neither structure nor a check → proceed as a prose CDR
+  through Phase 2 scoring and Phase 3 review.
+
+A mechanically checkable mistake must never default to a prose CDR.
+
 ### Phase 2: Score Confidence
 
 For each extracted CDR, calculate confidence:
@@ -132,7 +153,7 @@ Present CDRs one at a time (same as former team-learn logic):
 | B | Reject — Decline with reason |
 | C | Defer — Skip for now, keep pending |
 | D | Accept all remaining — Accept this and all pending CDRs |
-| P | Promote to check (mechanical rules only) |
+| P | Promote to check (mechanical rules only — preferred vehicle for Tier 2 corrections) |
 
 Reply with your choice (A/B/C/D/P).
 ```

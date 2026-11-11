@@ -47,7 +47,7 @@ When triggered with `--pr <id>` (without `--self-heal`):
 1. Discover credentials and PR hosting tools (`factory-mission/references/tracker-integration.md`).
 2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
 3. Fetch the PR diff and description.
-4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad named `review-findings`.
+4. Run the identical passes defined in `REVIEW.md`. As each pass executes, accumulate findings in the run-private scratchpad at `runs/<run_id>/scratchpads/review-findings.txt` (scratchpad name `review-findings`), one finding per line: `- [ ] pass:<pass-slug> check:<check-item-slug> | <one-line finding>`. Before posting the verdict, record in the run `brief.md`: `review-target-repo: <owner/repo>`, `review-target-pr: <n>`, `reviewed-head: <40-char head SHA>`.
 5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP. The review comment MUST name the reviewed revision (head SHA in the marker `head=<sha>`). The `head=<sha>` field is what makes the verdict checkable: `scripts/check-verdict-head.sh` reads the verdict back, compares the head it names with the head being merged, and fails when they differ. Never post a verdict without it. Post the marker as ONE HTML comment at the top of the comment — the checker reads `head=` from inside that marker and requires the full 40-character SHA.
 6. If findings contain `Important` issues, set PR label to `validation`. If clean, set to `validation` + advise code-owner of merge-readiness.
 7. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
@@ -156,11 +156,33 @@ factory-review --pr <id> --self-heal
   - **Every fix push invalidates the standing review verdict** — after pushing, re-run the review passes on the new head (§2 step 8) before re-declaring merge-readiness.
   - Leave the PR in a merge-ready state awaiting final human approval.
 
-### 5. Findings to Directives Feedback Loop
+### 5. Findings to Directives Feedback Loop — Correction-Elimination Ladder
 
-- **Twice-Mistake Threshold**: If the review detects the same policy violation on a second PR, automatically trigger a local `team-levelup` call to extract a preventive rule.
-- Package the rule as a CDR draft (via `factory-learn`) targeting the `team-ai-directives` repository.
-- Flag any changes that make current directives outdated.
+A recurring correction signal (the same policy violation on a second PR — see
+`references/review-policy.md` "Twice-Mistake Threshold"; same pass + same
+check item) must be routed through the ordered elimination ladder below.
+The ladder is structural-first, mechanical-second, judgment-last.
+Classify the correction BEFORE scoring or packaging it — scoring never
+overrides the classification, and a prose CDR must never become the default
+for a mechanically checkable mistake.
+
+**Tier 1 — Structural elimination:** prefer architecture, types, schemas, or
+data structures that make the mistake impossible or structurally difficult.
+Route to `/architect-specify` and capture through an ADR. Do not create a
+prose CDR for a Tier 1 issue.
+
+**Tier 2 — Mechanical enforcement:** use a concrete mechanical vehicle —
+REVIEW.md pass, lint rule, unit test, pre-commit hook, CI job, or binary
+eval grader. Prefer team-levelup action P; use `/evals-specify` where a new
+eval criterion is the right vehicle. A CDR may carry only a thin pointer to
+the mechanical action; it must not become the primary correction mechanism.
+
+**Tier 3 — Judgment:** use a prose CDR only when the issue genuinely
+requires human judgment and cannot be eliminated structurally or checked
+mechanically. Package the rule as a CDR draft (via `factory-learn`)
+targeting the `team-ai-directives` repository.
+
+Also flag any changes that make current directives outdated.
 
 ---
 

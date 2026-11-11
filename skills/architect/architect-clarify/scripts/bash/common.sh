@@ -3,15 +3,13 @@
 # Minimal common helpers for adlc-skills architect-* skills.
 # Bundled with the skill so it works standalone, outside the Spec Kit extension system.
 
-# shared layout constants (single definition in paths.sh).
-_common_sh_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$_common_sh_dir/../../../../team/workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$_common_sh_dir/../../../../team/workspace/scripts/bash/paths.sh"
-elif [ -f "$_common_sh_dir/../../../workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$_common_sh_dir/../../../workspace/scripts/bash/paths.sh"
-fi
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 # Locate the project root by walking up from CWD until we find .adlc or .git.
 _get_project_root() {

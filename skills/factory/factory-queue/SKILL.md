@@ -7,10 +7,12 @@ description: Use when managing mission brief intake — triage, AI-assisted advi
 
 ## What this skill does
 
-`factory-queue` manages the ingestion, triage, and planning boundaries of the software factory. It operates directly against the external issue tracker (the Queue) as the single source of truth using the tracker-agnostic integration layer (`factory-mission/references/tracker-integration.md`).
+`factory-queue` manages the ingestion, triage, and planning boundaries of the software factory. It operates directly against the external issue tracker (the Queue) as the single source of truth using the tracker-agnostic integration layer (`factory-runbook/references/tracker-integration.md`).
+
+**Requires:** the `factory-runbook` skill (provides the tracker-agnostic integration layer): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
 It performs two primary control-plane operations:
-1. **Advisory Triage & Ingestion** (default `triage` mode): Pulls un-triaged candidate briefs, runs stateless AI triage scoring, presents the Intent Gate to the human, and stamps gating/dispatch labels.
+1. **Advisory Triage & Ingestion** (default `triage` mode): Pulls un-triaged candidate briefs, runs stateless AI triage scoring, presents the Intent Gate to the human, and stamps gating/dispatch labels. Before stamping `executing` on any issue, applies the dependency hard gate (Operation 12): an issue whose `**Depends on**` line names still-open dependencies is parked at `spec-gated` (never stamped `executing`) with a `blocked: dependency-gate` note naming the blockers.
 2. **Product Planning** (`plan` mode): Reads accepted product/architecture decisions and the PRD/AD, generates milestones (done-means) and epics, and pushes them as structured, labeled issues to the Q.
 
 ---
@@ -33,27 +35,30 @@ It performs two primary control-plane operations:
 
 Operates on candidate issues (labeled `intent`) or local draft briefs:
 
-1. **Pull Candidate Briefs**: Discover the active tracker provider and fetch issues with status `intent` (`factory-mission/references/tracker-integration.md`).
+1. **Pull Candidate Briefs**: Discover the active tracker provider and fetch issues with status `intent` (`skills/factory/factory-runbook/references/tracker-integration.md`). The fetch includes Task-typed issues — children converted from Issue to Task for hierarchy stay visible to triage and are first-class plan items, never filtered out.
 2. **AI Triage Scoring**: Compute stateless advisory scores on three dimensions:
    - **Risk**: Blast radius, data sensitivity, and architectural impact (Low / Medium / High).
    - **Complexity**: Scope and cross-service dependencies (Low / Medium / High).
    - **Agent Confidence**: Estimation of end-to-end execution success (0-100%, High/Medium/Low bands).
 3. **Intent Gate Presentation**: Present candidate briefs + advisory scores to the human. If running unattended (no active human terminal), publish the Intent Gate presentation and AI scores as a structured comment with marker `<!-- factory-queue:triage:proposal -->` on the candidate issue. The queue run pauses. The human reviews the proposal, and approves by commenting "approve" or changing the label to `spec-gated`. When resumed, the queue reads the comment/label state and continues. **The Human Intent Gate is non-negotiable**; no brief is auto-approved or auto-rejected.
 4. **Label Stamping**:
-   - On approval: Transition lifecycle label `intent` ──► `spec-gated`. Stamp automation-gating (`agent-can-execute` or `human-required`) and dispatch (`autonomous` | `supervised` | `interactive`) labels.
-   - On rejection: Transition `intent` ──► `cancelled` (or delete draft).
+   - On approval: move the issue `intent` ──► `spec-gated` through the Set Lifecycle step (tracker-integration Operation 9). Stamp automation-gating (`agent-can-execute` or `human-required`) and dispatch (`autonomous` | `supervised` | `interactive`) labels.
+   - On rejection: move the issue `intent` ──► `cancelled` through the Set Lifecycle step (or delete draft).
    - On deferral: Move to backlog.
 
 ### 2. Plan Mode
 
 Operates post-lifecycle convergence to populate the backlog:
 
-1. **Load Artifacts**: Read accepted PDRs + ADRs and the generated `docs/adlc/product/PRD.md` / `docs/adlc/architect/AD.md`. When no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line.
-2. **Generate Milestones & Epics**: Extract sequencing, requirement groupings, and "done-means" definitions into prioritized epics and milestones. **Gate/task issues MUST use the mission-brief format** — Goal / Constraints / Non-Goals / Success Criteria (each criterion with a measurement method) — per the canonical template in `factory-mission`'s `references/mission-brief-template.md`. Milestone descriptions carry the demo sentence + done-means (milestones are grouping containers, not executable units). Issue titles are short work-item names; `[Gx]`/`Mx:` prefixes are forbidden (milestone assignment carries grouping; descriptions carry references).
-3. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
-4. **Push to Q**: Push epics and milestone issues to the tracker via MCP. Stamp appropriate automation-gating and dispatch labels on each generated issue based on AI triage.
-5. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
+1. **Load Artifacts**: Read the accepted product and architecture decisions and the generated `docs/adlc/product/PRD.md` / `docs/adlc/architect/AD.md`. When no team record-class index was injected at session start, read the binding records directly from `docs/adlc/memory/` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and state that fallback in one line.
+2. **Generate Milestones & Epics**: Extract sequencing, requirement groupings, and "done-means" definitions into prioritized epics and milestones. **Gate/task issues MUST use the mission-brief format** — Goal / Constraints / Non-Goals / Success Criteria (each criterion with a measurement method) — per the canonical template in `mission-brief/references/mission-brief-template.md`. Milestone descriptions carry the demo sentence + done-means (milestones are grouping containers, not executable units). Issue titles are short work-item names; `[Gx]`/`Mx:` prefixes are forbidden (milestone assignment carries grouping; descriptions carry references).
 
+3. **Probe Hierarchy Capability (before any attach)**: Before attaching children to any generated epic, run the capability probe per the provider seam (`skills/factory/factory-runbook/references/tracker-integration.md` — the probe names the target instance + version, records freshness, and the chosen strategy lands in the plan output). Resolve the strategy with `scripts/bash/resolve-hierarchy-strategy.sh` (or the `scripts/powershell/` twin): native epic type where the tracker offers it; Issue parent holding Task-type children where conversion is available; label convention otherwise. A stale probe, or a probe from another instance or version, counts as no probe.
+
+4. **Attach Children & Verify**: Attach each epic's generated issues as children (converting Issue to Task where the tracker requires it for parenting). Snapshot-compare milestone, labels, and description before and after every conversion — a conversion that alters any of them is a failure, not a silent edit. Read back each epic: it must report `hasChildren` plus the child count. When a hierarchy operation fails at use time, fall back to the label convention for the affected epic only, disclosed as `degraded: no tree` with the failing operation named — the plan's issues still land, with or without the tree. Trackers with no hierarchy support use the label convention from the start, always disclosed as `degraded: no tree`, never silent.
+5. **Deduplication Check**: Fetch existing issues to match task summaries and prevent duplicates.
+6. **Push to Q**: Push epics and milestone issues to the tracker via MCP at lifecycle `intent`, plus grouping labels (e.g. `epic`) only. **Never stamp automation-gating or dispatch labels at creation**: a dispatch label (`supervised`/`autonomous`) on a newly opened issue is a lane trigger, and generated issues have not passed the Intent Gate. Record the AI-triage proposal (gating + dispatch) in the plan output and the dry-run preview instead; the labels land only on approval, through triage mode's Label Stamping.
+7. **Output**: Write a versioned `docs/adlc/product/roadmap.md` linking the local spec elements to the newly created external tracker issues.
 ---
 
 ## Invariants & Safety Constraints
@@ -61,3 +66,4 @@ Operates post-lifecycle convergence to populate the backlog:
 1. **Stateless**: The platform holds no queue state of its own. All queries and mutations are performed live via the tracker's MCP/CLI connectors.
 2. **Dry-Run Gating**: **No tracker write may occur without dry-run confirmation**. The skill must output a detailed preview of all issues, comments, or label changes, requiring the user to explicitly confirm before execution.
 3. **Advisory Scores**: Scores are advisory metadata and never bypass human gates.
+4. **Dispatch Labels Only on Approval**: Automation-gating (`agent-can-execute`/`human-required`) and dispatch (`autonomous`/`supervised`/`interactive`) labels are stamped only when the human approves at the Intent Gate, never on intake or plan-mode creation. An issue created with a dispatch label can start a lane run before anyone triages it.

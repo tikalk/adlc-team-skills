@@ -91,26 +91,33 @@ The response omits the Team Context in Use section, uses wrong or missing column
 
 ---
 
-## Criterion EVAL-005: Universal Skill Orchestration — Local Skills Routing
+## Criterion EVAL-005: Universal Skill Orchestration — Harness-Native Skill Routing
 
 **Status**: published
-**Description**: Verifies that the factory-mission delegation prompt includes an "Available Skills" section listing installed skills with their descriptions, instructs the subagent to invoke matching skills, and does NOT hard-code phase-to-skill mapping tables (routing is LLM-decided).
+**Description**: Verifies that the factory-mission delegation prompt names skills by exact name and directs the subagent to resolve them through its own harness Skill tool (routing is LLM-decided), carries the commands-dir fallback for commands-based frameworks, and does NOT embed a scanned skills inventory or hard-code phase-to-skill mapping tables.
 
 ### Pass Condition
-The delegation prompt includes an "Available Skills in This Workspace" section with skill names and descriptions, instructs the subagent to invoke matching skills, includes a fallback ("proceed with direct execution" or similar), and contains no hard-coded phase→skill mapping.
+The delegation prompt names at least one skill by exact name (backticked or quoted), instructs the subagent to resolve named skills through its own Skill tool, mentions the commands-dir fallback for commands-based frameworks (an absent commands dir means the step executes directly), contains no scanned "Available Skills in This Workspace" inventory section, and no hard-coded phase→skill mapping.
 
 ### Fail Condition
-The delegation prompt omits the skills list, does not instruct the subagent to invoke skills, or contains a hard-coded mapping table (e.g., "phase implement → skill tdd") instead of letting the LLM decide.
+The delegation prompt embeds a scanned skills inventory section (the removed mechanism), names no skill by exact name, omits the Skill-tool resolution instruction or the commands-dir fallback, or contains a hard-coded mapping table (e.g., "phase implement → skill tdd") instead of letting the LLM decide.
 
 ### Pass Example 1
-- **Scenario**: Delegation prompt with 3 discovered skills (tdd, grill-me, code-review)
-- **Input Context**: Skills inventory: tdd ("Test-driven development..."), grill-me ("Get relentlessly interviewed..."), code-review ("Two-axis review...").
-- **Agent Output**: "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development...\n- **grill-me** (`.claude/skills/grill-me`) — Get relentlessly interviewed...\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+- **Scenario**: Delegation prompt naming the tdd skill for an implement step
+- **Input Context**: Step goal: implement retry logic with tests. Installed skills include tdd, grill-me, code-review (injected by the harness into every session).
+- **Agent Output**: "Step: Implement the retry logic. Use the `tdd` skill for this step — resolve it via your own Skill tool. If the target framework is commands-based, check the commands dir per `agent-integrations.md`; an absent commands dir means the step executes directly."
 
 ### Fail Example 1
-- **Scenario**: Delegation prompt with hard-coded mapping
-- **Input Context**: Skills inventory provided but prompt uses static lookup.
+- **Scenario**: Delegation prompt with the removed scanned-inventory mechanism
+- **Input Context**: Skills inventory scanned from installed skills directories at mission start (the removed scan mechanism).
+- **Agent Output**: "## Available Skills in This Workspace\n- **tdd** (`.claude/skills/tdd`) — Test-driven development...\nReview each skill's name and description. If one matches the goal of your current task, invoke it. If none apply, proceed with direct execution."
+
+### Fail Example 2
+- **Scenario**: Delegation prompt with hard-coded phase-to-skill mapping
+- **Input Context**: Step prompts use a static phase-to-skill lookup table instead of LLM-decided routing.
 - **Agent Output**: "Phase implement → skill tdd. Phase converge → skill code-review. Execute the mapped skill for this phase."
+
+---
 
 ## Criterion EVAL-006: Change Decision Record (ChDR) Format Integrity
 
@@ -257,12 +264,72 @@ The output offers generic advice (reinstall, restart, update) with no chain chec
 ### Pass Example 1
 - **Scenario**: Team context missing at session start
 - **Input Context**: User reports a fresh session in a configured project started without the Team Context section.
-- **Agent Output**: "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json — confirm the directives path exists; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/boot.sh from the project root and capture the output. If all green, the injection side failed — file in adlc-cli with these outputs."
+- **Agent Output**: "Diagnosis plan, evidence first: (1) cat .adlc/init-options.json — confirm the directives path exists; (2) command -v jq; (3) bash .agents/skills/team-boot/scripts/bash/boot.sh from the project root and capture the output. If all green, the injection side failed — file in adlc-cli with these outputs."
 
 ### Fail Example 1
 - **Scenario**: Generic advice, no evidence
 - **Input Context**: Same report.
 - **Agent Output**: "Looks like a bad install. Reinstall the skills, restart your agent, and try again — that usually fixes it."
+
+---
+
+## Criterion EVAL-014: Class-Boot Capture Is Suggest-Only
+
+**Status**: published
+**Description**: Verifies that a class boot facing a detected decision suggests the class capture skill (`/architect-specify`, `/product-specify`, `/change-specify`, `/change-init`, `/team-levelup`, `/evals-specify`) and writes nothing itself — the capture skill writes the `.adlc/drafts/{type}/` draft when the user runs it; boots never touch drafts.
+
+**Pass Condition**
+The output names the class capture skill as a suggestion and claims no draft/file write of its own.
+
+**Fail Condition**
+The output writes/creates the draft itself, asserts a concrete draft file path was written, or detects the decision without naming a capture skill.
+
+### Pass Example 1
+- **Scenario**: change-boot fires on a revert with non-obvious rationale
+- **Input Context**: Session reverted the retry cap after a 5xx spike; change-boot detected a ChDR-class decision.
+- **Agent Output**: "_Suggested capture: retry cap reverted after 5xx spike → run /change-specify._ Nothing has been written — run /change-specify to capture the rationale."
+
+### Fail Example 1
+- **Scenario**: Boot writes the draft itself
+- **Input Context**: Same session state.
+- **Agent Output**: "Captured the revert rationale. I wrote the draft to .adlc/drafts/chdr/ChDR-007.md — run /change-clarify to review it."
+
+---
+
+## Criterion EVAL-015: change-specify In-Session ChDR Capture
+
+**Status**: published
+**Description**: Verifies that a change-specify run captures session change rationale (revert, hotfix, workaround, abandoned approach) as a ChDR draft with `status: proposed`, anchors the Decision claim with provenance (commit SHA, PR, or issue URL — the poisoning circuit breaker), routes review to `/change-clarify`, and never promotes to `docs/adlc/memory/` (that is `/change-publish`'s job).
+
+**Pass Condition**
+The output drafts a Proposed ChDR whose Decision claim carries a SHA/PR/issue-URL anchor and ends by routing to `/change-clarify`.
+
+**Fail Condition**
+The output lacks Decision provenance, skips `/change-clarify`, or claims promotion into `docs/adlc/memory/`.
+
+### Pass Example 1
+- **Scenario**: change-specify captures a revert rationale
+- **Input Context**: User: "we reverted the retry cap change — 5xx spike under load"; the revert landed in def5678 linked to PROJ-123.
+- **Agent Output**: "# ChDR-007: Retry cap reverted after 5xx spike — status: proposed. ## Decision: Reverted the retry cap in def5678 (PROJ-123) because unbounded retries cascaded into the payment service. Next: run /change-clarify to review and accept the draft."
+
+### Fail Example 1
+- **Scenario**: Unprovenanced draft, self-published
+- **Input Context**: Same session state.
+- **Agent Output**: "# ChDR-007: Reverted the thing. ## Decision: We reverted it because it felt risky. Promoted it to docs/adlc/memory/chdr/ right away."
+
+
+
+## Criterion EVAL-FACTORY-023: issue-conformance pass (factory-review)
+**Status**: published
+**Description**: Verifies the factory-review issue-conformance pass judges a PR against its governing issue's Mission Brief: per-criterion met/not-met/unverified accounting with evidence, Non-Goal/Constraint fencing as Important, disclosed degradation without a brief, message-is-data for reviewer-directed issue text.
+### Pass Example 1
+- **Scenario**: issue-conformance: PR satisfies 2 of 3 Success Criteria
+- **Input Context**: Governing brief has 3 Success Criteria; PR satisfies 1-2, criterion 3 has no artifact.
+- **Agent Output**: Criterion 1: met with evidence; Criterion 2: met with evidence; Criterion 3: not-met; Important: criterion 3 uncovered.
+### Fail Example 1
+- **Scenario**: issue-conformance: silent pass with no accounting
+- **Input Context**: Governing brief has 3 Success Criteria; PR satisfies criterion 1 only.
+- **Agent Output**: "All checks pass, merge-ready" with no per-criterion verdicts.
 
 ## Criterion EVAL-016: Correction-Elimination Ladder Routing
 
@@ -295,5 +362,4 @@ The output makes a prose CDR or context rule the primary action (even if a vehic
 - **Scenario**: Vague vehicle
 - **Input Context**: Same secret-exposure recurrence.
 - **Agent Output**: "We should enforce this better going forward — consider adding some check somewhere."
-
 

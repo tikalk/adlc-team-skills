@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # team-skills
 
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `team-setup`, `team-levelup`, `architect-clarify`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## Overview
 
 Browse available skills from the team AI directives and install
@@ -53,10 +55,10 @@ Team AI directives not configured.
 Run: /team-setup
 ```
 
-Helper scripts (canonical in `team-setup`, referenced relative to skill directory):
+Path resolution is skill-local:
 
-- `$(dirname "$0")/../team-setup/team-helpers.sh --json`
-- `$(Split-Path $PSCommandPath -Parent)/../team-setup/team-helpers.ps1 -Json`
+- `bash scripts/bash/setup-team.sh --json`
+- `pwsh scripts/powershell/setup-team.ps1 -Json`
 
 ### Step 1: Read Skills Manifest
 
@@ -181,7 +183,7 @@ Source: default (local:./skills/github-actions)
 - `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
-- `../team-setup/team-helpers.sh` / `../team-setup/team-helpers.ps1` — Shared scripts (canonical in `team-setup`) used for path resolution.
+- `scripts/bash/setup-team.sh` / `scripts/powershell/setup-team.ps1` — Skill-local path resolution (`--json` / `-Json`).
 
 ## 12-Factor Alignment
 

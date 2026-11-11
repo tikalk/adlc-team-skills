@@ -75,6 +75,7 @@ If already full format, proceed with normal review.
 #### Phase 2: Refinement & Adversarial Generation
 - Generate 3-5 adversarial (attack) examples per criterion to test robustness.
 - Balance pass/fail examples (~50/50 ratio).
+- Write every clarification point and criterion revision in Simplified Technical English (short sentences, one idea each, active voice, imperative asks, named referents, plain words). Read the contract at `skills/authoring/references/ste-rules.md` before drafting. Count crossed boundaries (`record`, `lane`, `team`, `now`): **0–1 boundaries** use plain STE prose, however severe the gap; **2 or more boundaries** draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints.
 
 #### Phase 3: Holdout Isolation
 - Isolate exactly 20% of examples as a reserved holdout set (saved to `.adlc/memory/evals/holdout.json` — machine data stays under `.adlc/` per the shared layout).

@@ -12,9 +12,12 @@ fi
 
 ERRORS=0
 WARNINGS=0
+# v1.5.7-style fix: pre-increment — `((WARNINGS++))` returns status 1 from 0
+# under `set -e` and aborts the script at the first warning (same bug the
+# validate-prd.sh header documents for itself).
 pass() { echo "  ✓ $1"; }
-warn() { echo "  ⚠ $1"; ((WARNINGS++)); }
-fail() { echo "  ✗ $1"; ((ERRORS++)); }
+warn() { echo "  ⚠ $1"; ((++WARNINGS)); }
+fail() { echo "  ✗ $1"; ((++ERRORS)); }
 
 echo "🔍 Validating PDR: $PDR_FILE"
 

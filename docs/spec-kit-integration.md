@@ -46,7 +46,7 @@ commands only and lets `adlc-team-skills` own the team-context layer.
 |---|---|---|
 | `team-ai-directives` context | `adlc-team-skills` | Auto `team-boot`, `/team-discover`, `/team-constitution` (brief format contract lives in `factory-mission`) |
 | PDR, ADR, Evals & CDR | `adlc-team-skills` | `/product-*`, `/architect-*`, `/evals-*`, `/team-levelup` |
-| Factory Orchestration | `adlc-team-skills` | `/factory-mission`, `/factory-product`, `/factory-architect`, `/factory-learn`, `/factory-queue`, `/factory-review` |
+| Factory Orchestration | `adlc-team-skills` | `/factory-mission`, `/factory-intent`, `/factory-learn`, `/factory-queue`, `/factory-review` |
 | Spec-Driven Feature Dev | `spec-kit` | `/spec.specify`, `/spec.plan`, `/spec.tasks`, `/spec.implement`, `/spec.converge` |
 | Agent Context & Git | `spec-kit` | Auto `AGENTS.md` / `CLAUDE.md` plan updates & git branch/commit integration |
 

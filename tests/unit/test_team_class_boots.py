@@ -27,8 +27,8 @@ CLASS_BOOTS = {
     },
     "change-boot": {
         "dir": ROOT / "skills" / "change" / "change-boot",
-        "index": ".adlc/memory/chdr.md",
-        "capture": "/change-init",
+        "index": "docs/adlc/memory/chdr/chdr.md",
+        "capture": "/change-specify",
     },
     "team-levelup": {
         "dir": ROOT / "skills" / "team" / "team-levelup",
@@ -37,18 +37,18 @@ CLASS_BOOTS = {
     },
     "tech-radar-boot": {
         "dir": ROOT / "skills" / "tech-radar" / "tech-radar-boot",
-        "index": "https://tikalk.com/radar.json",
+        "index": "gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-radar",
         "capture": "/architect-specify",
     },
 }
 
 BOOT = (ROOT / "skills/team/team-boot/SKILL.md").read_text(encoding="utf-8")
-BOOT_SH = (ROOT / "skills/team/team-boot/scripts/boot.sh").read_text(encoding="utf-8")
-BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/boot.ps1").read_text(encoding="utf-8")
+BOOT_SH = (ROOT / "skills/team/team-boot/scripts/bash/boot.sh").read_text(encoding="utf-8")
+BOOT_PS1 = (ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1").read_text(encoding="utf-8")
 
 HELPER_TEMPLATES = {
-    "team-setup sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-    "team-setup ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+    "team-setup sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+    "team-setup ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
 }
 
 BORROWER_SKILLS = {
@@ -86,12 +86,15 @@ def test_change_boot_git_command_trigger():
     messages (plus authored PRs and CHANGELOG edits) — the trigger belongs in
     its description and in the Invoke When cell on all four catalog surfaces.
     The description must also name the /change-clarify clarify gate alongside
-    the pinned /change-init mining pairing."""
+    the pinned /change-specify capture pairing and the /change-init mining
+    pairing."""
     change_desc = (CLASS_BOOTS["change-boot"]["dir"] / "SKILL.md").read_text(
         encoding="utf-8"
     ).split("description:", 1)[1].split("\n---", 1)[0]
     assert "human-authored messages" in change_desc
     assert "/change-clarify" in change_desc
+    assert "/change-specify" in change_desc
+    assert "/change-init" in change_desc
     catalog_sources = {
         "boot.sh": BOOT_SH,
         "boot.ps1": BOOT_PS1,
@@ -109,6 +112,38 @@ def test_class_boot_index_sources():
     for name, spec in CLASS_BOOTS.items():
         content = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
         assert spec["index"] in content, f"{name}: body lacks index source {spec['index']}"
+
+
+def test_chdr_index_canonical_path_parity():
+    """The ChDR memory index lives inside the class dir (chdr/chdr.md), like
+    adr/adr.md and pdr/pdr.md. Every surface that resolves it must agree, and
+    the legacy placements stay named as dual-read fallbacks."""
+    canonical = "docs/adlc/memory/chdr/chdr.md"
+    surfaces = {
+        "change-boot": CLASS_BOOTS["change-boot"]["dir"] / "SKILL.md",
+        "change-publish": ROOT / "skills/change/change-publish/SKILL.md",
+        "setup-change-publish.sh": ROOT / "skills/change/change-publish/scripts/bash/setup-change-publish.sh",
+        "setup-change-publish.ps1": ROOT / "skills/change/change-publish/scripts/powershell/setup-change-publish.ps1",
+        "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+        "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+        "team-boot/SKILL.md": ROOT / "skills/team/team-boot/SKILL.md",
+    }
+    for label, path in surfaces.items():
+        content = path.read_text(encoding="utf-8")
+        assert canonical in content, f"{label}: missing canonical index path {canonical}"
+    for label in ("change-boot", "boot.sh", "boot.ps1"):
+        content = surfaces[label].read_text(encoding="utf-8")
+        assert ".adlc/memory/chdr.md" in content, (
+            f"{label}: legacy fallback .adlc/memory/chdr.md no longer named"
+        )
+    # The lookup lists must try the canonical path before the legacy ones.
+    for label in ("boot.sh", "boot.ps1"):
+        content = surfaces[label].read_text(encoding="utf-8")
+        canon_at = content.find("chdr/chdr.md")
+        legacy_at = content.find(".adlc/memory/chdr.md")
+        assert 0 <= canon_at < legacy_at, (
+            f"{label}: canonical chdr/chdr.md must precede legacy fallback in lookup"
+        )
 
 
 def test_class_boot_searched_line_contract():
@@ -143,10 +178,10 @@ MERGED_SECTION_HEADING = "## Team Context & Decisions"
 
 def _emission_surfaces():
     return {
-        "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-        "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-        "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-        "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+        "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+        "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+        "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+        "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
         "team-boot/SKILL.md": ROOT / "skills/team/team-boot/SKILL.md",
     }
 
@@ -189,14 +224,15 @@ def test_architect_boot_references_tech_radar():
 
 
 def test_tech_radar_boot_keeps_machinery():
-    """tech-radar-boot must keep the absorbed radar machinery (live-fetch scripts)."""
+    """tech-radar-boot must keep the absorbed radar machinery (OKF reader scripts)."""
     spec = CLASS_BOOTS["tech-radar-boot"]
-    assert (spec["dir"] / "scripts" / "radar-search.sh").exists()
-    assert (spec["dir"] / "scripts" / "radar-search.ps1").exists()
-    # Live-fetch contract (merged from main): no bundled snapshot.
+    assert (spec["dir"] / "scripts" / "bash" / "radar-search.sh").exists()
+    assert (spec["dir"] / "scripts" / "powershell" / "radar-search.ps1").exists()
+    # No bundled snapshot: the OKF knowledge tree is cloned and cached.
     assert not (spec["dir"] / "resources" / "radar.json").exists()
     body = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
-    assert "https://tikalk.com/radar.json" in body
+    assert "gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-radar" in body
+    assert "knowledge/technologies/" in body
     content = (spec["dir"] / "SKILL.md").read_text(encoding="utf-8")
     assert "radar-search.sh" in content
     assert "radar-search.ps1" in content
@@ -241,15 +277,21 @@ def test_helper_templates_carry_catalog():
         assert "Team Context & Decisions" in content, f"{label}: no merged-table contract"
 
 
-def test_helper_borrowers_reference_canonical():
-    """team-repair and team-skills must reference the canonical team-setup
-    helpers (no local copies)."""
+def test_helper_borrowers_are_self_contained():
+    """team-repair and team-skills resolve paths with their own setup script.
+
+    The old contract had them reach into ``../team-setup/scripts`` — that path
+    resolves in the source tree but dangles after a flat install. Each skill
+    now runs its own ``setup-team.sh`` and invokes ``team-setup`` only for
+    team-setup's operations (AGENTS.md injection)."""
     for name, path in BORROWER_SKILLS.items():
         assert not (path.parent / "team-helpers.sh").exists(), f"{name}: stale local team-helpers.sh"
         assert not (path.parent / "team-helpers.ps1").exists(), f"{name}: stale local team-helpers.ps1"
         content = path.read_text(encoding="utf-8")
-        assert "../team-setup/team-helpers.sh" in content, f"{name}: no canonical sh reference"
-        assert "../team-setup/team-helpers.ps1" in content, f"{name}: no canonical ps1 reference"
+        assert "../team-setup/scripts/" not in content, (
+            f"{name}: cross-skill script path breaks a flat install"
+        )
+        assert "scripts/bash/setup-team.sh" in content, f"{name}: no skill-local setup reference"
 
 
 # ── team-boot file_edited payload mode ──────────────────────────────────────
@@ -266,7 +308,7 @@ DRAFT_NUDGES = {
     "evals": "/evals-clarify",
 }
 
-BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/boot.sh"
+BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/bash/boot.sh"
 
 
 def _run_boot_sh(env_event, payload):
@@ -336,7 +378,7 @@ def test_boot_ps1_file_edited_mode_parity():
 # mandatory clarify-skill column (no per-class sections, no divergent 4-col).
 
 UNIFIED_HEADER = "| ID | Name | Type | Rel | Status | Clarify |"
-BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/boot.sh"
+BOOT_SH_PATH = ROOT / "skills/team/team-boot/scripts/bash/boot.sh"
 
 
 def test_unified_header_at_every_emission_site():
@@ -347,10 +389,10 @@ def test_unified_header_at_every_emission_site():
     the merged response table.
     """
     expected_counts = {
-        "boot.sh": (ROOT / "skills/team/team-boot/scripts/boot.sh", 2),
-        "boot.ps1": (ROOT / "skills/team/team-boot/scripts/boot.ps1", 2),
-        "team-helpers.sh": (ROOT / "skills/team/team-setup/team-helpers.sh", 1),
-        "team-helpers.ps1": (ROOT / "skills/team/team-setup/team-helpers.ps1", 1),
+        "boot.sh": (ROOT / "skills/team/team-boot/scripts/bash/boot.sh", 2),
+        "boot.ps1": (ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1", 2),
+        "team-helpers.sh": (ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh", 1),
+        "team-helpers.ps1": (ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1", 1),
     }
     for label, (path, expected) in expected_counts.items():
         content = path.read_text(encoding="utf-8")
@@ -360,10 +402,10 @@ def test_unified_header_at_every_emission_site():
     for stale in ("| Decision | Type | Captured? | Skill |",
                   "| Decision | Type | Captured? | Draft ID | Clarify |"):
         for label, path in {
-            "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-            "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-            "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-            "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+            "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+            "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+            "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+            "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
         }.items():
             assert stale not in path.read_text(encoding="utf-8"), f"{label}: stale ledger format"
 
@@ -419,10 +461,10 @@ EARLY_FIRE_MARKERS = (
 )
 
 TEAM_BOOT_CATALOG_SURFACES = {
-    "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-    "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-    "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-    "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+    "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+    "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+    "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+    "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
     "team-boot/SKILL.md": ROOT / "skills/team/team-boot/SKILL.md",
     "manual-fallback.md": ROOT / "skills/team/team-boot/references/manual-fallback.md",
 }
@@ -455,10 +497,10 @@ def test_zero_rows_drop_table_contract():
     markdown; it must not appear on any contract surface.
     """
     for label, path in {
-        "boot.sh": ROOT / "skills/team/team-boot/scripts/boot.sh",
-        "boot.ps1": ROOT / "skills/team/team-boot/scripts/boot.ps1",
-        "team-helpers.sh": ROOT / "skills/team/team-setup/team-helpers.sh",
-        "team-helpers.ps1": ROOT / "skills/team/team-setup/team-helpers.ps1",
+        "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+        "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+        "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+        "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
     }.items():
         content = path.read_text(encoding="utf-8")
         lowered = content.lower()

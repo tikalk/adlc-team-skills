@@ -3,8 +3,8 @@ name: team-levelup
 description: Use when a session ends to extract CDRs, score confidence, batch review, and publish accepted CDRs to team-ai-directives. Auto-triggers on session_end event. Also invoked from team-boot's Class Boots catalog for CDR descriptor matches.
 disable-model-invocation: true
 scripts:
-  sh: scripts/team-levelup.sh
-  ps: scripts/team-levelup.ps1
+  sh: scripts/bash/team-levelup.sh
+  ps: scripts/powershell/team-levelup.ps1
 ---
 
 # team-levelup
@@ -19,8 +19,7 @@ Replaces the former `levelup-specify`, `levelup-clarify`, and `levelup-publish`
 skills with a single streamlined workflow.
 
 _Searched N CDRs, K matched._ 0 rows matched → emit the section heading +
-the searched line only — no table. A 0-row table header collapses into
-unrendered single-line markdown; never emit one.
+the searched line only — no table, never a table header.
 
 When no local context-module records exist in the current working directory
 and the directory sits inside a workspace (detected via a `.gitmodules` marker
@@ -65,7 +64,7 @@ Main branch has NO drafts directory — only accepted CDRs in `context_modules/`
 Run the setup script:
 
 ```bash
-scripts/team-levelup.sh --setup
+scripts/bash/team-levelup.sh --setup
 ```
 
 Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `NEXT_CDR`, `ADLC_BRANCH_EXISTS`.
@@ -213,10 +212,12 @@ When two projects draft the same pattern:
 ## Team Context & Decisions
 
 team-levelup integrates with Team Context & Decisions maintained by team-boot.
-CDR-class decisions detected during the session are captured as drafts and
+CDR-class decisions detected during the session are surfaced as capture
+suggestions (run `/team-levelup` to write the draft — the boot never writes
+it) and
 tracked as table rows in the same section. Mirror each CDR-class decision as a task-list todo
-(draft → `/team-levelup` at session end); after code-modifying tasks, add a
-trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill). At session end, deliver the clarify prompt naming each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Do not fabricate
+(suggest capture → `/team-levelup` at session end); after code-modifying tasks, add a
+trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill). At session end, deliver the clarify prompt naming each uncaptured decision (ID + capture skill) and each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Do not fabricate
 table rows — only record decisions that actually emerged from the session.
 
 ## Verification

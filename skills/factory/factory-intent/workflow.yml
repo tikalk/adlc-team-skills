@@ -1,0 +1,99 @@
+# factory-intent (merged two-lane DAG; dual-executor: LLM executor drives
+# these steps via `workflow state` helpers with gates inline; headless
+# `adlc-cli workflow run` executes this file directly).
+#
+# Single Mission Brief in, product drafts + architecture drafts out, each
+# signed at its own scope-pinned gate, human tiebreak on overlap.
+# Replaces the twin orchestrators (no aliases): lanes reuse the lifecycle
+# skills verbatim; only this orchestrator commits, pushes and opens the MR.
+#
+# Route inputs (`product_route`, `architecture_route`) are resolved by the
+# adaptive (LLM) executor at dispatch (init vs specify vs analyze-first per
+# lane). The steps below encode the greenfield default for headless runs.
+#
+# Correction loop: each lane's `analyze` ends with a terminal
+# `VERDICT: OK | HIGH | CRITICAL` line; HIGH/CRITICAL re-runs that lane's
+# bounded build-and-verify cycle (max_iterations = 1 + mission
+# max_corrections, default 2). The adaptive executor may route a correction
+# back through that lane's clarify before re-implementing; the headless loop
+# is a bounded re-implementation.
+#
+# Tiebreak note: overlap disputes escalate to a named human whose ruling is
+# posted to the comment bus as a `decision`. That wait is enforced at
+# dispatch by the adaptive executor; there is no tiebreak gate in this file.
+schema_version: "1.0"
+workflow:
+  id: factory-intent
+  name: Intent Merged Two-Lane DAG
+  version: "1.0.0"
+inputs:
+  product_route:
+    type: string
+    enum: ["", greenfield, brownfield, refresh]
+    default: greenfield
+  architecture_route:
+    type: string
+    enum: ["", greenfield, brownfield, refresh]
+    default: greenfield
+  product_verdict:
+    type: string
+    enum: ["", approve, reject]
+  architecture_verdict:
+    type: string
+    enum: ["", approve, reject]
+  mr_url:
+    type: string
+    default: ""
+steps:
+  - id: product-specify
+    type: command
+    command: product-specify
+  - id: architecture-specify
+    type: command
+    command: architect-specify
+  - id: product-clarify
+    type: command
+    command: product-clarify
+  - id: architecture-clarify
+    type: command
+    command: architect-clarify
+  - id: gate-product-decisions
+    type: gate
+    message: "Product decisions drafted and clarified. Approve before PRD generation? Cross-lane acceptance is a contract violation."
+    options: [approve, reject]
+    on_reject: retry
+    verdict_input: product_verdict
+    context:
+      records: [".adlc/drafts/pdr/*.md"]
+      since: "last_approved"
+      link: "{{ inputs.mr_url }}"
+  - id: gate-architecture-decisions
+    type: gate
+    message: "Architecture decisions drafted and clarified. Approve before AD generation? Cross-lane acceptance is a contract violation."
+    options: [approve, reject]
+    on_reject: retry
+    verdict_input: architecture_verdict
+    context:
+      records: [".adlc/drafts/adr/*.md"]
+      since: "last_approved"
+      link: "{{ inputs.mr_url }}"
+  - id: build-and-verify
+    # Joint loop: the OR-condition re-runs both lanes' implement+analyze when
+    # either lane reports HIGH/CRITICAL (a one-lane HIGH rebuilds the healthy
+    # lane too — accepted coupling: commits are no-ops, `max_iterations` bounds it).
+    type: do-while
+    condition: "{{ steps.product-analyze.output.stdout | contains('VERDICT: CRITICAL') or steps.product-analyze.output.stdout | contains('VERDICT: HIGH') or steps.architecture-analyze.output.stdout | contains('VERDICT: CRITICAL') or steps.architecture-analyze.output.stdout | contains('VERDICT: HIGH') }}"
+    max_iterations: 3
+    steps:
+      - id: product-implement
+        type: command
+        command: product-implement
+      - id: architecture-implement
+        type: command
+        command: architect-implement
+      - id: product-analyze
+        type: command
+        command: product-analyze
+      - id: architecture-analyze
+        type: command
+        command: architect-analyze

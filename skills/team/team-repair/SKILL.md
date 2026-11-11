@@ -6,6 +6,10 @@ disable-model-invocation: true
 
 # team-repair
 
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `team-setup`, `team-levelup`, `architect-clarify`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
+**Requires:** the `team-setup` skill for AGENTS.md injection and team configuration: `adlc-cli skills add tikalk/adlc-team-skills --skill team-setup`
+
 ## Overview
 
 Re-indexes OKF v0.2 artifacts (`index.md`, `log.md`), derives the flat `CDR.md` inject, rebuilds `.skills.json` and `AGENTS.md` in team-ai-directives to fix inconsistencies, detect orphaned files, and auto-repair issues. Migrates OKF v0.1 frontmatter to v0.2 on every run (always-on, no opt-out). Begins with a health-check phase (Phase 0) that verifies the directives framework is installed, configured, and aligned before performing any repairs.
@@ -213,7 +217,7 @@ If any check is `[FAIL]`, print the report, set exit code 1, and **STOP**. Do no
 
 **Objective**: Resolve paths and validate infrastructure
 
-Run `$(dirname "$0")/../team-setup/team-helpers.sh --json` (or the PowerShell equivalent) to resolve paths and parse JSON output. The helper scripts are canonical in `team-setup` and shared by reference:
+Run `bash scripts/bash/setup-team.sh --json` (or `pwsh scripts/powershell/setup-team.ps1 -Json`) to resolve paths and parse JSON output:
 
 ```json
 {
@@ -308,10 +312,9 @@ After repairing the team AI directives' own `AGENTS.md`, also ensure the **proje
 
 If Check 7 returned `[WARN]` or `[INFO]`, run the injection:
 
-```bash
-bash "$(dirname "$0")/../team-setup/team-helpers.sh" --inject-agents "{REPO_ROOT}"
-# or: pwsh "$(Split-Path $PSCommandPath -Parent)/../team-setup/team-helpers.ps1" -InjectAgents "{REPO_ROOT}"
-```
+Invoke the `team-setup` skill (Requires above) to inject the managed section
+into `{REPO_ROOT}/AGENTS.md` (its `--inject-agents` operation). scripts stay
+skill-local, so team-repair never runs team-setup's script directly.
 
 If `--dry-run`:
 ```markdown
@@ -782,11 +785,9 @@ Conflict levels:
 | Scope Overlap | Overlapping rules | INFO |
 | Constitution Conflict | Rule vs principle | CRITICAL |
 
-Use `team-levelup/scripts/helpers.sh` conflict detection or implement inline:
+Run the conflict scan over `{TEAM_AI_DIRECTIVES}/context_modules/rules` inline
+(no cross-skill helper — scripts stay skill-local), assigning one of:
 
-```bash
-skills/team/team-levelup/scripts/helpers.sh --conflicts "$TEAM_AI_DIRECTIVES/context_modules/rules"
-```
 
 #### Step 3: Create Conflict CDRs
 
@@ -1307,7 +1308,7 @@ For each violation, record:
 - `TEAM_AI_DIRECTIVES` — Path to the team AI directives (overrides `.adlc/init-options.json`).
 - `.adlc/init-options.json` — Project-level config file with `team_ai_directives` field.
 - Default fallback: `team-ai-directives/` relative to project root.
-- `../team-setup/team-helpers.sh` / `../team-setup/team-helpers.ps1` — Shared scripts (canonical in `team-setup`) used for path resolution.
+- `scripts/bash/setup-team.sh` / `scripts/powershell/setup-team.ps1` — Skill-local path resolution (`--json` / `-Json`).
 
 ## 12-Factor Alignment
 

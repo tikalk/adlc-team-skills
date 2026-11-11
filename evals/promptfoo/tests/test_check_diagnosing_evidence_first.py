@@ -19,7 +19,7 @@ from check_diagnosing_evidence_first import get_assert
 PASS_CHAIN = """Diagnosis plan, evidence first:
 1. cat .adlc/init-options.json — confirm team_ai_directives points at a real dir
 2. command -v jq — the skills registry section needs it
-3. bash .agents/skills/team-boot/scripts/boot.sh from the project root —
+3. bash .agents/skills/team-boot/scripts/bash/boot.sh from the project root —
    expect the index on stdout; capture the output
 If all green but the session lacks context, the injection side failed —
 file in adlc-cli with these outputs attached."""

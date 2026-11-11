@@ -20,14 +20,7 @@ resolve_team_ai_directives() {
   local td="${TEAM_AI_DIRECTIVES:-}"
   [[ -n "$td" ]] && { echo "$td"; return; }
   if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
-    td=$(python3 -c '
-import json,sys
-try:
-    with open(sys.argv[1]) as f:
-        print(json.load(f).get("team_ai_directives", ""))
-except Exception:
-    print("")
-' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
+    td=$(jq -r '.team_ai_directives // empty' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
     [[ -n "$td" ]] && { echo "$td"; return; }
   fi
   echo "${project_root}/team-ai-directives"
@@ -41,11 +34,5 @@ PROJECT_ROOT=$(resolve_project_root)
 TEAM_AI_DIRECTIVES=$(resolve_team_ai_directives "$PROJECT_ROOT")
 BRANCH=$(resolve_branch)
 
-python3 - "$PROJECT_ROOT" "$TEAM_AI_DIRECTIVES" "$BRANCH" << 'PY'
-import json, sys
-print(json.dumps({
-  "REPO_ROOT": sys.argv[1],
-  "TEAM_AI_DIRECTIVES": sys.argv[2],
-  "BRANCH": sys.argv[3]
-}))
-PY
+jq -n --arg rr "$PROJECT_ROOT" --arg td "$TEAM_AI_DIRECTIVES" --arg br "$BRANCH" \
+  '{REPO_ROOT:$rr,TEAM_AI_DIRECTIVES:$td,BRANCH:$br}'

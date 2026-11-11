@@ -1,0 +1,859 @@
+#!/usr/bin/env bash
+# team-helpers.sh — Shared utilities for team-* skills
+# 
+# Flags:
+#   --json              Output path info as JSON (default: key=value)
+#   --scaffold [DIR]    Create a fresh 11-file team AI directives scaffold at DIR
+#   --validate [DIR]    Validate the team AI directives structure at DIR (exit 1 if incomplete)
+#   --wire [DIR]        Validate DIR, then write team_ai_directives (absolute path) into
+#                       the project's .adlc/init-options.json — the deterministic Mode 2
+#                       wiring used headless (adlc-cli team setup --directives)
+#   --agents-only DIR   Create only AGENTS.md at DIR (for repair use)
+#   --inject-agents [DIR]  Inject team-boot directive into project-level AGENTS.md at DIR
+#   --agents-status [DIR]  Report managed-section status in project-level AGENTS.md at DIR
+#   --agents-uninstall [DIR]  Remove managed section from project-level AGENTS.md at DIR
+#   --name NAME         Team name for scaffold (default: "My Team")
+set -euo pipefail
+
+###############################################################################
+# 1. PATH RESOLUTION
+###############################################################################
+
+# JSON output always goes through jq -n (no manual string building).
+
+resolve_paths() {
+  PROJECT_ROOT="${PROJECT_ROOT:-$([[ -d ".adlc" ]] && pwd || git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+  BRANCH="${BRANCH:-$(git branch --show-current 2>/dev/null || echo 'unknown')}"
+  TEAM_AI_DIRECTIVES=""
+
+  # 1. Check TEAM_AI_DIRECTIVES env var (highest priority)
+  if [[ -n "${TEAM_AI_DIRECTIVES:-}" ]]; then
+    TEAM_AI_DIRECTIVES="$TEAM_AI_DIRECTIVES"
+  fi
+
+  # 2. Check .adlc/init-options.json
+  if [[ -z "$TEAM_AI_DIRECTIVES" ]]; then
+    INIT_OPTIONS="${PROJECT_ROOT}/.adlc/init-options.json"
+    if [[ -f "$INIT_OPTIONS" ]]; then
+      require_jq || return 1
+      TEAM_AI_DIRECTIVES=$(jq -r '.team_ai_directives // empty' "$INIT_OPTIONS" 2>/dev/null || true)
+    fi
+  fi
+
+  # 3. Fallback to default path
+  if [[ -z "$TEAM_AI_DIRECTIVES" ]]; then
+    TEAM_AI_DIRECTIVES="${PROJECT_ROOT}/team-ai-directives"
+  fi
+
+  echo "PROJECT_ROOT=$PROJECT_ROOT"
+  echo "TEAM_AI_DIRECTIVES=$TEAM_AI_DIRECTIVES"
+  echo "BRANCH=$BRANCH"
+}
+
+output_json() {
+  require_jq || return 1
+  jq -n \
+    --arg repo_root "$PROJECT_ROOT" \
+    --arg team_ai_directives "$TEAM_AI_DIRECTIVES" \
+    --arg branch "$BRANCH" \
+    '{"REPO_ROOT":$repo_root,"TEAM_AI_DIRECTIVES":$team_ai_directives,"BRANCH":$branch}'
+}
+
+# All JSON reads/writes below go through jq (no silent fallback when it is
+# missing: an empty parse must not resolve the wrong directives path).
+require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed (https://jqlang.github.io/jq/download/)" >&2
+    return 1
+  fi
+}
+
+###############################################################################
+# 2. TEAM AI DIRECTIVES STRUCTURE VALIDATION
+###############################################################################
+
+validate_team_ai_directives() {
+  local dir="$1"
+  local missing=0
+
+  for required in \
+    "context_modules/constitution.md" \
+    "context_modules/rules" \
+    "context_modules/personas" \
+    "context_modules/examples" \
+    "CDR.md" \
+    ".skills.json"; do
+    if [[ ! -e "${dir}/${required}" ]]; then
+      echo "MISSING: ${required}"
+      missing=$((missing + 1))
+    fi
+  done
+
+  return "$missing"
+}
+
+# JSON-parse check shared by --validate and --wire: the structure check is
+# existence-only, but the post-setup health contract requires .skills.json to
+# parse (`jq empty` tests parsing only — `jq -e .` would reject a valid `null`).
+# Prints MISSING and returns 1 when present-but-malformed, 0 otherwise.
+check_skills_json_parses() {
+  local dir="$1"
+  if [[ -e "${dir}/.skills.json" ]] \
+    && ! jq empty "${dir}/.skills.json" >/dev/null 2>&1; then
+    echo "MISSING: .skills.json is not valid JSON"
+    return 1
+  fi
+  return 0
+}
+
+# --validate [DIR] — exit 0 when the structure is complete, exit 1 with the
+# MISSING lines when it is not. Used by headless callers to gate wiring.
+validate_structure_cli() {
+  local dir="$1"
+  local missing=0
+  validate_team_ai_directives "$dir" || missing=$?
+  check_skills_json_parses "$dir" || missing=$((missing + 1))
+  if [[ "$missing" -gt 0 ]]; then
+    echo "INVALID: team-ai-directives at ${dir} is missing ${missing} required path(s)" >&2
+    return 1
+  fi
+  echo "VALID: team-ai-directives at ${dir}"
+  return 0
+}
+
+# --wire [DIR] — deterministic Mode 2 (point to existing local path): validate
+# the structure, then merge the absolute path into .adlc/init-options.json.
+# Never interpolates the path into shell/Python source — it travels as argv.
+wire_team_ai_directives() {
+  local dir="$1"
+  if [[ -z "$dir" ]]; then
+    echo "ERROR: --wire requires a team-ai-directives directory argument" >&2
+    exit 1
+  fi
+  if [[ ! -d "$dir" ]]; then
+    echo "ERROR: team-ai-directives directory not found: ${dir}" >&2
+    exit 1
+  fi
+
+  local abs
+  abs="$(cd "$dir" && pwd -P)"
+
+  local missing=0
+  validate_team_ai_directives "$abs" || missing=$?
+  # .skills.json must also parse (post-setup health check contract)
+  check_skills_json_parses "$abs" || missing=$((missing + 1))
+  if [[ "$missing" -gt 0 ]]; then
+    echo "ERROR: team-ai-directives at ${abs} failed validation (${missing} issue(s)) — not wired" >&2
+    return 1
+  fi
+
+  # PROJECT_ROOT may be unset in a fresh headless shell (set -u is on) — fall
+  # back exactly like resolve_paths, and refuse an explicit empty value that
+  # would resolve init-options.json to /.adlc.
+  local project_root="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+  if [[ -z "$project_root" ]]; then
+    echo "ERROR: PROJECT_ROOT is empty — cannot locate .adlc/init-options.json" >&2
+    return 1
+  fi
+  require_jq || return 1
+  local init_dir="${project_root}/.adlc"
+  local init_path="${init_dir}/init-options.json"
+  mkdir -p "$init_dir"
+  # Missing file starts as an empty object (same as the old python reader's
+  # `cfg = {}`); existing file must parse or wiring refuses.
+  if [[ ! -e "$init_path" ]]; then
+    jq -n '{}' > "$init_path"
+  fi
+  if ! jq -e --arg td "$abs" 'select(type == "object") | .team_ai_directives = $td' "$init_path" > "${init_path}.tmp" 2>/dev/null; then
+    rm -f "${init_path}.tmp" 2>/dev/null
+    echo "ERROR: ${init_path} is not valid JSON or not an object — not wired" >&2
+    return 1
+  fi
+  # Write back through the existing path (keeps 0600 mode / symlinks).
+  cat "${init_path}.tmp" > "$init_path"
+  rm -f "${init_path}.tmp"
+  echo "WIRED team_ai_directives=${abs}"
+  return 0
+}
+
+###############################################################################
+# 3. SCAFFOLD
+###############################################################################
+
+scaffold_team_ai_directives() {
+  local dest="$1"
+  local team_name="${2:-My Team}"
+  local today
+  today=$(date +%Y-%m-%d)
+
+  if [[ -d "$dest" && -n "$(ls -A "$dest" 2>/dev/null)" ]]; then
+    echo "ERROR: Destination '$dest' already exists and is not empty." >&2
+    exit 1
+  fi
+
+  mkdir -p "${dest}/context_modules/rules"
+  mkdir -p "${dest}/context_modules/personas"
+  mkdir -p "${dest}/context_modules/examples"
+  mkdir -p "${dest}/skills"
+
+  cat > "${dest}/README.md" << README
+# ${team_name} Team AI Directives
+
+Team AI directives repository for ${team_name}.
+
+## Getting Started
+
+1. Wire this directives repository into a project:
+   \`\`\`
+   /team-setup
+   \`\`\`
+   Choose "Point to existing local path" and select this directory.
+
+2. Add context modules to \`context_modules/\` (rules, personas, examples).
+
+3. Add skills to \`skills/\` and register them in \`.skills.json\`.
+
+4. Update \`CDR.md\` as context modules are approved.
+
+See [ADLC Team Skills](https://github.com/tikalk/adlc-team-skills) for full documentation.
+README
+
+  cat > "${dest}/AGENTS.md" << 'AGENTS'
+# Agent Instructions
+
+## Structure
+
+- `context_modules/constitution.md` — Team constitution
+- `context_modules/rules/` — Team rules and workflows
+- `context_modules/personas/` — Team personas
+- `context_modules/examples/` — Team examples
+- `skills/` — Team skills
+- `evals/` — Directive compliance goldensets (pass/fail cases)
+- `CDR.md` — Context Directive Records
+
+## Loading Order
+
+1. Load constitution.md first
+2. Load relevant rules for the current task
+3. Load relevant personas for the current task
+4. Load relevant examples for the current task
+
+## Using Skills
+
+Skills are located in the `skills/` directory. Browse available skills using team-skills and install them as needed.
+
+## CDR.md
+
+The CDR.md file tracks approved context contributions. Update it when adding new context modules.
+AGENTS
+
+  cat > "${dest}/CDR.md" << CDR
+# Context Directive Records
+
+Context Directive Records (CDRs) track decisions about contributing context modules (rules, personas, examples, skills) to team-ai-directives.
+
+## CDR Index
+
+| ID | Target Module | Type | Status | Created | Verified | Age | Descriptor |
+|----|---------------|------|--------|---------|----------|-----|------------|
+
+**Stats**: 0 entries | Last Updated: ${today}
+CDR
+
+  cat > "${dest}/.skills.json" << 'SKILLSJSON'
+{
+  "version": "2.0.0",
+  "source": "team-ai-directives",
+  "description": "Team skills manifest. The `default` list contains skill names that are auto-installed during project setup. The `external` map contains on-demand skills fetched by URL. The `blocked` list contains skills that must never be installed.",
+  "default": [],
+  "external": {},
+  "blocked": [],
+  "policy": {
+    "auto_install_default": true,
+    "enforce_blocked": true,
+    "allow_project_override": true
+  }
+}
+SKILLSJSON
+
+  cat > "${dest}/.mcp.json.example" << 'MCPJSON'
+{
+  "mcpServers": {}
+}
+MCPJSON
+
+  cat > "${dest}/context_modules/constitution.md" << CONSTITUTION
+---
+type: Constitution
+title: "${team_name} Constitution"
+description: "Team-wide principles and governance"
+resource: ./context_modules/constitution.md
+tags: [constitution]
+generated: { by: agent:team-setup, at: ${today}T00:00:00Z }
+id: constitution
+cdr_ref: null
+created: ${today}
+verified:
+  - { by: agent:team-setup, at: ${today}T00:00:00Z }
+status: stable
+stale_after: 180d
+---
+
+# ${team_name} Constitution
+
+No team-wide principles defined yet. Add principles as they are established.
+CONSTITUTION
+
+  cat > "${dest}/context_modules/index.md" << 'INDEXTOP'
+---
+okf_version: "0.2"
+---
+
+# Context Modules
+
+* [Rules](rules/index.md) - Team rules and workflows
+* [Personas](personas/index.md) - Team personas
+* [Examples](examples/index.md) - Team examples
+INDEXTOP
+
+  cat > "${dest}/context_modules/log.md" << 'LOGTOP'
+# Context Modules Update Log
+LOGTOP
+
+  cat > "${dest}/context_modules/rules/index.md" << 'INDEXRULES'
+# Rules
+
+No rules defined yet. Use /team-levelup to create rules via CDRs.
+INDEXRULES
+
+  cat > "${dest}/context_modules/rules/log.md" << 'LOGRULES'
+# Rules Update Log
+LOGRULES
+
+  cat > "${dest}/context_modules/personas/index.md" << 'INDEXPERS'
+# Personas
+
+No personas defined yet. Use /team-levelup to create personas via CDRs.
+INDEXPERS
+
+  cat > "${dest}/context_modules/personas/log.md" << 'LOGPERS'
+# Personas Update Log
+LOGPERS
+
+  cat > "${dest}/context_modules/examples/index.md" << 'INDEXEX'
+# Examples
+
+No examples defined yet. Use /team-levelup to create examples via CDRs.
+INDEXEX
+
+  cat > "${dest}/context_modules/examples/log.md" << 'LOGEX'
+# Examples Update Log
+LOGEX
+
+  cat > "${dest}/CDR.md" << 'CDRDERIVED'
+# Context Directive Records (Derived Index)
+
+> ⚠️ Auto-generated by `/team-repair`. Do not edit manually.
+> Source of truth: `context_modules/*/index.md` + module frontmatter.
+> Decision lifecycle (Accepted/Rejected) lives in the `adlc` orphan branch `drafts/cdr/`.
+
+## CDR Index
+
+| ID | Path | Type | Description | Generated | Verified | Age | Status |
+|----|------|------|-------------|-----------|----------|-----|--------|
+
+**Stats**: 0 entries | Last Updated: PLACEHOLDER
+CDRDERIVED
+
+  touch "${dest}/context_modules/rules/.gitkeep"
+  touch "${dest}/context_modules/personas/.gitkeep"
+  touch "${dest}/context_modules/examples/.gitkeep"
+  touch "${dest}/skills/.gitkeep"
+
+  echo "Scaffolded team-ai-directives at ${dest}"
+  echo "Team name: ${team_name}"
+  echo "Files created: 14"
+
+  validate_team_ai_directives "$dest" || true
+}
+
+scaffold_agents_only() {
+  local dest="$1"
+  mkdir -p "$dest"
+
+  cat > "${dest}/AGENTS.md" << 'AGENTS'
+# Agent Instructions
+
+## Structure
+
+- `context_modules/constitution.md` — Team constitution
+- `context_modules/rules/` — Team rules and workflows
+- `context_modules/personas/` — Team personas
+- `context_modules/examples/` — Team examples
+- `skills/` — Team skills
+- `reports/sessions/` — Published session summaries (from `/team-levelup`, on `adlc` branch)
+- `CDR.md` — Context Directive Records
+
+## Loading Order
+
+1. Load constitution.md first
+2. Load relevant rules for the current task
+3. Load relevant personas for the current task
+4. Load relevant examples for the current task
+
+## Using Skills
+
+Skills are located in the `skills/` directory. Browse available skills using team-skills and install them as needed.
+
+## CDR.md
+
+The CDR.md file tracks approved context contributions. Update it when adding new context modules.
+AGENTS
+
+  echo "Created AGENTS.md at ${dest}"
+}
+
+###############################################################################
+# 4. INJECT PROJECT-LEVEL AGENTS.md DIRECTIVE
+###############################################################################
+
+inject_project_agents() {
+  local project_root="${1:-.}"
+  local team_directive="${2:-}"
+
+  # Resolve team_ai_directives if not provided
+  if [[ -z "$team_directive" ]]; then
+    local init_options="${project_root}/.adlc/init-options.json"
+    if [[ -f "$init_options" ]]; then
+      require_jq || return 1
+      team_directive=$(jq -r '.team_ai_directives // empty' "$init_options" 2>/dev/null || true)
+    fi
+  fi
+
+  # Fallback to env var
+  if [[ -z "$team_directive" ]] && [[ -n "${TEAM_AI_DIRECTIVES:-}" ]]; then
+    team_directive="$TEAM_AI_DIRECTIVES"
+  fi
+
+  # Fallback to default path
+  if [[ -z "$team_directive" ]]; then
+    team_directive="${project_root}/team-ai-directives"
+  fi
+
+  local agents_file="${project_root}/AGENTS.md"
+  local marker_start="<!-- TEAM_AI_DIRECTIVES START -->"
+  local marker_end="<!-- TEAM_AI_DIRECTIVES END -->"
+
+  # Build the managed section
+  local section
+  section=$(cat <<SECTION
+${marker_start}
+# Team AI Directives
+
+This project is bound by the team AI directives repository at \`${team_directive}\`.
+
+team-boot runs automatically at session start via the event hook (for agents with event support), injecting a lean orientation into the first user message with the team constitution, CDR index, Class Boots catalog, skills registry, and MCP servers.
+
+If the team AI directives context is NOT in your system prompt or first user message (agent without event support), invoke the \`team-boot\` skill before responding to any task or question.
+
+If team AI directives are unconfigured, invoke the \`team-setup\` skill.
+
+Invoke the matching class boot when a task or decision matches a row — invoke it
+at the START of the matching task, before planning the todo list and before
+implementation, so the class context informs planning; never defer to session end
+or post-hoc. When no local memory index exists in the current working directory
+and the directory sits inside a workspace (detected via a \`.gitmodules\` marker
+in an ancestor), the boot reads the workspace root's \`docs/adlc/memory/\` index
+instead (the dual-read order applies: \`docs/adlc/memory\` first, legacy
+\`.adlc/memory\` fallback).
+
+## Class Boots
+
+| Boot | Injects | Invoke When | Capture Via |
+|--|--|--|--|
+| architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
+| product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
+| change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-specify (mining: /change-init) |
+| team-levelup | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-levelup |
+| tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
+
+Each class boot emits its class context section and its own searched line (_Searched N records, K matched._).
+
+**Every response MUST include** a Team Context & Decisions section before the task answer (Status \`in use\` rows ground the session in accepted records; Status \`pending\` rows capture emerging decisions in the same table):
+
+## Team Context & Decisions
+
+| ID | Name | Type | Rel | Status | Clarify |
+|--|--|--|--|--|--|
+| CDR-YYYY-NNN | <name> | <type> | <relevance> | in use | — |
+| — | <decision> | <ADR/PDR/CDR/ChDR/Eval> | <trigger> | pending | <clarify skill> |
+
+Plus: \`_Scope: N CDRs · A ADRs · P PDRs · C ChDRs · E evals · M skills — J rows shown · Unrecorded: N pending · Unclarified: M captured drafts._\` — **J MUST equal the number of rows (any indexed type). Status \`in use\` + Clarify \`—\` = grounding context (accepted records only); Status \`pending\`/\`captured\`/\`clarified\`/\`handed off\` + Clarify skill = owed decisions. No draft row may carry Status \`in use\` — drafts appear only as pending decision rows. 0 rows matched → emit the section heading + the counts line only — no table. Zero rows means heading plus counts line only — never a table header. Emit one table row per line. (do not copy a hard-coded row or inflate the count).** Scope names the always-available layer and class indexes (counts only, never content) plus the session's open decisions; class boots append their own scope line when fired.
+
+Render the section as markdown blocks — heading, table (when rows exist), and counts line each on their own lines. Before sending, if the section contains a pipe character but no newline, rewrite it.
+
+## Decision Capture
+
+Detect decisions as they emerge and suggest the matching capture skill — never write drafts or touch \`.adlc/drafts/\`; the capture skill writes the draft when the user runs it. Full detection and capture guidance lives in the matching class boot:
+
+- Tech stack / pattern choice → ADR → /architect-specify (pull tech-radar-boot context first for tech selection)
+- Feature scope / persona / monetization → PDR → /product-specify
+- Reusable team rule / pattern → CDR → /team-levelup
+- Revert/hotfix rationale / issue-linked commit → ChDR → /change-specify (mined history: /change-init)
+- Eval criterion discovered → Eval → /evals-specify
+
+Maintain the decision rows in the same table above (Status pending/captured/clarified/handed off + Clarify skill); with no pending decisions, emit the heading + the counts line only — no table.
+
+At session end, deliver the clarify prompt naming each uncaptured decision (ID + capture skill) and each captured draft (ID + clarify skill); if the user defers clarify, mark those rows handed off. Only suggest capture when genuinely warranted.
+
+Surface each detected decision as a task-list todo (suggest the capture skill — never write the draft yourself; the capture skill writes to \`.adlc/drafts/{type}/\` when the user runs it — then run the matching clarify skill at session end). After code-modifying tasks, add a trailing todo to sweep Team Context & Decisions until _Unrecorded: 0 pending · Unclarified: 0 drafts_ (a draft leaves Unclarified only via its clarify skill or an explicit user handoff to a named clarify or execute skill).
+${marker_end}
+SECTION
+)
+
+  # Create AGENTS.md if it doesn't exist, or update the managed section.
+  # Pure-awk rewrite: the section content may contain quotes, backslashes,
+  # and backticks, so it travels via temp files, never the command line.
+  local section_file tmp_new had_section=false
+  section_file=$(mktemp) tmp_new=$(mktemp)
+  if [[ -f "$agents_file" ]] && grep -qF "$marker_start" "$agents_file" && grep -qF "$marker_end" "$agents_file"; then
+    had_section=true
+  fi
+  printf '%s' "$section" > "$section_file"
+  if [[ -f "$agents_file" ]]; then
+    awk -v start="$marker_start" -v end="$marker_end" -v secfile="$section_file" '
+      BEGIN { sec = ""; while ((getline line < secfile) > 0) sec = sec line "\n"; close(secfile); found_s = 0; found_e = 0 }
+      { lines[NR] = $0 "\n" }
+      index($0, start) && !found_s { s_line = NR; found_s = 1 }
+      index($0, end) && found_s && !found_e { e_line = NR; found_e = 1 }
+      END {
+        if (found_s && found_e && s_line < e_line) {
+          for (i = 1; i < s_line; i++) printf "%s", lines[i]
+          printf "%s", sec
+          for (i = e_line + 1; i <= NR; i++) printf "%s", lines[i]
+        } else {
+          for (i = 1; i <= NR; i++) printf "%s", lines[i]
+          print ""
+          printf "%s", sec
+        }
+      }
+    ' "$agents_file" > "$tmp_new"
+  else
+    printf '%s\n' "$section" > "$tmp_new"
+  fi
+  # Write back through the existing path (keeps file mode and symlinks);
+  # a fresh file then gets the normal umask default.
+  cat "$tmp_new" > "$agents_file"
+  rm -f "$tmp_new" "$section_file"
+  if grep -qF "$marker_start" "$agents_file"; then
+    if $had_section; then
+      echo "Updated team AI directives section in ${agents_file}"
+    else
+      echo "Injected team AI directives section into ${agents_file}"
+    fi
+  fi
+}
+
+###############################################################################
+# 5. MANAGED SECTION STATUS + UNINSTALL
+###############################################################################
+
+agents_section_status() {
+  local project_root="${1:-.}"
+  local agents_file="${project_root}/AGENTS.md"
+  local marker_start="<!-- TEAM_AI_DIRECTIVES START -->"
+  local marker_end="<!-- TEAM_AI_DIRECTIVES END -->"
+
+  if [[ ! -f "$agents_file" ]]; then
+    echo "STATUS: missing (no AGENTS.md at ${project_root})"
+    return 1
+  fi
+  if grep -qF "$marker_start" "$agents_file" && grep -qF "$marker_end" "$agents_file"; then
+    echo "STATUS: installed (${agents_file} contains the managed section)"
+  else
+    echo "STATUS: not-installed (${agents_file} lacks the managed section)"
+    return 1
+  fi
+}
+
+agents_section_uninstall() {
+  local project_root="${1:-.}"
+  local agents_file="${project_root}/AGENTS.md"
+  local marker_start="<!-- TEAM_AI_DIRECTIVES START -->"
+  local marker_end="<!-- TEAM_AI_DIRECTIVES END -->"
+
+  if [[ ! -f "$agents_file" ]]; then
+    echo "Nothing to remove: no AGENTS.md at ${project_root}"
+    return 0
+  fi
+
+  if ! grep -qF "$marker_start" "$agents_file" || ! grep -qF "$marker_end" "$agents_file"; then
+    echo "No managed section in ${agents_file} (nothing removed)"
+    return 0
+  fi
+  local s_line e_line
+  s_line=$(grep -nF -m1 "$marker_start" "$agents_file" | cut -d: -f1)
+  e_line=$(grep -nF -m1 "$marker_end" "$agents_file" | cut -d: -f1)
+  if [[ "$s_line" -ge "$e_line" ]]; then
+    echo "No managed section in ${agents_file} (nothing removed)"
+    return 0
+  fi
+  # Cut the managed section, collapse 3+ newlines to 2, strip leading and
+  # trailing blank lines, keep exactly one trailing newline when non-empty.
+  local tmp_un
+  tmp_un=$(mktemp)
+  # s_line == 1 must skip head: BSD head rejects `-n 0` (macOS inject-then-uninstall).
+  { if (( s_line > 1 )); then head -n $((s_line - 1)) "$agents_file"; fi; tail -n +$((e_line + 1)) "$agents_file"; } > "$tmp_un"
+  awk '/^$/ { pending++; next } { if (out > 0 && pending > 0) print ""; print; pending = 0; out++ }' \
+    "$tmp_un" > "${tmp_un}.2"
+  # Same write-back rule as inject: keep mode and symlinks.
+  cat "${tmp_un}.2" > "$agents_file"
+  rm -f "$tmp_un" "${tmp_un}.2"
+  echo "Removed team AI directives section from ${agents_file}"
+}
+
+###############################################################################
+# MAIN
+###############################################################################
+
+main() {
+  if [[ "$#" -eq 0 ]]; then
+    resolve_paths
+    return
+  fi
+
+  local has_json=false
+  local has_scaffold=false
+  local has_validate=false
+  local has_wire=false
+  local has_agents_only=false
+  local has_inject_agents=false
+  local has_agents_status=false
+  local has_agents_uninstall=false
+  local scaffold_dest=""
+  local validate_dest=""
+  local wire_dest=""
+  local agents_only_dest=""
+  local inject_dest=""
+  local agents_status_dest=""
+  local agents_uninstall_dest=""
+  local team_name="My Team"
+  local parsing_scaffold=false
+  local parsing_validate=false
+  local parsing_wire=false
+  local parsing_agents=false
+  local parsing_name=false
+  local parsing_inject=false
+  local parsing_status=false
+  local parsing_uninstall=false
+
+  for arg in "$@"; do
+    if [[ "$arg" == "--json" || "$arg" == "-Json" ]]; then
+      has_json=true
+      continue
+    fi
+    if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+      echo "Usage: team-helpers.sh [--json] [--scaffold DIR] [--validate DIR] [--wire DIR] [--agents-only DIR] [--inject-agents [DIR]] [--agents-status [DIR]] [--agents-uninstall [DIR]] [--name NAME]"
+      exit 0
+    fi
+    if [[ "$arg" == "--scaffold" ]]; then
+      has_scaffold=true
+      parsing_scaffold=true
+      parsing_validate=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--validate" ]]; then
+      has_validate=true
+      parsing_validate=true
+      parsing_scaffold=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--wire" ]]; then
+      has_wire=true
+      parsing_wire=true
+      parsing_scaffold=false
+      parsing_validate=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--agents-only" ]]; then
+      has_agents_only=true
+      parsing_agents=true
+      parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--inject-agents" ]]; then
+      has_inject_agents=true
+      parsing_inject=true
+      parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--agents-status" ]]; then
+      has_agents_status=true
+      parsing_status=true
+      parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_uninstall=false
+      continue
+    fi
+    if [[ "$arg" == "--agents-uninstall" ]]; then
+      has_agents_uninstall=true
+      parsing_uninstall=true
+      parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_name=false
+      parsing_inject=false
+      parsing_status=false
+      continue
+    fi
+    if [[ "$arg" == "--name" ]]; then
+      parsing_name=true
+      parsing_scaffold=false
+      parsing_validate=false
+      parsing_wire=false
+      parsing_agents=false
+      parsing_inject=false
+      parsing_status=false
+      parsing_uninstall=false
+      continue
+    fi
+    if $parsing_scaffold && [[ -n "$arg" ]]; then
+      scaffold_dest="$arg"
+      parsing_scaffold=false
+      continue
+    fi
+    if $parsing_validate && [[ -n "$arg" ]]; then
+      validate_dest="$arg"
+      parsing_validate=false
+      continue
+    fi
+    if $parsing_wire && [[ -n "$arg" ]]; then
+      wire_dest="$arg"
+      parsing_wire=false
+      continue
+    fi
+    if $parsing_agents && [[ -n "$arg" ]]; then
+      agents_only_dest="$arg"
+      parsing_agents=false
+      continue
+    fi
+    if $parsing_inject && [[ -n "$arg" ]]; then
+      inject_dest="$arg"
+      parsing_inject=false
+      continue
+    fi
+    if $parsing_status && [[ -n "$arg" ]]; then
+      agents_status_dest="$arg"
+      parsing_status=false
+      continue
+    fi
+    if $parsing_uninstall && [[ -n "$arg" ]]; then
+      agents_uninstall_dest="$arg"
+      parsing_uninstall=false
+      continue
+    fi
+    if $parsing_name && [[ -n "$arg" ]]; then
+      team_name="$arg"
+      parsing_name=false
+      continue
+    fi
+  done
+
+  if $has_scaffold; then
+    if [[ -z "$scaffold_dest" ]]; then
+      echo "ERROR: --scaffold requires a destination directory argument" >&2
+      exit 1
+    fi
+    scaffold_team_ai_directives "$scaffold_dest" "$team_name"
+    return
+  fi
+
+  if $has_agents_only; then
+    if [[ -z "$agents_only_dest" ]]; then
+      echo "ERROR: --agents-only requires a destination directory argument" >&2
+      exit 1
+    fi
+    scaffold_agents_only "$agents_only_dest"
+    return
+  fi
+
+  if $has_validate; then
+    if [[ -z "$validate_dest" ]]; then
+      echo "ERROR: --validate requires a team-ai-directives directory argument" >&2
+      exit 1
+    fi
+    validate_structure_cli "$validate_dest"
+    return
+  fi
+
+  if $has_wire; then
+    if [[ -z "$wire_dest" ]]; then
+      echo "ERROR: --wire requires a team-ai-directives directory argument" >&2
+      exit 1
+    fi
+    wire_team_ai_directives "$wire_dest"
+    return
+  fi
+
+  if $has_inject_agents; then
+    local project_root="${inject_dest:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+    inject_project_agents "$project_root"
+    return
+  fi
+
+  if $has_agents_status; then
+    local project_root="${agents_status_dest:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+    agents_section_status "$project_root"
+    return
+  fi
+
+  if $has_agents_uninstall; then
+    local project_root="${agents_uninstall_dest:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+    agents_section_uninstall "$project_root"
+    return
+  fi
+
+  # Default: resolve paths
+  resolve_paths > /dev/null
+  if $has_json; then
+    output_json
+  else
+    resolve_paths
+  fi
+}
+
+main "$@"

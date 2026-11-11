@@ -149,8 +149,11 @@ def _generate_all(root: Path, adr_src: Path, pdr_src: Path):
 
 
 def test_bare_numeric_names_byte_stable(tmp_path):
-    """No behavior change for bare-numeric names: new code output must equal
-    old-code (git HEAD) output byte-for-byte on a suffixed-free fixture."""
+    """No display-rule change for bare-numeric names: rows for bare IDs are
+    byte-identical old vs new on a suffixed-free fixture. The index header
+    line is excluded: 'Proposed PDRs only' -> 'All PDRs' is an intended
+    contract change (drafts hold mixed statuses), pinned in
+    test_ledger_slot_numbering.py."""
     new_root, old_root = tmp_path / "new", tmp_path / "old"
     _bare_fixture(new_root)
     _bare_fixture(old_root)
@@ -166,7 +169,9 @@ def test_bare_numeric_names_byte_stable(tmp_path):
                        cwd=ROOT, capture_output=True, text=True, check=True).stdout,
         encoding="utf-8")
     old_out = _generate_all(old_root, old_setup, old_pdr)
-    assert new_out == old_out
+    assert new_out[0] == old_out[0]  # adr.md untouched
+    assert [l for l in new_out[1].splitlines() if not l.startswith("> Auto-generated")] == \
+        [l for l in old_out[1].splitlines() if not l.startswith("> Auto-generated")]
 
 
 def test_regenerate_is_idempotent(adlc_tree):
@@ -174,3 +179,20 @@ def test_regenerate_is_idempotent(adlc_tree):
     first = _generate_all(adlc_tree, SETUP_ARCH, PDR_LIB)
     second = _generate_all(adlc_tree, SETUP_ARCH, PDR_LIB)
     assert first == second
+
+
+def test_adr_move_accepts_full_id_with_prefix(adlc_tree):
+    """move_adr accepts full IDs (`ADR-003`) as well as stems (`003-...`).
+
+    Regression: move_adr built `ADR-$adr_id.md` verbatim, so a full-ID caller
+    resolved `ADR-ADR-003.md` (missing) and the numeric fallback skipped it
+    (`ADR-003` is not bare-numeric) — a silent no-op with exit 0. Callers
+    (agents, docs) pass the full ID from index rows; the resolver
+    (get_adr_by_id) must agree with the mover on what an ID looks like.
+    """
+    harness = _extract_adr_harness(adlc_tree)
+    r = _run_bash(f'source "{harness}"; move_adr "ADR-003" drafts memory', adlc_tree)
+    assert r.returncode == 0, r.stderr
+    assert (adlc_tree / "docs/adlc/memory/adr/ADR-003.md").exists(), \
+        "move_adr ADR-003 drafts→memory silently no-oped (double-prefix ADR-ADR-003.md)"
+    assert not (adlc_tree / ".adlc/drafts/adr/ADR-003.md").exists()

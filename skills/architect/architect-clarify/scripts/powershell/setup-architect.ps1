@@ -17,12 +17,13 @@ $Decompose = -not $NoDecompose
 
 $ErrorActionPreference = 'Stop'
 
-# shared layout constants (single definition in paths.ps1).
-$ArchitectPathsPs1 = "$PSScriptRoot/../../../../team/workspace/scripts/powershell/paths.ps1"
-if (-not (Test-Path $ArchitectPathsPs1)) {
-    $ArchitectPathsPs1 = "$PSScriptRoot/../../../workspace/scripts/powershell/paths.ps1"
-}
-if (Test-Path $ArchitectPathsPs1) { . $ArchitectPathsPs1 }
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+$ADLC_DIR = if ($env:ADLC_DIR) { $env:ADLC_DIR } else { ".adlc" }
+$DOCS_ADLC_DIR = if ($env:DOCS_ADLC_DIR) { $env:DOCS_ADLC_DIR } else { "docs/adlc" }
+$DOCS_ADLC_MEMORY = if ($env:DOCS_ADLC_MEMORY) { $env:DOCS_ADLC_MEMORY } else { "docs/adlc/memory" }
+$DOCS_ADLC_PRODUCT = if ($env:DOCS_ADLC_PRODUCT) { $env:DOCS_ADLC_PRODUCT } else { "docs/adlc/product" }
+$DOCS_ADLC_ARCHITECT = if ($env:DOCS_ADLC_ARCHITECT) { $env:DOCS_ADLC_ARCHITECT } else { "docs/adlc/architect" }
+$ADLC_DRAFTS = if ($env:ADLC_DRAFTS) { $env:ADLC_DRAFTS } else { ".adlc/drafts" }
 
 # dual-read: resolve a memory-relative artifact to the canonical
 # docs/adlc/memory path, falling back to legacy .adlc/memory when only the
@@ -38,6 +39,30 @@ function Get-AdlcMemoryPath {
     $legacyPath = Join-Path $RepoRoot (Join-Path ".adlc/memory" $RelPath)
     if (Test-Path $docsPath) { return $docsPath }
     return $legacyPath
+}
+
+# Get-NextAdrNumber [ROOT] - the next free ADR ledger slot.
+#
+# PowerShell twin of next_adr_number in setup-architect.sh, same contract as
+# Get-NextRecordNumber in product-clarify's pdr-lib.ps1: a record's number is
+# the LEADING DIGITS of its filename stem (an amendment stem still counts as
+# its base record; suffixes are never arithmetically parsed), and the maximum
+# spans drafts AND published memory so a promoted record's slot is not reissued.
+function Get-NextAdrNumber {
+    param([string]$Root = (Get-RepositoryRoot))
+    $max = 0
+    $docsBase = $DOCS_ADLC_MEMORY
+    if (-not $docsBase) { $docsBase = "docs/adlc/memory" }
+    foreach ($dir in @((Join-Path $Root ".adlc/drafts/adr"), (Join-Path $Root (Join-Path $docsBase "adr")))) {
+        if (-not (Test-Path $dir)) { continue }
+        foreach ($f in @(Get-ChildItem -Path $dir -Filter 'ADR-*.md' -File -ErrorAction SilentlyContinue)) {
+            if ($f.BaseName -cmatch '^ADR-(\d+)') {
+                $num = [int]$Matches[1]
+                if ($num -gt $max) { $max = $num }
+            }
+        }
+    }
+    return ('{0:d3}' -f ($max + 1))
 }
 
 
@@ -284,7 +309,7 @@ function Get-Subsystems {
     
     if ($composeFile) {
         $composeContent = Get-Content $composeFile -Raw
-        $services = [regex]::Matches($composeContent, '^\s*([a-zA-Z0-9_-]+):\s*$' | ForEach-Object { $_.Groups[1].Value } | Where-Object { @("version", "services", "networks", "volumes") -notcontains $_ })
+        $services = [regex]::Matches($composeContent, '^\s*([a-zA-Z0-9_-]+):\s*$') | ForEach-Object { $_.Groups[1].Value } | Where-Object { @("version", "services", "networks", "volumes") -notcontains $_ }
         foreach ($svc in $services) {
             $found = $false
             foreach ($d in $dirs) {
@@ -402,7 +427,7 @@ function Scan-ExistingDocs {
     $findings = @()
     
     # Check for existing architecture docs
-    if (Test-Path "$RepoRoot\docs/adlc/architect/AD.md") -or (Test-Path "$RepoRoot\AD.md") {
+    if ((Test-Path "$RepoRoot\docs/adlc/architect/AD.md") -or (Test-Path "$RepoRoot\AD.md")) {
         $findings += "EXISTING_AD: $RepoRoot\AD.md"
     }
     
@@ -536,9 +561,9 @@ function New-ArchitectureDiagrams {
     # Source diagram generators
     $scriptDir = Split-Path $PSCommandPath -Parent
     if ($diagramFormat -eq 'mermaid') {
-        . "$scriptDir\Mermaid-Generator.ps1"
+        . "$scriptDir\mermaid-generator.ps1"
     } else {
-        . "$scriptDir\ASCII-Generator.ps1"
+        . "$scriptDir\ascii-generator.ps1"
     }
     
     # Determine which views to generate (use env var if ViewsList not provided)
@@ -566,7 +591,7 @@ function New-ArchitectureDiagrams {
                 # Validate Mermaid syntax
                 if (-not (Test-MermaidSyntax -MermaidCode $diagramCode)) {
                     Write-Host "   ⚠️  Mermaid validation failed for $view view, using ASCII fallback" -ForegroundColor Yellow
-                    . "$scriptDir\ASCII-Generator.ps1"
+                    . "$scriptDir\ascii-generator.ps1"
                     New-AsciiDiagram -ViewType $view -SystemName $SystemName
                 }
                 else {
@@ -656,8 +681,16 @@ function Invoke-Specify {
     Write-Host ""
     Write-Host "After completion, run '/architect-implement' to generate full AD.md"
     
+    # Ledger slot allocation: hand callers the next free slot (leading digits
+    # of the filename stem, max across drafts AND published memory -- see
+    # Get-NextAdrNumber). Leaving "the highest existing number" to the agent
+    # reissued taken slots.
+    $nextAdr = Get-NextAdrNumber -Root $repoRoot
+    Write-Host ""
+    Write-Host "Next free ADR slot: ADR-$nextAdr"
+    
     if ($Json) {
-        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose} | ConvertTo-Json
+        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose; next_adr=$nextAdr} | ConvertTo-Json
     }
 }
 
@@ -737,8 +770,9 @@ function Invoke-Implement {
     Write-Host "  6. Move Accepted ADRs to canonical location"
     Write-Host "  7. Clean up drafts if all ADRs are Accepted"
     
+    $nextDelta = Get-NextAdDeltaVersion -File $adFile
     if ($Json) {
-        @{status="success"; action="implement"; adr_dir=$adrDir; ad_file=$adFile; adr_count=$adrCount; context=($contextArgs -join " ")} | ConvertTo-Json
+        @{status="success"; action="implement"; adr_dir=$adrDir; ad_file=$adFile; adr_count=$adrCount; context=($contextArgs -join " "); next_ad_delta_version=$nextDelta} | ConvertTo-Json
     }
 }
 
@@ -1331,7 +1365,10 @@ function Invoke-Summarize {
     }
 }
 
-# Main execution
+# Main execution -- runs when the file is executed. Dot-sourcing this file
+# (the documented way to reach Get-NextAdrNumber / Get-NextAdDeltaVersion)
+# must define helpers without running the action dispatch below.
+if ($MyInvocation.InvocationName -ne '.') {
 try {
     $repoRoot = Get-RepositoryRoot
     Seed-Templates -RepoRoot $repoRoot
@@ -1408,4 +1445,29 @@ try {
 } catch {
     Write-Error $_.Exception.Message
     exit 1
+}
+}  # end execution-only guard (see the sourcing contract above)
+
+# Get-NextAdDeltaVersion AD_FILE - the next `## vN.N.N Delta:` heading version.
+#
+# Deltas bump the MINOR and reset the patch: v13.18.0 -> v13.19.0. A patch bump
+# means amending the delta already there, which is a deliberate act, not the
+# next free slot -- so this never emits one.
+function Get-NextAdDeltaVersion {
+    param([string]$File)
+    $major = 0; $minor = 0; $patch = 0
+    if (Test-Path $File) {
+        $best = $null
+        foreach ($m in [regex]::Matches((Get-Content $File -Raw),
+                                        '(?m)^## v(\d+)\.(\d+)\.(\d+) Delta')) {
+            $v = @([int]$m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value)
+            if ($null -eq $best -or ($v[0] -gt $best[0]) -or
+                ($v[0] -eq $best[0] -and $v[1] -gt $best[1]) -or
+                ($v[0] -eq $best[0] -and $v[1] -eq $best[1] -and $v[2] -gt $best[2])) {
+                $best = $v
+            }
+        }
+        if ($null -ne $best) { $major = $best[0]; $minor = $best[1]; $patch = $best[2] }
+    }
+    return "v$major.$($minor + 1).0"
 }

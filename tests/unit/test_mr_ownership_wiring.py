@@ -14,10 +14,13 @@ ROOT = Path(__file__).parent.parent.parent
 SKILLS = ROOT / "skills"
 MIRROR = ROOT / ".agents" / "skills"
 
-TRACKER = SKILLS / "factory/factory-mission/references/tracker-integration.md"
-EXECUTOR = SKILLS / "factory/factory-mission/references/executor.md"
-PROVIDER_YML = SKILLS / "factory/factory-mission/references/issues-provider.yml"
-RESOLVER_REL = "skills/factory/factory-mission/scripts/resolve-mr-ownership.py"
+TRACKER = SKILLS / "factory/factory-runbook/references/tracker-integration.md"
+EXECUTOR = SKILLS / "factory/factory-runbook/references/executor.md"
+PROVIDER_YML = SKILLS / "factory/factory-runbook/references/issues-provider.yml"
+RESOLVERS_REL = [
+    "skills/factory/factory-runbook/scripts/bash/resolve-mr-ownership.sh",
+    "skills/factory/factory-runbook/scripts/powershell/resolve-mr-ownership.ps1",
+]
 
 
 def test_connector_documents_the_operation():
@@ -54,22 +57,28 @@ def test_connector_documents_the_provider_mapping():
 
 def test_connector_names_the_resolver_path():
     content = TRACKER.read_text(encoding="utf-8")
-    assert "resolve-mr-ownership.py" in content, "the connector must name the resolver"
+    assert "resolve-mr-ownership.sh" in content, "the connector must name the resolver twin"
+    assert "resolve-mr-ownership.ps1" in content, "the connector must name the PowerShell twin"
 
 
 def test_resolver_path_in_the_connector_resolves():
     content = TRACKER.read_text(encoding="utf-8")
-    match = re.search(r"(\{REPO_ROOT\}/\.agents/skills/factory-mission/scripts/resolve-mr-ownership\.py)", content)
-    assert match, "the connector must reference the resolver by its installed path"
-    source = ROOT / RESOLVER_REL
-    assert source.exists(), f"the referenced resolver is missing at {source}"
+    match = re.search(r"(scripts/bash/resolve-mr-ownership\.sh)", content)
+    assert match, "the connector must reference the resolver by its skill-local path"
+    assert "{SKILLS_DIR}" not in content, (
+        "the connector must not depend on a layout-dependent skills directory"
+    )
+    for rel in RESOLVERS_REL:
+        source = ROOT / rel
+        assert source.exists(), f"the referenced resolver is missing at {source}"
 
 
 def test_executor_hooks_the_publish_step():
     content = EXECUTOR.read_text(encoding="utf-8")
     assert "Draft MR/PR ownership" in content, "the executor must hook the MR-ownership step"
     assert "Operation 11" in content, "the executor must point at the connector operation"
-    assert "resolve-mr-ownership.py" in content
+    assert "resolve-mr-ownership.sh" in content
+    assert "resolve-mr-ownership.ps1" in content
 
 
 def test_executor_states_the_never_guess_rule():
@@ -93,6 +102,9 @@ def test_provider_template_marks_the_noop_providers():
 def test_mirror_carries_the_resolver():
     if not MIRROR.exists():
         pytest.skip("installed mirror absent — regenerate with adlc-cli")
-    assert (MIRROR / "factory-mission/scripts/resolve-mr-ownership.py").exists(), (
-        "mirror missing the ownership resolver"
+    assert (MIRROR / "factory-runbook/scripts/bash/resolve-mr-ownership.sh").exists(), (
+        "mirror missing the ownership resolver twin"
+    )
+    assert (MIRROR / "factory-runbook/scripts/powershell/resolve-mr-ownership.ps1").exists(), (
+        "mirror missing the ownership resolver PowerShell twin"
     )

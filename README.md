@@ -73,7 +73,7 @@ What it actually looks like to get from zero to a factory, in order.
 
 - A coding agent (opencode, Claude Code, Cursor, Codex, Gemini CLI, …)
 - [`adlc-cli`](https://github.com/tikalk/adlc-cli) — `npx` works, no install needed
-- `jq` — the `team-boot` script parses the directives index with it
+- `jq` — required by the setup scripts (they build all JSON output with `jq -n`; missing `jq` fails loudly instead of silently resolving defaults)
 
 ### 1. Install — one command per project
 
@@ -106,8 +106,11 @@ skills trigger when the task matches.
 - **Class boots** fire when a decision class shows up: `architect-boot`
   (ADR index), `product-boot` (PDR index), `change-boot` (ChDR index),
   `tech-radar-boot` (radar opinion before a tech selection).
-- **Decision capture runs continuously**: decisions detected mid-session
-  land as lightweight drafts in `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/`.
+- **Decision capture is suggested, never automatic**: decisions detected
+  mid-session surface a `_Suggested capture_` line naming the class capture
+  skill (`/architect-specify`, `/product-specify`, `/change-specify`, …);
+  running that skill writes the lightweight draft to
+  `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/`.
   The `file_edited` hook notices each draft landing and nudges the matching
   clarify skill (`adr→/architect-clarify`, `pdr→/product-clarify`, …).
 - When harness compaction summarizes history away, `session_compact`
@@ -181,7 +184,8 @@ npx skills add tikalk/adlc-team-skills -a claude -g
 
 Selective installs resolve closures automatically: `--skill architect-implement`
 also pulls its canonical home (`architect-clarify`) via `.skills-deps.json`,
-so shared helpers are never orphaned. Borrower skills fail fast with the exact
+so shared helpers are never orphaned. Factory skills resolve the same way
+(`--skill factory-intent` pulls `factory-runbook`). Borrower skills fail fast with the exact
 recovery command if their canonical home is missing.
 
 Works with any agent supporting the [Agent Skills standard](https://agentskills.io) —
@@ -221,8 +225,8 @@ advisory; humans hold the gates (⭐).
          │ PRD.md · AD.md · .adlc/memory/
          ▼
 ┌──────────────────────────┐  PDRs → PRD.md  ·  ADRs → AD.md
-│ factory-product /        │  (clarify⭐ human gates)
-│ factory-architect        │
+│ factory-intent           │  (two scope-pinned gates)
+│ (product + arch lanes)   │
 └────────┬─────────────────┘
          │ Mission Brief (goal + constraints + success criteria)
          ▼
@@ -264,6 +268,9 @@ What each station adds:
 - **`factory-mission`** — the execution engine: spec-gated inner loop
   (specify → plan → implement ↔ converge) with tracker-agnostic integration,
   an inter-agent comment bus, worktree isolation, lease-based liveness,
+  stall detection, a dependency hard gate (Operation 12 — intake refuses
+  while declared dependencies stay open; only closed/cancelled counts
+  complete, dependents machine-notified on clear),
   stall detection, and a mandated TDD test/code split (RED gate + GREEN gate,
   enforced at the skill level, not just the prompt level).
 - **`factory-review`** — severity-ranked PR compliance against REVIEW.md
@@ -272,8 +279,14 @@ What each station adds:
   (Review→Fix→Converge) with maker-checker separation and circuit breaker.
 - **`factory-learn`** — retrospectives into team-ai-directives:
   build-to-delete pruning, promote-to-check for mechanical rules.
-- **`factory-product` / `factory-architect`** — lifecycle coordinators
+- **`factory-intent`** — merged two-lane intent orchestrator
   maintaining PRD.md and AD.md with clarify⭐ gates.
+- **`factory-orchestrator`** — front-door router: accepts work at any
+  lifecycle stage (new request, CI failure on a delivered PR, review
+  findings, merge notification), detects the stage from tracker/run
+  evidence, and hands it to the owning skill, human gate, or follow-up
+  context. Router and communicator only — never implements, reviews,
+  or merges itself.
 - **`factory-tickets`** — read-only worklist across trackers, classified by
   next actionable move.
 - **`factory-clean`** — resource inventory and reclamation, approval-gated.
@@ -284,13 +297,13 @@ What each station adds:
 ```mermaid
 flowchart LR
     FQ["factory-queue<br/>Ingestion & Triage"] ~~~ IG{"Intent Gate"}
-    FP["factory-product<br/>Product Lifecycle"] ~~~ CG1{"clarify⭐ Gate"}
-    FA["factory-architect<br/>Architecture Lifecycle"] ~~~ CG2{"clarify⭐ Gate"}
+    FI2["factory-intent<br/>Merged Two-Lane DAG"] ~~~ CG1{"product Gate"} & CG1 ~~~ CG2{"architecture Gate"}
     FM["factory-mission<br/>Execution Engine"] ~~~ CB{"Circuit Breaker"}
     FR["factory-review<br/>PR Compliance"] ~~~ MG{"Merge Gate"}
     FL["factory-learn<br/>Learning Loop"] ~~~ CG3{"clarify⭐ Gate"}
     FC["factory-clean<br/>Resource Cleanup"] ~~~ UG{"Approval Gate"}
     FT["factory-tickets<br/>Read-Only Worklist"]
+    FO["factory-orchestrator<br/>Front-Door Router"]
     FI["factory-init<br/>Brownfield Bootstrap"]
 
     TR[("Issue Tracker<br/>GitHub / GitLab / Linear / Jira")]
@@ -298,28 +311,30 @@ flowchart LR
 
     FQ -->|"spec-gated labels"| TR
     TR -->|"--issue ref"| FM
-    FP -->|"PRD.md"| FQ
-    FA -->|"AD.md"| FQ
+    FI2 -->|"PRD.md + AD.md"| FQ
     FM -->|"agent-authored PRs"| TR
     TR -->|"PR diff + checks"| FR
     FR -->|"twice-mistake rule"| FL
     FL -->|"memory.jsonl"| FM
     FL -->|"draft PR"| TD
     FC -.->|"reads state files"| FM
+    FO -->|"new work requests"| FQ
+    FO -.->|"CI failure / merge notification follow-ups"| FM
     FT -.->|"read-only"| TR
-    FI -.->|"via product-* leaves"| FP
-    FI -.->|"via architect-* leaves"| FA
-    FI -.->|"via change-* leaves (one-time deep)"| FL
+    FI -.->|"via intent lanes"| FI2
 ```
 
 </details>
 
 ## Universal orchestration
 
-`factory-mission` doesn't force a proprietary ecosystem. At mission start it
-scans installed skills directories, reads each `SKILL.md` frontmatter, and
-hands the inventory to the subagent — the model picks the skill that fits
-each step. Works alongside:
+`factory-mission` doesn't lock you into a proprietary ecosystem. Step prompts
+name skills by exact name; the dispatched subagent resolves them through its
+own harness Skill tool (the runtime injects the installed-skills inventory —
+no filesystem scan). For commands-based frameworks the model cannot see, the
+commands-dir fallback in `references/agent-integrations.md` covers discovery.
+Routing stays LLM-decided — no hard-coded phase-to-skill mapping. Works
+alongside:
 
 | Source | Examples |
 |---|---|
@@ -332,7 +347,7 @@ each step. Works alongside:
 
 ## What's inside
 
-44 skills across 8 categories.
+48 skills across 8 categories.
 
 ### Team directives — every session, every user
 
@@ -349,8 +364,9 @@ each step. Works alongside:
 - **`factory-init`** — unified brownfield bootstrap + PDR↔ADR↔ChDR↔code coverage matrix (`--refresh`).
 - **`factory-queue`** — queue intake, AI advisory triage scoring, intent gate, milestone generation.
 - **`factory-mission`** — execution engine: tracker-agnostic, comment bus, worktree isolation, mandated TDD RED/GREEN gates (Test Agent writes failing tests first, Implement Agent writes code to pass them), circuit breaker.
-- **`factory-review`** — severity-ranked PR policy compliance against `REVIEW.md`; babysits agent PRs to merge.
-- **`factory-product`** / **`factory-architect`** — product/architecture lifecycle coordinators.
+- **`factory-intent`** — merged intent orchestrator (product + architecture lanes, two gates).
+- **`factory-runbook`** — shared run mechanics, invoked by orchestrators: publish procedure (run branch → step commits → draft MR/PR with milestone/assignee ownership) plus the run contracts (executor, tracker integration, lanes, brief/provider templates) borrowed by path, never copied.
+- **`factory-release`** — post-merge release orchestration: exact-head gated merge → staged rollout with threshold verdicts → SemVer-tagged, noted release with monitor handoff.
 - **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.
 - **`factory-clean`** — resource inventory and reclamation (approval-gated).
@@ -391,7 +407,7 @@ each step. Works alongside:
 
 ### Tech selection
 
-- **`tech-radar-boot`** — class boot: injects Tikal Tech Radar context (adoption ring, quadrant, opinion) for tech selection + ADR capture pairing. Auto-triggered. The radar dataset is fetched live from `https://tikalk.com/radar.json` on every invocation — no bundled snapshot to go stale.
+- **`tech-radar-boot`** — class boot: injects Tikal Tech Radar context (adoption ring, quadrant, opinion) for tech selection + ADR capture pairing. Auto-triggered. The radar is read from the **adlc-radar OKF knowledge repository** (`gitlab.tikalk.dev/tikalk/engineering/agentic-sdlc/adlc-radar`, `knowledge/technologies/`) through a cached shallow clone refreshed every 3 days; when the repository is unreachable it says so and falls back to the stale clone, then to the public `https://tikalk.com/radar.json` — always announcing which source answered.
 
 ### Workspace
 
@@ -487,7 +503,7 @@ skills/
 ├── product/       # product-* (7) + product-templates/ + templates/ (pdr-lib canonical in product-clarify)
 ├── architect/     # architect-* (6) + templates/ (setup-architect + generators canonical in architect-clarify)
 ├── change/        # change-* (4) + templates/
-├── tech-radar/    # tech-radar-boot (1) — live radar fetch, no bundled dataset
+├── tech-radar/    # tech-radar-boot (1) — OKF knowledge repo reader (cached clone + public-JSON fallback)
 ├── authoring/     # writing-skills (1; templates live inside the skill)
 └── factory/       # factory-* (10) — platform orchestration
 ```

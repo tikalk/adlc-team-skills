@@ -2,12 +2,15 @@
 
 set -e
 
+# JSON output always goes through jq -n (no manual string building).
+
 JSON_MODE=false
 ACTION=""
 ARGS=()
 VIEWS="core"
 ADR_HEURISTIC="surprising"
 DECOMPOSE=true
+PREVIEW=false
 
 # Get script directory FIRST (needed for common.sh sourcing)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,15 +48,13 @@ if [[ -z "${REPO_ROOT:-}" ]]; then
   exit 1
 fi
 
-# shared layout constants (single definition in paths.sh; common.sh
-# already sources it — this block keeps the script correct standalone).
-if [ -f "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../../team/workspace/scripts/bash/paths.sh"
-elif [ -f "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$SCRIPT_DIR/../../../workspace/scripts/bash/paths.sh"
-fi
+# Layout roots (.adlc/ machine pipeline; docs/adlc/ human-facing deliverables)
+ADLC_DIR="${ADLC_DIR:-.adlc}"
+DOCS_ADLC_DIR="${DOCS_ADLC_DIR:-docs/adlc}"
+DOCS_ADLC_MEMORY="${DOCS_ADLC_MEMORY:-docs/adlc/memory}"
+DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
+DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 # dual-read: resolve a memory-relative artifact to the canonical
 # docs/adlc/memory path, falling back to legacy .adlc/memory when only the
@@ -69,6 +70,17 @@ _adlc_memory_path() {
     fi
 }
 
+# Sourcing contract: `source setup-architect.sh` must define helpers and
+# constants ONLY -- the SKILL.md flows source this file and then call
+# next_adr_number / next_ad_delta_version / generate_adr_index. The argument
+# parse, the default action and the dispatch run only when the file is
+# executed (before this guard, a bare source ran the whole default action).
+SETUP_ARCHITECT_EXECUTED=1
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    SETUP_ARCHITECT_EXECUTED=0
+fi
+
+if [[ "$SETUP_ARCHITECT_EXECUTED" == 1 ]]; then
 # Parse arguments (run after common.sh to have REPO_ROOT defined)
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -102,6 +114,10 @@ while [[ $# -gt 0 ]]; do
             DECOMPOSE=false
             shift
             ;;
+        --preview)
+            PREVIEW=true
+            shift
+            ;;
         init|map|update|review|specify|implement|clarify|analyze|validate|plan-dag|execute-dag|summarize)
             ACTION="$1"
             shift
@@ -130,6 +146,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --views VIEWS      Architecture views to generate: core (default), all, or comma-separated"
             echo "  --adr-heuristic H  ADR generation heuristic: surprising (default), all, minimal"
             echo "  --no-decompose     Disable automatic sub-system decomposition (default: auto-detect)"
+            echo "  --preview          Preview only: list planned writes (AD.md, views, promotions) without writing"
             echo "  --help             Show this help message"
             echo ""
             echo "Examples:"
@@ -163,6 +180,7 @@ fi
 mkdir -p "$REPO_ROOT/.adlc/memory"
 mkdir -p "$REPO_ROOT/${ADLC_DRAFTS:-.adlc/drafts}"
 mkdir -p "$REPO_ROOT/${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
+fi  # end SETUP_ARCHITECT_EXECUTED (parse + defaults + directory seeding)
 
 # Architecture files (ADR Lifecycle)
 AD_FILE="$REPO_ROOT/docs/adlc/architect/AD.md"
@@ -313,11 +331,7 @@ detect_subsystems() {
             else
                 echo ","
             fi
-            python3 - "$d" <<'PY'
-import json, sys
-d = sys.argv[1]
-print(json.dumps({"id": d, "name": d, "detection_method": "directory", "evidence": "directory: %s/" % d}), end="")
-PY
+            jq -n --arg d "$d" '{"id":$d,"name":$d,"detection_method":"directory","evidence":("directory: "+$d+"/")}'
         done
         echo ""
         echo "]"
@@ -630,6 +644,58 @@ parse_fm_title() {
     awk '/^---[[:space:]]*$/ { fm++; next } fm >= 2 && /^#[[:space:]]+/ { sub(/^#[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print; exit }' "$1"
 }
 
+# next_adr_number [ROOT] - the next free ADR ledger slot.
+#
+# Same contract as next_record_number in product-clarify's pdr-lib.sh: the
+# number is the LEADING DIGITS of the filename stem (ADR-003-amendment-2.md is record
+# 003; suffixes are never arithmetically parsed), and the maximum spans drafts
+# AND published memory so a promoted record's slot is not reissued.
+#
+# Deliberately not one shared implementation: the source tree is
+# skills/<group>/<skill>/ while the installed mirror is flat
+# .agents/skills/<skill>/, so no single relative source path resolves in both --
+# which is why parse_fm_field is duplicated here and in pdr-lib.sh too.
+# tests/unit/test_ledger_slot_numbering.py pins the behaviour in both homes.
+next_adr_number() {
+    local root="${1:-$REPO_ROOT}"
+    local max=0 f num dir
+    for dir in "$root/.adlc/drafts/adr" "$root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/adr"; do
+        [[ -d "$dir" ]] || continue
+        for f in "$dir"/ADR-*.md; do
+            [[ -f "$f" ]] || continue
+            num=$(basename "$f" .md | sed -n 's/^ADR-\([0-9]\{1,\}\).*/\1/p')
+            [[ -n "$num" ]] || continue
+            ((10#$num > max)) && max=$((10#$num))
+        done
+    done
+    printf '%03d' "$((max + 1))"
+}
+
+# next_ad_delta_version AD_FILE - the next `## vN.N.N Delta:` heading version.
+#
+# Deltas bump the MINOR and reset the patch: v13.18.0 -> v13.19.0. A patch
+# bump (v13.3.1) means amending the delta that is already there, which is a
+# deliberate act, not the next free slot -- so this never emits one.
+#
+# Companion to next_prd_section/next_req_id/next_feature_number in
+# product-clarify's pdr-lib.sh: those scan PRD.md, this scans AD.md. Split for
+# the same reason the index generators are -- the source tree is
+# skills/<group>/<skill>/ while the installed mirror is flat
+# .agents/skills/<skill>/, so no one relative source path resolves in both.
+next_ad_delta_version() {
+    local f="${1:-}"
+    local major=0 minor=0 patch=0 max=""
+    if [[ -f "$f" ]]; then
+        max=$(grep -oE '^## v[0-9]+\.[0-9]+\.[0-9]+ Delta' "$f" \
+            | sed -E 's/^## v([0-9]+)\.([0-9]+)\.([0-9]+) Delta/\1 \2 \3/' \
+            | sort -k1,1n -k2,2n -k3,3n | tail -1)
+    fi
+    if [[ -n "$max" ]]; then
+        read -r major minor patch <<< "$max"
+    fi
+    printf 'v%s.%s.0' "$major" "$((minor + 1))"
+}
+
 # Generate adr.md index from individual ADR files
 generate_adr_index() {
     local scope="${1:-drafts}"
@@ -681,7 +747,7 @@ generate_adr_index() {
         # stems render verbatim (printf %03d on them printed ADR-000).
         local disp="$id"
         if [[ "$id" =~ ^[0-9]+$ ]]; then
-            disp=$(printf "%03d" "$id")
+            disp=$(printf "%03d" "$((10#$id))")
         fi
 
         # Extract metadata from MADR frontmatter (fallback to empty + defaults)
@@ -715,6 +781,7 @@ generate_adr_index() {
 # Read a single ADR by ID
 get_adr_by_id() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local scope="${2:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
 
@@ -741,7 +808,7 @@ get_adr_by_id() {
         fi
         if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
             local padded_id
-            padded_id=$(printf "%03d" "$adr_id")
+            padded_id=$(printf "%03d" "$((10#$adr_id))")
             hybrid_file="$_d/ADR-$padded_id.md"
             if [[ -f "$hybrid_file" ]]; then
                 cat "$hybrid_file"
@@ -788,6 +855,7 @@ get_adr_count() {
 # Write a single ADR to disk (regenerates adr.md index)
 write_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local adr_content="$2"
     local scope="${3:-drafts}"
     local adr_dir="$REPO_ROOT/.adlc/$scope/adr"
@@ -796,7 +864,7 @@ write_adr() {
 
     local target_name
     if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        target_name="ADR-$(printf "%03d" "$adr_id").md"
+        target_name="ADR-$(printf "%03d" "$((10#$adr_id))").md"
     else
         case "$adr_id" in *"/"*|.*) echo "write_adr: invalid id: $adr_id" >&2; return 1;; esac
         target_name="ADR-$adr_id.md"
@@ -811,6 +879,7 @@ write_adr() {
 # Move ADR from one scope to another (e.g., drafts -> memory)
 move_adr() {
     local adr_id="$1"
+    adr_id="${adr_id#ADR-}"
     local from_scope="${2:-drafts}"
     local to_scope="${3:-memory}"
 
@@ -829,10 +898,13 @@ move_adr() {
     # Exact stem first; numeric fallback only for bare IDs.
     local src_file="$from_dir/ADR-$adr_id.md"
     if [[ ! -f "$src_file" ]] && [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        src_file="$from_dir/ADR-$(printf "%03d" "$adr_id").md"
+        src_file="$from_dir/ADR-$(printf "%03d" "$((10#$adr_id))").md"
     fi
     if [[ -f "$src_file" ]]; then
         mv "$src_file" "$to_dir/$(basename "$src_file")"
+    else
+        echo "[ERROR] move_adr: source file not found: $src_file" >&2
+        return 1
     fi
 
     # Regenerate both scopes
@@ -985,12 +1057,22 @@ action_specify() {
     echo "" >&2
     echo "After completion, run '/architect-implement' to generate full AD.md" >&2
 
+    # Ledger slot allocation: hand callers the next free slot (leading digits
+    # of the filename stem, max across drafts AND published memory -- see
+    # next_adr_number). Leaving "the highest existing number" to the agent
+    # reissued taken slots.
+    local next_adr
+    next_adr=$(next_adr_number "$REPO_ROOT")
+    echo "" >&2
+    echo "Next free ADR slot: ADR-$next_adr" >&2
+
     if $JSON_MODE; then
-        python3 - "$adr_dir" "${ARGS[*]}" "$DECOMPOSE" <<'PY'
-import json, sys
-adr_dir, context, decompose = sys.argv[1:4]
-print(json.dumps({"status": "success", "action": "specify", "adr_dir": adr_dir, "context": context, "decomposition": decompose}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg context "${ARGS[*]}" \
+          --arg decomposition "$DECOMPOSE" \
+          --arg next_adr "$next_adr" \
+          '{status:"success",action:"specify",adr_dir:$adr_dir,context:$context,decomposition:$decomposition,next_adr:$next_adr}'
     fi
 }
 
@@ -1049,11 +1131,12 @@ action_clarify() {
     echo "  5. Flag any inconsistencies or gaps" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$adr_count" "$format" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, count, fmt, context = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
-print(json.dumps({"status": "success", "action": "clarify", "adr_dir": adr_dir, "adr_count": count, "format": fmt, "context": context}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --argjson adr_count "$adr_count" \
+          --arg format "$format" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"clarify",adr_dir:$adr_dir,adr_count:$adr_count,format:$format,context:$context}'
     fi
 }
 
@@ -1072,6 +1155,26 @@ action_implement() {
         echo "❌ No ADR drafts found" >&2
         echo "Run '/architect-specify' or '/architect-init' first" >&2
         exit 1
+    fi
+
+    # Ledger slot: the next vN.N.N Delta heading in the existing AD.md.
+    local next_delta
+    next_delta=$(next_ad_delta_version "$ad_file")
+
+    if [[ "${PREVIEW:-false}" == "true" ]]; then
+        echo "Preview (no writes): would init $ad_file from template," >&2
+        echo "  generate views per sub-system, move Accepted ADRs" >&2
+        echo "  $adr_dir -> docs/adlc/memory/adr/, regenerate both indexes." >&2
+        if $JSON_MODE; then
+            jq -n -c \
+              --arg adr_dir "$adr_dir" \
+              --arg ad_file "$ad_file" \
+              --argjson adr_count "$adr_count" \
+              --arg context "${ARGS[*]}" \
+              --arg next_ad_delta_version "$next_delta" \
+              '{status:"success",action:"implement",preview:true,adr_dir:$adr_dir,ad_file:$ad_file,adr_count:$adr_count,context:$context,next_ad_delta_version:$next_ad_delta_version}'
+        fi
+        return 0
     fi
 
     echo "📐 Setting up for Architecture Description generation..." >&2
@@ -1104,11 +1207,13 @@ action_implement() {
     echo "  8. Clean up drafts if all ADRs are Accepted" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$ad_file" "$adr_count" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, ad_file, count, context = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
-print(json.dumps({"status": "success", "action": "implement", "adr_dir": adr_dir, "ad_file": ad_file, "adr_count": count, "context": context}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg ad_file "$ad_file" \
+          --argjson adr_count "$adr_count" \
+          --arg context "${ARGS[*]}" \
+          --arg next_ad_delta_version "$next_delta" \
+          '{status:"success",action:"implement",adr_dir:$adr_dir,ad_file:$ad_file,adr_count:$adr_count,context:$context,next_ad_delta_version:$next_ad_delta_version}'
     fi
 }
 
@@ -1204,12 +1309,16 @@ action_init() {
     echo "      After clarification, run /architect-implement to generate AD.md" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$tech_stack" "$existing_docs" "$decompose_status" "$subsystems_json" <<'PY'
-import json, sys
-adr_dir, tech_stack, existing_docs, decompose_status, subsystems_raw = sys.argv[1:6]
-subsystems = json.loads(subsystems_raw) if subsystems_raw.strip() else []
-print(json.dumps({"status": "success", "action": "init", "adr_dir": adr_dir, "tech_stack": tech_stack, "existing_docs": existing_docs, "source": "brownfield", "decomposition": decompose_status, "subsystems": subsystems}))
-PY
+        # _sub_raw is a prebuilt JSON array → pass via --argjson.
+        local _sub_raw="$subsystems_json"
+        [[ -z "${_sub_raw//[[:space:]]/}" ]] && _sub_raw="[]"
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg tech_stack "$tech_stack" \
+          --arg existing_docs "$existing_docs" \
+          --arg decomposition "$decompose_status" \
+          --argjson subsystems "$_sub_raw" \
+          '{status:"success",action:"init",adr_dir:$adr_dir,tech_stack:$tech_stack,existing_docs:$existing_docs,source:"brownfield",decomposition:$decomposition,subsystems:$subsystems}'
     fi
 }
 
@@ -1239,11 +1348,11 @@ action_map() {
     
     # Output structured data for AI agent to populate AD.md
     if $JSON_MODE; then
-        python3 - "$tech_stack" "$dir_structure" "$existing_docs" <<'PY'
-import json, sys
-tech_stack, dir_structure, existing_docs = sys.argv[1:4]
-print(json.dumps({"status": "success", "action": "map", "tech_stack": tech_stack, "directory_structure": dir_structure, "existing_docs": existing_docs}))
-PY
+        jq -n \
+          --arg tech_stack "$tech_stack" \
+          --arg directory_structure "$dir_structure" \
+          --arg existing_docs "$existing_docs" \
+          '{status:"success",action:"map",tech_stack:$tech_stack,directory_structure:$directory_structure,existing_docs:$existing_docs}'
     else
         echo "" >&2
         echo "📋 Mapping complete. Use this information to populate AD.md:" >&2
@@ -1301,11 +1410,10 @@ action_update() {
     echo "  - Add ADR if significant decision was made" >&2
     
     if $JSON_MODE; then
-        python3 - "$AD_FILE" "$adr_dir" <<'PY'
-import json, sys
-ad_file, adr_dir = sys.argv[1:3]
-print(json.dumps({"status": "success", "action": "update", "ad_file": ad_file, "adr_dir": adr_dir}))
-PY
+        jq -n \
+          --arg ad_file "$AD_FILE" \
+          --arg adr_dir "$adr_dir" \
+          '{status:"success",action:"update",ad_file:$ad_file,adr_dir:$adr_dir}'
     fi
 }
 
@@ -1393,19 +1501,19 @@ action_review() {
     
     if $JSON_MODE; then
         if [[ ${#issues[@]} -eq 0 ]]; then
-            python3 - "$AD_FILE" "$adr_mem_dir" <<'PY'
-import json, sys
-ad_file, adr_dir = sys.argv[1:3]
-print(json.dumps({"status": "success", "action": "review", "ad_file": ad_file, "adr_dir": adr_dir, "issues": []}))
-PY
+            jq -n \
+              --arg ad_file "$AD_FILE" \
+              --arg adr_dir "$adr_mem_dir" \
+              --argjson issues "[]" \
+              '{status:"success",action:"review",ad_file:$ad_file,adr_dir:$adr_dir,issues:$issues}'
         else
             # Format issues as JSON array
             issues_json=$(printf '%s\n' "${issues[@]}" | jq -R . | jq -s .)
-            python3 - "$AD_FILE" "$adr_mem_dir" "$issues_json" <<'PY'
-import json, sys
-ad_file, adr_dir, issues_raw = sys.argv[1:4]
-print(json.dumps({"status": "warning", "action": "review", "ad_file": ad_file, "adr_dir": adr_dir, "issues": json.loads(issues_raw)}))
-PY
+            jq -n \
+              --arg ad_file "$AD_FILE" \
+              --arg adr_dir "$adr_mem_dir" \
+              --argjson issues "$issues_json" \
+              '{status:"warning",action:"review",ad_file:$ad_file,adr_dir:$adr_dir,issues:$issues}'
         fi
     fi
 }
@@ -1494,12 +1602,24 @@ action_analyze() {
             feature_adrs_json=$(printf '%s\n' "${feature_adrs[@]}" | jq -R . | jq -s .)
         fi
 
-        python3 - "$ad_file" "$ad_exists" "$adr_dir" "$adr_exists" "$constitution_file" "$constitution_exists" "$feature_ads_json" "$feature_adrs_json" "${ARGS[*]}" <<'PY'
-import json, sys
-ad_file, ad_exists, adr_dir, adr_exists, constitution_file, constitution_exists = sys.argv[1:7]
-feature_ads_raw, feature_adrs_raw, context = sys.argv[7], sys.argv[8], sys.argv[9]
-print(json.dumps({"status": "success", "action": "analyze", "ad_file": ad_file, "ad_exists": ad_exists == "true", "adr_dir": adr_dir, "adr_exists": adr_exists == "true", "constitution_file": constitution_file, "constitution_exists": constitution_exists == "true", "feature_ads": json.loads(feature_ads_raw), "feature_adrs": json.loads(feature_adrs_raw), "context": context}))
-PY
+        # ad_exists/adr_exists/constitution_exists are literal "true"/"false"
+        # strings; pass them via --argjson as JSON booleans. feature_*_json
+        # are prebuilt JSON arrays → pass via --argjson.
+        local _ad_bool=false _adr_bool=false _const_bool=false
+        [[ "$ad_exists" == "true" ]] && _ad_bool=true
+        [[ "$adr_exists" == "true" ]] && _adr_bool=true
+        [[ "$constitution_exists" == "true" ]] && _const_bool=true
+        jq -n \
+          --arg ad_file "$ad_file" \
+          --argjson ad_exists "$_ad_bool" \
+          --arg adr_dir "$adr_dir" \
+          --argjson adr_exists "$_adr_bool" \
+          --arg constitution_file "$constitution_file" \
+          --argjson constitution_exists "$_const_bool" \
+          --argjson feature_ads "$feature_ads_json" \
+          --argjson feature_adrs "$feature_adrs_json" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"analyze",ad_file:$ad_file,ad_exists:$ad_exists,adr_dir:$adr_dir,adr_exists:$adr_exists,constitution_file:$constitution_file,constitution_exists:$constitution_exists,feature_ads:$feature_ads,feature_adrs:$feature_adrs,context:$context}'
     fi
 }
 
@@ -1596,21 +1716,26 @@ action_plan_dag() {
             else
                 subsystems_json+=","
             fi
-            subsystems_json+=$(python3 - "$s" <<'PY'
-import json, sys
-s = sys.argv[1]
-print(json.dumps({"id": s.lower().replace(" ", "-"), "name": s}), end="")
-PY
-)
+            # Parity with python s.lower().replace(" ","-") for ASCII:
+            # per-char replacement of literal spaces ONLY (tabs preserved;
+            # jq -n encodes them correctly). No sed collapsing. Non-ASCII
+            # case mappings may differ (tr is locale-dependent).
+            local lower slug
+            lower=$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')
+            slug=${lower// /-}
+            subsystems_json+=$(jq -n -c --arg id "$slug" --arg name "$s" '{id:$id,name:$name}')
         done
         subsystems_json+="]"
 
-        python3 - "$adr_dir" "$state_file" "$views_dir" "$adr_count" "$subsystems_json" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, state_file, views_dir = sys.argv[1:4]
-adr_count, subsystems_raw, context = int(sys.argv[4]), sys.argv[5], sys.argv[6]
-print(json.dumps({"status": "success", "action": "plan-dag", "adr_dir": adr_dir, "state_file": state_file, "views_dir": views_dir, "adr_count": adr_count, "subsystems": json.loads(subsystems_raw), "context": context}))
-PY
+        # subsystems_json is a prebuilt JSON array → pass via --argjson.
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --arg state_file "$state_file" \
+          --arg views_dir "$views_dir" \
+          --argjson adr_count "$adr_count" \
+          --argjson subsystems "$subsystems_json" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"plan-dag",adr_dir:$adr_dir,state_file:$state_file,views_dir:$views_dir,adr_count:$adr_count,subsystems:$subsystems,context:$context}'
     fi
 }
 
@@ -1648,11 +1773,12 @@ action_execute_dag() {
         if [[ -f "$state_file" ]]; then
             local state_content
             state_content=$(cat "$state_file")
-            python3 - "$state_file" "$views_dir" "$state_content" <<'PY'
-import json, sys
-state_file, views_dir, state_raw = sys.argv[1:4]
-print(json.dumps({"status": "success", "action": "execute-dag", "state_file": state_file, "views_dir": views_dir, "state": json.loads(state_raw)}))
-PY
+            # state_content is file CONTENT (JSON) → pass via --argjson.
+            jq -n \
+              --arg state_file "$state_file" \
+              --arg views_dir "$views_dir" \
+              --argjson state "$state_content" \
+              '{status:"success",action:"execute-dag",state_file:$state_file,views_dir:$views_dir,state:$state}'
         else
             echo "{\"status\":\"error\",\"action\":\"execute-dag\",\"error\":\"state_file_not_found\"}"
         fi
@@ -1714,21 +1840,19 @@ action_summarize() {
                 views_json+=","
             fi
             local rel_path="${f#$views_dir/}"
-            views_json+=$(python3 - "$f" "$rel_path" <<'PY'
-import json, sys
-f, rel = sys.argv[1:3]
-print(json.dumps({"path": f, "relative": rel}), end="")
-PY
-)
+            views_json+=$(jq -n --arg f "$f" --arg rel "$rel_path" '{"path":$f,"relative":$rel}' | tr -d '\n')
         done < <(find "$views_dir" -name "*.md" -type f 2>/dev/null)
         views_json+="]"
         
-        python3 - "$state_file" "$views_dir" "$ad_file" "$adr_dir" "$view_count" "$views_json" <<'PY'
-import json, sys
-state_file, views_dir, ad_file, adr_dir = sys.argv[1:5]
-view_count, views_raw = int(sys.argv[5]), sys.argv[6]
-print(json.dumps({"status": "success", "action": "summarize", "state_file": state_file, "views_dir": views_dir, "ad_file": ad_file, "adr_dir": adr_dir, "view_count": view_count, "views": json.loads(views_raw)}))
-PY
+        # views_json is a prebuilt JSON array → pass via --argjson.
+        jq -n \
+          --arg state_file "$state_file" \
+          --arg views_dir "$views_dir" \
+          --arg ad_file "$ad_file" \
+          --arg adr_dir "$adr_dir" \
+          --argjson view_count "$view_count" \
+          --argjson views "$views_json" \
+          '{status:"success",action:"summarize",state_file:$state_file,views_dir:$views_dir,ad_file:$ad_file,adr_dir:$adr_dir,view_count:$view_count,views:$views}'
     fi
 }
 
@@ -1767,15 +1891,16 @@ action_validate() {
     echo "  4. Report findings (READ-ONLY, no modifications)" >&2
 
     if $JSON_MODE; then
-        python3 - "$adr_dir" "$adr_count" "${ARGS[*]}" <<'PY'
-import json, sys
-adr_dir, adr_count, context = sys.argv[1], int(sys.argv[2]), sys.argv[3]
-print(json.dumps({"status": "success", "action": "validate", "adr_dir": adr_dir, "adr_count": adr_count, "context": context}))
-PY
+        jq -n \
+          --arg adr_dir "$adr_dir" \
+          --argjson adr_count "$adr_count" \
+          --arg context "${ARGS[*]}" \
+          '{status:"success",action:"validate",adr_dir:$adr_dir,adr_count:$adr_count,context:$context}'
     fi
 }
 
-# Execute action
+# Execute action (execution only -- see the sourcing contract above)
+if [[ "$SETUP_ARCHITECT_EXECUTED" == 1 ]]; then
 case "$ACTION" in
     specify)
         action_specify
@@ -1816,3 +1941,4 @@ case "$ACTION" in
         exit 1
         ;;
 esac
+fi  # end SETUP_ARCHITECT_EXECUTED (dispatch)

@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # product-analyze
 
+
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+
 ## What this skill does
 
 Performs **read-only** product consistency analysis:
@@ -108,7 +111,7 @@ For each PDR, check if decision appears in PRD:
 **Run the shared validator** — it owns the rule set (canonical in `architect-clarify`; the rules are documented once, in the validator itself). Do not re-derive or restate the thresholds here:
 
 ```bash
-sh: {REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/mermaid-lint.sh --tsv <artifact>
+Invoke the `architect-clarify` skill to run the shared mermaid validator
 ```
 
 Requires the `architect-clarify` skill (`adlc-cli skills add tikalk/adlc-team-skills --skill architect-clarify`). Exit code: `0` clean, `1` a HIGH (syntax-break) is present, `2` only MEDIUM (style) findings.
@@ -123,8 +126,8 @@ Requires the `architect-clarify` skill (`adlc-cli skills add tikalk/adlc-team-sk
 | `M004-empty-block` | the block carries no diagram content — comments and directives do not count |
 | `M005-empty-body` | a type is declared but no statement follows — mermaid renders it (an empty chart), so it is a MEDIUM style finding, never a syntax break; the finding sits on the type declaration |
 | `M006-malformed-gantt-header` | the gantt block's first statement (comments and directives skipped) is neither a gantt key nor a task line — a malformed first statement is a syntax break (HIGH); a task-line-shaped statement is at most MEDIUM, never a false HIGH |
-| `M007-malformed-sequence-diagram` | the sequenceDiagram's first statement (comments and directives skipped) is neither a participant nor a message — a malformed first statement is a syntax break (HIGH) |
-| `M008-malformed-entity-diagram` | the erDiagram's first statement (comments and directives skipped) is neither an entity nor a relation — a malformed first statement is a syntax break (HIGH) |
+| `M007-malformed-sequence-diagram` | the sequenceDiagram's first statement (comments and directives skipped) is not a documented sequence statement — a `participant`, a message, or a keyword such as `title`, `autonumber`, `box`, `critical` or `break`; a statement matching none of those is a syntax break (HIGH) |
+| `M008-malformed-entity-diagram` | the erDiagram's first statement (comments and directives skipped) carries a character mermaid's entity-name grammar rejects — a relation, an attribute block, or a bare name made of letters, digits, `_`, `-`, `.` and spaces is valid (mermaid parses a bare name as an isolated entity), so only an unparseable name is a syntax break (HIGH) |
 | `M009-non-mandated-keyword` | `graph` used where the product mandate requires `flowchart` |
 
 **Rules**:
@@ -214,7 +217,7 @@ Requires the `architect-clarify` skill (`adlc-cli skills add tikalk/adlc-team-sk
 - `PDR_DRAFTS_DIR` — `{REPO_ROOT}/.adlc/drafts/pdr`
 - `PRD_FILE` — `{REPO_ROOT}/docs/adlc/product/PRD.md`
 - `CONSTITUTION` — `{REPO_ROOT}/docs/adlc/memory/constitution.md` (legacy `.adlc/memory/constitution.md` fallback)
-- `MERMAID_LINTER` — `{REPO_ROOT}/.agents/skills/architect-clarify/scripts/bash/mermaid-lint.sh` (canonical in `architect-clarify`; requires that skill to be installed)
+- `MERMAID_LINTER` — the `architect-clarify` skill validator (requires that skill to be installed)
 
 ## 12-Factor Alignment
 

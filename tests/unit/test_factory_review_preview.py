@@ -695,3 +695,108 @@ def test_preview_pwsh_twin_parity_untracked_listed_once(tmp_path):
     assert ps_entries == bash_entries, (
         f"pwsh must match bash entries, bash={bash_entries!r} pwsh={ps_entries!r}"
     )
+
+
+# ── I. Multi-file provenance parity (PR #136 review) ─────────────────────
+# The PowerShell twin must flatten multi-file changed/untracked groups and
+# scan each file individually — a nested array collapses into one
+# space-joined pseudo-path that fails Test-Path and skips the whole group.
+
+
+def _changed_entry_set(out):
+    """Multiset of Changed-files entries for parity comparison."""
+    return sorted(_changed_entries(out))
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_preview_pwsh_twin_parity_two_modified_one_untracked(tmp_path):
+    """2 modified + 1 untracked, provenance in the 2nd modified file."""
+    tree = seed_tree(
+        tmp_path, {"src/a.py": "x = 1\n", "src/b.py": "y = 1\n"}
+    )
+    (tree / "src" / "a.py").write_text("x = 2\n", encoding="utf-8")
+    (tree / "src" / "b.py").write_text(
+        "y = 2\n# provenance: backports upstream fix xyz\n", encoding="utf-8"
+    )
+    (tree / "NOTES.md").write_text("scratch notes\n", encoding="utf-8")
+    bash_proc = run_preview_on_tree(PREVIEW_SH, tree)
+    ps_proc = subprocess.run(
+        ["pwsh", "-NoProfile", "-File", str(PREVIEW_PS), str(tree)],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert bash_proc.returncode == 0, bash_proc.stderr
+    assert ps_proc.returncode == 0, ps_proc.stderr
+    assert "provenance: detected" in bash_proc.stdout.lower()
+    assert "provenance: detected" in ps_proc.stdout.lower(), (
+        "pwsh must detect provenance in the second modified file"
+    )
+    assert "reference in src/b.py" in ps_proc.stdout.lower(), (
+        "pwsh must attribute provenance to src/b.py"
+    )
+    assert _changed_entry_set(ps_proc.stdout) == _changed_entry_set(
+        bash_proc.stdout
+    ) == ["NOTES.md", "src/a.py", "src/b.py"], "both twins must list each file once"
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_preview_pwsh_twin_parity_one_modified_two_untracked(tmp_path):
+    """1 modified + 2 untracked, provenance in the 2nd untracked file."""
+    tree = seed_tree(tmp_path, {"src/a.py": "x = 1\n"})
+    (tree / "src" / "a.py").write_text("x = 2\n", encoding="utf-8")
+    (tree / "u1.md").write_text("scratch one\n", encoding="utf-8")
+    (tree / "u2.md").write_text(
+        "scratch two\nprovenance: drafted from upstream design doc\n",
+        encoding="utf-8",
+    )
+    bash_proc = run_preview_on_tree(PREVIEW_SH, tree)
+    ps_proc = subprocess.run(
+        ["pwsh", "-NoProfile", "-File", str(PREVIEW_PS), str(tree)],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert bash_proc.returncode == 0, bash_proc.stderr
+    assert ps_proc.returncode == 0, ps_proc.stderr
+    assert "provenance: detected" in bash_proc.stdout.lower()
+    assert "provenance: detected" in ps_proc.stdout.lower(), (
+        "pwsh must detect provenance in the second untracked file"
+    )
+    assert "reference in u2.md" in ps_proc.stdout.lower(), (
+        "pwsh must attribute provenance to u2.md"
+    )
+    assert _changed_entry_set(ps_proc.stdout) == _changed_entry_set(
+        bash_proc.stdout
+    ) == ["src/a.py", "u1.md", "u2.md"], "both twins must list each file once"
+
+
+def test_preview_bash_two_modified_one_untracked_detects_second(tmp_path):
+    """Bash reference: 2 modified + 1 untracked detects provenance in 2nd."""
+    tree = seed_tree(
+        tmp_path, {"src/a.py": "x = 1\n", "src/b.py": "y = 1\n"}
+    )
+    (tree / "src" / "a.py").write_text("x = 2\n", encoding="utf-8")
+    (tree / "src" / "b.py").write_text(
+        "y = 2\n# provenance: backports upstream fix xyz\n", encoding="utf-8"
+    )
+    (tree / "NOTES.md").write_text("scratch notes\n", encoding="utf-8")
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert "provenance: detected" in proc.stdout.lower()
+    assert "reference in src/b.py" in proc.stdout.lower()
+    assert _changed_entry_set(proc.stdout) == [
+        "NOTES.md", "src/a.py", "src/b.py",
+    ]
+
+
+def test_preview_bash_one_modified_two_untracked_detects_second(tmp_path):
+    """Bash reference: 1 modified + 2 untracked detects provenance in 2nd."""
+    tree = seed_tree(tmp_path, {"src/a.py": "x = 1\n"})
+    (tree / "src" / "a.py").write_text("x = 2\n", encoding="utf-8")
+    (tree / "u1.md").write_text("scratch one\n", encoding="utf-8")
+    (tree / "u2.md").write_text(
+        "scratch two\nprovenance: drafted from upstream design doc\n",
+        encoding="utf-8",
+    )
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert "provenance: detected" in proc.stdout.lower()
+    assert "reference in u2.md" in proc.stdout.lower()
+    assert _changed_entry_set(proc.stdout) == ["src/a.py", "u1.md", "u2.md"]

@@ -38,6 +38,10 @@ fi
 # Safe git invocation: disable repository-local core.fsmonitor (which can
 # execute attacker-configured commands) and suppress the pager. These flags
 # apply per-invocation and do not alter the repository configuration.
+# Content diffs additionally pass --no-ext-diff --no-textconv so that
+# repository-configured external diff drivers (diff.external,
+# .gitattributes driver `command`) and textconv filters can neither execute
+# commands nor fabricate the scanned content.
 GIT_SAFE="git -c core.fsmonitor= --no-pager"
 
 # Changed files in the working tree: tracked modifications/staged changes,
@@ -73,7 +77,7 @@ if [ "$PROVENANCE_PRESENT" -eq 0 ] && [ -n "$CHANGED" ]; then
     while IFS= read -r changed_file; do
         [ -f "$changed_file" ] || continue
         if $GIT_SAFE ls-files --error-unmatch -- "$changed_file" >/dev/null 2>&1; then
-            _scan=$($GIT_SAFE diff -U0 HEAD -- "$changed_file" 2>/dev/null | grep '^+' | grep -v '^+++' || true)
+            _scan=$($GIT_SAFE diff --no-ext-diff --no-textconv -U0 HEAD -- "$changed_file" 2>/dev/null | grep '^+' | grep -v '^+++' || true)
         else
             _scan=$(cat -- "$changed_file" 2>/dev/null || true)
         fi

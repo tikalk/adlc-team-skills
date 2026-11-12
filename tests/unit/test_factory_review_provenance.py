@@ -196,3 +196,96 @@ def test_provenance_ordinary_change_stays_missing(tmp_path):
     assert "missing" in combined, (
         "ordinary change without provenance evidence must request provenance"
     )
+
+
+def test_provenance_diff_external_cannot_execute_or_fabricate(tmp_path):
+    """Repository-configured diff.external must not execute or fabricate.
+
+    Regression (PR #136 review): the added-line content scan invokes
+    `git diff -U0`, which honors diff.external. Without --no-ext-diff the
+    driver command executes and its output can forge provenance detection.
+    """
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    marker = tmp_path / "pwned-ext"
+    subprocess.run(
+        ["git", "config", "diff.external", f"touch {marker}"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.external"],
+            cwd=tree, capture_output=True,
+        )
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert not marker.exists(), "diff.external command must not execute"
+    assert "missing" in combined, "no provenance was added, must stay missing"
+
+
+def test_provenance_diff_external_cannot_fabricate_detection(tmp_path):
+    """A diff.external driver emitting provenance lines must not forge detection."""
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "config", "diff.external",
+         "printf '+provenance: fabricated by external diff\\n'"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.external"],
+            cwd=tree, capture_output=True,
+        )
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert "missing" in combined, (
+        "fabricated external-diff output must not count as provenance"
+    )
+    assert "provenance: detected" not in combined
+
+
+def test_provenance_gitattributes_diff_driver_cannot_execute(tmp_path):
+    """A .gitattributes diff driver `command` must not execute."""
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    marker = tmp_path / "pwned-driver"
+    (tree / ".gitattributes").write_text("*.py diff=evil\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "config", "diff.evil.command", f"touch {marker}"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.evil.command"],
+            cwd=tree, capture_output=True,
+        )
+    assert proc.returncode == 0, proc.stderr
+    assert not marker.exists(), "gitattributes diff driver must not execute"
+
+
+def test_provenance_textconv_cannot_execute(tmp_path):
+    """A diff textconv filter must not execute during the content scan."""
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    marker = tmp_path / "pwned-textconv"
+    (tree / ".gitattributes").write_text("*.py diff=tc\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "config", "diff.tc.textconv", f"touch {marker}"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.tc.textconv"],
+            cwd=tree, capture_output=True,
+        )
+    assert proc.returncode == 0, proc.stderr
+    assert not marker.exists(), "textconv filter must not execute"

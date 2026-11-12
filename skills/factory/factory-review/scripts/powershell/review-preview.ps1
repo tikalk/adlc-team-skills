@@ -45,6 +45,10 @@ $ResolvedTree = (Resolve-Path -Path $Tree).Path
 # Safe git invocation: disable repository-local core.fsmonitor (which can
 # execute attacker-configured commands) and suppress the pager. These flags
 # apply per-invocation and do not alter the repository configuration.
+# Content diffs additionally pass --no-ext-diff --no-textconv so that
+# repository-configured external diff drivers (diff.external,
+# .gitattributes driver `command`) and textconv filters can neither execute
+# commands nor fabricate the scanned content.
 # Changed files in the working tree: tracked modifications/staged changes,
 # plus untracked, non-ignored files (git diff --name-only HEAD misses
 # untracked files). All commands run against $ResolvedTree.
@@ -56,7 +60,7 @@ if ($head) {
     $changed = ""
     $untracked = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
 }
-$changed = @($changed, $untracked) | Where-Object { [bool]$_ }
+$changed = @(@($changed) + @($untracked) | Where-Object { $_ -and $_.Length -gt 0 })
 
 # Provenance: detected by inspecting PROVENANCE.md content and the contents
 # of changed files for provenance references. A filename containing
@@ -83,15 +87,15 @@ if (Test-Path -Path $provenancePath -PathType Leaf) {
 # unrelated edit to such a file must not suppress the missing-provenance
 # request. Untracked files are entirely new, so their full content counts.
 if ($provenancePresent -eq 0 -and $changed) {
-    foreach ($changedFile in $changed) {
+    foreach ($changedFile in @($changed)) {
         $fullPath = Join-Path $ResolvedTree $changedFile
-        if (Test-Path -Path $fullPath -PathType Leaf) {
+        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
             git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --error-unmatch -- $changedFile 2>$null | Out-Null
             if ($?) {
-                $addedLines = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" diff -U0 HEAD -- $changedFile 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' }
+                $addedLines = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" diff --no-ext-diff --no-textconv -U0 HEAD -- $changedFile 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' }
                 $scanText = $addedLines -join "`n"
             } else {
-                $scanText = Get-Content -Path $fullPath -Raw 2>$null
+                $scanText = Get-Content -LiteralPath $fullPath -Raw 2>$null
             }
             if ($scanText -match 'which files came from where|provenance') {
                 $provenancePresent = 1

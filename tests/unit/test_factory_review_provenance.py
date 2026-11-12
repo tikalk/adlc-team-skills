@@ -11,6 +11,7 @@ path and is not defined here.
 These tests FAIL on the pre-implementation tree and PASS once implemented.
 """
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -18,12 +19,23 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 PREVIEW_SH = ROOT / "skills/factory/factory-review/scripts/bash/review-preview.sh"
+PREVIEW_PS = ROOT / "skills/factory/factory-review/scripts/powershell/review-preview.ps1"
 
 
 def run_preview(tree, input_text=None):
     return subprocess.run(
         ["bash", str(PREVIEW_SH), str(tree)],
         input=input_text,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+
+def run_preview_pwsh(tree):
+    """Run the PowerShell twin directly (skipped without pwsh)."""
+    return subprocess.run(
+        ["pwsh", "-NoProfile", "-File", str(PREVIEW_PS), str(tree)],
         capture_output=True,
         text=True,
         timeout=30,
@@ -289,3 +301,102 @@ def test_provenance_textconv_cannot_execute(tmp_path):
         )
     assert proc.returncode == 0, proc.stderr
     assert not marker.exists(), "textconv filter must not execute"
+
+
+# ── PowerShell external-diff security (PR #136 follow-up) ─────────────────
+# Mirror of the bash security tests above, exercising the pwsh twin
+# directly. Each asserts the marker file is absent (or fabricated output
+# is not detected) after running review-preview.ps1 against a tree whose
+# local git config / .gitattributes defines the hostile driver.
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_provenance_pwsh_diff_external_cannot_execute(tmp_path):
+    """pwsh twin: repo-configured diff.external must not execute."""
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    marker = tmp_path / "pwned-ext-ps"
+    subprocess.run(
+        ["git", "config", "diff.external", f"touch {marker}"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview_pwsh(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.external"],
+            cwd=tree, capture_output=True,
+        )
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert not marker.exists(), "pwsh: diff.external command must not execute"
+    assert "missing" in combined, "no provenance was added, must stay missing"
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_provenance_pwsh_diff_external_cannot_fabricate(tmp_path):
+    """pwsh twin: driver output emitting provenance must not forge detection."""
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "config", "diff.external",
+         "printf '+provenance: fabricated by external diff\\n'"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview_pwsh(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.external"],
+            cwd=tree, capture_output=True,
+        )
+    combined = (proc.stdout + proc.stderr).lower()
+    assert proc.returncode == 0, proc.stderr
+    assert "missing" in combined, (
+        "pwsh: fabricated external-diff output must not count as provenance"
+    )
+    assert "provenance: detected" not in combined
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_provenance_pwsh_gitattributes_diff_driver_cannot_execute(tmp_path):
+    """pwsh twin: a .gitattributes diff driver `command` must not execute."""
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    marker = tmp_path / "pwned-driver-ps"
+    (tree / ".gitattributes").write_text("*.py diff=evil\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "config", "diff.evil.command", f"touch {marker}"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview_pwsh(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.evil.command"],
+            cwd=tree, capture_output=True,
+        )
+    assert proc.returncode == 0, proc.stderr
+    assert not marker.exists(), "pwsh: gitattributes diff driver must not execute"
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="pwsh not installed locally")
+def test_provenance_pwsh_textconv_cannot_execute(tmp_path):
+    """pwsh twin: a diff textconv filter must not execute during the scan."""
+    tree = seed_tree(tmp_path, {"src/a.py": "print(1)\n"})
+    (tree / "src" / "a.py").write_text("print(2)\n", encoding="utf-8")
+    marker = tmp_path / "pwned-textconv-ps"
+    (tree / ".gitattributes").write_text("*.py diff=tc\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "config", "diff.tc.textconv", f"touch {marker}"],
+        cwd=tree, capture_output=True, check=True,
+    )
+    try:
+        proc = run_preview_pwsh(tree)
+    finally:
+        subprocess.run(
+            ["git", "config", "--unset", "diff.tc.textconv"],
+            cwd=tree, capture_output=True,
+        )
+    assert proc.returncode == 0, proc.stderr
+    assert not marker.exists(), "pwsh: textconv filter must not execute"

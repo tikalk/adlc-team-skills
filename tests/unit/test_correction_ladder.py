@@ -91,4 +91,3 @@ def test_mechanical_checkable_never_prose_default():
                          text, re.IGNORECASE), (
             f"{path.name} must forbid prose-CDR default for mechanical issues"
         )
-

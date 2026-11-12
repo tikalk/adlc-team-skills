@@ -33,11 +33,11 @@ def test_marker_region_only_and_sha_validation(tmp_path):
     fx = tmp_path / "v.txt"
     run = ["bash", str(SCRIPT)]
     fx.write_text(bodies_prose)
-    p = subprocess.run(["bash", "skills/factory/factory-review/scripts/check-verdict-head.sh",
+    p = subprocess.run(["bash", "skills/factory/factory-review/scripts/bash/check-verdict-head.sh",
                         "--verdicts", str(fx), "--pr-head", H1], capture_output=True, text=True)
     assert p.returncode == 0, "prose-only head must not count as verdict"
     fx.write_text(bodies_bad)
-    p = subprocess.run(["bash", "skills/factory/factory-review/scripts/check-verdict-head.sh",
+    p = subprocess.run(["bash", "skills/factory/factory-review/scripts/bash/check-verdict-head.sh",
                         "--verdicts", str(fx), "--pr-head", H1], capture_output=True, text=True)
     assert p.returncode == 1, "malformed SHA must fail"
 

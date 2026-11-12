@@ -362,4 +362,3 @@ The output makes a prose CDR or context rule the primary action (even if a vehic
 - **Scenario**: Vague vehicle
 - **Input Context**: Same secret-exposure recurrence.
 - **Agent Output**: "We should enforce this better going forward — consider adding some check somewhere."
-

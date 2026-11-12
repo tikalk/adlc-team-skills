@@ -9,10 +9,9 @@
  * KNOWN GAP: scenarios 5 and 6 below use purely literal expected values
  * (e.g. `3 * 4`, `5 * 2`) that share no identifier with test scope — outside
  * what the identifier-scope heuristic in oracle-detector.js can detect (see
- * docs/oracle-independence-detection.md). The run() harness below also has
- * an inverted pass/fail formula for "should-detect" scenarios: it currently
- * reports all 8 scenarios as passing regardless of what the detector
- * actually finds. Both are documented gaps, not fixed here.
+ * docs/oracle-independence-detection.md). They are tagged `knownGap: true`:
+ * run() still executes them and reports their real result, but counts them
+ * separately so the in-scope score stays truthful.
  */
 
 const { detectOracleLaundering, detectSelfReferentialGrader } = require('../skills/factory/factory-review/references/oracle-detector');
@@ -104,9 +103,10 @@ module.exports = {
       grader: function(code) {
         const findings = detectOracleLaundering(code);
         const oracleWithRationale = findings.filter(f => f.type === 'oracle-laundering' && f.allowed);
+        const unjustified = findings.filter(f => f.type === 'oracle-laundering' && !f.allowed);
 
         return {
-          pass: oracleWithRationale.length >= 0,
+          pass: unjustified.length === 0,
           details: {
             findingsCount: findings.length,
             allowedWithRationale: oracleWithRationale.length > 0
@@ -151,6 +151,7 @@ module.exports = {
     // ============================================================================
     {
       name: 'multiple assertions with oracle detection',
+      knownGap: true,
       code: `
         const multiply = (a, b) => a * b;
         const double = (x) => x * 2;
@@ -184,6 +185,7 @@ module.exports = {
     // ============================================================================
     {
       name: 'oracle in expect().toBe() syntax',
+      knownGap: true,
       code: `
         const calculate = (x) => x * 2;
 
@@ -280,11 +282,14 @@ module.exports = {
     for (const scenario of this.scenarios) {
       try {
         const graderResult = scenario.grader(scenario.code);
-        const passed = graderResult.pass === (scenario.expected.verdict === 'PASS');
+        // grader.pass already means "this scenario's expected outcome held"
+        // (detected, for should-detect scenarios; nothing flagged, for should-pass).
+        const passed = graderResult.pass;
 
         results.push({
           scenario: scenario.name,
           passed,
+          knownGap: !!scenario.knownGap,
           expected: scenario.expected.verdict,
           actual: graderResult.pass ? 'PASS' : 'FAIL',
           details: graderResult.details,
@@ -303,6 +308,7 @@ module.exports = {
         results.push({
           scenario: scenario.name,
           passed: false,
+          knownGap: !!scenario.knownGap,
           error: error.message
         });
         if (verbose) {
@@ -311,12 +317,20 @@ module.exports = {
       }
     }
 
+    const inScope = results.filter(r => !r.knownGap);
+    const gaps = results.filter(r => r.knownGap);
+    const inScopePassed = inScope.filter(r => r.passed).length;
+    const gapsPassed = gaps.filter(r => r.passed).length;
+
     return {
       total: results.length,
       passed: results.filter(r => r.passed).length,
       failed: results.filter(r => !r.passed).length,
+      inScope: { total: inScope.length, passed: inScopePassed },
+      knownGaps: { total: gaps.length, passed: gapsPassed },
       results,
-      summary: `${results.filter(r => r.passed).length}/${results.length} scenarios passed`
+      summary: `${inScopePassed}/${inScope.length} in-scope scenarios passed; ` +
+        `${gapsPassed}/${gaps.length} known-gap scenarios passed`
     };
   }
 };

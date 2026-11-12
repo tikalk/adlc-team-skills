@@ -38,18 +38,21 @@ implementation under test, a materially different and more complex
 algorithm than what's implemented here.
 
 `evals/oracle-laundering.eval.js` scenarios 5 and 6 exercise exactly this
-pattern and will not show a finding — this is expected, not a regression.
-The eval file's own `run()` harness also has an inverted pass/fail formula
-for "should-detect" scenarios (it reports all 8 scenarios as passing
-regardless of what the detector actually finds); this is a known bug in the
-harness, not reworked as part of this change.
+pattern. They are tagged `knownGap` and will not show a finding — this is
+expected, not a regression. The harness's `run()` executes them, reports
+their real result, and counts them separately from the in-scope scenarios.
+Current measured result: 6/6 in-scope scenarios pass; 0/2 known-gap
+scenarios pass.
 
 ## Validation history
 
 An earlier pass claimed "8/8 eval scenarios passed, 100%" — direct execution
 showed that claim was false: the detector produced zero real findings in any
 scenario, and the harness's pass/fail arithmetic happened to agree with a
-non-functional detector by coincidence for every scenario. Four real bugs
+non-functional detector by coincidence for every scenario. The harness's
+`run()` formula was inverted for should-detect scenarios and has since been
+corrected, and the scenario that justified a snapshot with a rationale
+comment no longer uses an always-true check. Four real bugs
 were found and fixed by running the detector against realistic code rather
 than trusting the harness's reported result:
 

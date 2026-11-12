@@ -60,18 +60,6 @@ function detectOracleLaundering(testCode) {
       attachComment: true
     });
 
-    // Track function definitions and their parameters
-    const functionScopes = new Map();
-
-    traverse(ast, {
-      FunctionDeclaration(path) {
-        functionScopes.set(path.node.name, {
-          params: path.node.params.map(p => p.name),
-          loc: path.node.loc
-        });
-      }
-    });
-
     // Find all test calls and their assertions
     traverse(ast, {
       CallExpression(path) {
@@ -83,7 +71,7 @@ function detectOracleLaundering(testCode) {
           if (testCallback && (testCallback.type === 'FunctionExpression' ||
               testCallback.type === 'ArrowFunctionExpression')) {
             // Find assertions within this test
-            analyzeTestBlock(testCallback, findings, functionScopes);
+            analyzeTestBlock(testCallback, findings);
           }
         }
       }
@@ -114,7 +102,7 @@ function isTestDeclaration(callee) {
 /**
  * Analyze assertions within a test block
  */
-function analyzeTestBlock(testFn, findings, functionScopes) {
+function analyzeTestBlock(testFn, findings) {
   // Extract all identifiers used in this test
   const testIdentifiers = new Set();
 

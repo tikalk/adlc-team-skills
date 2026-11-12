@@ -230,7 +230,7 @@ prose_struct_pairs() {
 
 live_head_for() {
     _repo="$1"; _pr="$2"
-    _prjson=$(gh_json "repos/$_repo/pulls/$_pr" "the PR"); 
+    _prjson=$(gh_json "repos/$_repo/pulls/$_pr" "the PR");
     printf '%s' "$_prjson" | jq -r '.head.sha // empty' | head -1
 }
 

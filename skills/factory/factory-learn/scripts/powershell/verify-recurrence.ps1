@@ -748,4 +748,3 @@ switch ($__cmd) {
         Invoke-RecurrenceView $__ledger
     }
 }
-

@@ -31,6 +31,9 @@ jobs:
         # explicitly instead of relying on that as a side effect.
         run: |
           pip install pytest==9.1.1 deepeval==4.1.5 pyyaml==6.0.3
+      - name: Install PowerShell
+        run: |
+          sudo apt-get update && sudo apt-get install -y powershell
       - name: Run Pytest
         run: |
           pytest tests/ evals/promptfoo/tests/ -v

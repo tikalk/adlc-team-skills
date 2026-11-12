@@ -1,0 +1,9 @@
+{
+  "name": "adlc-team-skills",
+  "private": true,
+  "description": "JS dependencies for skills/factory/factory-review's oracle-independence detector (AST analysis via Babel). The repo's own test/eval tooling is Python (see requirements.txt); this manifest exists only for that one detector.",
+  "devDependencies": {
+    "@babel/parser": "8.1.0",
+    "@babel/traverse": "8.1.0"
+  }
+}

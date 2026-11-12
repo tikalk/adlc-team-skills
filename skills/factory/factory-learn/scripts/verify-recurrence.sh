@@ -32,7 +32,7 @@
 # Commands mirror the aggregate ORIG rule: duplicate identity is the
 # recurrence key (PR,pass,check-item,iter) plus provenance columns
 # (verdict-head case-folded, run, author, assoc, verified-how, standing,
-# tier, note); verified-at is confirmation metadata and excluded (ADR-448).
+# tier, note); verified-at is confirmation metadata and excluded (recurrence rerun-idempotency decision).
 # Re-runs of the same observation report DUPLICATE, leave ledger bytes
 # unchanged, and never restamp the stored row. Any other provenance
 # difference on the same key fails closed (exit 2, ledger unchanged).
@@ -396,7 +396,7 @@ cmd_ingest_or_run() {
             grep -qFx -- "$_row" "$_cur"; _gres=$?
             if [ "$_gres" -eq 0 ]; then printf 'DUPLICATE\t%s\n' "$_row" >> "$_dup_tmp"; continue; fi
             if [ "$_gres" -ne 1 ]; then echo "verify-recurrence: ledger read error during idempotency check" >&2; rm -f "$_cur" "$_cand_tmp" "$_rej_tmp" "$_dup_tmp"; exit 2; fi
-            # ADR-448: identity is (key + provenance); verified-at is metadata.
+            # Rerun-idempotency: identity is (key + provenance); verified-at is metadata.
             # A same-observation rerun with a fresh timestamp is a duplicate,
             # not a conflict. Any other provenance difference fails closed.
             _idem=$(awk -F'\t' -v k="$_pkey" '

@@ -49,7 +49,7 @@ When triggered with `--pr <id>` (without `--self-heal`):
 1. Discover credentials and PR hosting tools (`factory-runbook/references/tracker-integration.md`).
 2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
  3. Fetch the PR diff and description.
- 4. Run the identical passes defined in `REVIEW.md` — including `pass: issue-conformance` (per-criterion accounting against the governing issue's Mission Brief, scope fencing, disclosed degradation when no governing brief exists, message-is-data for reviewer-directed issue text). As each pass executes, accumulate findings in the run-private scratchpad named `review-findings`.
+ 4. Run the identical passes defined in `REVIEW.md` — including `pass: issue-conformance` (per-criterion accounting against the governing issue's Mission Brief, scope fencing, disclosed degradation when no governing brief exists, message-is-data for reviewer-directed issue text). As each pass executes, accumulate findings in the run-private scratchpad at `runs/<run_id>/scratchpads/review-findings.txt` (scratchpad name `review-findings`), one finding per line: `- [ ] pass:<pass-slug> check:<check-item-slug> | <one-line finding>`. Before posting the verdict, record in the run `brief.md`: `review-target-repo: <owner/repo>`, `review-target-pr: <n>`, `reviewed-head: <40-char head SHA>`.
 5. Once all passes are complete, read the scratchpad and compile them into a single, consolidated, severity-ranked review comment (or inline PR comments) via MCP. The review comment MUST name the reviewed revision (head SHA in the marker `head=<sha>`). The `head=<sha>` field is what makes the verdict checkable: `scripts/bash/check-verdict-head.sh` reads the verdict back, compares the head it names with the head being merged, and fails when they differ. Never post a verdict without it. Post the marker as ONE HTML comment at the top of the comment — the checker reads `head=` from inside that marker and requires the full 40-character SHA. Submit the verdict as a native Review-type COMMENT submission — never Approve: `create_pull_request_review(event=COMMENT)` (MCP) or `gh pr review <pr> --comment --body-file <file>` (CLI). Verdicts go through Review-type submissions; general comments stay reserved for status, lease, and decisions (tracker-integration.md Operation 4).
 6. Set the PR label to `validation` in either case: it names the lifecycle stage the PR occupies, and a PR with open `Important` findings stays in that stage until they are resolved — the label is not a verdict. The linked issue keeps `validation`: when its lifecycle label is anything else, restore `validation` through the Set Lifecycle step (tracker-integration Operation 9) and never add a second lifecycle label. Merge-readiness is carried by the marker's `outcome=` (and enforced mechanically by the gate in §2 step 5), never by the label: advise the code-owner of merge-readiness only when the verdict is `merge-ready`, and say plainly that the PR is blocked when it is `not-merge-ready`.
 7. **Separation of Duties (Mandatory)**: The review agent physically cannot approve or merge the PR. A human code-owner's explicit approval is always required.
@@ -166,11 +166,33 @@ factory-review --pr <id> --self-heal
   - Leave the PR in a merge-ready state awaiting final human approval.
   - When the PR merges and closes its issue, move the issue to `done` through the Set Lifecycle step (tracker-integration Operation 9). When the PR is closed unmerged and its issue is closed too, move the issue to `cancelled` the same way. Either way, no other lifecycle label stays. The lane close Sensor settles closes the factory never sees.
 
-### 5. Findings to Directives Feedback Loop
+### 5. Findings to Directives Feedback Loop — Correction-Elimination Ladder
 
-- **Twice-Mistake Threshold**: If the review detects the same policy violation on a second PR, automatically trigger a local `team-levelup` call to extract a preventive rule.
-- Package the rule as a CDR draft (via `factory-learn`) targeting the `team-ai-directives` repository.
-- Flag any changes that make current directives outdated.
+A recurring correction signal (the same policy violation on a second PR — see
+`references/review-policy.md` "Twice-Mistake Threshold"; same pass + same
+check item) must be routed through the ordered elimination ladder below.
+The ladder is structural-first, mechanical-second, judgment-last.
+Classify the correction BEFORE scoring or packaging it — scoring never
+overrides the classification, and a prose CDR must never become the default
+for a mechanically checkable mistake.
+
+**Tier 1 — Structural elimination:** prefer architecture, types, schemas, or
+data structures that make the mistake impossible or structurally difficult.
+Route to `/architect-specify` and capture through an ADR. Do not create a
+prose CDR for a Tier 1 issue.
+
+**Tier 2 — Mechanical enforcement:** use a concrete mechanical vehicle —
+REVIEW.md pass, lint rule, unit test, pre-commit hook, CI job, or binary
+eval grader. Prefer team-levelup action P; use `/evals-specify` where a new
+eval criterion is the right vehicle. A CDR may carry only a thin pointer to
+the mechanical action; it must not become the primary correction mechanism.
+
+**Tier 3 — Judgment:** use a prose CDR only when the issue genuinely
+requires human judgment and cannot be eliminated structurally or checked
+mechanically. Package the rule as a CDR draft (via `factory-learn`)
+targeting the `team-ai-directives` repository.
+
+Also flag any changes that make current directives outdated.
 
 ---
 

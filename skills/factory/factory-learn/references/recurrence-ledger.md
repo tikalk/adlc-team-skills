@@ -19,7 +19,7 @@ Lives in `adlc-team-skills` where findings originate.
 
 Trusted because committed here and reviewed via normal PR review. No
 cryptographic tamper detection. Protection: append-only, observation-identity
-idempotence (ADR-448: duplicate = same recurrence key + same provenance with
+idempotence (recurrence rerun-idempotency decision: duplicate = same recurrence key + same provenance with
 `verified-at` excluded as confirmation metadata; reruns report DUPLICATE and
 never restamp the stored row), abort on provenance conflict, strict
 branch-freshness merge rules. Git history is the audit trail. `memory.jsonl` is untouched.

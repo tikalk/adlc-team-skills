@@ -66,7 +66,7 @@ def comment(ts, who, assoc, body):
 def test_run_appends_valid_live_head(tmp_path):
     """Same-second rerun: byte-identical candidate re-confirmed as duplicate.
 
-    ADR-448 observation identity: duplicate = same key + same provenance with
+    Recurrence rerun-idempotency decision — observation identity: duplicate = same key + same provenance with
     verified-at excluded. A rerun in the same UTC second is byte-identical
     and takes the exact-match shortcut; the cross-second case is pinned by
     test_run_rerun_cross_second_is_duplicate below.
@@ -94,7 +94,7 @@ def test_run_appends_valid_live_head(tmp_path):
 
 
 def test_run_rerun_cross_second_is_duplicate(tmp_path):
-    """Cross-second rerun: fresh verified-at is still a duplicate (ADR-448).
+    """Cross-second rerun: fresh verified-at is still a duplicate (recurrence rerun-idempotency decision).
 
     Deterministic clock injection (no real sleep): a `date` shim on PATH
     returns T1 on the first run and T2 != T1 on the second for the same
@@ -139,7 +139,7 @@ def test_run_rerun_cross_second_is_duplicate(tmp_path):
 
 
 def test_run_rerun_near_miss_provenance_conflicts(tmp_path, monkeypatch):
-    """Near-miss provenance differences on the same key fail closed (ADR-448).
+    """Near-miss provenance differences on the same key fail closed (recurrence rerun-idempotency).
 
     Same key (12, ci, vh, iter 0), changed verdict-head / author / run /
     standing in turn: each rerun must exit 2, name the conflicting key on

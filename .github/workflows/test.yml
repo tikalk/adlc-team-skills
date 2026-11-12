@@ -32,6 +32,12 @@ jobs:
         # explicitly instead of relying on that as a side effect.
         run: |
           pip install pytest==9.1.1 deepeval==4.1.5 pyyaml==6.0.3
+      - name: Install PowerShell
+        # Pinned version so the PowerShell twin-parity tests execute in CI.
+        run: |
+          curl -fsSLO "https://github.com/PowerShell/PowerShell/releases/download/v7.7.0/powershell_7.7.0-1.deb_amd64.deb"
+          sudo dpkg -i powershell_7.7.0-1.deb_amd64.deb || sudo apt-get install -f -y
+          pwsh -NoProfile -Command '$PSVersionTable.PSVersion'
       - name: Run Pytest
         run: |
           pytest tests/ evals/promptfoo/tests/ -v
@@ -105,7 +111,7 @@ jobs:
             echo "no PR number (push event): ledger-writer label gate skipped"
             exit 0
           fi
-          writers=$(git diff --name-only origin/main...HEAD -- skills/factory/factory-learn/references/recurrence-ledger.tsv skills/factory/factory-learn/scripts/verify-recurrence.sh)
+          writers=$(git diff --name-only origin/main...HEAD -- skills/factory/factory-learn/references/recurrence-ledger.tsv skills/factory/factory-learn/scripts/bash/verify-recurrence.sh)
           if [ -z "$writers" ]; then
             echo "no writer-path changes: ledger-writer label not required"
             exit 0

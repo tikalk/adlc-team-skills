@@ -2,7 +2,7 @@
 import subprocess, textwrap
 from pathlib import Path
 ROOT = Path(__file__).parent.parent.parent
-SCRIPT = ROOT / "skills/factory/factory-learn/scripts/verify-recurrence.sh"
+SCRIPT = ROOT / "skills/factory/factory-learn/scripts/bash/verify-recurrence.sh"
 LEDGER = ROOT / "skills/factory/factory-learn/references/recurrence-ledger.tsv"
 LEARN = ROOT / "skills/factory/factory-learn/SKILL.md"
 REVIEW = ROOT / "skills/factory/factory-review/SKILL.md"

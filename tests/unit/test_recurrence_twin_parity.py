@@ -301,30 +301,16 @@ def test_retire_locked_and_view_ps(tmp_path):
     assert "rows=1" in (p.stdout + p.stderr)
     left = ledger.read_text()
     assert r1 not in left and r2 in left
-    assert not (tmp_path / "ledger.tsv.lock").exists() or True
-    # retire uses the lock: hold the sidecar exclusively, contender must fail
-    lock_path = tmp_path / "ledger2.tsv.lock"
-    ledger2 = tmp_path / "ledger2.tsv"
-    ledger2.write_text(hdr + "\n" + r1 + "\n")
-    fs = open(str(lock_path), "w")
-    try:
-        import fcntl
-        fcntl.flock(fs.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        held = True
-    except Exception:
-        held = False
-    try:
-        vl = run_ps(["recurrence-view", "--ledger", str(ledger)], env)
-        assert vl.returncode == 0, vl.stdout + vl.stderr
-        assert "RECURRING\tci\tvh" in vl.stdout
-    finally:
-        try:
-            if held:
-                import fcntl
-                fcntl.flock(fs.fileno(), fcntl.LOCK_UN)
-        except Exception:
-            pass
-        fs.close()
+    # retire used and released the lock: recurrence-view now sees the
+    # remaining row from a *second* PR as recurring.
+    vl = run_ps(["recurrence-view", "--ledger", str(ledger)], env)
+    assert vl.returncode == 0, vl.stdout + vl.stderr
+    assert "RECURRING\tci\tvh" not in vl.stdout, "only one PR left: no recurrence"
+    with ledger.open("a") as f:
+        f.write(r1.replace("12\t", "14\t", 1) + "\n")
+    vl2 = run_ps(["recurrence-view", "--ledger", str(ledger)], env)
+    assert vl2.returncode == 0, vl2.stdout + vl2.stderr
+    assert "RECURRING\tci\tvh" in vl2.stdout
 
 
 @requires_pwsh

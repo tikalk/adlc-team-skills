@@ -1,13 +1,23 @@
 # factory-review pre-PR verdict preview — PowerShell twin (workspace issue 45, review-contract intake + pre-PR verdict preview records).
 #
-# Renders the would-be verdict against the working tree. ADVISORY ONLY:
+# Deterministic envelope only: collects changed files, sanitizes
+# marker-like tokens, runs provenance intake, renders reviewer-supplied
+# evidence verbatim. Generates no findings. The six owner-confirmed passes
+# are executed by the single reviewer following SKILL.md section 6; the
+# reviewer passes evidence via -EvidenceFile <path> (OUTSIDE the target
+# tree) or "-" for stdin. Without evidence input every pass reports
+# "unverified: reviewer procedure not invoked in this shell-only run".
+#
+# Renders the deterministic envelope against the working tree.
+# ADVISORY ONLY:
 #   * labeled "draft" — never a verdict
 #   * no head=<sha> marker, no outcome=, no important=
+#   * no bare factory-review:step=review marker (incl. inside filenames)
 #   * no head binding — not checked by check-verdict-head.sh
-#   * no tracker writes — read-only passes reused, output to stdout only
+#   * no tracker writes — read-only, output to stdout only
 #   * never posted to the tracker; no sensor may read this output
 #
-# Usage: review-preview.ps1 [working-tree]   # default: current directory
+# Usage: review-preview.ps1 [working-tree] [-EvidenceFile <path>|-]
 #
 # Exits 0 on success. Missing provenance is reported (requested), but the
 # script still exits 0 — it never blocks on provenance, it only records that
@@ -15,10 +25,33 @@
 
 [CmdletBinding()]
 param(
-    [string]$Tree = "."
+    [string]$Tree = ".",
+    [string]$EvidenceFile = ""
 )
 
+# Twin parity contract (runbook wording):
+#   Twin parity covers scripted behavior only: given the same tree and the
+#   same evidence input, both twins emit the same security-relevant posture
+#   (draft label, no verdict markers, no tracker writes, exit code, Changed
+#   files multiset, provenance status, sanitized evidence rendering).
+# Judgment lives in the reviewer procedure (SKILL.md section 6), not in the
+# scripts — no verdict logic is duplicated here.
+
 $ErrorActionPreference = "Stop"
+
+# Evidence argument: --evidence-file <path> | --evidence-file=<path> | -
+# may arrive positionally (twin CLI parity with the bash script).
+foreach ($__arg in $args) {
+    if ($__arg -eq "--evidence-file") { $EvidenceFile = "__NEXT__" }
+    elseif ($EvidenceFile -eq "__NEXT__") { $EvidenceFile = [string]$__arg }
+    elseif ($__arg -like "--evidence-file=*") { $EvidenceFile = $null
+        $EvidenceFile = $__arg.Substring("--evidence-file=".Length) }
+    elseif ($__arg -eq "-" -and [string]::IsNullOrEmpty($EvidenceFile)) { $EvidenceFile = "-" }
+    elseif ($__arg -eq "-h" -or $__arg -eq "--help") {
+        Write-Output "Usage: review-preview.ps1 [working-tree] [-EvidenceFile <path>|-]"
+        exit 0
+    }
+}
 
 # Resolve the target path once to an absolute path. All subsequent checks use
 # this resolved path; we never rely on Push-Location/Pop-Location which can
@@ -28,14 +61,15 @@ $ErrorActionPreference = "Stop"
 # Reused for the error message below and every printed file/tree display.
 # The placeholder drops the '=' entirely ("outcome [redacted]"): the draft
 # grader matches bare substrings like "outcome=", so even a "<value>"
-# placeholder would still match. NOTE: keep this replacement list identical
-# to the sed program in the bash twin (SAFE_TREE_LABEL, SAFE_CHANGED,
-# SAFE_PROVENANCE_SOURCE).
+# placeholder would still match. Sanitize the bare review marker too.
+# NOTE: keep this replacement list identical to the sed program in the
+# bash twin (safe_label / SAFE_*): head (2+ hex), outcome, important,
+# bare factory-review:step=review marker.
 function Sanitize-PreviewLabel([string]$Label) {
-    return $Label -replace 'head=[0-9a-fA-F]*', 'head [redacted]' -replace 'outcome=[a-z-]*', 'outcome [redacted]' -replace 'important=[0-9]*', 'important [redacted]'
+    return $Label -replace 'head=[0-9a-fA-F][0-9a-fA-F]*', 'head [redacted]' -replace 'outcome=[a-z-]*', 'outcome [redacted]' -replace 'important=[0-9]*', 'important [redacted]' -replace 'factory-review:step=review', 'factory-review:step=[redacted]'
 }
 
-if (-not (Test-Path -Path $Tree -PathType Container)) {
+if (-not (Test-Path -LiteralPath $Tree -PathType Container)) {
     $SafeTreeArg = Sanitize-PreviewLabel $Tree
     Write-Error "review-preview: cannot access $SafeTreeArg"
     exit 1
@@ -52,13 +86,13 @@ $ResolvedTree = (Resolve-Path -Path $Tree).Path
 # Changed files in the working tree: tracked modifications/staged changes,
 # plus untracked, non-ignored files (git diff --name-only HEAD misses
 # untracked files). All commands run against $ResolvedTree.
-$head = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" rev-parse --verify HEAD 2>$null
+$head = git -c core.fsmonitor= -c core.quotePath=false --no-pager --no-optional-locks -C "$ResolvedTree" rev-parse --verify HEAD 2>$null
 if ($head) {
-    $changed = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" diff --name-only HEAD 2>$null
-    $untracked = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
+    $changed = git -c core.fsmonitor= -c core.quotePath=false --no-pager --no-optional-locks -C "$ResolvedTree" diff --name-only HEAD 2>$null
+    $untracked = git -c core.fsmonitor= -c core.quotePath=false --no-pager --no-optional-locks -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
 } else {
     $changed = ""
-    $untracked = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
+    $untracked = git -c core.fsmonitor= -c core.quotePath=false --no-pager --no-optional-locks -C "$ResolvedTree" ls-files --others --exclude-standard 2>$null
 }
 $changed = @(@($changed) + @($untracked) | Where-Object { $_ -and $_.Length -gt 0 })
 
@@ -70,8 +104,8 @@ $changed = @(@($changed) + @($untracked) | Where-Object { $_ -and $_.Length -gt 
 $provenancePresent = 0
 $provenanceSource = "none"
 $provenancePath = Join-Path $ResolvedTree "PROVENANCE.md"
-if (Test-Path -Path $provenancePath -PathType Leaf) {
-    $content = Get-Content -Path $provenancePath -Raw 2>$null
+if (Test-Path -LiteralPath $provenancePath -PathType Leaf) {
+    $content = Get-Content -LiteralPath $provenancePath -Raw 2>$null
     # NOTE: .NET regex has no POSIX [:space:] class — '[^[:space:]]' would
     # mean "non-excluded char followed by a literal ']'", missing normal
     # content. Use IsNullOrWhiteSpace so empty/whitespace-only stays missing.
@@ -90,9 +124,9 @@ if ($provenancePresent -eq 0 -and $changed) {
     foreach ($changedFile in @($changed)) {
         $fullPath = Join-Path $ResolvedTree $changedFile
         if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
-            git -c core.fsmonitor= --no-pager -C "$ResolvedTree" ls-files --error-unmatch -- $changedFile 2>$null | Out-Null
+            git -c core.fsmonitor= -c core.quotePath=false --no-pager --no-optional-locks -C "$ResolvedTree" ls-files --error-unmatch -z -- $changedFile 2>$null | Out-Null
             if ($?) {
-                $addedLines = git -c core.fsmonitor= --no-pager -C "$ResolvedTree" diff --no-ext-diff --no-textconv -U0 HEAD -- $changedFile 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' }
+                $addedLines = git -c core.fsmonitor= -c core.quotePath=false --no-pager --no-optional-locks -C "$ResolvedTree" diff --no-ext-diff --no-textconv -U0 HEAD -- $changedFile 2>$null | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' }
                 $scanText = $addedLines -join "`n"
             } else {
                 $scanText = Get-Content -LiteralPath $fullPath -Raw 2>$null
@@ -133,14 +167,40 @@ if ($changedFiles.Count -gt 0) {
 }
 
 @"
-Evidence intake (read-only — passes reused, not executed in preview):
-  bugs            structural check only
-  security        structural check only
-  spec-compliance structural check only
-  test-integrity  structural check only
-  ci-integrity    structural check only
-  quality         structural check only
+Evidence intake (read-only — reviewer evidence rendered below):
+"@ | Out-String
 
+# Reviewer evidence: optional, rendered verbatim after sanitization.
+# The twins generate no findings — every evidence line arrives from the
+# SKILL.md section 6 reviewer procedure via -EvidenceFile (outside the
+# target tree) or "-" for stdin. Without evidence input every pass is
+# reported as not-invoked (honest, fails the execution-evidence check).
+$evidenceRaw = ""
+if (-not [string]::IsNullOrEmpty($EvidenceFile)) {
+    if ($EvidenceFile -eq "-") {
+        $evidenceRaw = [Console]::In.ReadToEnd()
+    } elseif (Test-Path -LiteralPath $EvidenceFile -PathType Leaf) {
+        $evidenceRaw = Get-Content -LiteralPath $EvidenceFile -Raw
+    } else {
+        $safeEvidenceArg = Sanitize-PreviewLabel $EvidenceFile
+        Write-Error "review-preview: evidence file not found: $safeEvidenceArg"
+        exit 1
+    }
+    if (-not [string]::IsNullOrEmpty($evidenceRaw)) {
+        Write-Output (Sanitize-PreviewLabel $evidenceRaw)
+    }
+}
+
+$passOrder = @("bugs", "security", "spec-compliance", "test-integrity", "ci-integrity", "quality")
+foreach ($__pass in $passOrder) {
+    if (-not [string]::IsNullOrEmpty($evidenceRaw) -and $evidenceRaw -match "(?im)^pass:\s*$__pass\b") {
+        Write-Output "  pass: $__pass — evidence rendered above (reviewer-attested, see evidence lines)"
+    } else {
+        Write-Output "  pass: $__pass — unverified: reviewer procedure not invoked in this shell-only run"
+    }
+}
+
+@"
 Provenance:
 "@ | Out-String
 

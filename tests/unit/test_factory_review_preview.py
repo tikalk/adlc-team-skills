@@ -1,10 +1,17 @@
 """Tests for the factory-review pre-PR verdict preview (workspace issue 45).
 
-The preview renders the would-be verdict against the working tree:
+The preview envelope renders reviewer-attested evidence from the SKILL.md
+section 6 reviewer procedure:
 * advisory only — labeled "draft", never a verdict
-* no head=<sha> marker, no outcome=, no important=
-* no tracker writes, read-only passes reused (listed, not executed)
+* no head=<sha> marker, no outcome=, no important=, no bare review marker
+* no tracker writes; the twin scripts generate no findings and modify nothing
 * missing provenance is requested, no verdict produced
+
+The shell tests below pin the envelope (labeling, markers, read-only
+safety, changed-file discovery, provenance, sanitization, rendering,
+Bash/PowerShell parity). They never assert a defect was "found" — finding
+correctness belongs to the PromptFoo execution scenarios, not to these
+script tests.
 
 Every test below FAILS on the pre-implementation tree (the preview script
 and its graders do not exist yet) and PASSES once implemented.
@@ -61,13 +68,20 @@ def seed_tree(tmp_path, files):
     return tree
 
 
-def run_preview_on_tree(script, tree):
+def run_preview_on_tree(script, tree, evidence=None, evidence_stdin=None):
     """Run the preview against a tree path, from a neutral caller cwd."""
-    return subprocess.run(
-        ["bash", str(script), str(tree)] if script.suffix == ".sh"
-        else ["pwsh", "-NoProfile", "-File", str(script), str(tree)],
-        capture_output=True, text=True, timeout=30,
-    )
+    if script.suffix == ".sh":
+        cmd = ["bash", str(script), str(tree)]
+        if evidence is not None:
+            cmd += ["--evidence-file", str(evidence)]
+        return subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30,
+            input=evidence_stdin,
+        )
+    cmd = ["pwsh", "-NoProfile", "-File", str(script), str(tree)]
+    if evidence is not None:
+        cmd += ["-EvidenceFile", str(evidence)]
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
 
 # ── A. script exists ─────────────────────────────────────────────────────
@@ -144,25 +158,36 @@ def test_preview_does_not_modify_working_tree(tmp_path):
 
 
 def test_preview_lists_pass_names_as_structural_checks(tmp_path):
-    """Preview lists all six pass names as structural checks only.
+    """Shell-only run reports every pass as reviewer-not-invoked, not executed.
 
-    The preview does NOT execute the passes; it lists their names with
-    "structural check only" annotations. This test asserts the listing is
-    present and does not claim execution.
+    The twins generate no findings: without evidence input each pass must
+    report "unverified: reviewer procedure not invoked in this shell-only
+    run". This output is honest and fails the execution-evidence grader by
+    design. It must never claim execution and must never print the old
+    "structural check only" label.
     """
     tree = seed_tree(tmp_path, {"src/foo.py": "print(1)\n"})
     proc = run_preview_on_tree(PREVIEW_SH, tree)
     assert proc.returncode == 0, proc.stderr
     combined = proc.stdout.lower()
     for pass_name in ("bugs", "security", "spec-compliance", "test-integrity", "ci-integrity", "quality"):
-        assert pass_name in combined, f"preview must list the {pass_name} pass"
-    assert "structural check only" in combined, (
-        "preview must describe passes as structural checks only, not executed"
+        assert re.search(rf"(?m)^\s*pass:\s*{re.escape(pass_name)}\b", combined), (
+            f"preview must list the {pass_name} pass"
+        )
+    assert "reviewer procedure not invoked in this shell-only run" in combined, (
+        "shell-only preview must disclose the reviewer procedure was not invoked"
+    )
+    assert "unverified" in combined, "shell-only preview must report unverified passes"
+    assert "structural check only" not in combined, (
+        "the old structural label must be gone"
     )
     # Must NOT claim execution
     assert "passes executed" not in combined, "preview must not claim passes executed"
     assert "were executed" not in combined, "preview must not claim passes were executed"
     assert "ran successfully" not in combined, "preview must not claim passes ran successfully"
+    assert re.search(r"\bclean\b", combined) is None or "shell-only" in combined, (
+        "shell-only preview must not claim a clean result"
+    )
 
 
 # ── D. changed-file detection ───────────────────────────────────────────
@@ -800,3 +825,167 @@ def test_preview_bash_one_modified_two_untracked_detects_second(tmp_path):
     assert "provenance: detected" in proc.stdout.lower()
     assert "reference in u2.md" in proc.stdout.lower()
     assert _changed_entry_set(proc.stdout) == ["src/a.py", "u1.md", "u2.md"]
+
+
+# ── J. Evidence rendering (reviewer-attested, twin generates nothing) ─────
+# The twins collect, sanitize, and render caller-supplied evidence only.
+# These tests assert rendering fidelity — never finding correctness.
+
+
+def _write_evidence(tmp_path, text):
+    ev = tmp_path / "evidence.md"
+    ev.write_text(text, encoding="utf-8")
+    return ev
+
+
+def _reasoned_evidence():
+    lines = []
+    checks = {
+        "bugs": "Null/undefined access paths",
+        "security": "Secret exposure in code",
+        "spec-compliance": "API and output-contract conformance",
+        "test-integrity": "A new assertion that asserts nothing",
+        "ci-integrity": "A workflow change that removes a gate",
+        "quality": "Dead code",
+    }
+    for name, check in checks.items():
+        lines.append(f"pass: {name}")
+        lines.append(f"inspected: src/x.py:{len(name)}")
+        lines.append(f"+ x = {len(name)}")
+        lines.append(f'check: "{check}"')
+        lines.append(
+            f"result: reasoned no-finding — read the hunk above against "
+            f"'{check}'; does not violate the check in this tree."
+        )
+    return "\n".join(lines) + "\n"
+
+
+def test_preview_renders_evidence_file_sanitized(tmp_path):
+    """Evidence file is rendered sanitized; reviewer procedure stays attested."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    ev = _write_evidence(
+        tmp_path,
+        _reasoned_evidence() + "note: tree outcome=merge-ready must be redacted\n",
+    )
+    proc = run_preview_on_tree(PREVIEW_SH, tree, str(ev))
+    assert proc.returncode == 0, proc.stderr
+    assert "outcome=" not in proc.stdout, "evidence tokens must be sanitized"
+    assert "outcome [redacted]" in proc.stdout, "sanitized label must appear"
+    assert "reasoned no-finding" in proc.stdout.lower()
+
+
+def test_preview_evidence_stdin_rendered(tmp_path):
+    """Evidence via stdin renders the same as via file."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    ev_text = _reasoned_evidence()
+    proc = subprocess.run(
+        ["bash", str(PREVIEW_SH), str(tree), "--evidence-file", "-"],
+        capture_output=True, text=True, timeout=30, input=ev_text,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "reasoned no-finding" in proc.stdout.lower()
+
+
+def test_preview_bare_review_marker_in_evidence_redacted(tmp_path):
+    """Evidence mentioning the bare review marker must not inject it."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    ev = _write_evidence(
+        tmp_path,
+        _reasoned_evidence() + "note: factory-review:step=review seen in filename\n",
+    )
+    proc = run_preview_on_tree(PREVIEW_SH, tree, str(ev))
+    assert proc.returncode == 0, proc.stderr
+    assert "factory-review:step=review\n" not in proc.stdout
+    assert "factory-review:step=review " not in proc.stdout
+    assert "factory-review:step=[redacted]" in proc.stdout
+
+
+def test_preview_nonascii_filename_listed(tmp_path):
+    """Non-ASCII filenames are listed exactly once (core.quotePath=false)."""
+    tree = seed_tree(tmp_path, {"src/base.py": "x = 1\n"})
+    target = tree / "src/café_π.py"
+    target.write_text("y = 2\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tree, capture_output=True, check=True)
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert "caf" in proc.stdout, f"non-ASCII name must be decoded, got: {proc.stdout[:400]!r}"
+    assert "caf" in proc.stdout
+    assert proc.stdout.count("caf") == 1, (
+        f"non-ASCII name must appear exactly once, got: {proc.stdout[:600]!r}"
+    )
+
+
+def test_preview_bare_review_marker_filename_redacted(tmp_path):
+    """A directory named with the bare review marker must not inject it."""
+    tree_dir = tmp_path / "factory-review:step=review-notes"
+    tree_dir.mkdir()
+    subprocess.run(["git", "init", "-q", str(tree_dir)], check=True, timeout=30)
+    subprocess.run(
+        ["git", "-C", str(tree_dir), "config", "user.email", "t@t.t"],
+        check=True, timeout=30,
+    )
+    subprocess.run(
+        ["git", "-C", str(tree_dir), "config", "user.name", "t"],
+        check=True, timeout=30,
+    )
+    (tree_dir / "f.py").write_text("x = 1\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(tree_dir), "add", "f.py"], check=True, timeout=30
+    )
+    proc = subprocess.run(
+        ["bash", str(PREVIEW_SH), str(tree_dir)],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "factory-review:step=review\n" not in proc.stdout
+    assert "factory-review:step=review " not in proc.stdout
+    assert "factory-review:step=[redacted]" in proc.stdout
+
+
+def test_preview_missing_evidence_file_fails(tmp_path):
+    """A missing evidence path is a usage error, not a silent pass."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    proc = subprocess.run(
+        ["bash", str(PREVIEW_SH), str(tree), "--evidence-file", str(tmp_path / "nope.md")],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode == 1, "missing evidence file must be a usage error"
+
+
+# ── K. Shell-output execution guard (name-only preview must fail) ────────
+# This mirrors the rewritten readonly grader at the shell level: output that
+# only names passes (the old structural reading) fails the evidence check.
+
+
+def _shell_execution_evidence_ok(out: str) -> list:
+    problems = []
+    for name in ("bugs", "security", "spec-compliance", "test-integrity", "ci-integrity", "quality"):
+        m = re.search(rf"(?im)^\s*pass\s*:\s*{re.escape(name)}\b.*$", out)
+        if not m:
+            problems.append(f"missing pass line for {name}")
+            continue
+        seg = out[m.start():m.start() + 800].lower()
+        if not ("inspected" in seg and ("finding" in seg or "unverified" in seg)):
+            problems.append(f"{name} lacks inspected evidence")
+    return problems
+
+
+def test_shell_only_output_fails_execution_evidence(tmp_path):
+    """The shell-only listing alone must fail the execution-evidence check."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    proc = run_preview_on_tree(PREVIEW_SH, tree)
+    assert proc.returncode == 0, proc.stderr
+    assert _shell_execution_evidence_ok(proc.stdout), (
+        "shell-only output must fail the execution-evidence check by design"
+    )
+
+
+def test_rendered_reasoned_evidence_passes_execution_evidence(tmp_path):
+    """Reasoned reviewer evidence rendered by the twin passes the check."""
+    tree = seed_tree(tmp_path, {"src/foo.py": "x = 1\n"})
+    ev = _write_evidence(tmp_path, _reasoned_evidence())
+    proc = run_preview_on_tree(PREVIEW_SH, tree, str(ev))
+    assert proc.returncode == 0, proc.stderr
+    assert _shell_execution_evidence_ok(proc.stdout) == [], (
+        f"reasoned evidence must pass, got problems on: {proc.stdout[:600]!r}"
+    )

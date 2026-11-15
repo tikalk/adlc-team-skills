@@ -6,9 +6,10 @@ Passes when the preview output:
     no important=, no factory-review:step=review marker).
 Fails otherwise.
 
-This grader verifies the output contract only; it does not confirm that
-review passes were executed (the preview lists them as structural checks,
-it does not run them).
+This grader verifies the output contract only — envelope, structure, and
+auditability of the evidence — not execution. Execution is attested by the
+SKILL.md section 6 reviewer procedure and auditable by a human against
+the diff.
 """
 
 import re

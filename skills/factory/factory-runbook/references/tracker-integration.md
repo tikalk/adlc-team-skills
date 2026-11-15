@@ -60,8 +60,10 @@ An issue carries exactly one lifecycle label. `done` and `cancelled` are termina
 | 8 | `executing` → `validation` | draft MR/PR opened at mission completion | `factory-mission` | supervised: after its gates are answered |
 | 9 | `validation` → `done` | MR/PR that closes the issue is merged | `factory-orchestrator` (completion) · `factory-review` (babysit) · lane close Sensor (merges outside the factory) | none |
 | 10 | any non-terminal → `cancelled` | issue closed without a merge | `factory-orchestrator` (completion) · `factory-review` (babysit) · lane close Sensor | a parked run is released: run marked cancelled, draft MR closed |
+| 11 | `executing` → `intent` | a human rejects at a gate (the engine's `run_failed` event has `status: aborted`) | gate runtime (agentic-container) | supervised only — autonomous runs have no gates |
+| 12 | `executing` → `spec-gated` | a step fails (`run_failed` with `status: failed`), or the mission ends without an MR | gate runtime (agentic-container) · `factory-mission` (local runs, and autonomous runs, which emit no `run_failed` event) | none |
 
-`validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A failed run has no edge yet and stays `executing`. Every edge swaps labels through the Set Lifecycle step of Operation 9, which also removes any other lifecycle label it finds.
+`validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A run that ends badly leaves `executing` through edge 11 or 12 and posts one `<!-- factory-run:ended reason=<gate-rejected|step-failed> run=<run_id> step=<step_id> -->` note. A crashed run, which runs no cleanup, is re-admitted by the lane gate once its lease is released or stale. Every edge swaps labels through the Set Lifecycle step of Operation 9, which also removes any other lifecycle label it finds.
 
 ### 3. Write-Back & Comments
 Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored`.

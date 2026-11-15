@@ -44,9 +44,11 @@ LOCAL_EXAMPLE_IDS = {
     "ADR-004", "ADR-004-workspace-profile", "ADR-005", "ADR-006", "ADR-007",
     "ADR-008", "ADR-008-amendment-2", "ADR-009", "ADR-009-workspace-profile",
     "ADR-012", "ADR-0123", "ADR-017-monitoring-connector",
+    "ADR-017-legacy-straggler", "ADR-030-repo-mode",
     "PDR-000", "PDR-001", "PDR-002", "PDR-002-amendment-2", "PDR-003",
     "PDR-004", "PDR-005", "PDR-008", "PDR-009", "PDR-009-amendment-2",
     "PDR-012", "PDR-0123", "PDR-021-agentic-verification-depth",
+    "PDR-033-legacy-straggler", "PDR-044-repo-mode",
     "PDR-127", "PDR-128",
 }
 
@@ -63,10 +65,11 @@ LOCAL_EXAMPLE_IDS = {
 #   ADR-457            issue-conformance pass mechanism (governing brief judged)
 #   ADR-473            shared factory run mechanics live in factory-runbook
 #   PDR-131            factory-review issue-conformance pass scope
+#   ADR-514            per-skill resolve_memory_root / memory store location
 GOVERNING_RECORDS = {
     "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
     "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-457",
-    "ADR-473", "PDR-131",
+    "ADR-473", "ADR-514", "PDR-131",
 }
 
 # The surfaces the rule covers.

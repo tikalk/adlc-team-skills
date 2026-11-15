@@ -167,15 +167,24 @@ ownership_block_or_empty() {
   ' "$1" || die "$(json 'console.log(JSON.parse(process.argv[1] || "{}").reason || "blocked by resolve-mr-ownership")' "$1")"
 }
 
+# push_reuse — the reuse path pushes too, so commits from a run that reuses a
+# capture-time (or earlier) MR reach it. Fast-forward only: never --force; a
+# rejected push means the branch moved on the remote.
+push_reuse() {
+  git push -q -u origin "refs/heads/$branch:refs/heads/$branch" \
+    || die "push of $branch was rejected: the branch moved on the remote; re-run run-branch to catch up, then open-mr again"
+}
+
 url=""
 if [ "$provider" = gitlab ]; then
   p="$(enc "$project")"
   existing="$(api "projects/$p/merge_requests?source_branch=$(enc "$branch")&state=opened")" || die "cannot list merge requests"
   url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].web_url || "")' "$existing")"
   if [ -n "$url" ]; then
-    # Reuse path: the open MR is returned untouched — no issue read, no
-    # resolve-mr-ownership call (preserve-only = touch nothing).
-    :
+    # Reuse path: push the run's commits (fast-forward only), then return the
+    # open MR untouched — no issue read, no resolve-mr-ownership call
+    # (preserve-only = touch nothing).
+    push_reuse
   else
     git push -q -u origin "refs/heads/$branch:refs/heads/$branch" || die "push of $branch failed"
     if [ -n "$iid" ]; then
@@ -222,9 +231,10 @@ else
   existing="$(api "repos/$project/pulls?head=$owner:$branch&state=open")" || die "cannot list pull requests"
   url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].html_url || "")' "$existing")"
   if [ -n "$url" ]; then
-    # Reuse path: the open PR is returned untouched — no issue read, no
-    # resolve-mr-ownership call (preserve-only = touch nothing).
-    :
+    # Reuse path: push the run's commits (fast-forward only), then return the
+    # open PR untouched — no issue read, no resolve-mr-ownership call
+    # (preserve-only = touch nothing).
+    push_reuse
   else
     git push -q -u origin "refs/heads/$branch:refs/heads/$branch" || die "push of $branch failed"
     target="$(api "repos/$project" | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).default_branch||"main"))')"

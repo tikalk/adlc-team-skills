@@ -201,8 +201,11 @@ push_reuse() {
 url=""
 if [ "$provider" = gitlab ]; then
   p="$(enc "$project")"
+  # Only an MR whose source branch lives in this project is the run's own:
+  # the list also returns MRs opened from forks, and a fork can pick the
+  # same predictable branch name. A fork MR is never reused.
   existing="$(api "projects/$p/merge_requests?source_branch=$(enc "$branch")&state=opened")" || die "cannot list merge requests"
-  url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].web_url || "")' "$existing")"
+  url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && m.web_url || "")' "$existing")"
   if [ -n "$url" ]; then
     # Reuse path: push the run's commits (fast-forward only), then return the
     # open MR untouched — no issue read, no resolve-mr-ownership call

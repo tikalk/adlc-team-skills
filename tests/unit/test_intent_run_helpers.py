@@ -432,7 +432,7 @@ def test_open_mr_creates_a_draft_mr_with_issue_ownership(repo):
 
 def test_open_mr_reuses_an_open_mr_and_keeps_other_output_fields(repo):
     on_run_branch(repo)
-    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}]'
+    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}]'
     env, log, out = open_mr_env(repo, {"FAKE_EXISTING": existing})
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"conclusion": "two PDRs"}))
@@ -442,6 +442,44 @@ def test_open_mr_reuses_an_open_mr_and_keeps_other_output_fields(repo):
     assert "-X POST" not in log.read_text()
     assert json.loads(out.read_text()) == {"conclusion": "two PDRs", "mr_url": "https://gl.test/g/adlc-workspace/-/merge_requests/70"}
 
+
+# A GitLab project's MR list also returns MRs opened from forks into it. A fork
+# can name its branch after the predictable run branch, so only an MR whose
+# source branch lives in this project is reused.
+FORK_MR = '{"web_url":"https://gl.test/fork/adlc-workspace/-/merge_requests/66","source_project_id":2,"target_project_id":1}'
+OWN_MR = '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}'
+
+
+def test_open_mr_never_reuses_an_mr_opened_from_a_fork(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": f"[{FORK_MR}]"})
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"  # created, not the fork's
+    assert any("-X POST" in l and "merge_requests" in l for l in log.read_text().splitlines())
+    assert "merge_requests/66" not in out.read_text()
+
+
+@pytest.mark.parametrize("listed", [f"[{FORK_MR},{OWN_MR}]", f"[{OWN_MR},{FORK_MR}]"])
+def test_open_mr_reuses_the_projects_own_mr_whatever_the_list_order(repo, listed):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": listed})
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/70"
+    assert "-X POST" not in log.read_text()
+
+
+@pytest.mark.parametrize("entry", [
+    '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}',
+    '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","target_project_id":1}',
+])
+def test_open_mr_does_not_reuse_an_mr_without_a_proven_source_project(repo, entry):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": f"[{entry}]"})
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip().endswith("/merge_requests/77")
 
 def test_open_mr_assignee_falls_back_to_the_runner(repo):
     on_run_branch(repo)
@@ -586,7 +624,7 @@ def test_open_mr_reuses_the_mr_when_a_redispatch_adds_nothing(repo, tmp_path):
     # even if this run committed nothing, so the existing MR is reused.
     on_run_branch(repo)
     git(repo["work"], "push", "-q", "origin", "factory/intent/adlc-workspace-12")
-    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}]'
+    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}]'
     env, log, out = open_mr_env(repo, {"FAKE_EXISTING": existing})
     r = run(OPEN_MR, repo["work"], env=env)
     assert r.returncode == 0, r.stderr
@@ -854,7 +892,7 @@ def test_open_mr_reuse_pushes_the_run_commits_fast_forward(repo):
     write(repo["work"], ".adlc/drafts/pdr/PDR-1.md", "a\n")
     run(COMMIT_STEP, repo["work"], *STEP_ARGS, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
     head = git(repo["work"], "rev-parse", "HEAD")
-    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}]'
+    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}]'
     env, log, out = open_mr_env(repo, {"FAKE_EXISTING": existing})
     r = run(OPEN_MR, repo["work"], env=env)
     assert r.returncode == 0, r.stderr
@@ -873,7 +911,7 @@ def test_open_mr_reuse_dies_on_a_non_fast_forward_push_and_never_forces(repo, tm
     remote_head = git(repo["bare"], "rev-parse", INTENT)
     write(repo["work"], ".adlc/drafts/pdr/PDR-1.md", "a\n")
     run(COMMIT_STEP, repo["work"], *STEP_ARGS, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
-    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}]'
+    existing = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}]'
     env, log, out = open_mr_env(repo, {"FAKE_EXISTING": existing})
     r = run(OPEN_MR, repo["work"], env=env)
     assert r.returncode != 0

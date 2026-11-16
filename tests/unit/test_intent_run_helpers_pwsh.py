@@ -302,7 +302,7 @@ def test_open_mr_creates_a_draft_mr_with_issue_ownership(repo):
 
 def test_open_mr_reuses_an_open_mr_and_keeps_other_output_fields(repo):
     on_run_branch(repo)
-    env, log, out = open_mr_env(repo, extra={"FAKE_EXISTING": '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/9"}]'})
+    env, log, out = open_mr_env(repo, extra={"FAKE_EXISTING": '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/9","source_project_id":1,"target_project_id":1}]'})
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text('{"conclusion": "two PDR drafts"}')
     r = run(PS / "open-mr.ps1", repo["work"], env=env)
@@ -313,6 +313,45 @@ def test_open_mr_reuses_an_open_mr_and_keeps_other_output_fields(repo):
     data = _json.loads(out.read_text())
     assert data["mr_url"] == "https://gl.test/g/adlc-workspace/-/merge_requests/9"
     assert data["conclusion"] == "two PDR drafts"
+
+
+# A GitLab project's MR list also returns MRs opened from forks into it. A fork
+# can name its branch after the predictable run branch, so only an MR whose
+# source branch lives in this project is reused.
+FORK_MR = '{"web_url":"https://gl.test/fork/adlc-workspace/-/merge_requests/66","source_project_id":2,"target_project_id":1}'
+OWN_MR = '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}'
+
+
+def test_open_mr_never_reuses_an_mr_opened_from_a_fork(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": f"[{FORK_MR}]"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"  # created, not the fork's
+    assert any("-X POST" in l and "merge_requests" in l for l in log.read_text().splitlines())
+    assert "merge_requests/66" not in out.read_text()
+
+
+@pytest.mark.parametrize("listed", [f"[{FORK_MR},{OWN_MR}]", f"[{OWN_MR},{FORK_MR}]"])
+def test_open_mr_reuses_the_projects_own_mr_whatever_the_list_order(repo, listed):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": listed})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/70"
+    assert "-X POST" not in log.read_text()
+
+
+@pytest.mark.parametrize("entry", [
+    '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}',
+    '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","target_project_id":1}',
+])
+def test_open_mr_does_not_reuse_an_mr_without_a_proven_source_project(repo, entry):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": f"[{entry}]"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip().endswith("/merge_requests/77")
 
 
 def test_open_mr_assignee_falls_back_to_the_runner(repo):
@@ -493,7 +532,7 @@ def ps_capture_branch_on_origin(repo):
     git(w, "switch", "-q", "main")
 
 
-EXISTING_70 = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}]'
+EXISTING_70 = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}]'
 
 
 def test_open_mr_reuse_pushes_the_run_commits_fast_forward(repo):

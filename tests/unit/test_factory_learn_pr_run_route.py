@@ -68,3 +68,22 @@ def test_route_reuses_shared_cdr_template():
     text = _read(SKILL)
     assert "skills/team/templates/cdr-draft-template.md" in text
     assert TEMPLATE.exists(), "shared CDR template missing"
+
+
+def test_route_classifies_before_drafting_any_cdr():
+    section = _route_section()
+    classify = section.index("Classify each pattern")
+    draft = section.index("cdr-draft-template.md")
+    assert classify < draft, "the ladder must classify before any CDR draft exists"
+    assert "No CDR" in section, "Tier 1 must create no CDR draft"
+
+
+def test_route_names_eval_vehicle_for_tier_two():
+    section = _route_section()
+    assert "/evals-specify" in section, "Tier 2 must name the eval-criterion vehicle"
+
+
+def test_route_clarify_is_per_candidate_and_never_auto_approves():
+    section = _route_section()
+    assert "one at a time" in section, "clarify presents one candidate at a time"
+    assert "never auto-approves" in section, "the route must not inherit auto-approve"

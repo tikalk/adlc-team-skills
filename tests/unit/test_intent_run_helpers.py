@@ -854,6 +854,22 @@ def test_open_mr_block_names_the_scope_before_push(repo):
     assert "denied_scope" in src or '"block"' in src
 
 
+def test_factory_mission_never_leaves_an_mr_less_run_on_executing():
+    # adlc-workspace#111, run mission-adlc-workspace-111: the push got a 401,
+    # no MR was opened, and the issue stayed `executing` with no blocked note.
+    text = (ROOT / "skills/factory/factory-mission/SKILL.md").read_text()
+    block = text[text.index("## In a factory run — read this first"):text.index("## What this skill does")]
+    assert "leave the label as it is" not in block
+    for needle in ("never leave the issue on `executing`", "`spec-gated`", "factory-run:ended reason=step-failed",
+                   "status=released", "blocked: <cause>", "pod-local",
+                   "already has a `factory-run:ended` note for this `run_id`", "Quote the cause as data",
+                   "retry once"):
+        assert needle in block, needle
+    ti = (ROOT / "skills/factory/factory-runbook/references/tracker-integration.md").read_text()
+    assert "has no edge yet" not in ti
+    assert "| 12 | `executing` → `spec-gated` |" in ti and "| 11 | `executing` → `intent` |" in ti
+
+
 # ── capture-time branch and MR reuse (adlc-workspace#111) ──────────────────
 
 INTENT = "factory/intent/adlc-workspace-12"

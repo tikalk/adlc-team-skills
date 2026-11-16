@@ -830,3 +830,80 @@ def test_factory_mission_never_leaves_an_mr_less_run_on_executing():
     ti = (ROOT / "skills/factory/factory-runbook/references/tracker-integration.md").read_text()
     assert "has no edge yet" not in ti
     assert "| 12 | `executing` → `spec-gated` |" in ti and "| 11 | `executing` → `intent` |" in ti
+
+
+# ── the code host picks the provider (cross-host code MR) ───────────────────
+
+GH_FULL = r'''
+echo "$*" >> "$FAKE_LOG"
+case "$*" in
+  *"-i user"*) printf 'HTTP/2.0 200 OK\r\nX-Oauth-Scopes: repo, read:org\r\n\r\n{"login":"runner-bot"}\n' ;;
+  *"-X POST"*"/pulls"*) echo '{"html_url":"https://github.com/g/adlc-workspace/pull/9","number":9}' ;;
+  *"-X POST"*"/assignees"*|*"-X PATCH"*) echo '{}' ;;
+  *"/pulls?head="*) echo '[]' ;;
+  *"issues/9") echo '{"milestone":null,"assignees":[]}' ;;
+  *"issues/12") echo '{"milestone":{"number":3},"assignees":[{"login":"octo"}]}' ;;
+  *" user") echo '{"login":"runner-bot"}' ;;
+  *"repos/g/adlc-workspace") echo '{"default_branch":"main"}' ;;
+  *) echo '{}' ;;
+esac
+'''
+
+
+def on_github_origin(repo):
+    git(repo["work"], "remote", "set-url", "origin", "https://github.com/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://github.com/g/adlc-workspace.git")
+    on_run_branch(repo)
+
+
+def github_env(repo, extra):
+    gh_bin = fake_cli(repo["tmp"], "gh", GH_FULL)
+    env, glab_log, out = open_mr_env(repo)
+    gh_log = repo["tmp"] / "gh.log"
+    env.update(PATH=f"{gh_bin}:{env['PATH']}", FAKE_LOG=str(gh_log))
+    env.update(extra)
+    return env, gh_log, out
+
+
+def test_open_mr_cross_host_opens_a_github_pr_for_a_gitlab_issue(repo):
+    on_github_origin(repo)
+    env, log, out = github_env(repo, {"ISSUE_PROVIDER": "gitlab", "ADLC_INITIATOR": "U123"})
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://github.com/g/adlc-workspace/pull/9"
+    calls = log.read_text()
+    create = next(l for l in calls.splitlines() if "-X POST" in l and "/pulls" in l)
+    assert "Issue: https://gl.test/g/adlc-workspace/-/issues/12" in create
+    assert "issues/12" not in calls.replace("-/issues/12", "")  # the issue is never read via GitHub
+    assert "-X PATCH" not in calls  # no milestone
+    assigned = [l for l in calls.splitlines() if "/assignees" in l]
+    assert len(assigned) == 1 and "assignees[]=runner-bot" in assigned[0]  # runner, not the initiator
+    assert not (repo["tmp"] / "glab.log").exists()  # no GitLab call from the publish step
+    assert json.loads(out.read_text())["mr_url"].endswith("/pull/9")
+
+
+def test_open_mr_same_host_github_still_propagates_the_issue_milestone(repo):
+    on_github_origin(repo)
+    env, log, out = github_env(repo, {"ISSUE_PROVIDER": "github"})
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    calls = log.read_text()
+    assert "repos/g/adlc-workspace/issues/12" in calls
+    assert any("-X PATCH" in l and "milestone=3" in l for l in calls.splitlines())
+    assert any("assignees[]=octo" in l for l in calls.splitlines())
+    create = next(l for l in calls.splitlines() if "-X POST" in l and "/pulls" in l)
+    assert "Issue: " not in create
+
+
+@pytest.mark.parametrize("issue_provider", ["gitlab", "github"])
+def test_open_mr_refuses_an_unknown_origin_host_before_any_api_call(repo, issue_provider):
+    git(repo["work"], "remote", "set-url", "origin", "https://bitbucket.org/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://bitbucket.org/g/adlc-workspace.git")
+    on_run_branch(repo)
+    env, log, out = github_env(repo, {"ISSUE_PROVIDER": issue_provider})
+    r = run(OPEN_MR, repo["work"], env=env)
+    assert r.returncode != 0
+    assert "bitbucket.org" in r.stderr and "no token is sent" in r.stderr
+    assert not log.exists() and not (repo["tmp"] / "glab.log").exists()
+    assert git(repo["bare"], "branch", "--list", "factory/intent/adlc-workspace-12") == ""
+    assert not out.exists()

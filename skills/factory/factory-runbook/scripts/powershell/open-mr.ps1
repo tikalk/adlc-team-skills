@@ -94,16 +94,37 @@ if ($kind -eq 'code') {
     $description = "Factory intent run ``$($env:ADLC_RUN_ID)``$forIssue. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
 }
 
-$provider = if ($env:ISSUE_PROVIDER) { $env:ISSUE_PROVIDER } else { 'gitlab' }
-switch ($provider) {
-    'gitlab' {
-        if (-not $env:GITLAB_HOST) { Die 'GITLAB_HOST is not set (the token is never sent to a guessed host)' }
-        $want = $env:GITLAB_HOST -replace '^https://', ''
-        $want = $want.TrimEnd('/')
-        if ($host_ -ne $want) { Die "origin host $host_ is not GITLAB_HOST ($want)" }
+# The code host picks the MR/PR provider; ISSUE_PROVIDER names only the
+# issue's tracker. Tokens go only to GITLAB_HOST or github.com — any other
+# origin host is refused before any API call.
+$issueProvider = if ($env:ISSUE_PROVIDER) { $env:ISSUE_PROVIDER } else { 'gitlab' }
+if ($issueProvider -notin @('gitlab', 'github')) { Die "unsupported ISSUE_PROVIDER: $issueProvider" }
+$gitlabHost = if ($env:GITLAB_HOST) { ($env:GITLAB_HOST -replace '^https://', '').TrimEnd('/') } else { '' }
+if ($host_ -eq 'github.com') {
+    $provider = 'github'
+} elseif ($gitlabHost -and $host_ -eq $gitlabHost) {
+    $provider = 'gitlab'
+} elseif (-not $gitlabHost -and $issueProvider -eq 'gitlab') {
+    Die 'GITLAB_HOST is not set (the token is never sent to a guessed host)'
+} else {
+    $shown = if ($gitlabHost) { $gitlabHost } else { 'unset' }
+    Die "origin host $host_ is neither GITLAB_HOST ($shown) nor github.com — no token is sent to it"
+}
+
+# Cross-host run (issue on one tracker, code on the other): milestones and
+# users do not map across trackers, so the issue is not read through the
+# code host, no milestone is set, the assignee is the runner's own account,
+# and the description links the issue by its full URL.
+$crossHost = $false
+if ($iid -and $provider -ne $issueProvider) {
+    $crossHost = $true
+    if ($issueProvider -eq 'gitlab') {
+        if (-not $gitlabHost) { Die 'GITLAB_HOST is not set (cannot link the issue)' }
+        $issueUrl = "https://$gitlabHost/$issueProject/-/issues/$iid"
+    } else {
+        $issueUrl = "https://github.com/$issueProject/issues/$iid"
     }
-    'github' { if ($host_ -ne 'github.com') { Die "origin host $host_ is not github.com" } }
-    default { Die "unsupported ISSUE_PROVIDER: $provider" }
+    $description = "$description Issue: $issueUrl"
 }
 
 # An empty run opens nothing: with no commits on the run branch beyond the
@@ -228,7 +249,7 @@ if ($provider -eq 'gitlab') {
         # Create path: push first.
         git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
         if ($LASTEXITCODE -ne 0) { Die "push of $branch failed" }
-        if ($iid) {
+        if ($iid -and -not $crossHost) {
             $issueRaw = Api @("projects/$(Enc $issueProject)/issues/$iid")
             if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
             # Normalize the connector GET into resolver verbatim form
@@ -244,7 +265,7 @@ if ($provider -eq 'gitlab') {
         } else {
             $issueJson = '{}'
         }
-        $initiator = if ($env:ADLC_INITIATOR) { $env:ADLC_INITIATOR } else { '' }
+        $initiator = if ($env:ADLC_INITIATOR -and -not $crossHost) { $env:ADLC_INITIATOR } else { '' }  # cross-host: an identity from the other tracker
         $runnerRaw = (Api @('user')) -join "`n"
         $runnerJson = json 'try { console.log(JSON.stringify(JSON.parse(process.argv[1] || "{}").id)) } catch { console.log("null") }' @($runnerRaw)
         if ($deniedScope -eq 'api') { $deniedJson = '"api"' } else { $deniedJson = 'null' }
@@ -306,13 +327,17 @@ if ($provider -eq 'gitlab') {
             if ($iid) {
                 $mrIssueRaw = Api @("repos/$project/issues/$number") 2>$null
                 if ($LASTEXITCODE -ne 0) { $mrIssueRaw = '{}' }
-                $issueJson = Api @("repos/$issueProject/issues/$iid")
-                if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
+                if ($crossHost) {
+                    $issueJson = '{}'
+                } else {
+                    $issueJson = Api @("repos/$issueProject/issues/$iid")
+                    if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
+                }
             } else {
                 $mrIssueRaw = '{}'
                 $issueJson = '{}'
             }
-            $initiator = if ($env:ADLC_INITIATOR) { $env:ADLC_INITIATOR } else { '' }
+            $initiator = if ($env:ADLC_INITIATOR -and -not $crossHost) { $env:ADLC_INITIATOR } else { '' }  # cross-host: an identity from the other tracker
             $runnerRaw = (Api @('user')) -join "`n"
             $runnerJson = json 'try { console.log(JSON.stringify(JSON.parse(process.argv[1] || "{}").login)) } catch { console.log("null") }' @($runnerRaw)
             if ($deniedScope -eq 'repo') { $deniedJson = '"repo"' } else { $deniedJson = 'null' }

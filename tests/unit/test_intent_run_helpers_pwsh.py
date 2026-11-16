@@ -8,6 +8,7 @@ logic, fake tracker CLI, STEP_ARGS) are imported from the bash module; only
 the interpreter differs. Skipped when pwsh is not installed (CI runs it).
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -16,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from test_intent_run_helpers import (
+    GH_FULL,
     GLAB,
     INTENT,
     advance_origin_main,
@@ -595,3 +597,61 @@ def test_commit_step_still_refuses_neighbours_of_the_capture_path(repo, path):
     assert r.returncode != 0
     assert "allowlist" in r.stderr
     assert git(w, "rev-parse", "HEAD") == head
+
+
+# ── the code host picks the provider (cross-host code MR) ───────────────────
+
+def ps_on_github_origin(repo):
+    git(repo["work"], "remote", "set-url", "origin", "https://github.com/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://github.com/g/adlc-workspace.git")
+    on_run_branch(repo)
+
+
+def ps_github_env(repo, extra):
+    gh_bin = fake_cli(repo["tmp"], "gh", GH_FULL)
+    env, glab_log, out = open_mr_env(repo)
+    gh_log = repo["tmp"] / "gh.log"
+    env.update(PATH=f"{gh_bin}:{env['PATH']}", FAKE_LOG=str(gh_log))
+    env.update(extra)
+    return env, gh_log, out
+
+
+def test_open_mr_cross_host_opens_a_github_pr_for_a_gitlab_issue(repo):
+    ps_on_github_origin(repo)
+    env, log, out = ps_github_env(repo, {"ISSUE_PROVIDER": "gitlab", "ADLC_INITIATOR": "U123"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://github.com/g/adlc-workspace/pull/9"
+    calls = log.read_text()
+    create = next(l for l in calls.splitlines() if "-X POST" in l and "/pulls" in l)
+    assert "Issue: https://gl.test/g/adlc-workspace/-/issues/12" in create
+    assert "issues/12" not in calls.replace("-/issues/12", "")
+    assert "-X PATCH" not in calls
+    assigned = [l for l in calls.splitlines() if "/assignees" in l]
+    assert len(assigned) == 1 and "assignees[]=runner-bot" in assigned[0]
+    assert not (repo["tmp"] / "glab.log").exists()
+    assert json.loads(out.read_text())["mr_url"].endswith("/pull/9")
+
+
+def test_open_mr_same_host_github_still_propagates_the_issue_milestone(repo):
+    ps_on_github_origin(repo)
+    env, log, out = ps_github_env(repo, {"ISSUE_PROVIDER": "github"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    calls = log.read_text()
+    assert "repos/g/adlc-workspace/issues/12" in calls
+    assert any("-X PATCH" in l and "milestone=3" in l for l in calls.splitlines())
+    assert any("assignees[]=octo" in l for l in calls.splitlines())
+
+
+@pytest.mark.parametrize("issue_provider", ["gitlab", "github"])
+def test_open_mr_refuses_an_unknown_origin_host_before_any_api_call(repo, issue_provider):
+    git(repo["work"], "remote", "set-url", "origin", "https://bitbucket.org/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://bitbucket.org/g/adlc-workspace.git")
+    on_run_branch(repo)
+    env, log, out = ps_github_env(repo, {"ISSUE_PROVIDER": issue_provider})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode != 0
+    assert "bitbucket.org" in r.stderr and "no token is sent" in r.stderr
+    assert not log.exists() and not (repo["tmp"] / "glab.log").exists()
+    assert not out.exists()

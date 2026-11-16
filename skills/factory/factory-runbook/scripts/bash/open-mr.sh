@@ -7,7 +7,8 @@
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
 # description states the merge-commit rule, ADR-431 §5), with the issue's
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
-# own account), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
+# own account; a cross-host run — issue and code on different hosts — sets no
+# milestone, assigns the runner and links the issue URL), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
 # with no commits beyond the base opens nothing (empty run). Titles are
 # built from repo, iid and run id only — never issue text. The tracker token's
 # scopes are checked before anything is pushed or created (ADR-432); a missing
@@ -88,16 +89,38 @@ else
   description="Factory intent run \`${ADLC_RUN_ID}\`${iid:+ for ${issue_project}#${iid}}. Merge with a merge commit, no squash (ADR-431 §5) — approved step SHAs must stay reachable."
 fi
 
-provider="${ISSUE_PROVIDER:-gitlab}"
-case "$provider" in
-  gitlab)
-    [ -n "${GITLAB_HOST:-}" ] || die "GITLAB_HOST is not set (the token is never sent to a guessed host)"
-    want="${GITLAB_HOST#https://}"; want="${want%/}"
-    [ "$host" = "$want" ] || die "origin host $host is not GITLAB_HOST ($want)"
-    ;;
-  github) [ "$host" = "github.com" ] || die "origin host $host is not github.com" ;;
-  *) die "unsupported ISSUE_PROVIDER: $provider" ;;
-esac
+# The code host picks the MR/PR provider; ISSUE_PROVIDER names only the
+# issue's tracker. Tokens go only to GITLAB_HOST or github.com — any other
+# origin host is refused before any API call.
+issue_provider="${ISSUE_PROVIDER:-gitlab}"
+case "$issue_provider" in gitlab|github) ;; *) die "unsupported ISSUE_PROVIDER: $issue_provider" ;; esac
+gitlab_host="${GITLAB_HOST:-}"; gitlab_host="${gitlab_host#https://}"; gitlab_host="${gitlab_host%/}"
+if [ "$host" = "github.com" ]; then
+  provider=github
+elif [ -n "$gitlab_host" ] && [ "$host" = "$gitlab_host" ]; then
+  provider=gitlab
+elif [ -z "$gitlab_host" ] && [ "$issue_provider" = gitlab ]; then
+  die "GITLAB_HOST is not set (the token is never sent to a guessed host)"
+else
+  die "origin host $host is neither GITLAB_HOST (${gitlab_host:-unset}) nor github.com — no token is sent to it"
+fi
+
+# Cross-host run (issue on one tracker, code on the other): milestones and
+# users do not map across trackers, so the issue is not read through the
+# code host, no milestone is set, the assignee is the runner's own account
+# (the fallback chain with no issue and no initiator), and the description
+# links the issue by its full URL.
+cross_host=0
+if [ -n "$iid" ] && [ "$provider" != "$issue_provider" ]; then
+  cross_host=1
+  if [ "$issue_provider" = gitlab ]; then
+    [ -n "$gitlab_host" ] || die "GITLAB_HOST is not set (cannot link the issue)"
+    issue_url="https://${gitlab_host}/${issue_project}/-/issues/${iid}"
+  else
+    issue_url="https://github.com/${issue_project}/issues/${iid}"
+  fi
+  description="${description} Issue: ${issue_url}"
+fi
 
 # An empty run opens nothing: with no commits on the run branch beyond the
 # base there is nothing to review, so no push, no MR and no mr_url (the gate
@@ -178,7 +201,7 @@ if [ "$provider" = gitlab ]; then
     :
   else
     git push -q -u origin "refs/heads/$branch:refs/heads/$branch" || die "push of $branch failed"
-    if [ -n "$iid" ]; then
+    if [ -n "$iid" ] && [ "$cross_host" = 0 ]; then
       issue_json="$(api "projects/$(enc "$issue_project")/issues/$iid")" || die "cannot read issue $issue_project#$iid"
       # Normalize the connector GET into resolver verbatim form
       # {milestone_id, assignees:[ids]} (provider mapping table, Operation 11).
@@ -194,6 +217,7 @@ if [ "$provider" = gitlab ]; then
       issue_json="{}"
     fi
     initiator="${ADLC_INITIATOR:-}"
+    [ "$cross_host" = 0 ] || initiator=""  # an identity from the other tracker
     runner_json="$(api user | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.stringify(JSON.parse(s).id))}catch(e){console.log("null")}})')"
     if [ "$denied_scope" = "api" ]; then denied_json='"api"'; else denied_json='null'; fi
     ownership="$(resolve_mr_ownership gitlab "$issue_json" '{}' "$initiator" "$runner_json" "$denied_json")" || die "cannot resolve MR ownership"
@@ -234,14 +258,18 @@ else
     # GitHub via resolve-mr-ownership: bare PR create first, then PATCH
     # milestone / POST assignees ONLY for resolver-returned non-null fields.
     if [ -n "$number" ]; then
-      if [ -n "$iid" ]; then
+      if [ -n "$iid" ] && [ "$cross_host" = 0 ]; then
         mr_issue_json="$(api "repos/$project/issues/$number" 2>/dev/null || echo '{}')"
         issue_json="$(api "repos/$issue_project/issues/$iid")" || die "cannot read issue $issue_project#$iid"
+      elif [ -n "$iid" ]; then
+        mr_issue_json="$(api "repos/$project/issues/$number" 2>/dev/null || echo '{}')"
+        issue_json="{}"
       else
         mr_issue_json="{}"
         issue_json="{}"
       fi
       initiator="${ADLC_INITIATOR:-}"
+      [ "$cross_host" = 0 ] || initiator=""  # an identity from the other tracker
       runner_json="$(api user | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.stringify(JSON.parse(s).login))}catch(e){console.log("null")}})')"
       if [ "$denied_scope" = "repo" ]; then denied_json='"repo"'; else denied_json='null'; fi
       # mr = the created PR's current issue fields ({ } when unreadable).

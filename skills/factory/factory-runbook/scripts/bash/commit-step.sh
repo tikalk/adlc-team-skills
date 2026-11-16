@@ -70,6 +70,7 @@ for p in "${paths[@]}"; do
     .adlc/drafts/pdr/*|.adlc/drafts/adr/*|docs/adlc/memory/pdr/*|docs/adlc/memory/adr/*) ;;
     docs/adlc/product/PRD.md|docs/adlc/architect/AD.md|docs/adlc/architect/views/*) ;;
     .adlc/product/sections/*|.adlc/product/state.json|.adlc/architect/state.json) ;;
+    docs/adlc/intent/*) ;;  # the /adlc open capture file
     *) die "path $p is outside the ADR-433 lifecycle write allowlist" ;;
   esac
   rel+=("$p")
@@ -80,7 +81,8 @@ done
 # old draft stays an uncommitted deletion and the engine's gate refuses it.
 allow=(.adlc/drafts/pdr .adlc/drafts/adr docs/adlc/memory/pdr docs/adlc/memory/adr
   docs/adlc/product/PRD.md docs/adlc/architect/AD.md docs/adlc/architect/views
-  .adlc/product/sections .adlc/product/state.json .adlc/architect/state.json)
+  .adlc/product/sections .adlc/product/state.json .adlc/architect/state.json
+  docs/adlc/intent)
 while IFS= read -r -d '' d; do
   rel+=("$d")
 done < <(git ls-files -z --deleted -- "${allow[@]}"; git diff --cached -z --name-only --diff-filter=D -- "${allow[@]}")

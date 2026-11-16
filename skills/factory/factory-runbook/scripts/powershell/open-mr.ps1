@@ -7,6 +7,7 @@
 # Usage: open-mr.ps1 [--kind <intent|code>] (default intent).
 #
 # With a factory run context (ADLC_RUN_ID): pushes ONLY the current run branch
+# (fast-forward only — also when reusing an open MR/PR, never --force)
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
 # description states the merge-commit rule, ADR-431 §5), with the issue's
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
@@ -226,15 +227,29 @@ function Assert-OwnershipNotBlocked([string]$OwnershipJson) {
     }
 }
 
+# Push-Reuse — the reuse path pushes too, so commits from a run that reuses a
+# capture-time (or earlier) MR reach it. Fast-forward only: never --force; a
+# rejected push means the branch moved on the remote.
+function Push-Reuse {
+    git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
+    if ($LASTEXITCODE -ne 0) { Die "push of $branch was rejected: the branch moved on the remote; re-run run-branch to catch up, then open-mr again" }
+}
+
 $url = ''
 if ($provider -eq 'gitlab') {
     $p = Enc $project
+    # Only an MR whose source branch lives in this project is the run's own:
+    # the list also returns MRs opened from forks, and a fork can pick the
+    # same predictable branch name. A fork MR is never reused.
     $existing = Api @("projects/$p/merge_requests?source_branch=$(Enc $branch)&state=opened")
     if ($LASTEXITCODE -ne 0) { Die 'cannot list merge requests' }
-    $url = json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].web_url || "")' @($existing)
-    if (-not $url) {
-        # Create path: push first; reuse path returns the open MR untouched
-        # above — no issue read, no resolve-mr-ownership call.
+    $url = json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && m.web_url || "")' @($existing)
+    if ($url) {
+        # Reuse path: push the run's commits (fast-forward only), then return
+        # the open MR untouched — no issue read, no resolve-mr-ownership call.
+        Push-Reuse
+    } else {
+        # Create path: push first.
         git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
         if ($LASTEXITCODE -ne 0) { Die "push of $branch failed" }
         if ($iid -and -not $crossHost) {
@@ -293,9 +308,12 @@ if ($provider -eq 'gitlab') {
     $existing = Api @("repos/$project/pulls?head=${owner}:${branch}&state=open")
     if ($LASTEXITCODE -ne 0) { Die 'cannot list pull requests' }
     $url = json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].html_url || "")' @($existing)
-    if (-not $url) {
-        # Create path: push first; reuse path returns the open PR untouched
-        # above — no issue read, no resolve-mr-ownership call.
+    if ($url) {
+        # Reuse path: push the run's commits (fast-forward only), then return
+        # the open PR untouched — no issue read, no resolve-mr-ownership call.
+        Push-Reuse
+    } else {
+        # Create path: push first.
         git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
         if ($LASTEXITCODE -ne 0) { Die "push of $branch failed" }
         $projJson = (Api @("repos/$project")) -join "`n"

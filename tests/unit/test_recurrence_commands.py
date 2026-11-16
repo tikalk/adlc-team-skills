@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parent.parent.parent
-SCRIPT = ROOT / "skills/factory/factory-learn/scripts/verify-recurrence.sh"
+SCRIPT = ROOT / "skills/factory/factory-learn/scripts/bash/verify-recurrence.sh"
 
 H1 = "a" * 40
 H2 = "b" * 40
@@ -936,7 +936,7 @@ def _eval_label_gate(diff_names, labels, pr_number):
 def test_ci_label_gate_exempts_push_event():
     body = _label_gate_body()
     assert 'if [ -z "$me" ]' in body, "gate must exempt events with no PR number"
-    assert _eval_label_gate(["skills/factory/factory-learn/scripts/verify-recurrence.sh"], [], None) == 10
+    assert _eval_label_gate(["skills/factory/factory-learn/scripts/bash/verify-recurrence.sh"], [], None) == 10
 
 
 def test_ci_label_gate_readonly_pr_needs_no_label():
@@ -952,7 +952,7 @@ def test_ci_label_gate_writer_requires_label():
     wr = ["skills/factory/factory-learn/references/recurrence-ledger.tsv"]
     assert _eval_label_gate(wr, ["ledger-writer"], "12") == 0, "labelled writer PR passes"
     assert _eval_label_gate(wr, [], "12") == 1, "unlabelled writer PR fails"
-    sh = ["skills/factory/factory-learn/scripts/verify-recurrence.sh"]
+    sh = ["skills/factory/factory-learn/scripts/bash/verify-recurrence.sh"]
     assert _eval_label_gate(sh, [], "12") == 1, "unlabelled script change fails"
     assert _eval_label_gate(sh, ["other-label"], "12") == 1, "unrelated label does not satisfy gate"
     assert _eval_label_gate(sh, ["docs", "ledger-writer"], "12") == 0, "label among others satisfies gate"

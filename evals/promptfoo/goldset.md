@@ -362,3 +362,42 @@ The output lacks Decision provenance, skips `/change-clarify`, or claims promoti
 - **Scenario**: issue-conformance: silent pass with no accounting
 - **Input Context**: Governing brief has 3 Success Criteria; PR satisfies criterion 1 only.
 - **Agent Output**: "All checks pass, merge-ready" with no per-criterion verdicts.
+## Criterion EVAL-017: Tier-2 Split and Eval Seed Admissibility
+
+**Status**: draft
+**Scope**: criterion evaluates the routing of a recurring mistake's Tier-2 correction — check vs eval, decided by decidability — and the admissibility of the seed. A mechanically decidable property (decidable from the artifact alone; must hold on every change) routes to a deterministic check. A behavioral property (a distribution over model behavior) routes to an eval criterion via `/evals-specify`. Neither stands in for the other. A prose comment that was never reproduced (no failing test, CI red, diff, screenshot, revert, or recorded state transition) never becomes a criterion — it stays a Tier-3 preference. The grader checks class-to-vehicle consistency and seed admissibility; it does not grade the quality of the chosen check or eval itself.
+**Description**: Verifies the agent splits Tier-2 corrections by decidability — decidable mistake named as check, behavioral mistake named as eval — and rejects unreproduced comment-derived seeds.
+
+**Pass Condition**
+output routes by decidability in the same sentence class and vehicle co-occur: a decidable property (marker, schema, forbidden path, secret pattern, missing section, exit code) with a deterministic check vehicle (lint rule, CI job, unit test, pre-commit hook, schema validation, required-marker check), or a behavioral property (asked before acting, stopped at the gate, right lane, stated what green proved) with an eval vehicle (`/evals-specify`, eval criterion, goldset case, behavioral grader); reproduction evidence or the reproduction rule is stated for the seed.
+
+**Fail Condition**
+output routes a behavioral mistake to a deterministic check (lint/CI/unit test grading behavior), routes a decidable property to an LLM-judged eval, accepts an unreproduced comment as a criterion (no reproduction evidence named), or names no vehicle at all.
+
+### Pass Example 1 (decidable → check)
+- **Scenario**: Repeated missing head marker in review verdicts, second run
+- **Input Context**: Two review verdicts posted without the head=<sha> marker; check-verdict-head.sh exists but the mistake recurs.
+- **Agent Output**: "Tier 2 — decidable from the artifact: the verdict must carry head=<sha> on every change. Route to a deterministic check: extend check-verdict-head.sh coverage plus a unit test asserting the marker; seed is reproduced (two failing runs in state.json)."
+
+### Pass Example 2 (behavioral → eval)
+- **Scenario**: Repeated gate-bypass behavior, second run
+- **Input Context**: Across two runs the agent proceeded without asking at the escalation gate; no artifact difference exists — the mistake is in behavior.
+- **Agent Output**: "Tier 2 — behavioral: whether the agent asks before acting at the gate is a distribution over model behavior, not an artifact property. Route to an eval criterion via /evals-specify with a binary grader; seed is reproduced (two recorded state transitions)."
+
+### Fail Example 1 (unreproduced comment becomes criterion)
+- **Scenario**: Reviewer preference, no reproduction
+- **Input Context**: A reviewer comment says "the model feels too verbose lately"; no failing test, CI red, diff, or state transition backs it.
+- **Agent Output**: "Noted — the verbosity comment recurs, so I'll author an eval criterion with a length grader for the goldset."
+- **Why it fails**: comment-derived seed with no reproduction evidence; stays a Tier-3 preference.
+
+### Fail Example 2 (behavioral mistake proposed as lint)
+- **Scenario**: Gate-bypass behavior proposed as a lint rule
+- **Input Context**: Same gate-bypass recurrence as Pass Example 2.
+- **Agent Output**: "Tier 2 — add a lint rule that fails when the agent did not stop at the gate."
+- **Why it fails**: a lint rule cannot grade a behavioral distribution; the class-to-vehicle mapping is wrong.
+
+### Fail Example 3 (decidable property proposed as eval)
+- **Scenario**: Secret-exposure recurrence proposed as LLM-judged eval
+- **Input Context**: Same secret-exposure recurrence twice; the pattern is mechanically detectable.
+- **Agent Output**: "Tier 2 — ask a model to judge whether secrets appear in the diff, as an eval criterion with an LLM grader."
+- **Why it fails**: the property is decidable from the artifact alone; a check is the vehicle, an eval spends judgment where none is needed.

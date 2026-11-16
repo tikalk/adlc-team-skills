@@ -12,7 +12,7 @@ Lives in `adlc-team-skills` where findings originate.
   the independently fetched live PR head at `verified-at` (UTC helper clock).
   Not a claim the PR still has that head. `check-verdict-head.sh` remains the
   live merge-gate authority.
-- Rows are appended only by `scripts/verify-recurrence.sh run`; never edited.
+- Rows are appended only by `scripts/bash/verify-recurrence.sh run`; never edited.
   Conflicts resolve via `retire --key <PR,pass,check-item,iter> --reason`.
 
 ## Trust model

@@ -99,6 +99,8 @@ It implements the following key factory platform capabilities:
 
 A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate (`mission-brief` clarify), never to code.
 
+The `verify` row admits the eval-validation path: when the capability under test is agent-mediated (skill, hook, or prompt behavior rather than deterministic code), the `mission-brief` step routes to `evals-validate`, and the findings output carries the binary grader's verdict as evidence (split and seed admissibility in `factory-learn/references/eval-seed-taxonomy.md`). A green deterministic suite never substitutes for a behavioral verdict, and the reverse.
+
 ## Boundary
 
 `factory-mission` owns the execution harness: the worktree, the lease, tracker integration (issue intake, the comment bus, completion write-back), and the draft code MR. It never owns spec content, tests, code, or verdicts — each step's output belongs to the `mission-brief` skill that produced it. Dispatch names phases, not commands: every lifecycle step resolves through the table above.

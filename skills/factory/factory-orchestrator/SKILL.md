@@ -59,7 +59,7 @@ Enter the routing table below at the detected stage.
 | Review findings, judgment needed | Post the findings on the PR, then **PR hand-off** | Findings only — never an approval or denial. |
 | Merge notification / "it landed" | **Completion** (§6) | Lifecycle → `done`; release-gated work hands off to `factory-release`. |
 | PR ready but ticket still open after merge | Verify, close the ticket | Surfaced by `factory-tickets` as "Merged, Ticket Still Open". |
-| "Improve the factory itself" (prompts, skills, config) | Normal work item through the same procedure | Factory self-improvement lands via `factory-learn` / `team-levelup`. |
+| "Improve the factory itself" (prompts, skills, config) | Normal work item through the same procedure | Factory self-improvement lands via `factory-learn` / `team-levelup` — and an agent-facing self-change ships with an eval verdict before promotion, not on static review alone (see `factory-learn/references/eval-seed-taxonomy.md`). |
 | Workspace cleanup / tracker wiring / worklist requests | `factory-clean` / `factory-setup` / `factory-tickets` | Direct hand-off, no gating. |
 
 ### 4. Spec decision

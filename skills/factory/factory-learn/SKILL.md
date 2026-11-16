@@ -19,6 +19,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 ## When to use
 
 - You want to extract and compile hard-won session learnings into your team's centralized `team-ai-directives` repository.
+- You want to turn a reviewed PR and its agent run into candidate team CDRs with evidence links.
 - You want to mine git commit history to capture the rationale (ChDRs) behind past reverts and hotfixes.
 - You want to run "Build to Delete" (Harness Decay checks) to prune redundant rules.
 
@@ -37,6 +38,38 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 2. **`clarify`⭐** (`clarify` phase) -> Invoke `team-levelup` to review pending CDRs. Enforces the **evals-regression gate** (running the compliance goldset as the `verify` sub-phase to ensure no quality degradation).
 3. **`publish`** (`build` phase) -> Invoke `team-levelup` to package accepted CDRs, index them, and compile a draft PR targeting the `team-ai-directives` repository.
 4. **`prune`** (`analyze` phase) -> Runs the cleanup bot over the directive store to detect and propose deprecations of superseded, contradictory, or stale rules. Deprecations feed back to `team-levelup`.
+
+### PR + Agent-Run Review Route (`--pr <id> --run <run_id>`, on-demand)
+Turns one reviewed PR and the agent run that produced it into CDR candidates —
+the richest signal source, because it carries the review verdict (what an
+independent reviewer flagged) plus the run record (what the agent actually did).
+
+1. **`collect`** (`generate` phase) -> Gather the two evidence sources; abort
+   with a named gap (never infer) when either is missing:
+   - PR evidence: exact-head review verdict (`factory-review` verdict comment
+     with `head=<sha>` + `outcome=`), the PR diff, and Important findings.
+   - Run evidence: the run's shared state (`.adlc/workflows/runs/<run_id>/state.json`
+     via `adlc-cli workflow status`) and evidence files.
+   - Correction signal: human corrections on review threads (the reviewer asked
+     for a change and the agent applied it) — each is a CDR candidate by
+     default; a correction the agent already applied without a rule change is
+     the strongest candidate.
+2. **`suggest`** (`analyze` phase) -> Draft one CDR candidate per reusable
+   pattern using the shared template at `skills/team/templates/cdr-draft-template.md`.
+   Each candidate MUST cite both sources: PR link + verdict head SHA, and run ID
+   + step/state pointer. Route each candidate through the correction-elimination
+   ladder (ADR-494) before proposing it: Tier 1 structural (ADR via
+   `/architect-specify`) or Tier 2 mechanical check (action **P — Promote to
+   check**) beats a prose CDR wherever enforceable; prose CDRs are Tier 3,
+   judgment-only. A candidate with no PR link or no run pointer is incomplete —
+   send it back to `collect`, do not publish it.
+3. **`clarify`⭐** (`clarify` phase) -> Present the candidates to the user
+   (batch review, same A/B/C/D/P choice contract as `team-levelup` Phase 3).
+   Human accepts, rejects, or promotes each candidate; nothing publishes
+   without this gate.
+4. **`publish`** (`build` phase) -> Accepted CDRs follow the Session Learnings
+   route `publish` step: package, index, and compile a draft PR targeting the
+   `team-ai-directives` repository.
 
 ### Historical Mining Route (brownfield)
 1. **`init`** (`generate` phase) -> Invoke `change-init` to mine git history and issue trackers for Change Decision Records (ChDRs).

@@ -50,7 +50,7 @@ def test_route_candidates_cite_both_sources():
 
 def test_route_runs_ladder_before_prose_cdr():
     section = _route_section()
-    assert "correction-elimination ladder" in section or "ADR-494" in section
+    assert "correction-elimination ladder" in section
     assert "Promote to" in section, "Tier 2 must name the promote-to-check vehicle"
     text = _read(SKILL)
     assert "Tier 3" in text or "judgment" in text.lower(), (

@@ -57,8 +57,7 @@ independent reviewer flagged) plus the run record (what the agent actually did).
 2. **`suggest`** (`analyze` phase) -> Draft one CDR candidate per reusable
    pattern using the shared template at `skills/team/templates/cdr-draft-template.md`.
    Each candidate MUST cite both sources: PR link + verdict head SHA, and run ID
-   + step/state pointer. Route each candidate through the correction-elimination
-   ladder (ADR-494) before proposing it: Tier 1 structural (ADR via
+   + step/state pointer. Route each candidate through the correction-elimination ladder before proposing it: Tier 1 structural (ADR via
    `/architect-specify`) or Tier 2 mechanical check (action **P — Promote to
    check**) beats a prose CDR wherever enforceable; prose CDRs are Tier 3,
    judgment-only. A candidate with no PR link or no run pointer is incomplete —

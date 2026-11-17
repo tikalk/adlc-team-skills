@@ -19,11 +19,14 @@ Example: `assert.equal(sum(arr), arr.reduce((a, b) => a + b, 0))` shares the
 identifier `arr` between the call under test and the "expected" expression —
 the test never independently states what the answer should be, it just
 re-runs the logic. The detector flags this with an evidence trail in
-`oracle:<derivation-path>` format (e.g. `oracle:arr->reduce`), traceable back
-to the shared identifiers.
+`oracle:<derivation-path>` format (e.g. `oracle:arr`), traceable back
+to the shared identifiers. Only identifier bindings count: non-computed
+property names (`x.foo`) and object-literal keys (`{id: 1}`) are ignored. The
+scope set intentionally includes identifiers from the expected expression
+itself (over-breadth), so `assert.equal(foo(q), bar)` is flagged on `bar`.
 
 A legitimate snapshot update is not flagged as blocking: a leading comment
-containing words like "rationale", "approved", or "contract" next to the
+containing whole words like "rationale", "approved", or "contract" next to the
 assertion marks it as a reviewed, justified update (`allowed: true`,
 `Info` severity instead of `Important`).
 

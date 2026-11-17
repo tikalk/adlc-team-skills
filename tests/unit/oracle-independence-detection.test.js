@@ -61,7 +61,7 @@ describe('Oracle-Independence Detection', () => {
       assert(oracleFinding.message.includes('oracle'), 'Message should mention oracle');
     });
 
-    it('detects reduce() as derived identifier', () => {
+    it('detects reduce() expected value via the shared binding', () => {
       const code = `
         const sum = (arr) => arr.reduce((a,b) => a+b, 0);
         test('sum', () => {
@@ -72,7 +72,9 @@ describe('Oracle-Independence Detection', () => {
 
       const findings = detectOracleLaundering(code);
       assert(findings.length > 0);
-      assert(findings[0].details.derivationPath.includes('reduce'));
+      // The shared binding is `arr`; the `reduce` property name is not a binding.
+      assert(findings[0].details.derivationPath.includes('arr'));
+      assert(!findings[0].details.derivationPath.includes('reduce'));
     });
 
     it('allows justified snapshots with rationale comment', () => {
@@ -214,6 +216,33 @@ describe('Oracle-Independence Detection', () => {
       const findings = detectOracleLaundering(code);
       // Generic comment doesn't count as rationale
       assert(findings.length > 0);
+    });
+
+    it('does not treat substrings like "special" as a rationale', () => {
+      const code = `
+        test('substring', () => {
+          // special handling below
+          assert.equal(sum(arr), arr.reduce((a, b) => a + b, 0));
+        });
+      `;
+
+      const findings = detectOracleLaundering(code);
+      assert(findings.length > 0, 'Should still flag the oracle');
+      assert.strictEqual(findings[0].allowed, false);
+      assert.strictEqual(findings[0].severity, 'Important');
+    });
+
+    it('does not count property or object-key names as shared identifiers', () => {
+      const code = `
+        test('names only', () => {
+          assert.deepEqual(getUser(1), {id: 1});
+          assert.equal(f(x), x.foo);
+        });
+      `;
+
+      const findings = detectOracleLaundering(code);
+      assert.strictEqual(findings.length, 1, 'Only the shared binding x should be flagged');
+      assert.strictEqual(findings[0].evidence, 'oracle:x');
     });
 
     it('handles nested function definitions', () => {

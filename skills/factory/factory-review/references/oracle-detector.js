@@ -42,6 +42,25 @@ function walk(node, visitors, parent = null) {
  * an inner expression like the assertion's CallExpression itself, so rationale
  * checks must fall back to the immediate parent's leadingComments.
  */
+/**
+ * True when an Identifier is only a name, not a reference to a binding:
+ * non-computed member property (`x.foo` -> `foo`) or non-computed object
+ * key (`{id: 1}` -> `id`). These must not count as shared scope.
+ */
+function isNameOnlyIdentifier(node, parent) {
+  if (!parent) return false;
+  if (parent.type === 'MemberExpression' || parent.type === 'OptionalMemberExpression') {
+    return parent.property === node && !parent.computed;
+  }
+  if (parent.type === 'ObjectProperty' || parent.type === 'Property') {
+    return parent.key === node && !parent.computed && !parent.shorthand;
+  }
+  return false;
+}
+
+// Word-boundary match so e.g. "special" does not satisfy "spec".
+const RATIONALE_RE = /\b(rationale|reason|intentional|approved|update|changed|contract|spec)\b/i;
+
 function getLeadingComments(node, parent) {
   return node.leadingComments || parent?.leadingComments || null;
 }
@@ -107,7 +126,8 @@ function analyzeTestBlock(testFn, findings) {
   const testIdentifiers = new Set();
 
   walk(testFn, {
-    Identifier(node) {
+    Identifier(node, parent) {
+      if (isNameOnlyIdentifier(node, parent)) return;
       testIdentifiers.add(node.name);
     }
   });
@@ -155,7 +175,8 @@ function analyzeExpectedValue(expectedNode, testIdentifiers, assertionNode, find
 
   // Extract identifiers from expected value
   walk(expectedNode, {
-    Identifier(node) {
+    Identifier(node, parent) {
+      if (isNameOnlyIdentifier(node, parent)) return;
       const name = node.name;
       identifiersUsed.add(name);
 
@@ -198,7 +219,7 @@ function checkForRationale(assertionNode, assertionParent) {
   const comments = getLeadingComments(assertionNode, assertionParent);
   if (comments) {
     return comments.some(c =>
-      /rationale|reason|intentional|approved|update|changed|contract|spec/i.test(c.value)
+      RATIONALE_RE.test(c.value)
     );
   }
   return false;
@@ -211,7 +232,7 @@ function extractRationalComment(assertionNode, assertionParent) {
   const comments = getLeadingComments(assertionNode, assertionParent);
   if (comments) {
     const rationale = comments.find(c =>
-      /rationale|reason|intentional|approved|update|changed|contract|spec/i.test(c.value)
+      RATIONALE_RE.test(c.value)
     );
     return rationale?.value || null;
   }

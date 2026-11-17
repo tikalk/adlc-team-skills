@@ -196,3 +196,16 @@ def test_adr_move_accepts_full_id_with_prefix(adlc_tree):
     assert (adlc_tree / "docs/adlc/memory/adr/ADR-003.md").exists(), \
         "move_adr ADR-003 drafts→memory silently no-oped (double-prefix ADR-ADR-003.md)"
     assert not (adlc_tree / ".adlc/drafts/adr/ADR-003.md").exists()
+
+
+def test_pdr_index_keeps_multibyte_status(adlc_tree):
+    # macOS awk splits a multi-byte char in substr() under a UTF-8 locale and aborts
+    pdr = adlc_tree / ".adlc" / "drafts" / "pdr" / "PDR-002.md"
+    _write_fm(pdr, status="Accepted (Contingent on the gateway — not yet built)")
+    r = _run_bash(f'source "{PDR_LIB}"; generate_pdr_index drafts', adlc_tree,
+                  {"LC_ALL": "en_US.UTF-8"})
+    assert r.returncode == 0, r.stderr
+    assert "illegal byte sequence" not in r.stderr
+    index = (adlc_tree / ".adlc" / "drafts" / "pdr" / "pdr.md").read_text(encoding="utf-8")
+    row = next(l for l in index.splitlines() if l.startswith("| PDR-002 "))
+    assert "—" in row

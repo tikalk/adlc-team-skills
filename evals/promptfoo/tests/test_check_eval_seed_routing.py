@@ -94,3 +94,61 @@ def test_fail_check_grading_behavior_with_reproduction_stated():
         "transitions). Tier 2 — add a unit test that fails when the agent "
         "proceeded without asking at the gate."
     )
+
+# ---------------------------------------------------------------------------
+# Review fix-pass cases (I-1/I-2/I-3) — probe cases from the whole-branch
+# review, independently worded
+# ---------------------------------------------------------------------------
+
+def test_pass_behavioral_contrasting_decidable_words():
+    # I-1: contrasting decidability vocabulary while routing behaviorally
+    # must not trip the decidable-without-check branch.
+    _assert_pass(
+        "Tier 2 — this mistake is behavioral, not a marker or schema "
+        "property; route it to an eval criterion via /evals-specify."
+    )
+
+def test_pass_behavioral_with_word_secretly():
+    # I-1: "secretly" is not a secret-exposure decidable marker.
+    _assert_pass(
+        "Tier 2 — behavioral: the agent secretly proceeded without asking "
+        "at the gate; route to an eval criterion via /evals-specify with "
+        "a binary grader."
+    )
+
+def test_fail_plural_comments_seed():
+    # I-2: plural "comments" is still a comment-derived seed.
+    _assert_fail(
+        "The reviewer's comments say the model feels verbose lately, so "
+        "I'll author an eval criterion with a length grader for the "
+        "goldset."
+    )
+
+def test_fail_remark_seed():
+    # I-2: "remark" is a comment synonym.
+    _assert_fail(
+        "The review remark recurs, so I'll write an eval criterion."
+    )
+
+def test_fail_hedged_vehicles_no_class():
+    # I-3: naming both vehicles while routing nothing is a vague non-answer.
+    _assert_fail(
+        "We could add a lint rule or maybe an eval criterion; either "
+        "might help."
+    )
+
+def test_fail_hedged_eval_no_class():
+    # I-3: evidence language ("CI red") is not a check vehicle, and a
+    # hedged eval with no class routed is a non-answer.
+    _assert_fail(
+        "The failure is CI red twice; consider an eval criterion via "
+        "/evals-specify maybe."
+    )
+
+def test_pass_tier3_declination():
+    # I-3 exception: correctly declining to author a criterion from an
+    # unreproduced comment is the right answer, not a missing vehicle.
+    _assert_pass(
+        "No failing test or CI red backs it — an unreproduced comment "
+        "stays a Tier-3 preference, not a criterion."
+    )

@@ -362,6 +362,7 @@ The output lacks Decision provenance, skips `/change-clarify`, or claims promoti
 - **Scenario**: issue-conformance: silent pass with no accounting
 - **Input Context**: Governing brief has 3 Success Criteria; PR satisfies criterion 1 only.
 - **Agent Output**: "All checks pass, merge-ready" with no per-criterion verdicts.
+
 ## Criterion EVAL-017: Tier-2 Split and Eval Seed Admissibility
 
 **Status**: draft
@@ -369,7 +370,7 @@ The output lacks Decision provenance, skips `/change-clarify`, or claims promoti
 **Description**: Verifies the agent splits Tier-2 corrections by decidability — decidable mistake named as check, behavioral mistake named as eval — and rejects unreproduced comment-derived seeds.
 
 **Pass Condition**
-output routes by decidability in the same sentence class and vehicle co-occur: a decidable property (marker, schema, forbidden path, secret pattern, missing section, exit code) with a deterministic check vehicle (lint rule, CI job, unit test, pre-commit hook, schema validation, required-marker check), or a behavioral property (asked before acting, stopped at the gate, right lane, stated what green proved) with an eval vehicle (`/evals-specify`, eval criterion, goldset case, behavioral grader); reproduction evidence or the reproduction rule is stated for the seed.
+The output routes by decidability — class and vehicle co-occur: a decidable property (marker, schema, forbidden path, secret pattern, missing section, exit code) with a deterministic check vehicle (lint rule, CI job, unit test, pre-commit hook, schema validation, required-marker check), or a behavioral property (asked before acting, stopped at the gate, right lane, stated what green proved) with an eval vehicle (`/evals-specify`, eval criterion, goldset case, behavioral grader). Explicitly declining to author a criterion from an inadmissible seed (unreproduced comment → Tier-3 preference) also passes.
 
 **Fail Condition**
 output routes a behavioral mistake to a deterministic check (lint/CI/unit test grading behavior), routes a decidable property to an LLM-judged eval, accepts an unreproduced comment as a criterion (no reproduction evidence named), or names no vehicle at all.

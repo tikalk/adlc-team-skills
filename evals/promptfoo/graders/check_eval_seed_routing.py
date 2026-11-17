@@ -6,12 +6,18 @@ import re
 #   decidable property  -> deterministic check vehicle
 #   behavioral property -> eval criterion vehicle
 # and seed admissibility: an unreproduced comment never becomes a criterion.
+#
+# Class flags are document-wide, but the wrong-route branches only fire
+# when the document does NOT also contain a consistent route — a correct
+# behavioral routing that contrasts decidability vocabulary ("not a marker
+# or schema property") must not trip the decidable branches.
 
 # Decidable-property markers: the property is decidable from the artifact
-# alone and must hold on every change.
+# alone and must hold on every change. "secret" requires exposure/pattern/
+# leak context so contrast or incidental uses ("secretly") do not match.
 _DECIDABLE = re.compile(
-    r"(head=<sha>|head=<\w+>|\bmarker\b|\bschema\b|forbidden path|"
-    r"secret(?:\s+pattern|\s+exposure)?|missing section|exit code|"
+    r"(head=<\w+>|\bmarker\b|\bschema\b|forbidden path|"
+    r"\bsecrets?\s+(?:exposure|pattern|leak)|missing section|exit code|"
     r"decidable from the artifact|decidable property)",
     re.IGNORECASE,
 )
@@ -24,18 +30,19 @@ _BEHAVIORAL = re.compile(
     re.IGNORECASE,
 )
 
-# Deterministic-check vehicles.
+# Deterministic-check vehicles. Bare "CI" is NOT a vehicle — "CI red" is
+# reproduction-evidence language, not an enforcement artifact.
 _CHECK = re.compile(
-    r"(lint(?:er|\s+rule)?|\bCI\b(?:\s+job|\s+check|\s+workflow)?|"
-    r"unit test|pre-?commit(?:\s+hook)?|schema validation|"
-    r"deterministic check|check-verdict-head)",
+    r"(\blint(?:er|\s+rule)?\b|\bCI\s+(?:job|check|workflow)\b|"
+    r"\bunit test\b|\bpre-?commit(?:\s+hook)?\b|\bschema validation\b|"
+    r"\bdeterministic check\b|check-verdict-head)",
     re.IGNORECASE,
 )
 
 # Eval vehicles.
 _EVAL = re.compile(
-    r"(/evals-specify|eval criterion|goldset|binary grader|"
-    r"behavioral grader|LLM grader|length grader)",
+    r"(/evals-specify|\beval criterion\b|\bgoldset\b|\bbinary grader\b|"
+    r"\bbehavioral grader\b|\bLLM grader\b|\blength grader\b)",
     re.IGNORECASE,
 )
 
@@ -48,12 +55,28 @@ _REPRODUCED = re.compile(
 )
 
 # Comment-derived seeding: the seed is prose, not an event.
-_COMMENT = re.compile(r"\bcomment\b", re.IGNORECASE)
+_COMMENT = re.compile(r"\b(?:comments?|remarks?|review notes?)\b", re.IGNORECASE)
 
-# The output authors a criterion (not merely discusses routing).
+# Explicit model-judgment phrasing: an eval that spends LLM judgment on a
+# decidable property is the wrong-route signature.
+_LLM_JUDGMENT = re.compile(
+    r"(LLM grader|length grader|ask (?:a|the) model|model to judge|judge whether)",
+    re.IGNORECASE,
+)
+
+# The output authors a criterion (not merely discusses routing). Verbs and
+# targets are anchored so negations and incidental words do not match.
 _AUTHORS = re.compile(
-    r"(author\w*|creat\w+|add\w*|I'll|write|draft)\b[^.!?]{0,60}?"
-    r"(criterion|goldset|grader|lint|CI|unit test|pre-?commit|eval)",
+    r"\b(?:add(?:ed|s|ing)?|author(?:ed|ing|s)?|creat(?:e|ed|ing|es)|"
+    r"I'll|writ(?:e|ing|ten)|draft(?:ed|ing)?)\b[^.!?]{0,60}?"
+    r"\b(?:criterion|goldset|grader|lint|CI|unit test|pre-?commit|eval)\b",
+    re.IGNORECASE,
+)
+
+# Tier-3 declination: the output explicitly declines to author a criterion.
+_DECLINATION = re.compile(
+    r"(Tier[- ]3|preference|not a criterion|no criterion|declin\w+|"
+    r"stays? a)",
     re.IGNORECASE,
 )
 
@@ -64,6 +87,9 @@ def get_assert(output: str, context: dict = None) -> dict:
     behavioral = bool(_BEHAVIORAL.search(output))
     check = bool(_CHECK.search(output))
     ev = bool(_EVAL.search(output))
+
+    routed_decidable = decidable and check
+    routed_behavioral = behavioral and ev
 
     # 1. Unreproduced comment becomes a criterion: the seed is prose with
     #    no reproduction evidence anywhere in the decision.
@@ -76,45 +102,55 @@ def get_assert(output: str, context: dict = None) -> dict:
 
     # 2. Behavioral mistake routed to a deterministic check: a lint rule
     #    or unit test cannot grade a distribution over model behavior.
-    #    Saved only when a decidable property ALSO maps to the check
-    #    vehicle — i.e. the check legitimately targets the decidable part.
-    if behavioral and check and not ev:
-        if not (decidable and check):
-            return {
-                "pass": False,
-                "score": 0.0,
-                "reason": "failed class-to-vehicle consistency: a behavioral property (a distribution over model behavior) was routed to a deterministic check — behavioral properties route to an eval criterion via /evals-specify.",
-            }
+    if behavioral and check and not ev and not routed_decidable:
+        return {
+            "pass": False,
+            "score": 0.0,
+            "reason": "failed class-to-vehicle consistency: a behavioral property (a distribution over model behavior) was routed to a deterministic check — behavioral properties route to an eval criterion via /evals-specify.",
+        }
 
     # 3. Decidable property routed to an LLM-judged eval: spending sampled
     #    judgment where a check decides.
-    if decidable and ev and not check:
-        # The eval vehicles that imply model judgment (never a binary
-        # behavioral grader attached to a behavioral class).
-        if re.search(r"LLM grader|length grader|ask a model|model to judge", output, re.IGNORECASE):
-            return {
-                "pass": False,
-                "score": 0.0,
-                "reason": "failed class-to-vehicle consistency: a decidable property (decidable from the artifact alone) was routed to an LLM-judged eval — decidable properties route to a deterministic check.",
-            }
+    if decidable and _LLM_JUDGMENT.search(output) and not check:
+        return {
+            "pass": False,
+            "score": 0.0,
+            "reason": "failed class-to-vehicle consistency: a decidable property (decidable from the artifact alone) was routed to an LLM-judged eval — decidable properties route to a deterministic check.",
+        }
 
-    # 4. No vehicle named at all.
+    # 4. No vehicle named at all — unless the output explicitly declines
+    #    to author a criterion (correct Tier-3 handling of an
+    #    unreproduced seed is the right answer, not a missing vehicle).
     if not check and not ev:
+        if _DECLINATION.search(output) and not _AUTHORS.search(output):
+            return {
+                "pass": True,
+                "score": 1.0,
+                "reason": "Tier-2 split consistent: no criterion is authored from an inadmissible seed — the correction correctly stays a Tier-3 preference.",
+            }
         return {
             "pass": False,
             "score": 0.0,
             "reason": "failed: no elimination vehicle named — the decision names neither a deterministic check nor an eval criterion.",
         }
+    if not decidable and not behavioral and not _DECLINATION.search(output):
+        return {
+            "pass": False,
+            "score": 0.0,
+            "reason": "failed: enforcement vehicles are named but no property class is routed — decidability is not decided, so the split cannot be checked (or explicitly declined as Tier 3).",
+        }
 
     # 5. Consistent routing. A decidable class must carry a check vehicle;
-    #    a behavioral class must carry an eval vehicle.
-    if decidable and not check:
+    #    a behavioral class must carry an eval vehicle — unless the other
+    #    class already carries its consistent vehicle (contrast mentions
+    #    of the other vocabulary must not trip these).
+    if decidable and not check and not routed_behavioral:
         return {
             "pass": False,
             "score": 0.0,
             "reason": "failed class-to-vehicle consistency: a decidable property was named without a deterministic check vehicle.",
         }
-    if behavioral and not ev:
+    if behavioral and not ev and not routed_decidable:
         return {
             "pass": False,
             "score": 0.0,

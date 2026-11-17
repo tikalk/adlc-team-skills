@@ -198,14 +198,20 @@ def test_adr_move_accepts_full_id_with_prefix(adlc_tree):
     assert not (adlc_tree / ".adlc/drafts/adr/ADR-003.md").exists()
 
 
-def test_pdr_index_keeps_multibyte_status(adlc_tree):
-    # macOS awk splits a multi-byte char in substr() under a UTF-8 locale and aborts
+@pytest.mark.parametrize("status, shown", [
+    # macOS awk aborted when substr() split the em dash under a UTF-8 locale
+    ("Accepted (Contingent on the gateway — not yet built)",
+     "Accepted (Contingent on the gateway — not yet built)"),
+    # only the first letter is capitalised; ids and acronyms stay as written
+    ("accepted (merged into PDR-003, see LLM notes)",
+     "Accepted (merged into PDR-003, see LLM notes)"),
+])
+def test_pdr_index_status_keeps_text_after_first_letter(adlc_tree, status, shown):
     pdr = adlc_tree / ".adlc" / "drafts" / "pdr" / "PDR-002.md"
-    _write_fm(pdr, status="Accepted (Contingent on the gateway — not yet built)")
+    _write_fm(pdr, status=status)
     r = _run_bash(f'source "{PDR_LIB}"; generate_pdr_index drafts', adlc_tree,
                   {"LC_ALL": "en_US.UTF-8"})
     assert r.returncode == 0, r.stderr
-    assert "illegal byte sequence" not in r.stderr
     index = (adlc_tree / ".adlc" / "drafts" / "pdr" / "pdr.md").read_text(encoding="utf-8")
     row = next(l for l in index.splitlines() if l.startswith("| PDR-002 "))
-    assert "—" in row
+    assert f"| {shown} |" in row

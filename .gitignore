@@ -18,9 +18,8 @@ tmp/
 temp/
 *.tmp
 
-# Node (if any tooling is added later)
+# Node (tooling: skills/factory/factory-review's oracle-detector, see package.json)
 node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 .adlc/

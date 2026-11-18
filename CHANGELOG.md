@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **End-of-`plan` decision-record check, proposal records, and early draft MR across lanes**. `mission-brief` now runs a record check at the end of `plan` (keeping the 7-step lifecycle table intact) against `docs/adlc/memory/adr/adr.md` and `docs/adlc/memory/pdr/pdr.md` (with legacy `.adlc/memory` fallback), emitting `PASS` or `DECISION_RECORDS_CAPTURE_NEEDED` and writing `status: proposed` drafts under `.adlc/drafts/{adr,pdr}/` with `approvers`, `proposed-by`, and `source` frontmatter (advisory when invoked directly outside `ADLC_RUN_ID`). `factory-mission` publishes/reuses the early draft MR after `plan` via `factory-runbook` (`--kind code`), supports `--plan` Phase 1 return, tracks `record_captures` bounded by `max_record_captures: 2` in `mission-template.yml`, and bounces unattended halts from `executing` back to `spec-gated` with `blocked: decision-records`. Pinned by `tests/unit/test_record_capture_contract.py`.
+
 ### Changed
 
 - **`open-mr` takes its provider from the code host, not the issue tracker** (adlc-workspace#111). `open-mr` (bash + PowerShell) chose the provider from `ISSUE_PROVIDER` and refused any origin on another host, so a GitLab issue could never open a PR on a GitHub repo such as this one. Now the origin host decides: `github.com` → `gh`, `GITLAB_HOST` → `glab`, any other host is refused before any API call. On a cross-host run (issue and code on different hosts) the issue is not read through the code host, no milestone is set, the runner's own account is assigned (the initiator is ignored), and the description links the issue by its full URL. Same-host runs are unchanged. Pinned by `test_open_mr_cross_host_opens_a_github_pr_for_a_gitlab_issue`, `test_open_mr_same_host_github_still_propagates_the_issue_milestone` and `test_open_mr_refuses_an_unknown_origin_host_before_any_api_call`, with pwsh mirrors.

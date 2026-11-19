@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "run_id": "factory-review-pr158-heal",
+  "workflow_id": "factory-review-self-heal",
+  "issue_ref": null,
+  "repository": {
+    "remote": "https://github.com/tikalk/adlc-team-skills.git",
+    "branch": "factory/code/adlc-workspace-106",
+    "run_start_sha": "012f7fa8606bbf5ace98e401db4c40cbfab18637",
+    "head_sha": "012f7fa8606bbf5ace98e401db4c40cbfab18637"
+  },
+  "agent": {
+    "id": null,
+    "session_id": null,
+    "parent_session_id": null
+  },
+  "model": {
+    "name": null,
+    "route": null
+  },
+  "container": {
+    "image_digest": null
+  },
+  "config": {
+    "skill_lock_hash": null,
+    "mcp_config_hash": null
+  },
+  "created_at": "2026-11-19T14:57:20.196Z",
+  "updated_at": "2026-11-19T14:57:20.258Z",
+  "finished_at": null,
+  "outcome": "running",
+  "gateway_cost": null,
+  "retention_class": "pending",
+  "workload_class": "unknown"
+}

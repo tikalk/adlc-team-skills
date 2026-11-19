@@ -1,0 +1,14 @@
+{
+  "run_id": "factory-review-pr158-heal",
+  "workflow_id": "factory-review-self-heal",
+  "installed_workflow_id": null,
+  "installed_registry_root": null,
+  "status": "running",
+  "current_step_index": 0,
+  "current_step_id": "review",
+  "step_results": {},
+  "workflow_dir": null,
+  "created_at": "2026-11-19T14:57:20.196Z",
+  "updated_at": "2026-11-19T14:57:20.264Z",
+  "error": null
+}

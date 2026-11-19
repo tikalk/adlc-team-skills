@@ -1,0 +1,18 @@
+# factory-review self-heal loop — minimal workflow for run-state bookkeeping.
+# The LLM executor (loop controller) dispatches the sub-agents; this file
+# exists so `adlc-cli workflow state` can create and advance the run.
+schema_version: "1.0"
+workflow:
+  id: factory-review-self-heal
+  name: Factory Review Self-Heal
+  version: "1.0.0"
+steps:
+  - id: review
+    type: command
+    command: factory-review
+  - id: fix
+    type: command
+    command: factory-review
+  - id: converge
+    type: command
+    command: factory-review

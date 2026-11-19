@@ -256,7 +256,8 @@ parse_pdr_field() {
     # Fallback: heading-based (Title Case the field name for heading matching)
     # Accept both "Feature-Area" and "feature-area" heading styles
     local title_field
-    title_field=$(echo "$field" | awk -F'-' '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS='-')
+    # LC_ALL=C: macOS awk aborts on multi-byte chars in substr() under UTF-8.
+    title_field=$(echo "$field" | LC_ALL=C awk -F'-' '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS='-')
     value=$(parse_pdr_heading_field "$file" "$title_field")
     if [ -n "$value" ]; then
         echo "$value"
@@ -386,10 +387,11 @@ generate_pdr_index() {
         category=$(parse_pdr_field "$f" "category")
         feature_area=$(parse_pdr_field "$f" "feature-area")
 
-        # Defaults — no silent blank cells (status title-cased to match
+        # Defaults — no silent blank cells (first letter capitalised to match
         # the ADR display convention: frontmatter 'accepted' → 'Accepted').
+        # The rest stays as written, so ids like PDR-003 are not mangled.
         _raw="$status"
-        [ -z "$_raw" ] && { status="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Status"; } || status="$(printf '%s' "$_raw" | awk '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); print}')"
+        [ -z "$_raw" ] && { status="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Status"; } || status="$(printf '%s' "${_raw:0:1}" | tr '[:lower:]' '[:upper:]')${_raw:1}"
         [ -z "$date" ] && { date="YYYY-MM-DD"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Date"; }
         [ -z "$owner" ] && { owner="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Owner"; }
         [ -z "$category" ] && { category="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Category"; }

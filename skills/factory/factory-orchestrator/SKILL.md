@@ -62,6 +62,8 @@ Enter the routing table below at the detected stage.
 | "Improve the factory itself" (prompts, skills, config) | Normal work item through the same procedure | Factory self-improvement lands via `factory-learn` / `team-levelup`. |
 | Workspace cleanup / tracker wiring / worklist requests | `factory-clean` / `factory-setup` / `factory-tickets` | Direct hand-off, no gating. |
 
+**Research that feeds a future brief.** When the route is "research directly" and the requester then wants the work built, the research result handed to `factory-queue` carries an `Evidence base` block (canonical format in `mission-brief/references/mission-brief-template.md`): sources actually read with the claim each supports, a `Counter` bucket (`none found in <scope>` when empty), unread sources with arrival timestamps, and the requester's own notes marked `Self-notes` — claims, not evidence. Research that produced no such block enters the queue as `Evidence base: not declared (direct research)`.
+
 ### 4. Spec decision
 
 Use triage's assessed complexity to decide whether the work needs a **Mission Brief** refined beyond its intake form (Goal / Constraints / Non-Goals / Success Criteria — canonical template in `mission-brief/references/mission-brief-template.md`).

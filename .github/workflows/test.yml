@@ -104,8 +104,9 @@ jobs:
           seen = {}
           for r in rows:
               c = r.split("\t")
+              assert len(c) == 13, f"expected 13 columns, got {len(c)}: {r!r}"
               k = (c[0], c[1], c[2], c[5])
-              rest = tuple(c[3:5] + c[6:])
+              rest = (c[3].lower(), c[4]) + tuple(c[6:])
               if k in seen and seen[k] != rest:
                   raise SystemExit(f"provenance conflict for {k}")
               seen[k] = rest
@@ -123,7 +124,7 @@ jobs:
             echo "no PR number (push event): ledger-writer label gate skipped"
             exit 0
           fi
-          writers=$(git diff --name-only origin/main...HEAD -- skills/factory/factory-learn/references/recurrence-ledger.tsv skills/factory/factory-learn/scripts/bash/verify-recurrence.sh)
+          writers=$(git diff --name-only origin/main...HEAD -- skills/factory/factory-learn/references/recurrence-ledger.tsv skills/factory/factory-learn/scripts/bash/verify-recurrence.sh skills/factory/factory-learn/scripts/powershell/verify-recurrence.ps1)
           if [ -z "$writers" ]; then
             echo "no writer-path changes: ledger-writer label not required"
             exit 0
@@ -139,7 +140,18 @@ jobs:
           # label. File-match alone is not writer intent (any PR can touch the
           # ledger path in passing); the label distinguishes the writer.
           # The current PR is excluded: one active writer passes, two fail.
+          # push events have no PR number and are exempt (exit 0 before any check).
           me="${{ github.event.pull_request.number }}"
+          if [ -z "$me" ]; then
+            echo "no PR number (push event): single-writer check skipped"
+            exit 0
+          fi
+          case "$me" in
+            *[!0-9]*)
+              echo "invalid PR number: $me" >&2
+              exit 1
+              ;;
+          esac
           others=$(gh api "search/issues?q=repo:${{ github.repository }}+type:pr+state:open+label:ledger-writer" --jq "[.items[] | select(.number != ($me | tonumber)) | .number] | length")
           [ "$others" -le 0 ] || { echo "another open ledger-writer PR exists"; exit 1; }
           echo "ledger-writer check OK (current PR: $me, other writers: $others)"

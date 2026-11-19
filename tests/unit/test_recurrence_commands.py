@@ -403,10 +403,6 @@ def test_missing_flock_fails_closed(tmp_path):
         pytest.skip("flock present; missing-flock path not exercisable here")
 
 
-def test_lock_timeout_without_real_flock(tmp_path):
-    assert True  # timeout path requires flock; covered by script exit-2 contract
-
-
 def test_two_process_lock_contention_second_fails_first_succeeds(tmp_path):
     """Two real processes, one ledger lock (Finding: Linux CI contention).
 
@@ -888,71 +884,183 @@ def test_recurrence_view_requires_two_prs(tmp_path):
     assert "RECURRING\tci\tvh" in p2.stdout
 
 
-def test_ci_writer_query_excludes_self_and_uses_label():
+def _ledger_integrity_step_run(prefix: str) -> str:
     import yaml
-    wf = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text())
+    wf = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"))
     steps = wf["jobs"]["ledger-integrity"]["steps"]
-    writer = next(s for s in steps if (s.get("name") or "").startswith("Single active"))
-    body = writer["run"]
-    assert "label:ledger-writer" in body, "writer intent must be a label, not file match"
-    assert "select(.number" in body, "current PR must be excluded from competitor count"
+    step = next(s for s in steps if (s.get("name") or "").startswith(prefix))
+    return step["run"]
 
 
-def _label_gate_body():
-    import yaml
-    wf = yaml.safe_load((ROOT / ".github/workflows/test.yml").read_text())
-    steps = wf["jobs"]["ledger-integrity"]["steps"]
-    gate = next(s for s in steps if (s.get("name") or "").startswith("Ledger-writer label required"))
-    return gate["run"]
-
-
-def _eval_label_gate(diff_names, labels, pr_number):
-    """Execute the gate's branching logic offline against stubbed inputs.
-
-    Replicates the three branches of the 'Ledger-writer label required for
-    writer changes' step: push-event exemption (no PR number), read-only
-    exemption (no writer-path diff), and the writer label requirement.
-    Returns the exit code the real step would produce.
-    """
-    import subprocess
-    import textwrap
-    probe = textwrap.dedent("""\
-        writers="%s"
-        labels="%s"
-        me="%s"
-        if [ -z "$me" ]; then echo SKIP-PUSH; exit 10; fi
-        if [ -z "$writers" ]; then echo SKIP-READONLY; exit 11; fi
-        mine=0
-        for l in $labels; do [ "$l" = "ledger-writer" ] && mine=1; done
-        if [ "$mine" -ge 1 ]; then echo LABEL-OK; exit 0; else echo LABEL-MISSING; exit 1; fi
-        """) % (
-        " ".join(diff_names) if diff_names else "",
-        " ".join(labels),
-        pr_number if pr_number is not None else "",
+def _run_workflow_step(script_template: str, cwd: Path, env: dict, pr_number: str = "", repo: str = "o/r"):
+    rendered = (
+        script_template
+        .replace("${{ github.event.pull_request.number }}", pr_number)
+        .replace("${{ github.repository }}", repo)
     )
-    return subprocess.run(["bash", "-c", probe], capture_output=True, text=True).returncode
+    return subprocess.run(
+        ["bash", "-eo", "pipefail", "-c", rendered],
+        cwd=str(cwd),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
 
 
-def test_ci_label_gate_exempts_push_event():
-    body = _label_gate_body()
-    assert 'if [ -z "$me" ]' in body, "gate must exempt events with no PR number"
-    assert _eval_label_gate(["skills/factory/factory-learn/scripts/bash/verify-recurrence.sh"], [], None) == 10
+def _make_ci_gh_stub(bin_dir: Path, labels: list[str], open_writer_prs: list[int]):
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    gh = bin_dir / "gh"
+    pull_payload = json.dumps({"labels": [{"name": l} for l in labels]})
+    search_payload = json.dumps({"items": [{"number": n} for n in open_writer_prs]})
+    gh.write_text(
+        "#!/bin/bash\n"
+        'set -euo pipefail\n'
+        '[ "$1" = "api" ] || exit 2\n'
+        'endpoint="$2"\n'
+        'shift 2\n'
+        'jq_expr=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  if [ "$1" = "--jq" ]; then jq_expr="$2"; shift 2; else shift; fi\n'
+        'done\n'
+        'case "$endpoint" in\n'
+        f"  repos/*/pulls/*) raw='{pull_payload}' ;;\n"
+        f"  search/issues*) raw='{search_payload}' ;;\n"
+        '  *) exit 2 ;;\n'
+        'esac\n'
+        'if [ -n "$jq_expr" ]; then printf "%s\\n" "$raw" | jq -r "$jq_expr"; else printf "%s\\n" "$raw"; fi\n',
+        encoding="utf-8",
+    )
+    gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
 
 
-def test_ci_label_gate_readonly_pr_needs_no_label():
-    body = _label_gate_body()
-    assert "writer-path changes" in body
-    assert "origin/main...HEAD" in body, "gate must diff PR against main"
-    assert "recurrence-ledger.tsv" in body and "verify-recurrence.sh" in body
-    assert _eval_label_gate([], [], "12") == 11
+def _init_diff_repo(repo_dir: Path, changed_rel_paths: list[str]):
+    repo_dir.mkdir(parents=True, exist_ok=True)
+    git_env = dict(os.environ)
+    git_env.update({
+        "GIT_AUTHOR_NAME": "test",
+        "GIT_AUTHOR_EMAIL": "test@local",
+        "GIT_COMMITTER_NAME": "test",
+        "GIT_COMMITTER_EMAIL": "test@local",
+    })
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo_dir, env=git_env, check=True)
+    (repo_dir / "README.md").write_text("base\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README.md"], cwd=repo_dir, env=git_env, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=repo_dir, env=git_env, check=True)
+    subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=repo_dir, env=git_env, check=True)
+    subprocess.run(["git", "checkout", "-q", "-b", "pr-branch"], cwd=repo_dir, env=git_env, check=True)
+    if changed_rel_paths:
+        for rel in changed_rel_paths:
+            f = repo_dir / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("modified\n", encoding="utf-8")
+            subprocess.run(["git", "add", rel], cwd=repo_dir, env=git_env, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "change"], cwd=repo_dir, env=git_env, check=True)
 
 
-def test_ci_label_gate_writer_requires_label():
-    _ = _label_gate_body()
-    wr = ["skills/factory/factory-learn/references/recurrence-ledger.tsv"]
-    assert _eval_label_gate(wr, ["ledger-writer"], "12") == 0, "labelled writer PR passes"
-    assert _eval_label_gate(wr, [], "12") == 1, "unlabelled writer PR fails"
-    sh = ["skills/factory/factory-learn/scripts/bash/verify-recurrence.sh"]
-    assert _eval_label_gate(sh, [], "12") == 1, "unlabelled script change fails"
-    assert _eval_label_gate(sh, ["other-label"], "12") == 1, "unrelated label does not satisfy gate"
-    assert _eval_label_gate(sh, ["docs", "ledger-writer"], "12") == 0, "label among others satisfies gate"
+def test_ci_single_writer_step_push_and_pr_execution(tmp_path):
+    """Execute the real 'Single active ledger-writer PR' step on push and PR events (F3)."""
+    step_script = _ledger_integrity_step_run("Single active")
+    assert "label:ledger-writer" in step_script
+    assert "select(.number" in step_script
+
+    bin_dir = tmp_path / "bin"
+    _make_ci_gh_stub(bin_dir, labels=["ledger-writer"], open_writer_prs=[149])
+    env = env_with(bin_dir)
+
+    # Push to main has empty pull_request.number: must exit 0 cleanly without jq syntax error.
+    p_push = _run_workflow_step(step_script, tmp_path, env, pr_number="")
+    assert p_push.returncode == 0, p_push.stdout + p_push.stderr
+    assert "single-writer check skipped" in p_push.stdout
+
+    # Non-numeric PR number fails closed before jq.
+    p_bad = _run_workflow_step(step_script, tmp_path, env, pr_number="abc")
+    assert p_bad.returncode != 0
+
+    # Single active writer PR (self = 149) passes.
+    p_self = _run_workflow_step(step_script, tmp_path, env, pr_number="149")
+    assert p_self.returncode == 0, p_self.stdout + p_self.stderr
+
+    # Competing open writer PR (150 != 149) fails.
+    bin_two = tmp_path / "bin_two"
+    _make_ci_gh_stub(bin_two, labels=["ledger-writer"], open_writer_prs=[149, 150])
+    p_two = _run_workflow_step(step_script, tmp_path, env_with(bin_two), pr_number="149")
+    assert p_two.returncode == 1, p_two.stdout + p_two.stderr
+    assert "another open ledger-writer PR exists" in p_two.stdout
+
+
+def test_ci_label_gate_executes_real_workflow_step_across_all_writer_paths(tmp_path):
+    """Execute the real 'Ledger-writer label required for writer changes' step across TSV, Bash, and PowerShell paths (F4, F7)."""
+    step_script = _ledger_integrity_step_run("Ledger-writer label required")
+
+    writer_paths = [
+        "skills/factory/factory-learn/references/recurrence-ledger.tsv",
+        "skills/factory/factory-learn/scripts/bash/verify-recurrence.sh",
+        "skills/factory/factory-learn/scripts/powershell/verify-recurrence.ps1",
+    ]
+    for wp in writer_paths:
+        assert wp in step_script, f"workflow label gate must guard {wp}"
+
+    # 1. Push event (empty PR number) skips even when a writer path changed.
+    push_repo = tmp_path / "repo_push"
+    _init_diff_repo(push_repo, [writer_paths[0]])
+    bin_nolabel = tmp_path / "bin_nolabel"
+    _make_ci_gh_stub(bin_nolabel, labels=[], open_writer_prs=[])
+    p_push = _run_workflow_step(step_script, push_repo, env_with(bin_nolabel), pr_number="")
+    assert p_push.returncode == 0, p_push.stdout + p_push.stderr
+    assert "ledger-writer label gate skipped" in p_push.stdout
+
+    # 2. Read-only PR (unrelated path) passes without ledger-writer label.
+    ro_repo = tmp_path / "repo_ro"
+    _init_diff_repo(ro_repo, ["docs/unrelated.md"])
+    p_ro = _run_workflow_step(step_script, ro_repo, env_with(bin_nolabel), pr_number="12")
+    assert p_ro.returncode == 0, p_ro.stdout + p_ro.stderr
+    assert "ledger-writer label not required" in p_ro.stdout
+
+    # 3. Every writer path (TSV, .sh, .ps1) fails without label and passes with label.
+    bin_other = tmp_path / "bin_other"
+    _make_ci_gh_stub(bin_other, labels=["other-label"], open_writer_prs=[])
+    bin_labelled = tmp_path / "bin_labelled"
+    _make_ci_gh_stub(bin_labelled, labels=["docs", "ledger-writer"], open_writer_prs=[12])
+
+    for idx, wp in enumerate(writer_paths):
+        wr_repo = tmp_path / f"repo_w_{idx}"
+        _init_diff_repo(wr_repo, [wp])
+        p_missing = _run_workflow_step(step_script, wr_repo, env_with(bin_nolabel), pr_number="12")
+        assert p_missing.returncode == 1, f"{wp} unlabelled must fail: {p_missing.stdout}{p_missing.stderr}"
+        p_wrong = _run_workflow_step(step_script, wr_repo, env_with(bin_other), pr_number="12")
+        assert p_wrong.returncode == 1, f"{wp} unrelated label must fail"
+        p_ok = _run_workflow_step(step_script, wr_repo, env_with(bin_labelled), pr_number="12")
+        assert p_ok.returncode == 0, f"{wp} labelled must pass: {p_ok.stdout}{p_ok.stderr}"
+
+
+def test_ci_ledger_validator_step_enforces_column_count_and_casefolded_provenance(tmp_path):
+    """Execute the real 'Ledger header, duplicates, provenance conflicts' Python step (F4)."""
+    step_script = _ledger_integrity_step_run("Ledger header, duplicates")
+    rel_ledger = Path("skills/factory/factory-learn/references/recurrence-ledger.tsv")
+    ledger_file = tmp_path / rel_ledger
+    ledger_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Shipped ledger passes.
+    ledger_file.write_bytes((ROOT / rel_ledger).read_bytes())
+    p_shipped = _run_workflow_step(step_script, tmp_path, dict(os.environ))
+    assert p_shipped.returncode == 0, p_shipped.stdout + p_shipped.stderr
+
+    # Truncated 12-column row fails.
+    ledger_file.write_text(
+        HDR + "\n" + f"12\tci\tvh\t{H1}\tr1\t0\talice\tMEMBER\tlive-head\t2026-01-01T00:00:00Z\tlive-head-at-verification\t\n",
+        encoding="utf-8",
+    )
+    p_short = _run_workflow_step(step_script, tmp_path, dict(os.environ))
+    assert p_short.returncode != 0
+
+    # Conflicting provenance on same (PR, pass, check-item, iter) fails.
+    ledger_file.write_text(
+        HDR + "\n"
+        + f"12\tci\tvh\t{H1}\tr1\t0\talice\tMEMBER\tlive-head\t2026-01-01T00:00:00Z\tlive-head-at-verification\t\tn\n"
+        + f"12\tci\tvh\t{H2}\tr1\t0\talice\tMEMBER\tlive-head\t2026-01-01T00:00:00Z\tlive-head-at-verification\t\tn\n",
+        encoding="utf-8",
+    )
+    p_conflict = _run_workflow_step(step_script, tmp_path, dict(os.environ))
+    assert p_conflict.returncode != 0
+    assert "provenance conflict" in (p_conflict.stdout + p_conflict.stderr)

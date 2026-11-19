@@ -151,3 +151,42 @@ def test_fail_vehicle_as_mere_possibility():
     decision = """A pre-commit hook could potentially flag this pattern if
 someone later finds time to prototype one."""
     _assert_fail(decision)
+
+
+# ---------------------------------------------------------------------------
+# Fail cases — immediate negation before Tier 1 / Tier 2 verbs (F10)
+# ---------------------------------------------------------------------------
+
+def test_fail_negated_tier2_action_verbs():
+    """Negated action verbs before concrete vehicles must fail."""
+    cases = [
+        "Do not add a CI job or unit test; ask reviewers to watch for it.",
+        "Don't enforce a lint rule here, keep feedback informal.",
+        "Never create a pre-commit hook for this pattern.",
+        "Handle the recurrence without introducing a binary grader.",
+        "Avoid wiring a REVIEW.md pass because team conventions suffice.",
+        "Instead of introducing a CI check, remind engineers in standup.",
+        "Rather than landing a pytest suite, rely on manual inspection.",
+        "A CI job does not block merges in this repository.",
+    ]
+    for decision in cases:
+        _assert_fail(decision)
+
+
+def test_fail_negated_tier1_structural_operations():
+    """Negated structural operations must fail even when naming /architect-specify."""
+    cases = [
+        "Do not replace the nullable field with a sum type; mention /architect-specify.",
+        "Avoid migrating this nullable field to a union type via /architect-specify.",
+        "Rather than introducing an opaque type in an ADR, leave the string as-is.",
+        "Never split the variant into a sum type via /architect-specify.",
+    ]
+    for decision in cases:
+        _assert_fail(decision)
+
+
+def test_pass_after_prior_clause_negation():
+    """Negation in an earlier clause does not block an enacted vehicle in the next clause."""
+    decision = """Do not rely on manual reminders, add a CI check that fails
+whenever an unguarded writer path changes."""
+    _assert_pass(decision, "Tier 2")

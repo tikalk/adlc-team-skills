@@ -186,20 +186,16 @@ else
   CHDR_COUNT=$_CHDR_ROWS
 fi
 EVAL_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/evals/EVAL-*.md .adlc/memory/evals/EVAL-*.md 2>/dev/null | wc -l || true); EVAL_COUNT=$((EVAL_COUNT))
-# Normalized pending-status set for drafts: a draft is pending if undecided
-# (accepted/rejected close it) — raw, proposed, captured and clarified
-# statuses count. `handed off` is NOT excluded: only the draft's clarify
-# skill (or an explicit user handoff) clears it, per the sweep rule at
-# session end. Previous per-class greps drifted (ChDR matched Discovered,
-# ADR/PDR did not) and all missed real-world shapes (status: Proposed,
-# Status:** Proposed). Case-insensitive (-i at call sites), space/star
-# tolerant after the colon.
 # Pending-unless-decided predicate (shared): kept in a variable so the two
 # CDR sources and the four draft classes cannot drift again. A draft is
 # pending unless its status was decided — accepted or rejected close it;
 # raw, proposed, captured and clarified drafts all still owe their clarify
 # skill. `handed off` is NOT excluded: only the draft's clarify skill (or an
 # explicit user handoff) clears it, per the sweep rule at session end.
+# Previous per-class greps drifted (ChDR matched Discovered, ADR/PDR did
+# not) and all missed real-world shapes (status: Proposed, Status:**
+# Proposed). Case-insensitive (-i at call sites), space/star tolerant
+# after the colon.
 PENDING_DECISION_CLOSE='status:[ *]*accepted\|status:[ *]*rejected'
 
 # MCP Servers — names only (lean)

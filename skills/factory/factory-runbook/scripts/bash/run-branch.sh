@@ -2,7 +2,8 @@
 # run-branch.sh — check out the intent or mission run branch in the project root
 # (ADR-431-amendment §1, adlc-workspace#26; --kind code under ADR-473).
 #
-# With a factory run context (ADLC_RUN_ID, ADR-444): check out
+# With a factory run context (ADLC_RUN_ID, ADR-444; in a raw lane run the
+# lane's WORKFLOW_INPUTS.run_id, adopted through run-context.sh): check out
 #   factory/intent/<repo>-<iid>   from ADLC_ISSUE_REF (<group>/<repo>#<iid>), or
 #   factory/intent/run-<run_id>   without an issue (intent, the default);
 #   factory/mission/<repo>-<iid>  from ADLC_ISSUE_REF, or
@@ -11,7 +12,7 @@
 # a local copy that diverged from origin halts), else creating it. An existing
 # intent branch behind origin/<default> is caught up with one merge commit
 # (never a rebase or --force; a conflict halts naming the branch). The branch is shared by both intent lanes and by re-dispatches of the
-# same issue. Without ADLC_RUN_ID this is a no-op (interactive sessions never
+# same issue. Without a run context this is a no-op (interactive sessions never
 # switch branches). Prints the branch name on stdout.
 set -euo pipefail
 
@@ -34,8 +35,11 @@ case "$kind" in
   *) die "unsupported --kind: $kind (expected 'intent' or 'code')" ;;
 esac
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+if [ -z "${ADLC_RUN_ID:-}" ]; then . "$(dirname "$0")/run-context.sh"; fi
 if [ -z "${ADLC_RUN_ID:-}" ]; then
-  echo "run-branch: no run context (ADLC_RUN_ID unset) — skipped" >&2
+  echo "run-branch: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped" >&2
   exit 0
 fi
 [[ "$ADLC_RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "invalid ADLC_RUN_ID"

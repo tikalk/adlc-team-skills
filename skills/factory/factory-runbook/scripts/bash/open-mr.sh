@@ -3,7 +3,8 @@
 # its one draft MR
 # (ADR-431-amendment §3, ADR-432, ADR-444; adlc-workspace#26; --kind code under ADR-473).
 #
-# With a factory run context (ADLC_RUN_ID): pushes ONLY the current run branch
+# With a factory run context (ADLC_RUN_ID, else the lane's WORKFLOW_INPUTS.run_id
+# through run-context.sh): pushes ONLY the current run branch
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
 # description states the merge-commit rule, ADR-431 §5), with the issue's
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
@@ -13,7 +14,7 @@
 # built from repo, iid and run id only — never issue text. The tracker token's
 # scopes are checked before anything is pushed or created (ADR-432); a missing
 # scope or a tracker refusal blocks: non-zero exit, nothing written. Without
-# ADLC_RUN_ID this is a no-op. Prints the MR URL.
+# a run context this is a no-op. Prints the MR URL.
 set -euo pipefail
 
 die() { echo "open-mr: $*" >&2; exit 2; }
@@ -36,8 +37,11 @@ case "$kind" in
   *) die "unsupported --kind: $kind (expected 'intent' or 'code')" ;;
 esac
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+if [ -z "${ADLC_RUN_ID:-}" ]; then . "$(dirname "$0")/run-context.sh"; fi
 if [ -z "${ADLC_RUN_ID:-}" ]; then
-  echo "open-mr: no run context (ADLC_RUN_ID unset) — skipped" >&2
+  echo "open-mr: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped" >&2
   exit 0
 fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"

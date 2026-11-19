@@ -5,14 +5,15 @@
 #
 # Usage: run-branch.ps1 [--kind <intent|code>] (default intent).
 #
-# Factory run context (ADLC_RUN_ID, ADR-444): check out
+# Factory run context (ADLC_RUN_ID, ADR-444; in a raw lane run the lane's
+# WORKFLOW_INPUTS.run_id, adopted through run-context.ps1): check out
 # factory/intent/<repo>-<iid> from ADLC_ISSUE_REF (<group>/<repo>#<iid>), or
 # factory/intent/run-<run_id> without an issue (intent, the default);
 # factory/mission/<repo>-<iid> from ADLC_ISSUE_REF, or
 # factory/mission/run-<run_id> without an issue (with --kind code), reusing the local branch or
 # continuing from origin (local copy fast-forwarded; diverged halts), else
 # creating it. The branch is shared by both intent lanes and by re-dispatches
-# of the same issue. Without ADLC_RUN_ID: no-op (interactive sessions never
+# of the same issue. Without a run context: no-op (interactive sessions never
 # switch branches). Prints the branch name on stdout.
 
 $ErrorActionPreference = 'Stop'
@@ -32,8 +33,11 @@ for ($i = 0; $i -lt $args.Count; $i++) {
 }
 if ($kind -notin @('intent', 'code')) { Die "unsupported --kind: $kind (expected 'intent' or 'code')" }
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+if (-not $env:ADLC_RUN_ID) { . (Join-Path $PSScriptRoot 'run-context.ps1') }
 if (-not $env:ADLC_RUN_ID) {
-    [Console]::Error.WriteLine("run-branch: no run context (ADLC_RUN_ID unset) — skipped")
+    [Console]::Error.WriteLine("run-branch: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped")
     exit 0
 }
 if ($env:ADLC_RUN_ID -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { Die "invalid ADLC_RUN_ID" }

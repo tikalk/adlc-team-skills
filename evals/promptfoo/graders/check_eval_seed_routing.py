@@ -17,7 +17,7 @@ import re
 # leak context so contrast or incidental uses ("secretly") do not match.
 _DECIDABLE = re.compile(
     r"(head=<\w+>|\bmarker\b|\bschema\b|forbidden path|"
-    r"\bsecrets?\s+(?:exposure|pattern|leak)|missing section|exit code|"
+    r"\bsecrets?\s+(?:exposure|pattern|leak)|secrets?\b[^.!?]{0,30}?\bin (?:the )?(?:diff|artifact|repo|change)|missing section|exit code|"
     r"decidable from the artifact|decidable property)",
     re.IGNORECASE,
 )
@@ -65,7 +65,9 @@ _LLM_JUDGMENT = re.compile(
 )
 
 # The output authors a criterion (not merely discusses routing). Verbs and
-# targets are anchored so negations and incidental words do not match.
+# targets are anchored so incidental words do not match. Negated authoring
+# ("will not author ...", "never ...", "decline to ...") is suppressed via
+# _AUTHORS_NEGATION so correct Tier-3 handling is not misread as authoring.
 _AUTHORS = re.compile(
     r"\b(?:add(?:ed|s|ing)?|author(?:ed|ing|s)?|creat(?:e|ed|ing|es)|"
     r"I'll|writ(?:e|ing|ten)|draft(?:ed|ing)?)\b[^.!?]{0,60}?"
@@ -73,12 +75,43 @@ _AUTHORS = re.compile(
     re.IGNORECASE,
 )
 
-# Tier-3 declination: the output explicitly declines to author a criterion.
-_DECLINATION = re.compile(
-    r"(Tier[- ]3|preference|not a criterion|no criterion|declin\w+|"
-    r"stays? a)",
+# Negation guard: an authoring verb under negation is not authoring.
+_AUTHORS_NEGATION = re.compile(
+    r"(will\s+not|won't|would\s+not|do\s+not|don't|does\s+not|doesn't|"
+    r"never|declin\w+|not\s+author\w*|no\s+criterion)\b[^.!?]{0,40}?"
+    r"\b(?:author|criterion|goldset|grader|lint|CI|unit test|pre-?commit|eval)\b",
     re.IGNORECASE,
 )
+
+
+def _authors_criterion(output: str) -> bool:
+    """Guarded authoring check: negated authoring is not authoring."""
+    if not _AUTHORS.search(output):
+        return False
+    return not _AUTHORS_NEGATION.search(output)
+
+
+# Tier-3 declination core: Tier-3 / preference / no-criterion / decline
+# wording. Bare "stays a" is NOT declination on its own — a declination
+# needs Tier-3 language AND a comment-seed or explicit no-evidence basis.
+_DECLINATION_CORE = re.compile(
+    r"(Tier[- ]3|preference|not a criterion|no criterion|declin\w+)",
+    re.IGNORECASE,
+)
+
+# Explicit no-evidence statement backing a declination.
+_NO_EVIDENCE = re.compile(
+    r"(unreproduced|no failing|no CI red|no reproduction|no evidence|"
+    r"not backed|nothing backs|backs it)",
+    re.IGNORECASE,
+)
+
+
+def _is_declination(output: str) -> bool:
+    """Declination needs Tier-3 language plus a seed/no-evidence basis."""
+    if not _DECLINATION_CORE.search(output):
+        return False
+    return bool(_COMMENT.search(output) or _NO_EVIDENCE.search(output))
 
 
 def get_assert(output: str, context: dict = None) -> dict:
@@ -93,7 +126,7 @@ def get_assert(output: str, context: dict = None) -> dict:
 
     # 1. Unreproduced comment becomes a criterion: the seed is prose with
     #    no reproduction evidence anywhere in the decision.
-    if _COMMENT.search(output) and _AUTHORS.search(output) and not _REPRODUCED.search(output):
+    if _COMMENT.search(output) and _authors_criterion(output) and not _REPRODUCED.search(output):
         return {
             "pass": False,
             "score": 0.0,
@@ -122,7 +155,7 @@ def get_assert(output: str, context: dict = None) -> dict:
     #    to author a criterion (correct Tier-3 handling of an
     #    unreproduced seed is the right answer, not a missing vehicle).
     if not check and not ev:
-        if _DECLINATION.search(output) and not _AUTHORS.search(output):
+        if _is_declination(output) and not _authors_criterion(output):
             return {
                 "pass": True,
                 "score": 1.0,
@@ -133,7 +166,7 @@ def get_assert(output: str, context: dict = None) -> dict:
             "score": 0.0,
             "reason": "failed: no elimination vehicle named — the decision names neither a deterministic check nor an eval criterion.",
         }
-    if not decidable and not behavioral and not _DECLINATION.search(output):
+    if not decidable and not behavioral and not _is_declination(output):
         return {
             "pass": False,
             "score": 0.0,

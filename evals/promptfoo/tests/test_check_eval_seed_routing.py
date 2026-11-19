@@ -152,3 +152,21 @@ def test_pass_tier3_declination():
         "No failing test or CI red backs it — an unreproduced comment "
         "stays a Tier-3 preference, not a criterion."
     )
+
+def test_fail_bare_stays_a_is_not_declination():
+    # I-1 (review iter 0): bare "stays a" with no Tier-3 language and no
+    # seed basis is a vague non-answer, not a declination.
+    _assert_fail(
+        "This stays a headache for the team; someone should deal with it "
+        "at some point."
+    )
+
+def test_pass_negated_authoring_is_declination():
+    # I-2 (review iter 0): negated authoring ("will not author ...") must
+    # not trip the comment-becomes-criterion branch; paired with Tier-3
+    # language it is a correct declination.
+    _assert_pass(
+        "The reviewer comment calls the output wordy, so I will not "
+        "author a criterion from it — it stays a Tier-3 preference, "
+        "not a criterion."
+    )

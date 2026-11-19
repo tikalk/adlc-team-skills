@@ -993,6 +993,97 @@ def test_run_branch_never_merges_main_into_a_code_branch(repo, tmp_path):
     assert git(w, "rev-parse", "HEAD") == before
 
 
+# ── a new code branch starts from origin's default branch (SF-SKILL-08) ────
+# octopus-next !1308 (review finding C1), !1312 and !1315: the code branch was
+# cut from the checked-out intent branch, so the intent step's planning drafts
+# (.adlc/drafts/**, docs/adlc/**) landed in the code MR.
+
+MISSION = "factory/mission/adlc-workspace-12"
+INTENT_DRAFTS = (".adlc/drafts/pdr/PDR-1.md", "docs/adlc/intent/adlc-workspace-12.md")
+
+
+def on_intent_branch_with_drafts(repo):
+    """What the intent step leaves behind in the pod: HEAD on the intent run
+    branch, with committed planning drafts."""
+    w = repo["work"]
+    run(RUN_BRANCH, w, env=RUN_ENV)
+    for rel in INTENT_DRAFTS:
+        write(w, rel, "draft\n")
+    git(w, "add", "-A")
+    git(w, "commit", "-q", "-m", "intent drafts")
+    assert git(w, "branch", "--show-current") == INTENT
+
+
+def test_a_new_code_branch_does_not_inherit_the_intent_drafts(repo):
+    on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    r = run(RUN_BRANCH, w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == MISSION
+    assert git(w, "branch", "--show-current") == MISSION
+    assert git(w, "rev-parse", "HEAD") == git(repo["bare"], "rev-parse", "main")
+    assert git(w, "diff", "--name-only", "refs/remotes/origin/main", "HEAD") == ""
+    for rel in INTENT_DRAFTS:
+        assert not (w / rel).exists(), rel
+    # The intent branch keeps its drafts for the intent MR.
+    assert git(w, "ls-tree", "-r", "--name-only", INTENT, "--", ".adlc", "docs").split() == sorted(INTENT_DRAFTS)
+
+
+def test_a_new_code_branch_starts_from_the_latest_origin_default(repo, tmp_path):
+    # The clone's origin/main is stale (another MR merged since the pod
+    # cloned): the code branch still starts from what origin has now.
+    on_intent_branch_with_drafts(repo)
+    main_head = advance_origin_main(repo, tmp_path)
+    r = run(RUN_BRANCH, repo["work"], "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(repo["work"], "rev-parse", "HEAD") == main_head
+
+
+def test_a_new_code_branch_keeps_the_missions_uncommitted_files(repo):
+    # factory-mission writes its proposal records before it checks out the
+    # code branch (branch-first order), then commits them there.
+    on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    write(w, ".adlc/drafts/adr/ADR-7-cache.md", "proposed\n")
+    r = run(RUN_BRANCH, w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert (w / ".adlc/drafts/adr/ADR-7-cache.md").read_text() == "proposed\n"
+    assert git(w, "status", "--porcelain") == "?? .adlc/"
+
+
+def test_a_new_code_branch_uses_the_known_default_when_origin_is_silent(repo, tmp_path):
+    on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    git(w, "remote", "set-url", "origin", str(tmp_path / "unreachable.git"))
+    r = run(RUN_BRANCH, w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(w, "rev-parse", "HEAD") == git(w, "rev-parse", "refs/remotes/origin/main")
+    assert not (w / INTENT_DRAFTS[0]).exists()
+
+
+def test_a_new_code_branch_warns_when_no_default_branch_is_known(repo, tmp_path):
+    on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    head = git(w, "rev-parse", "HEAD")
+    git(w, "remote", "set-url", "origin", str(tmp_path / "unreachable.git"))
+    git(w, "update-ref", "-d", "refs/remotes/origin/main")
+    r = run(RUN_BRANCH, w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert "no origin default branch found" in r.stderr and MISSION in r.stderr
+    assert git(w, "rev-parse", "HEAD") == head
+
+
+def test_a_new_intent_branch_still_starts_from_head(repo):
+    w = repo["work"]
+    write(w, "local.txt", "l\n")
+    git(w, "add", "-A")
+    git(w, "commit", "-q", "-m", "local only")
+    head = git(w, "rev-parse", "HEAD")
+    r = run(RUN_BRANCH, w, env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(w, "rev-parse", "HEAD") == head
+
+
 def test_commit_step_accepts_the_capture_file(repo):
     w = repo["work"]
     write(w, "docs/adlc/intent/adlc-workspace-12.md", "captured\n")

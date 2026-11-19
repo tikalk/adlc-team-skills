@@ -41,7 +41,9 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
    `scripts/powershell/`). Checks out the run branch (`factory/intent/<repo>-<iid>`
    from `ADLC_ISSUE_REF` for intent runs — the default; `factory/mission/<repo>-<iid>`
    with `--kind code` for mission code runs) in the project root, reusing it
-   or continuing from `origin`. Shared by both intent lanes and with
+   or continuing from `origin`. A new code branch starts from origin's default
+   branch, never from the checked-out intent branch, so the intent step's
+   drafts stay out of the code MR. Shared by both intent lanes and with
    re-dispatches. Without `ADLC_RUN_ID` this is a no-op.
 2. Run the lifecycle steps. After **each** step that changed files:
    `bash scripts/bash/commit-step.sh --orchestrator <name> --step <id> --output-type

@@ -192,6 +192,15 @@ requires human judgment and cannot be eliminated structurally or checked
 mechanically. Package the rule as a CDR draft (via `factory-learn`)
 targeting the `team-ai-directives` repository.
 
+**Eval evidence on factory self-changes:** a diff touching agent-facing
+factory config (skill, hook, workflow, prompt) carries behavior that a
+static pass cannot grade. A verdict on such a change must include eval
+evidence per the eval-seeding decision — Tier-2 split and seed admissibility live in
+`factory-learn/references/eval-seed-taxonomy.md`; behavioral properties
+need an eval criterion with a binary grader (`/evals-specify`), decidable
+properties need a check. A green suite on behaviorally-graded ground is an
+`unverified` result, not a clean one.
+
 Also flag any changes that make current directives outdated.
 
 ### 6. Pre-PR Verdict Preview (`--preview`)

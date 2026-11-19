@@ -140,13 +140,13 @@ At the end of `plan` (across Default, Speckit, Superpowers, Matt, and Addy lanes
 - `PASS` — `spec.md` and `plan.md` neither contradict an Accepted record nor introduce an unrecorded architecture/product choice (tech stack, pattern, dependency, interface contract, persona, feature scope, or non-goal change).
 - `DECISION_RECORDS_CAPTURE_NEEDED` — `spec.md` or `plan.md` contradicts an Accepted record or makes an unrecorded architecture/product decision that belongs in project memory. Emit proposal record(s) under `.adlc/drafts/` (below) and surface the verdict to the caller.
 
-`mission-brief` never edits Accepted records under `docs/adlc/memory/` (or `.adlc/memory/`) and never edits `adr.md` / `pdr.md` directly. When `ADLC_RUN_ID` is not set (direct invocation with no harness), `DECISION_RECORDS_CAPTURE_NEEDED` is **advisory**: write the proposal draft(s), report the verdict to the user, and name the owning clarify skill (`architect-clarify` or `product-clarify`, or `factory-intent` when full two-lane intent is warranted) without blocking local iteration.
+`mission-brief` never edits Accepted records under `docs/adlc/memory/` (or `.adlc/memory/`) and never edits `adr.md` / `pdr.md` directly. When `ADLC_RUN_ID` is not set (direct local/interactive invocation with no harness), `DECISION_RECORDS_CAPTURE_NEEDED` is **advisory**: because `architect-clarify` and `product-clarify` require direct human invocation (`disable-model-invocation: true`), write and package the `.adlc/drafts/{adr,pdr}/*.md` proposal path(s), report the verdict to the user, and instruct the human to invoke `/architect-clarify` or `/product-clarify` (or `factory-intent` when full two-lane intent is warranted) rather than auto-invoking them or blocking local iteration.
 
 ### Proposal records
 
-On `DECISION_RECORDS_CAPTURE_NEEDED`, write one markdown draft per needed decision under `.adlc/drafts/adr/ADR-<NNN>-<slug>.md` or `.adlc/drafts/pdr/PDR-<NNN>-<slug>.md` (slot allocated across both `.adlc/drafts/` and `docs/adlc/memory/`) with frontmatter:
+On `DECISION_RECORDS_CAPTURE_NEEDED`, write one markdown draft per needed decision under `.adlc/drafts/adr/ADR-<NNN>-<slug>.md` or `.adlc/drafts/pdr/PDR-<NNN>-<slug>.md` (slot allocated across both `.adlc/drafts/` and `docs/adlc/memory/`) with YAML frontmatter and minimal required Markdown body headings (`# <ADR|PDR>-<NNN>: <title>`, `## Context and Problem Statement`, `## Decision Outcome`) so gate-packet parsers extract a non-empty `Decision:` summary:
 
-```yaml
+```markdown
 ---
 status: proposed
 date: <YYYY-MM-DD>
@@ -154,9 +154,19 @@ approvers: [<decision-makers from the contradicted record, else repo/team owners
 proposed-by: <run_id | direct>
 source: "<spec.md and plan.md sections that surfaced the decision>"
 ---
+
+# <ADR|PDR>-<NNN>: <title>
+
+## Context and Problem Statement
+
+<2-3 sentences naming the problem or contradicted Accepted record.>
+
+## Decision Outcome
+
+<Concise summary of the proposed decision extracted by gate-packet parsers as the `Decision:` summary.>
 ```
 
-Proposal records stay `status: proposed` until the owning clarify gate (`architect-clarify` for architecture proposals, `product-clarify` for product proposals) promotes them to Accepted memory or rejects them.
+Proposal records stay `status: proposed` until a human invokes the owning clarify gate (`/architect-clarify` for `architect-clarify` architecture proposals, `/product-clarify` for `product-clarify` product proposals; both carry `disable-model-invocation: true`) to promote them to Accepted memory or reject them.
 
 ## Gates
 

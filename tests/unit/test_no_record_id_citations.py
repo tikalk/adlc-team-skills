@@ -72,7 +72,7 @@ LOCAL_EXAMPLE_IDS = {
 GOVERNING_RECORDS = {
     "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
     "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-457",
-    "ADR-462", "ADR-473", "ADR-514", "PDR-131", "PDR-145",
+    "ADR-462", "ADR-473", "ADR-514", "ADR-524", "PDR-131", "PDR-145",
 }
 
 # The surfaces the rule covers.

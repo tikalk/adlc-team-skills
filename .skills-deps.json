@@ -18,23 +18,26 @@
       "factory-runbook"
     ],
     "factory-intent": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-learn": [
-      "factory-runbook",
-      "evals-analyze"
+      "factory-runbook"
     ],
     "factory-mission": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-orchestrator": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-queue": [
       "factory-runbook"
     ],
     "factory-review": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-setup": [
       "factory-runbook"
@@ -43,7 +46,8 @@
       "factory-runbook"
     ],
     "mission-brief": [
-      "factory-mission"
+      "factory-mission",
+      "factory-learn"
     ],
     "product-analyze": [
       "architect-clarify"

@@ -11,7 +11,7 @@ description: Use when reviewing PRs for severity-ranked policy compliance agains
 
 It operates as a **Kind-B control-plane skill** integrated with the PR hosting provider (GitHub / GitLab) via the tracker-agnostic integration layer (`factory-runbook/references/tracker-integration.md`).
 
-**Requires:** the `factory-runbook` skill (provides tracker integration, lanes, and the executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
+**Requires:** the `factory-runbook` and `factory-learn` skills (tracker integration, lanes, and executor contract via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`
 
 In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `factory-mission` Phase 5's test/code/converge pattern. Three separate sub-agents — Review Agent (read-only), Fix Agent (writeable src/), Converge Agent (independent judge) — are dispatched per iteration via lane-based dispatch, communicating only through the comment bus. The converge step returns `DONE` / `CONTINUE` / `SPEC_CORRECTION_NEEDED`, bounded by a circuit breaker and score-regression counter.
 

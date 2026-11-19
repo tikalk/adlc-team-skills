@@ -8,7 +8,7 @@ description: Use when a mission brief must become verified work end to end — b
 
 > **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
-**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
+**Requires:** the `factory-runbook` and `factory-learn` skills (provides the publish procedure and run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`.
 
 ## In a local session — you answer the gates
 

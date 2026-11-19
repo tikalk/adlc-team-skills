@@ -73,7 +73,9 @@ forever while behavior rots); an eval cannot enforce a decidable property
    not coverage (`docs/testing.md`); the criterion lands with its grader or
    not at all.
 7. **Declare the holdout** — later runs only; record the seed-window run
-   ids in the criterion.
+   ids in the criterion (`seed_window_run_ids` in the eval-criterion
+   template — factory-seeded criteria only, temporal holdout still
+   applies).
 8. **Close the back edge** — after the change ships, re-measure recurrence
    on the holdout: drop → keep; no change after 2 cycles → retire the
    criterion (build-to-delete applies to evals too).

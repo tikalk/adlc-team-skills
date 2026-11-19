@@ -22,7 +22,7 @@ When `ADLC_RUN_ID` is set, the workflow engine runs this skill unattended as its
 5. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
 6. **Never ask a question or wait for an answer.** The completion gate after this step is the approval; a question here ends the step with nothing implemented.
 
-**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
+**Requires:** the `factory-runbook` and `factory-learn` skills (provides the publish procedure and run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`
 
 ## In a local session — you answer the gates
 

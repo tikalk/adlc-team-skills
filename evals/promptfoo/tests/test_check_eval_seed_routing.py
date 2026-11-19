@@ -64,21 +64,38 @@ def test_pass_decidable_schema_check():
 # ---------------------------------------------------------------------------
 
 def test_fail_behavioral_proposed_as_lint():
+    # Reworded: was byte-identical to goldset EVAL-017-CASE-4.
     _assert_fail(
-        "Tier 2 — add a lint rule that fails when the agent did not stop "
-        "at the gate."
+        "Tier 2 — the gate-bypass keeps recurring, so add a lint rule "
+        "that fails whenever the agent proceeds without asking."
     )
 
 def test_fail_decidable_proposed_as_llm_eval():
+    # Reworded: was byte-identical to goldset EVAL-017-CASE-5.
     _assert_fail(
-        "Tier 2 — ask a model to judge whether secrets appear in the diff, "
-        "as an eval criterion with an LLM grader."
+        "Tier 2 — have a model judge whether secret patterns leak into "
+        "the diff, as an eval criterion with an LLM grader."
+    )
+
+def test_fail_decidable_goldset_case5_verbatim_reason():
+    # Goldset EVAL-017-CASE-5 verbatim must fail via branch 3
+    # (decidable→LLM-judged eval), not the branch-5 no-class guard.
+    result = get_assert(
+        "Tier 2 \u2014 ask a model to judge whether secrets appear in "
+        "the diff, as an eval criterion with an LLM grader."
+    )
+    assert result["pass"] is False
+    assert "llm-judged eval" in result["reason"].lower(), (
+        "CASE-5 must fail via the branch-3 LLM-judged-eval reason, got: "
+        + result["reason"]
     )
 
 def test_fail_unreproduced_comment_becomes_criterion():
+    # Reworded: was byte-identical to goldset EVAL-017-CASE-3.
     _assert_fail(
-        "Noted — the verbosity comment recurs, so I'll author an eval "
-        "criterion with a length grader for the goldset."
+        "A reviewer comment says the model feels too verbose lately; no "
+        "failing test, CI red, diff, or state transition backs it — so "
+        "I'll author an eval criterion with a length grader for the goldset."
     )
 
 def test_fail_no_vehicle_named():
@@ -152,3 +169,27 @@ def test_pass_tier3_declination():
         "No failing test or CI red backs it — an unreproduced comment "
         "stays a Tier-3 preference, not a criterion."
     )
+
+
+def test_eval017_goldset_cross_validation() -> None:
+    """Grader<->goldset cross-validation: every EVAL-017 goldset case must
+    grade to its label. Drift guard — not part of the RED probes."""
+    import json
+
+    goldset_path = (
+        Path(__file__).parent.parent / "goldset.json"
+    )
+    assert goldset_path.exists(), "goldset.json must exist for cross-validation"
+    goldset = json.loads(goldset_path.read_text())
+    cases = (
+        goldset["cases"] if isinstance(goldset, dict) else goldset
+    )
+    eval017 = [c for c in cases if c.get("criterion_id") == "EVAL-017"]
+    assert len(eval017) >= 5, "EVAL-017 must have at least 5 goldset cases"
+    for case in eval017:
+        expected = case["type"] == "pass"
+        result = get_assert(case["expected_output"])
+        assert result["pass"] is expected, (
+            f"{case['id']}: expected {'pass' if expected else 'fail'}, got "
+            f"{'pass' if result['pass'] else 'fail'} — {result['reason']}"
+        )

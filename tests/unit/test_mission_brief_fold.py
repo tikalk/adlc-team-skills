@@ -409,8 +409,12 @@ def test_skills_deps_manifest_drops_retired_borrowers():
         assert name not in manifest.get("requires", {}), (
             f".skills-deps.json: retired borrower {name} must be removed"
         )
-    assert manifest["requires"].get("mission-brief") == ["factory-mission"], (
-        ".skills-deps.json: mission-brief must require factory-mission"
+    assert manifest["requires"].get("mission-brief") == [
+        "factory-mission",
+        "factory-learn",
+    ], (
+        ".skills-deps.json: mission-brief must require factory-mission "
+        "and factory-learn (eval-seed taxonomy closure)"
     )
     skill_dirs = {p.parent.name for p in ROOT.glob("skills/*/*/SKILL.md")}
     for borrower, homes in manifest["requires"].items():

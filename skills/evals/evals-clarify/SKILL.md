@@ -44,7 +44,10 @@ $ARGUMENTS
 - `--accept IDS` — Accept specific draft IDs (e.g., "EVAL-001,EVAL-003")
 - `--merge IDS` — Merge related criteria (e.g., "EVAL-001+EVAL-002")
 - `--split ID` — Split complex criterion into multiple focused criteria
-- `--holdout-ratio RATIO` — Holdout percentage (default: 0.2, range: 0.1-0.3)
+- `--holdout-ratio RATIO` — Holdout percentage for randomly seeded criteria
+  (default: 0.2, range: 0.1-0.3). Factory-seeded criteria (seeded from
+  recurrence-ladder runs) ignore this flag and use the temporal holdout in
+  Holdout Isolation instead.
 
 ### Execution Steps
 
@@ -78,7 +81,15 @@ If already full format, proceed with normal review.
 - Write every clarification point and criterion revision in Simplified Technical English (short sentences, one idea each, active voice, imperative asks, named referents, plain words). Read the contract at `skills/authoring/references/ste-rules.md` before drafting. Count crossed boundaries (`record`, `lane`, `team`, `now`): **0–1 boundaries** use plain STE prose, however severe the gap; **2 or more boundaries** draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints.
 
 #### Phase 3: Holdout Isolation
-- Isolate exactly 20% of examples as a reserved holdout set (saved to `.adlc/memory/evals/holdout.json` — machine data stays under `.adlc/` per the shared layout).
+- For randomly seeded criteria: isolate exactly 20% of examples as a
+  reserved holdout set (saved to `.adlc/memory/evals/holdout.json` —
+  machine data stays under `.adlc/` per the shared layout).
+- For factory-seeded criteria (seeded from recurrence-ladder runs, e.g.
+  via the eval-seed taxonomy): use a **temporal holdout** instead — the
+  holdout is later runs, never a random slice. Record the seed-window run
+  ids in the criterion; everything after the change ships is the holdout.
+  A random split leaks the seed window into the holdout and confirms
+  noise. The `--holdout-ratio` flag does not apply here.
 - Ensure holdout set is never used in implementation or training.
 
 #### Phase 4: Publish Goldset

@@ -68,7 +68,7 @@ Enter the routing table below at the detected stage.
 
 Use triage's assessed complexity to decide whether the work needs a **Mission Brief** refined beyond its intake form (Goal / Constraints / Non-Goals / Success Criteria — canonical template in `mission-brief/references/mission-brief-template.md`).
 
-**Requires:** the `factory-runbook` skill (provides the run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
+**Requires:** the `factory-runbook` and `factory-learn` skills (provides the run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`
 
 - No ambiguity and no user-input-needed decisions → do not elaborate a spec; proceed once the Intent Gate passes.
 - Ambiguity that the user must resolve → ask **before** implementation. Relay the question, pause, and route the answer back (§Follow-up routing).

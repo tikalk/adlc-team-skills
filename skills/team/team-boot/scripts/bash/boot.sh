@@ -199,11 +199,11 @@ jq -r '.mcpServers | keys[]' "$TEAM_AI_DIRECTIVES/.mcp.json" 2>/dev/null | while
 done || echo "(none)"
 echo ""
 
-echo "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
+echo "Read full CDR.md, .skills.json, and context module files on demand when a task matches. Pull rule bodies on demand."
 echo "Invoke the matching class boot when a task or decision matches a Class Boots row."
 echo "Prefer targeted file searches over broad directory listings to conserve context."
 echo ""
-echo "**Every response MUST include** a Team Context & Decisions section before the task answer:"
+echo "**Every response MUST include** a Team Context & Decisions section before the task answer — include the table only when an accepted record grounded the answer or a pending decision emerged; otherwise (0 rows matched) emit the section heading + counts line only — no table:"
 echo "Match entries from the lists above (any indexed type) to the current task."
 echo "Status in use + Clarify — rows ground the session in ACCEPTED records only — pending drafts never appear as in use rows; they appear as pending decision rows in the same table."
 echo ""
@@ -316,8 +316,12 @@ fi
 # gitfile) — `-d` misses the latter, hiding the whole adlc branch.
 if [ -n "$TEAM_AI_DIRECTIVES" ] && [ -e "$TEAM_AI_DIRECTIVES/.git" ]; then
   if git -C "$TEAM_AI_DIRECTIVES" show-ref --verify --quiet "refs/heads/adlc" 2>/dev/null; then
-    _branch_cdrs=$(git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/" 2>/dev/null | grep -c "CDR-" || true)
-    case "$_branch_cdrs" in ''|*[!0-9]*) _branch_cdrs=0 ;; esac
+    _branch_cdrs=0
+    for _cdr_file in $(git -C "$TEAM_AI_DIRECTIVES" ls-tree --name-only "adlc:drafts/cdr/" 2>/dev/null | grep '^CDR-.*\.md$' || true); do
+      if ! git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/$_cdr_file" 2>/dev/null | grep -iq 'status:[ *]*accepted\|status:[ *]*rejected'; then
+        _branch_cdrs=$((_branch_cdrs + 1))
+      fi
+    done
     PENDING_CDRS=$((PENDING_CDRS + _branch_cdrs))
   fi
 fi

@@ -209,3 +209,46 @@ def test_pending_cdrs_supports_gitfile_directives_repo(tmp_path):
     assert int(m.group(1)) == 3, (
         f"expected 1 local + 2 branch = 3 CDR drafts, got {m.group(1)}"
     )
+
+
+@pytest.mark.requires_bash
+def test_pending_cdrs_excludes_accepted_and_rejected_on_adlc_branch(tmp_path):
+    """Accepted and rejected CDR records kept on `adlc:drafts/cdr/` must not
+    count as pending; raw (status-less) and proposed drafts still count."""
+    directives = tmp_path / "directives"
+    project = tmp_path / "project"
+    _write_directives(directives)
+    _write_project(project, directives)
+
+    local_cdr = project / ".adlc" / "drafts" / "cdr"
+    local_cdr.mkdir(parents=True, exist_ok=True)
+    (local_cdr / "CDR-local-proposed.md").write_text(
+        "---\nstatus: proposed\n---\n\n# local\n"
+    )
+    (local_cdr / "CDR-local-accepted.md").write_text(
+        "---\nstatus: accepted\n---\n\n# already accepted\n"
+    )
+
+    _git(directives, "init")
+    _git(directives, "config", "user.name", "Test User")
+    _git(directives, "config", "user.email", "test@example.com")
+    _git(directives, "config", "commit.gpgsign", "false")
+    _git(directives, "add", "CDR.md")
+    _git(directives, "commit", "-m", "init")
+    _git(directives, "checkout", "-b", "adlc")
+    branch_cdr = directives / "drafts" / "cdr"
+    branch_cdr.mkdir(parents=True, exist_ok=True)
+    (branch_cdr / "CDR-900.md").write_text("# 900 raw unreviewed\n")
+    (branch_cdr / "CDR-901.md").write_text("---\nstatus: proposed\n---\n")
+    (branch_cdr / "CDR-902.md").write_text("---\nstatus: accepted\n---\n")
+    (branch_cdr / "CDR-903.md").write_text("---\nstatus: rejected\n---\n")
+    (branch_cdr / "cdr.md").write_text("# index\n| CDR-902 | x | Rule | Accepted |\n")
+    _git(directives, "add", "drafts/cdr")
+    _git(directives, "commit", "-m", "mixed branch drafts")
+
+    stdout = _run_boot_sh(project)
+    m = re.search(r"\|\s*—\s*\|\s*(\d+)\s+CDR draft\(s\)", stdout)
+    assert m, f"no CDR pending row in output:\n{stdout[-3000:]}"
+    assert int(m.group(1)) == 3, (
+        f"expected 1 local + 2 unreviewed/proposed branch = 3 CDR drafts, got {m.group(1)}"
+    )

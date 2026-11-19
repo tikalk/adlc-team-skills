@@ -199,11 +199,11 @@ if (Test-Path $mcpPath) {
 } else { Write-Output "(none)" }
 Write-Output ""
 
-Write-Output "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
+Write-Output "Read full CDR.md, .skills.json, and context module files on demand when a task matches. Pull rule bodies on demand."
 Write-Output "Invoke the matching class boot when a task or decision matches a Class Boots row."
 Write-Output "Prefer targeted file searches over broad directory listings to conserve context."
 Write-Output ""
-Write-Output "**Every response MUST include** a Team Context & Decisions section before the task answer:"
+Write-Output "**Every response MUST include** a Team Context & Decisions section before the task answer — include the table only when an accepted record grounded the answer or a pending decision emerged; otherwise (0 rows matched) emit the section heading + counts line only — no table:"
 Write-Output "Match entries from the lists above (any indexed type) to the current task."
 Write-Output "Status in use + Clarify — rows ground the session in ACCEPTED records only — pending drafts never appear as in use rows; they appear as pending decision rows in the same table."
 Write-Output ""
@@ -309,8 +309,13 @@ $pendingCdrs = [int]$localCdr
 if ($TEAM_AI_DIRECTIVES -and (Test-Path "$TEAM_AI_DIRECTIVES/.git")) {
     git -C "$TEAM_AI_DIRECTIVES" show-ref --verify --quiet "refs/heads/adlc" 2>$null
     if ($LASTEXITCODE -eq 0) {
-        $cdrList = git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/" 2>$null
-        $pendingCdrs += ($cdrList -split "`n" | Where-Object { $_ -match "CDR-" }).Count
+        $cdrFiles = git -C "$TEAM_AI_DIRECTIVES" ls-tree --name-only "adlc:drafts/cdr/" 2>$null
+        foreach ($cdrFile in ($cdrFiles -split "`n" | Where-Object { $_ -match '^CDR-.*\.md$' })) {
+            $cdrBody = (git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/$cdrFile" 2>$null) -join "`n"
+            if ($cdrBody -notmatch '(?i)status:[ *]*(accepted|rejected)') {
+                $pendingCdrs += 1
+            }
+        }
     }
 }
 if ($pendingCdrs -gt 0) {

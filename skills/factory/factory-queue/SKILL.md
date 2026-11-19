@@ -36,10 +36,13 @@ It performs two primary control-plane operations:
 Operates on candidate issues (labeled `intent`) or local draft briefs:
 
 1. **Pull Candidate Briefs**: Discover the active tracker provider and fetch issues with status `intent` (`skills/factory/factory-runbook/references/tracker-integration.md`). The fetch includes Task-typed issues — children converted from Issue to Task for hierarchy stay visible to triage and are first-class plan items, never filtered out.
-2. **AI Triage Scoring**: Compute stateless advisory scores on three dimensions:
+2. **AI Triage Scoring & Should-We-Build Gate**: Compute stateless advisory scores and intake checks required before the Intent Gate:
    - **Risk**: Blast radius, data sensitivity, and architectural impact (Low / Medium / High).
    - **Complexity**: Scope and cross-service dependencies (Low / Medium / High).
    - **Agent Confidence**: Estimation of end-to-end execution success (0-100%, High/Medium/Low bands).
+   - **Requestor**: Who asked for the work — link to requestor/issue/signal, or `none` when unsolicited.
+   - **Success Metric & Stop Condition**: Measurable done-means (`success metric`) and an explicit `stop condition` defining when to cancel or pivot.
+   - **WIP Check**: Count active issues in `executing` + `validation`; if at or above the WIP cap (default `5`), triage recommends deferral (`deferred: wip-limit`).
 3. **Intent Gate Presentation**: Present candidate briefs + advisory scores to the human. If running unattended (no active human terminal), publish the Intent Gate presentation and AI scores as a structured comment with marker `<!-- factory-queue:triage:proposal -->` on the candidate issue. The queue run pauses. The human reviews the proposal, and approves by commenting "approve" or changing the label to `spec-gated`. When resumed, the queue reads the comment/label state and continues. **The Human Intent Gate is non-negotiable**; no brief is auto-approved or auto-rejected.
 4. **Label Stamping**:
    - On approval: move the issue `intent` ──► `spec-gated` through the Set Lifecycle step (tracker-integration Operation 9). Stamp automation-gating (`agent-can-execute` or `human-required`) and dispatch (`autonomous` | `supervised` | `interactive`) labels.

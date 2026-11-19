@@ -252,3 +252,52 @@ def test_pending_cdrs_excludes_accepted_and_rejected_on_adlc_branch(tmp_path):
     assert int(m.group(1)) == 3, (
         f"expected 1 local + 2 unreviewed/proposed branch = 3 CDR drafts, got {m.group(1)}"
     )
+
+
+@pytest.mark.requires_bash
+def test_pending_cdrs_unified_dialect_captured_clarified_and_spaces(tmp_path):
+    """One dialect for every source: captured/clarified drafts count as pending
+    both locally and on the adlc branch; a branch filename containing a space
+    counts exactly once (NUL-delimited loop, no word-splitting)."""
+    directives = tmp_path / "directives"
+    project = tmp_path / "project"
+    _write_directives(directives)
+    _write_project(project, directives)
+
+    local_cdr = project / ".adlc" / "drafts" / "cdr"
+    local_cdr.mkdir(parents=True, exist_ok=True)
+    (local_cdr / "CDR-local-captured.md").write_text(
+        "---\nstatus: captured\n---\n\n# local captured\n"
+    )
+    (local_cdr / "CDR-local-clarified.md").write_text(
+        "---\nstatus: clarified\n---\n\n# local clarified\n"
+    )
+    (local_cdr / "CDR-local-handedoff.md").write_text(
+        "---\nstatus: handed off\n---\n\n# still owes clarify\n"
+    )
+    (local_cdr / "CDR-local-accepted.md").write_text(
+        "---\nstatus: accepted\n---\n\n# already accepted\n"
+    )
+
+    _git(directives, "init")
+    _git(directives, "config", "user.name", "Test User")
+    _git(directives, "config", "user.email", "test@example.com")
+    _git(directives, "config", "commit.gpgsign", "false")
+    _git(directives, "add", "CDR.md")
+    _git(directives, "commit", "-m", "init")
+    _git(directives, "checkout", "-b", "adlc")
+    branch_cdr = directives / "drafts" / "cdr"
+    branch_cdr.mkdir(parents=True, exist_ok=True)
+    # Filename with a space: must count exactly once, not zero (dropped) or
+    # two (split into two records).
+    (branch_cdr / "CDR-910 spaced name.md").write_text("# 910 raw unreviewed\n")
+
+    _git(directives, "add", "drafts/cdr")
+    _git(directives, "commit", "-m", "spaced branch draft")
+
+    stdout = _run_boot_sh(project)
+    m = re.search(r"\|\s*—\s*\|\s*(\d+)\s+CDR draft\(s\)", stdout)
+    assert m, f"no CDR pending row in output:\n{stdout[-3000:]}"
+    assert int(m.group(1)) == 4, (
+        f"expected 3 local undecided + 1 spaced branch = 4 CDR drafts, got {m.group(1)}"
+    )

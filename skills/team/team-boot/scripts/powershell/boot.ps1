@@ -186,9 +186,15 @@ if ($ChdrFileCount -gt 0) {
     }
 }
 $EvalCount = @(Get-ChildItem "docs/adlc/memory/evals/EVAL-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/evals/EVAL-*.md" -ErrorAction SilentlyContinue).Count
-# Normalized pending-status set — one dialect for every class (-match is
-# case-insensitive; [ *]* tolerates "Status:** Proposed" shapes).
-$PendingStatus = 'status:[ *]*proposed|status:[ *]*discovered|status:[ *]*draft'
+# Shared pending-unless-decided predicate: kept in a variable so the draft
+# classes, the local CDR count and the adlc-branch loop cannot drift again.
+# A draft is pending unless its status was decided — accepted or rejected
+# close it; raw, proposed, captured and clarified drafts all still owe their
+# clarify skill (`handed off` is NOT excluded: only the draft's clarify
+# skill, or an explicit user handoff, clears it, per the sweep rule at
+# session end). -match is case-insensitive; [ *]* tolerates
+# "Status:** Proposed" shapes.
+$PendingDecisionClose = 'status:[ *]*(accepted|rejected)'
 
 # MCP Servers — names only (lean)
 Write-Output "## MCP Servers"
@@ -283,13 +289,13 @@ Write-Output "/evals-clarify) review whatever drafts exist at session end."
 
 # Pending decisions — ONE consolidated table: no per-class rows, each row
 # carries its clarify skill. Pending drafts are never part of Team Context
-# (accepted records only). Normalized status set ($PendingStatus): one dialect
-# for every class.
+# (accepted records only). All classes use the shared $PendingDecisionClose
+# predicate — undecided drafts count, decided (accepted/rejected) ones don't.
 $pendingRows = @()
 function Add-PendingRow {
     param($Dir, $Type, $Clarify)
     $files = Get-ChildItem ".adlc/drafts/$Dir/*.md" -ErrorAction SilentlyContinue
-    $n = @($files | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue) -match $PendingStatus }).Count
+    $n = @($files | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue) -notmatch $PendingDecisionClose }).Count
     if ($n -gt 0) {
         $script:pendingRows += "| — | $n $Type draft(s) | $Type | .adlc/drafts/$Dir/ | pending | $Clarify |"
     }
@@ -304,7 +310,12 @@ $pendingEvals = Add-PendingRow "evals" "Eval" "/evals-clarify"
 # (submodule/worktree gitfile); Test-Path finds either, so unlike a
 # directory-only check it never hides the branch on submodules.
 $pendingCdrs = 0
-$localCdr = @(Get-ChildItem ".adlc/drafts/cdr/*.md" -ErrorAction SilentlyContinue | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue) -match $PendingStatus }).Count
+# Pending unless decided (accepted/rejected): raw, proposed, captured and
+# clarified drafts all still owe /team-levelup — same $PendingDecisionClose
+# predicate as every Add-PendingRow class and the adlc-branch loop below.
+# (PowerShell splits git output on newlines only, so filenames with spaces
+# already survive as one record here.)
+$localCdr = @(Get-ChildItem ".adlc/drafts/cdr/*.md" -ErrorAction SilentlyContinue | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue) -notmatch $PendingDecisionClose }).Count
 $pendingCdrs = [int]$localCdr
 if ($TEAM_AI_DIRECTIVES -and (Test-Path "$TEAM_AI_DIRECTIVES/.git")) {
     git -C "$TEAM_AI_DIRECTIVES" show-ref --verify --quiet "refs/heads/adlc" 2>$null
@@ -312,7 +323,8 @@ if ($TEAM_AI_DIRECTIVES -and (Test-Path "$TEAM_AI_DIRECTIVES/.git")) {
         $cdrFiles = git -C "$TEAM_AI_DIRECTIVES" ls-tree --name-only "adlc:drafts/cdr/" 2>$null
         foreach ($cdrFile in ($cdrFiles -split "`n" | Where-Object { $_ -match '^CDR-.*\.md$' })) {
             $cdrBody = (git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/$cdrFile" 2>$null) -join "`n"
-            if ($cdrBody -notmatch '(?i)status:[ *]*(accepted|rejected)') {
+            # Same $PendingDecisionClose predicate as the local drafts above.
+            if ($cdrBody -notmatch $PendingDecisionClose) {
                 $pendingCdrs += 1
             }
         }

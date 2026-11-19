@@ -86,4 +86,5 @@ only through these helpers; lifecycle skills never do.
 | `mission-brief-template.md` | brief/milestone authors (queue, orchestrator) — canonical home `mission-brief/references/` |
 | `issues-provider.yml` | provider resolution template (setup writes the repo copy) |
 | `run-context.md` | run-mode vs local-session rules |
+| `project-contract.md` | consumer projects — what their `REVIEW.md`, `AGENTS.md`, skills and workflow override may and may not change in a factory run |
 | `mission-template.yml` | run policy defaults (execution, supervision, budgets) |

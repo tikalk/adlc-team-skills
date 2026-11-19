@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **In a factory run the factory skills' must-do steps beat interactive wording** (SF-SKILL-06; octopus-next !1298, adlc-argo-wf !84). `factory-review` gains an "In a factory run — these rules win" section: `REVIEW.md` and project skills supply checks and severities only, never output or interaction rules; nobody is asked anything; it recognises review lane pods without `ADLC_RUN_ID`. tracker-integration Safety Constraint 1 (dry-run + explicit confirm), Operation 9 Dry-Run Gating and factory-review Safety 3 are scoped to local sessions — in a factory run the writes a step owns execute at once and are confirmed by read-back. tracker-integration Safety Constraint 6 and factory-review Safety 7 no longer forbid the label edits that Set Lifecycle and factory-review §2 step 6 require. `factory-mission` states that project instructions say *what* to build, not *how to interact*, and that an item it cannot do is reported, never "pending". New `factory-runbook/references/project-contract.md` lists what a consumer's `REVIEW.md`, `AGENTS.md`, issue Definition of Done, provider file, workspace file and workflow override may and may not change. Pinned by `tests/unit/test_factory_run_precedence.py`.
 - **factory-mission / mission-brief functionality restoration** (`skills/factory/factory-mission/`, `skills/mission/mission-brief/`):
   converge-loop control (counters, circuit breaker, score regression,
   `max_spec_corrections` bound) restored to `factory-mission` as a new

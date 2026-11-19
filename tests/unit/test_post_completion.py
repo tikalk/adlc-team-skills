@@ -164,7 +164,7 @@ def test_factory_run_section_requires_the_record_on_every_outcome():
         assert outcome in section, outcome
     assert "never set `ADLC_RUN_ID` yourself" in section
     # Step 4's no-MR note is that one record, not a second note.
-    assert "leave the run's one note with step 5" in section
+    assert "leave the run's one note with step 6" in section
 
 
 def test_phase_6_retires_the_old_marker_spelling():

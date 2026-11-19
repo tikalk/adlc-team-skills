@@ -97,7 +97,8 @@ scoring. Scoring never overrides this classification:
 - **Tier 2 — Mechanical enforcement:** the mistake is checkable by a
   concrete vehicle (REVIEW.md pass, lint rule, unit test, pre-commit hook,
   CI job, binary eval grader) → route to action **P — Promote to check**
-  (Phase 3, preferred) or `/evals-specify` where a new eval criterion is
+  (Phase 3, preferred; see EVAL-010 deterministic-checks-first and EVAL-016
+  ladder routing) or `/evals-specify` where a new eval criterion is
   the vehicle. A CDR carries at most a thin pointer to the check.
 - **Tier 3 — Judgment:** the issue genuinely requires human judgment and is
   coverable by neither structure nor a check → proceed as a prose CDR

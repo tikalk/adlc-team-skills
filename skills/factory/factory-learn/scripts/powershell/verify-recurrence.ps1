@@ -17,6 +17,7 @@ $ErrorActionPreference = 'Stop'
 $script:ErrorView = 'ConciseView'
 
 $script:LedgerHeader = "PR`tpass`tcheck-item`tverdict-head`trun`titer`tauthor`tassoc`tverified-how`tverified-at`tstanding`ttier`tnote"
+$script:Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $script:LockTimeoutSec = 60
 if ($env:VERIFY_RECURRENCE_LOCK_TIMEOUT) {
     [int]$parsed = 0
@@ -35,12 +36,27 @@ function Usage-Error([string]$Message) {
     exit 2
 }
 
+function Write-LfLines([string]$Path, [string[]]$Lines) {
+    $content = if ($null -eq $Lines -or $Lines.Count -eq 0) { '' } else { ($Lines -join "`n") + "`n" }
+    [IO.File]::WriteAllText($Path, $content, $script:Utf8NoBom)
+}
+
+function Test-ValidRunSlug([string]$s) {
+    if (-not $s -or $s -eq '.' -or $s -eq '..' -or $s -eq '-') { return $false }
+    return ($s -match '\A[A-Za-z0-9._-]+\z')
+}
+
+function Test-ValidIterNum([string]$s) {
+    if (-not $s) { return $false }
+    return ($s -match '\A[0-9]+\z')
+}
+
 # UTC clock. Shells out to `date` so the deterministic `date` shim used in
 # tests controls both twins; falls back to .NET when `date` is unavailable.
 function Get-UtcNow {
     try {
         $out = & date -u '+%Y-%m-%dT%H:%M:%SZ' 2>$null
-        if ($LASTEXITCODE -eq 0 -and $out -match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') {
+        if ($LASTEXITCODE -eq 0 -and $out -match '\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\s*\z') {
             return $out.Trim()
         }
     } catch { }
@@ -101,20 +117,23 @@ function Convert-NormSlug([string]$s) {
 }
 
 function Get-IsoTs([string]$s) {
-    if ($s -match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') { return $s }
+    if ($s -match '\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z') { return $s }
     return '-'
 }
 
 # Layer M: verdict record from a body string. Returns hashtable
 # @{state; head; run; iter}. Mirrors the jq verdict_record exactly:
-# no factory-review marker -> none; marker head= present: 40-hex -> ok,
-# other non-'-' head -> malformed, else unbound.
+# tokens split on arbitrary whitespace; invalid run/iter forces malformed
+# with sanitized '-' placeholders so untrusted fields never break TSV framing
+# or traverse RUN_ROOT paths.
 function Get-VerdictRecord([string]$body) {
     if ($body -notmatch 'factory-review:step=review') {
         return @{ state = 'none'; head = '-'; run = '-'; iter = '-' }
     }
     $first = $null
-    foreach ($seg in $body.Split('<!--')) {
+    $parts = $body -split '<!--'
+    for ($pi = 1; $pi -lt $parts.Count; $pi++) {
+        $seg = $parts[$pi]
         if ($seg -notmatch '-->') { continue }
         $b2 = (($seg -split '-->', 2)[0] -replace '^\s+', '')
         if ($b2.StartsWith('factory-review:step=review')) { $first = $b2; break }
@@ -122,49 +141,64 @@ function Get-VerdictRecord([string]$body) {
     if ($null -eq $first) {
         return @{ state = 'none'; head = '-'; run = '-'; iter = '-' }
     }
-    $h = '-'; $r = '-'; $it = '-'
-    foreach ($tok in $first.Split(' ')) {
-        if ($tok.StartsWith('head=')) { $h = $tok.Substring(5) }
-        elseif ($tok.StartsWith('run=')) { $r = $tok.Substring(4) }
-        elseif ($tok.StartsWith('iter=')) { $it = $tok.Substring(5) }
+    $rawH = $null; $rawR = $null; $rawIt = $null
+    foreach ($tok in ($first -split '\s+')) {
+        if (-not $tok) { continue }
+        if ($null -eq $rawH -and $tok.StartsWith('head=')) { $rawH = $tok.Substring(5) }
+        elseif ($null -eq $rawR -and $tok.StartsWith('run=')) { $rawR = $tok.Substring(4) }
+        elseif ($null -eq $rawIt -and $tok.StartsWith('iter=')) { $rawIt = $tok.Substring(5) }
     }
-    if ($h -match '^[0-9a-fA-F]{40}$') {
-        return @{ state = 'ok'; head = $h; run = $r; iter = $it }
-    } elseif ($h -ne '-') {
+    $rOk = ($null -eq $rawR) -or (Test-ValidRunSlug $rawR)
+    $itOk = ($null -eq $rawIt) -or (Test-ValidIterNum $rawIt)
+    $r = if ($null -ne $rawR -and $rOk) { $rawR } else { '-' }
+    $it = if ($null -ne $rawIt -and $itOk) { $rawIt } else { '-' }
+    if (-not ($rOk -and $itOk)) {
+        return @{ state = 'malformed'; head = '-'; run = '-'; iter = '-' }
+    }
+    if ($null -ne $rawH -and $rawH -match '\A[0-9a-fA-F]{40}\z') {
+        return @{ state = 'ok'; head = $rawH; run = $r; iter = $it }
+    } elseif ($null -ne $rawH -and $rawH -ne '-') {
         return @{ state = 'malformed'; head = '-'; run = $r; iter = $it }
     }
     return @{ state = 'unbound'; head = '-'; run = $r; iter = $it }
 }
 
-# Marker records via gh: each line is ts`twho`tassoc`tstate`thead`trun`titer
-# over comments + reviews. jq order: submitted_at // created_at, login
-# gsub [^A-Za-z0-9._-], assoc gsub [^A-Za-z] (default NONE).
-function Get-MarkerRecords([string]$Repo, [string]$Pr) {
-    $cj = Invoke-GhJson "repos/$Repo/issues/$Pr/comments" 'the PR issue comments'
-    $rj = Invoke-GhJson "repos/$Repo/pulls/$Pr/reviews" 'the PR review bodies'
-    $ids = @()
-    foreach ($rawStr in @($cj, $rj)) {
-        if (-not $rawStr) { continue }
-        try { $arr = $rawStr | ConvertFrom-Json } catch { Die 'could not read marker records (gh exited 2):' }
+function ConvertFrom-CombinedJsonArrays([string[]]$RawJsonStrings, [string]$ErrMsg) {
+    $items = [System.Collections.Generic.List[object]]::new()
+    foreach ($rawStr in $RawJsonStrings) {
+        if (-not $rawStr -or -not $rawStr.Trim()) { continue }
+        try {
+            $arr = ConvertFrom-Json -InputObject $rawStr -NoEnumerate
+        } catch {
+            Die $ErrMsg
+        }
         if ($null -eq $arr) { continue }
-        if ($arr -isnot [System.Collections.IEnumerable] -or $arr -is [string]) { $arr = @($arr) }
-        foreach ($it in $arr) { $ids += $it }
+        if ($arr -isnot [Array]) { Die $ErrMsg }
+        foreach ($it in $arr) { $items.Add($it) }
     }
-    $lines = @()
-    foreach ($it in $ids) {
+    $lines = [System.Collections.Generic.List[string]]::new()
+    for ($idx = 0; $idx -lt $items.Count; $idx++) {
+        $it = $items[$idx]
         $ts = Get-IsoTs ([string](($it.submitted_at, $it.created_at) | Where-Object { $_ } | Select-Object -First 1))
         $who = [string](($it.user.login, '') | Select-Object -First 1)
         $who = $who -replace '[^A-Za-z0-9._-]', ''
         $assoc = [string](($it.author_association, 'NONE') | Select-Object -First 1)
         $assoc = $assoc -replace '[^A-Za-z]', ''
         $rec = Get-VerdictRecord ([string](($it.body, '') | Select-Object -First 1))
-        $lines += ($ts, $who, $assoc, $rec.state, $rec.head, $rec.run, $rec.iter) -join "`t"
+        $lines.Add((($ts, $who, $assoc, $rec.state, $rec.head, $rec.run, $rec.iter, [string]$idx) -join "`t"))
     }
-    return $lines
+    return @{ items = $items; records = @($lines) }
 }
 
-# Layer F: valid finding-line extraction. Prints raw "pass:.. check:.." spans
-# (like the awk match) to stdout; malformed bullet lines to stderr.
+# Marker records via gh: each line is ts`twho`tassoc`tstate`thead`trun`titer`tidx
+# over comments + reviews fetched once (no duplicate API calls).
+function Get-CombinedMarkerItems([string]$Repo, [string]$Pr) {
+    $cj = Invoke-GhJson "repos/$Repo/issues/$Pr/comments" 'the PR issue comments'
+    $rj = Invoke-GhJson "repos/$Repo/pulls/$Pr/reviews" 'the PR review bodies'
+    return (ConvertFrom-CombinedJsonArrays @($cj, $rj) 'could not parse marker records')
+}
+
+# Layer F: valid finding-line extraction. Malformed bullet lines go to stderr.
 # Throws 'FINDING-UNPARSEABLE' (message) when no valid line exists.
 function Get-FindingPairs([string]$File) {
     $spans = [System.Collections.Generic.List[string]]::new()
@@ -179,8 +213,8 @@ function Get-FindingPairs([string]$File) {
     if ($spans.Count -eq 0) { throw 'FINDING-UNPARSEABLE' }
     $set = [System.Collections.Generic.SortedSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($span in $spans) {
-        $pm = [regex]::Match($span, '.*pass:([^ |]*).*')
-        $cm = [regex]::Match($span, '.*check:([^ |]*).*')
+        $pm = [regex]::Match($span, 'pass:([^\s|]+)')
+        $cm = [regex]::Match($span, 'check:([^\s|]+)')
         $p = Convert-NormSlug $pm.Groups[1].Value
         $c = Convert-NormSlug $cm.Groups[1].Value
         if ($p -and $c) { [void]$set.Add("$p`t$c") }
@@ -189,15 +223,15 @@ function Get-FindingPairs([string]$File) {
     return @($set)
 }
 
-# Layer P: structured pass:/check: pairs in marker-stripped prose.
-function Get-ProseStructPairs([string]$File) {
-    if (-not $File -or -not (Test-Path -LiteralPath $File)) { return @() }
-    $text = [IO.File]::ReadAllText($File)
-    $stripped = [regex]::Replace($text, '<!--[^>]*-->', '')
+# Layer P: structured pass:/check: pairs in a single verdict body with HTML
+# comment regions stripped (including multi-line markers).
+function Get-ProseStructPairsText([string]$Text) {
+    if (-not $Text) { return @() }
+    $stripped = [regex]::Replace($Text, '<!--[\s\S]*?-->', '')
     $set = [System.Collections.Generic.SortedSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($m in [regex]::Matches($stripped, 'pass:[A-Za-z0-9_.-]+\s+check:[A-Za-z0-9_.-]+')) {
-        $sm = [regex]::Match($m.Value, '.*pass:([^ ]*).*')
-        $cm = [regex]::Match($m.Value, '.*check:([^ ]*).*')
+        $sm = [regex]::Match($m.Value, 'pass:([^\s]+)')
+        $cm = [regex]::Match($m.Value, 'check:([^\s]+)')
         $p = Convert-NormSlug $sm.Groups[1].Value
         $c = Convert-NormSlug $cm.Groups[1].Value
         if ($p -and $c) { [void]$set.Add("$p`t$c") }
@@ -222,15 +256,17 @@ function Test-OneRecord([string]$ts, [string]$who, [string]$assoc,
         'none'      { return "REJECT`t$mhead`t$run`t$iter`tno-marker-head" }
     }
     if ($lcM -ne $lcLive) { return "REJECT`t$mhead`t$run`t$iter`tstale-head" }
+    if (-not (Test-ValidRunSlug $run)) { return "REJECT`t$mhead`t-`t$iter`trun-unresolvable" }
+    if (-not (Test-ValidIterNum $iter)) { return "REJECT`t$mhead`t$run`t-`trun-unresolvable" }
     $brief = Join-Path $RunRoot "runs/$run/brief.md"
     if (-not (Test-Path -LiteralPath $brief)) {
         return "REJECT`t$mhead`t$run`t$iter`trun-unresolvable"
     }
     $bRepo = $null; $bPr = $null; $bHead = $null
     foreach ($bl in [IO.File]::ReadLines($brief)) {
-        if ($null -eq $bRepo -and $bl -match '^review-target-repo:\s*(.*)$') { $bRepo = $Matches[1] }
-        elseif ($null -eq $bPr -and $bl -match '^review-target-pr:\s*(.*)$') { $bPr = $Matches[1] }
-        elseif ($null -eq $bHead -and $bl -match '^reviewed-head:\s*(.*)$') { $bHead = $Matches[1] }
+        if ($null -eq $bRepo -and $bl -match '^review-target-repo:\s*(.*)$') { $bRepo = $Matches[1].TrimEnd("`r") }
+        elseif ($null -eq $bPr -and $bl -match '^review-target-pr:\s*(.*)$') { $bPr = $Matches[1].TrimEnd("`r") }
+        elseif ($null -eq $bHead -and $bl -match '^reviewed-head:\s*(.*)$') { $bHead = $Matches[1].TrimEnd("`r") }
     }
     if (-not $bRepo -or -not $bPr -or -not $bHead) {
         return "REJECT`t$mhead`t$run`t$iter`trun-unresolvable"
@@ -250,16 +286,49 @@ function Test-OneRecord([string]$ts, [string]$who, [string]$assoc,
     return "OK`t$mhead`t$run`t$iter`t$who`t$assoc`t$ts"
 }
 
+# Observation-identity provenance (verdict-head case-folded; verified-at excluded).
+function Get-RowProv([string[]]$a) {
+    $c3 = if ($a.Count -gt 3) { $a[3].ToLowerInvariant() } else { '' }
+    $c4 = if ($a.Count -gt 4) { $a[4] } else { '' }
+    $c6 = if ($a.Count -gt 6) { $a[6] } else { '' }
+    $c7 = if ($a.Count -gt 7) { $a[7] } else { '' }
+    $c8 = if ($a.Count -gt 8) { $a[8] } else { '' }
+    $c10 = if ($a.Count -gt 10) { $a[10] } else { '' }
+    $c11 = if ($a.Count -gt 11) { $a[11] } else { '' }
+    $c12 = if ($a.Count -gt 12) { $a[12] } else { '' }
+    return (@($c3, $c4, $c6, $c7, $c8, $c10, $c11, $c12) -join "`t")
+}
+
+function Get-RowProvState([string]$Row, [string]$PKey, [string[]]$CurLines) {
+    $rprov = Get-RowProv ($Row.Split("`t"))
+    $found = $false
+    $matched = $false
+    for ($li = 1; $li -lt $CurLines.Count; $li++) {
+        $l = $CurLines[$li]
+        if (-not $l -or $l.StartsWith('PR' + "`t")) { continue }
+        $lc = $l.Split("`t")
+        if ($lc.Count -lt 6) { continue }
+        $kk = (@($lc[0], $lc[1], $lc[2], $lc[5]) -join "`t")
+        if ($kk -ceq $PKey) {
+            $found = $true
+            if ((Get-RowProv $lc) -ceq $rprov) { $matched = $true }
+        }
+    }
+    if (-not $found) { return 'ABSENT' }
+    if ($matched) { return 'MATCH' }
+    return 'CONFLICT'
+}
+
 # Aggregate-only helper: SrcRows alternates ORIG-carrier / re-stamped rows.
 function Invoke-LockedAppend([string]$Ledger, [string[]]$SrcRows,
     [string]$Cmd, [string]$StartedSentinel, [string]$ProceedSentinel) {
     if (-not (Test-Path -LiteralPath $Ledger)) {
-        [IO.File]::WriteAllText($Ledger, $script:LedgerHeader + "`n")
+        Write-LfLines $Ledger @($script:LedgerHeader)
     }
     $lock = Open-LedgerLock ($Ledger + '.lock') $script:LockTimeoutSec
     try {
         if ($Cmd -eq 'aggregate' -and $StartedSentinel) {
-            [IO.File]::WriteAllText($StartedSentinel, '')
+            [IO.File]::WriteAllText($StartedSentinel, '', $script:Utf8NoBom)
         }
         if ($Cmd -eq 'aggregate' -and $ProceedSentinel) {
             $deadline = [DateTime]::UtcNow.AddSeconds(60)
@@ -296,24 +365,30 @@ function Invoke-LockedAppend([string]$Ledger, [string[]]$SrcRows,
                     $outcome += "DUPLICATE`t$orig"
                     continue
                 }
+                $oc = $orig.Split("`t")
+                if ($oc.Count -ge 6) {
+                    $opkey = (@($oc[0], $oc[1], $oc[2], $oc[5]) -join "`t")
+                    if ((Get-RowProvState $orig $opkey $curLines) -eq 'MATCH') {
+                        $outcome += "DUPLICATE`t$orig"
+                        continue
+                    }
+                }
             }
             $cols = $row.Split("`t")
-            $pkey = @($cols[0], $cols[1], $cols[2], $cols[5]) -join "`t"
+            $pkey = (@($cols[0], $cols[1], $cols[2], $cols[5]) -join "`t")
             if ($have.Contains($row)) {
                 $outcome += "DUPLICATE`t$row"
                 continue
             }
-            $provConflict = $false
-            foreach ($l in $curLines) {
-                if ($l.StartsWith('PR' + "`t")) { continue }
-                $c = $l.Split("`t")
-                if ($c.Count -lt 6) { continue }
-                if ((@($c[0], $c[1], $c[2], $c[5]) -join "`t") -eq $pkey) {
-                    $provConflict = $true
-                    break
-                }
+            $rstate = Get-RowProvState $row $pkey $curLines
+            if ($rstate -eq 'MATCH') {
+                $outcome += "DUPLICATE`t$row"
+                continue
             }
-            if ($provConflict) { $conflict = $pkey; break }
+            if ($rstate -eq 'CONFLICT') {
+                $conflict = $pkey
+                break
+            }
             $curLines += $row
             [void]$have.Add($row)
             $outcome += "APPENDED`t$row"
@@ -322,7 +397,7 @@ function Invoke-LockedAppend([string]$Ledger, [string[]]$SrcRows,
             Remove-Item -LiteralPath $cur -Force -ErrorAction SilentlyContinue
             return @{ outcome = $outcome; conflict = $conflict; error = '' }
         }
-        [IO.File]::WriteAllLines($cur, $curLines)
+        Write-LfLines $cur $curLines
         Move-Item -LiteralPath $cur -Destination $Ledger -Force
         return @{ outcome = $outcome; conflict = ''; error = '' }
     } finally {
@@ -336,19 +411,21 @@ function Invoke-IngestOrRun([string]$Mode, [string]$Repo, [string]$Pr,
     $prj = Invoke-GhJson "repos/$Repo/pulls/$Pr" 'the PR'
     $live = ''
     try { $live = (($prj | ConvertFrom-Json).head.sha) } catch { $live = '' }
-    if ($live -notmatch '^[0-9a-fA-F]{40}$') {
+    $live = ([string]$live).Split("`n")[0].Trim()
+    if ($live -notmatch '\A[0-9a-fA-F]{40}\z') {
         [Console]::Error.WriteLine('verify-recurrence: live PR head unreadable')
         exit 2
     }
-    $live = ([string]$live).Split("`n")[0].Trim()
     $verifiedAt = Get-UtcNow
-    $records = Get-MarkerRecords $Repo $Pr
+    $combined = Get-CombinedMarkerItems $Repo $Pr
+    $items = $combined.items
+    $records = $combined.records
     # Newest qualifying collaborator verdict for the live head
     # (bash awk: first record wins ties; '-' ts never beats a real ts).
     $best = $null
     foreach ($r in $records) {
         $f = $r.Split("`t")
-        if ($f.Count -lt 7) { continue }
+        if ($f.Count -lt 8) { continue }
         if ($f[3] -ne 'ok') { continue }
         if ($f[2] -notin @('OWNER', 'MEMBER', 'COLLABORATOR')) { continue }
         if ($f[4].ToLowerInvariant() -ne $live.ToLowerInvariant()) { continue }
@@ -358,12 +435,16 @@ function Invoke-IngestOrRun([string]$Mode, [string]$Repo, [string]$Pr,
     $rej = @()
     foreach ($r in $records) {
         $f = $r.Split("`t")
-        if ($f.Count -lt 7 -or -not $f[0]) { continue }
+        if ($f.Count -lt 8 -or -not $f[0]) { continue }
         $v = Test-OneRecord $f[0] $f[1] $f[2] $f[3] $f[4] $f[5] $f[6] $live $Repo $Pr $RunRoot
         if ($v.StartsWith('REJECT')) {
             $rf = $v.Split("`t")
             $rej += "REJECT`t$Pr`t$($rf[1])`t$($rf[2])`t-`t-`t-`t-`t-`t$($rf[4])"
         }
+    }
+    foreach ($r in $records) {
+        $f = $r.Split("`t")
+        if ($f.Count -lt 8 -or -not $f[0]) { continue }
         $lcM = $f[4].ToLowerInvariant(); $lcL = $live.ToLowerInvariant()
         if ($lcM -ne $lcL -and $f[3] -eq 'ok') {
             $rej += "REJECT`t$Pr`t$($f[4])`t$($f[5])`t-`t-`t-`t-`t-`thead-interval-unproven"
@@ -381,23 +462,14 @@ function Invoke-IngestOrRun([string]$Mode, [string]$Repo, [string]$Pr,
                 $candRows += ($Pr, $pc[0], $pc[1], $vf[1].ToLowerInvariant(), $vf[2], $vf[3], $vf[4], $vf[5],
                     'live-head', $verifiedAt, 'live-head-at-verification', '', "verified live-head $($vf[1])") -join "`t"
             }
-            # Layer P divergence: structured prose pairs with no Layer F
-            # match are rejected; only those candidate rows are dropped.
-            $proseFile = [IO.Path]::GetTempFileName()
-            try {
-                $cj2 = Invoke-GhJson "repos/$Repo/issues/$Pr/comments" 'the PR issue comments'
-                $rj2 = Invoke-GhJson "repos/$Repo/pulls/$Pr/reviews" 'the PR review bodies'
-                $bodies = @()
-                foreach ($rawStr in @($cj2, $rj2)) {
-                    if (-not $rawStr) { continue }
-                    try { $arr = $rawStr | ConvertFrom-Json } catch { $arr = @() }
-                    foreach ($it in $arr) { $bodies += [string](($it.body, '') | Select-Object -First 1) }
-                }
-                [IO.File]::WriteAllText($proseFile, ($bodies -join "`n"))
-                $pp2 = Get-ProseStructPairs $proseFile
-            } finally {
-                Remove-Item -LiteralPath $proseFile -Force -ErrorAction SilentlyContinue
-            }
+            # Layer P divergence: inspect ONLY the winning collaborator verdict's
+            # already-fetched body; structured prose pairs with no Layer F match
+            # are rejected, while valid Layer F candidate rows survive.
+            $winIdx = [int]$best[7]
+            $winBody = if ($winIdx -ge 0 -and $winIdx -lt $items.Count) {
+                [string](($items[$winIdx].body, '') | Select-Object -First 1)
+            } else { '' }
+            $pp2 = Get-ProseStructPairsText $winBody
             $div = @()
             foreach ($q in $pp2) {
                 if ($pairs -notcontains $q) { $div += $q }
@@ -428,11 +500,10 @@ function Invoke-IngestOrRun([string]$Mode, [string]$Repo, [string]$Pr,
     }
     # run: locked idempotent append; DUPLICATE re-reports the same row.
     if (-not (Test-Path -LiteralPath $Ledger)) {
-        [IO.File]::WriteAllText($Ledger, $script:LedgerHeader + "`n")
+        Write-LfLines $Ledger @($script:LedgerHeader)
     }
-    $dupOut = New-SidecarTemp ($Ledger + '.dup')
-    try { [IO.File]::WriteAllText($dupOut, '') } catch { Die 'cannot create temp file' }
     $lock = Open-LedgerLock ($Ledger + '.lock') $script:LockTimeoutSec
+    $dupLines = @()
     try {
         $cur = New-SidecarTemp $Ledger
         try { Copy-Item -LiteralPath $Ledger -Destination $cur -Force }
@@ -441,28 +512,14 @@ function Invoke-IngestOrRun([string]$Mode, [string]$Repo, [string]$Pr,
         $have = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         foreach ($l in $curLines) { [void]$have.Add($l) }
         $conflict = ''
-        $dupLines = @()
         foreach ($row in $candRows) {
             if (-not $row) { continue }
             $cols = $row.Split("`t")
-            $pkey = @($cols[0], $cols[1], $cols[2], $cols[5]) -join "`t"
+            $pkey = (@($cols[0], $cols[1], $cols[2], $cols[5]) -join "`t")
             if ($have.Contains($row)) { $dupLines += "DUPLICATE`t$row"; continue }
-            # Rerun-idempotency: identity is (key + provenance, head
-            # case-folded); verified-at is metadata. Other differences
-            # on the same key fail closed.
-            $idem = @()
-            for ($i = 1; $i -lt $curLines.Count; $i++) {
-                $c = $curLines[$i].Split("`t")
-                if ($c.Count -lt 6) { continue }
-                if ((@($c[0], $c[1], $c[2], $c[5]) -join "`t") -eq $pkey) {
-                    $idem += (@($c[3].ToLowerInvariant(), $c[4]) + @($c[6], $c[7], $c[8]) + @($c[10], $c[11]) + @($c[12])) -join "`t"
-                }
-            }
-            if ($idem.Count -gt 0) {
-                $rp = (@($cols[3].ToLowerInvariant(), $cols[4]) + @($cols[6], $cols[7], $cols[8]) + @($cols[10], $cols[11]) + @($cols[12])) -join "`t"
-                $match = $false
-                foreach ($e in $idem) { if ($e -ceq $rp) { $match = $true; break } }
-                if ($match) { $dupLines += "DUPLICATE`t$row"; continue }
+            $rstate = Get-RowProvState $row $pkey $curLines
+            if ($rstate -eq 'MATCH') { $dupLines += "DUPLICATE`t$row"; continue }
+            if ($rstate -eq 'CONFLICT') {
                 [Console]::Error.WriteLine("verify-recurrence: provenance conflict for $pkey; use retire")
                 $conflict = $pkey
                 break
@@ -472,26 +529,22 @@ function Invoke-IngestOrRun([string]$Mode, [string]$Repo, [string]$Pr,
         }
         if ($conflict) {
             Remove-Item -LiteralPath $cur -Force -ErrorAction SilentlyContinue
-            Remove-Item -LiteralPath $dupOut -Force -ErrorAction SilentlyContinue
             $lock.Close(); $lock.Dispose()
             exit 2
         }
-        [IO.File]::WriteAllLines($cur, $curLines)
+        Write-LfLines $cur $curLines
         Move-Item -LiteralPath $cur -Destination $Ledger -Force
     } finally {
         $lock.Close(); $lock.Dispose()
     }
     if ($dupLines.Count -gt 0) {
-        [IO.File]::WriteAllLines($dupOut, $dupLines)
         Write-Output '--- duplicates (re-confirmed, ledger unchanged) ---'
         foreach ($d in $dupLines) { Write-Output $d }
-    } else {
-        Remove-Item -LiteralPath $dupOut -Force -ErrorAction SilentlyContinue
     }
     foreach ($c in $candRows) { Write-Output $c }
     Write-Output '--- rejects ---'
     foreach ($r in $rej) { Write-Output $r }
-    if ($RejectLog) { [IO.File]::WriteAllLines($RejectLog, $rej) }
+    if ($RejectLog) { Write-LfLines $RejectLog $rej }
 }
 
 # cmd aggregate (fixture-only).
@@ -511,40 +564,15 @@ function Invoke-Aggregate([string]$Ledger, [string]$Candidates,
         $flive = (((Get-Content -LiteralPath (Join-Path $FixturePayloads 'pr.json') -Raw) | ConvertFrom-Json).head.sha)
     } catch { $flive = '' }
     $flive = ([string]$flive).Split("`n")[0].Trim()
-    if ($flive -notmatch '^[0-9a-fA-F]{40}$') {
+    if ($flive -notmatch '\A[0-9a-fA-F]{40}\z') {
         [Console]::Error.WriteLine('verify-recurrence: fixture pr.json has no head.sha')
         exit 2
     }
     $fverifiedAt = Get-UtcNow
-    $frecords = @()
-    try {
-        $cj = Get-Content -LiteralPath (Join-Path $FixturePayloads 'comments.json') -Raw
-        $rj = Get-Content -LiteralPath (Join-Path $FixturePayloads 'reviews.json') -Raw
-        foreach ($rawStr in @($cj, $rj)) {
-            if (-not $rawStr) { continue }
-            $arr = $rawStr | ConvertFrom-Json
-            foreach ($it in $arr) {
-                $ts = Get-IsoTs ([string](($it.submitted_at, $it.created_at) | Where-Object { $_ } | Select-Object -First 1))
-                $who = ([string](($it.user.login, '') | Select-Object -First 1)) -replace '[^A-Za-z0-9._-]', ''
-                $assoc = ([string](($it.author_association, 'NONE') | Select-Object -First 1)) -replace '[^A-Za-z]', ''
-                $rec = Get-VerdictRecord ([string](($it.body, '') | Select-Object -First 1))
-                $frecords += ($ts, $who, $assoc, $rec.state, $rec.head, $rec.run, $rec.iter) -join "`t"
-            }
-        }
-    } catch {
-        [Console]::Error.WriteLine('verify-recurrence: cannot parse fixture payloads')
-        exit 2
-    }
-    $fprose = [IO.Path]::GetTempFileName()
-    try {
-        $pb = @()
-        foreach ($rawStr in @($cj, $rj)) {
-            if (-not $rawStr) { continue }
-            try { $arr = $rawStr | ConvertFrom-Json } catch { continue }
-            foreach ($it in $arr) { $pb += [string](($it.body, '') | Select-Object -First 1) }
-        }
-        [IO.File]::WriteAllText($fprose, ($pb -join "`n"))
-    } catch { }
+    $cj = Get-Content -LiteralPath (Join-Path $FixturePayloads 'comments.json') -Raw
+    $rj = Get-Content -LiteralPath (Join-Path $FixturePayloads 'reviews.json') -Raw
+    $fCombined = ConvertFrom-CombinedJsonArrays @($cj, $rj) 'cannot parse fixture payloads'
+    $frecords = $fCombined.records
     $validRows = @()
     $candLines = [IO.File]::ReadAllLines($Candidates)
     foreach ($row in $candLines) {
@@ -557,24 +585,32 @@ function Invoke-Aggregate([string]$Ledger, [string]$Candidates,
             Write-Output "REJECT`tcandidate-mismatch`t$row"; continue
         }
         if ($cPr -ne $Pr) { Write-Output "REJECT`tcandidate-mismatch`t$row"; continue }
-        $hit = $false
+        if (-not (Test-ValidRunSlug $cRun) -or -not (Test-ValidIterNum $cIter)) {
+            Write-Output "REJECT`tcandidate-mismatch`t$row"; continue
+        }
+        $bestHit = $null
         foreach ($fr in $frecords) {
             $f = $fr.Split("`t")
+            if ($f.Count -lt 8) { continue }
             if ($f[3] -eq 'ok' -and $f[2] -in @('OWNER', 'MEMBER', 'COLLABORATOR') -and
                 $f[4].ToLowerInvariant() -eq $cHead.ToLowerInvariant() -and
-                $f[5] -eq $cRun -and $f[6] -eq $cIter) { $hit = $true; break }
+                $f[5] -eq $cRun -and $f[6] -eq $cIter) {
+                if ($null -eq $bestHit) { $bestHit = $f; continue }
+                if ($f[0] -ne '-' -and ($bestHit[0] -eq '-' -or $f[0] -gt $bestHit[0])) { $bestHit = $f }
+            }
         }
-        if (-not $hit) { Write-Output "REJECT`tcandidate-mismatch`t$row"; continue }
+        if ($null -eq $bestHit) { Write-Output "REJECT`tcandidate-mismatch`t$row"; continue }
         $brief = Join-Path $RunRoot "runs/$cRun/brief.md"
         $bRepo = $null; $bPr = $null; $bHead = $null
         if (Test-Path -LiteralPath $brief) {
             foreach ($bl in [IO.File]::ReadLines($brief)) {
-                if ($null -eq $bRepo -and $bl -match '^review-target-repo:\s*(.*)$') { $bRepo = $Matches[1] }
-                elseif ($null -eq $bPr -and $bl -match '^review-target-pr:\s*(.*)$') { $bPr = $Matches[1] }
-                elseif ($null -eq $bHead -and $bl -match '^reviewed-head:\s*(.*)$') { $bHead = $Matches[1] }
+                if ($null -eq $bRepo -and $bl -match '^review-target-repo:\s*(.*)$') { $bRepo = $Matches[1].TrimEnd("`r") }
+                elseif ($null -eq $bPr -and $bl -match '^review-target-pr:\s*(.*)$') { $bPr = $Matches[1].TrimEnd("`r") }
+                elseif ($null -eq $bHead -and $bl -match '^reviewed-head:\s*(.*)$') { $bHead = $Matches[1].TrimEnd("`r") }
             }
         }
         if (-not $bRepo -or -not $bPr -or (-not $bHead) -or
+            $bRepo -ne $Repo -or $bPr -ne $Pr -or
             $bHead.ToLowerInvariant() -ne $flive.ToLowerInvariant()) {
             Write-Output "REJECT`tcandidate-mismatch`t$row"; continue
         }
@@ -583,17 +619,15 @@ function Invoke-Aggregate([string]$Ledger, [string]$Candidates,
         catch { Write-Output "REJECT`tcandidate-mismatch`t$row"; continue }
         $want = "$cPass`t$cCheck"
         if ($fp -notcontains $want) { Write-Output "REJECT`tcandidate-mismatch`t$row"; continue }
-        $pp3 = Get-ProseStructPairs $fprose
-        $div = $false
-        foreach ($q in $pp3) { if ($fp -notcontains $q) { $div = $true; break } }
-        if ($div) { Write-Output "REJECT`tcandidate-mismatch`t$row"; continue }
+        # Layer F (review-findings.txt) is authoritative for candidate membership:
+        # prose-only pairs fail the Layer F check above, while unmatched prose in
+        # bystander comments or the verdict body never poisons valid Layer F pairs.
         $lcH = $cHead.ToLowerInvariant()
         $validRows += 'ORIG' + "`t" + $row
         $validRows += (($cPr, $cPass, $cCheck, $lcH, $cRun, $cIter,
             $cc[6], $cc[7], 'live-head', $fverifiedAt,
             'live-head-at-verification', '', 'revalidated fixture row') -join "`t")
     }
-    Remove-Item -LiteralPath $fprose -Force -ErrorAction SilentlyContinue
     if ($validRows.Count -gt 0) {
         # VALID is reported only after the locked append succeeds: capture
         # stdout, run the append, then emit. A provenance conflict aborts
@@ -639,7 +673,7 @@ function Invoke-Retire([string]$Ledger, [string]$RetireKey, [string]$RetireReaso
             exit 2
         }
         $tmp = New-SidecarTemp $Ledger
-        [IO.File]::WriteAllLines($tmp, $kept)
+        Write-LfLines $tmp $kept
         Move-Item -LiteralPath $tmp -Destination $Ledger -Force
         $removed = $before - $after
         Write-Output "retired [$RetireKey] rows=$removed reason=$RetireReason"

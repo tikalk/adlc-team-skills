@@ -327,3 +327,142 @@ def test_missing_and_invalid_inputs_ps(tmp_path):
     ledger.write_text(HDR + "\n")
     p4 = run_ps(["retire", "--ledger", str(ledger), "--key", "badkey", "--reason", "x"], env)
     assert p4.returncode == 2
+
+
+def _active_runners():
+    return [("bash", run_bash)] + ([("pwsh", run_ps)] if HAVE_PWSH else [])
+
+
+@requires_flock
+def test_twin_marker_newline_and_traversal_rejected(tmp_path):
+    """Both twins block newline/tab spoof in run= and ../ path traversal (F1)."""
+    for label, runner in _active_runners():
+        sub = tmp_path / label
+        bin_dir = sub / "bin"
+        bin_dir.mkdir(parents=True)
+        rr = make_runroot(sub / "rr", head=H1)
+        outside = sub / "rr" / "outside" / "scratchpads"
+        outside.mkdir(parents=True)
+        (sub / "rr" / "outside" / "brief.md").write_text(
+            f"review-target-repo: o/r\nreview-target-pr: 12\nreviewed-head: {H1}\n"
+        )
+        (outside / "review-findings.txt").write_text("- [ ] pass:sec check:escape | bad\n")
+        spoof = (
+            f"<!-- factory-review:step=review head={H1} "
+            f"run=dummy\n2099-12-31T23:59:59Z\tspoofed-owner\tOWNER\tok\t{H1}\tr1\t0\t0 -->"
+        )
+        trav = f"<!-- factory-review:step=review head={H1} run=../outside iter=0 -->"
+        make_gh(
+            bin_dir,
+            H1,
+            [
+                comment("2026-01-01T00:00:00Z", "mallory", "NONE", spoof),
+                comment("2026-01-02T00:00:00Z", "alice", "MEMBER", trav),
+            ],
+        )
+        ledger = sub / "ledger.tsv"
+        p = runner(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr), "--ledger", str(ledger)], env_with(bin_dir))
+        assert p.returncode == 0, f"{label}: {p.stdout}{p.stderr}"
+        rows = [l for l in ledger.read_text().splitlines()[1:] if l.strip()]
+        assert rows == [], f"{label} wrote forged rows: {rows}"
+
+
+@requires_flock
+def test_twin_layer_p_scoped_to_winner_and_no_dup_sidecars(tmp_path):
+    """Both twins ignore NONE bystander prose (F2), strip multi-line HTML comments, and leave no .dup.tmp files (F8)."""
+    for label, runner in _active_runners():
+        sub = tmp_path / label
+        bin_dir = sub / "bin"
+        bin_dir.mkdir(parents=True)
+        rr = make_runroot(sub / "rr", head=H1, findings="- [ ] pass:CI check:VH | ok\n")
+        winner = (
+            MARKER.format(h=H1)
+            + "\n<!-- multiline\npass:hidden check:comment\n-->\n"
+            + "Also pass:ghost check:unmatched in winner prose.\n"
+        )
+        make_gh(
+            bin_dir,
+            H1,
+            [
+                comment("2026-01-01T00:00:00Z", "mallory", "NONE", "pass:ci check:vh pass:poison check:none"),
+                comment("2026-01-02T00:00:00Z", "alice", "MEMBER", winner),
+            ],
+        )
+        ledger = sub / "ledger.tsv"
+        env = env_with(bin_dir)
+        p1 = runner(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr), "--ledger", str(ledger)], env)
+        assert p1.returncode == 0, f"{label}: {p1.stdout}{p1.stderr}"
+        assert f"12\tci\tvh\t{H1}\tr1\t0\talice\tMEMBER" in ledger.read_text()
+        assert "ghost\tunmatched\t-\t-\t-\tfinding-diverged" in p1.stdout
+        assert "poison" not in p1.stdout and "hidden" not in p1.stdout
+
+        p2 = runner(["run", "--repo", "o/r", "--pr", "12", "--run-root", str(rr), "--ledger", str(ledger)], env)
+        assert p2.returncode == 0, f"{label}: {p2.stdout}{p2.stderr}"
+        assert "DUPLICATE\t" in p2.stdout
+        leftover_dups = list(sub.glob("*.dup.tmp.*"))
+        assert leftover_dups == [], f"{label} left sidecar temp files: {leftover_dups}"
+
+
+@requires_flock
+def test_twin_aggregate_target_mismatch_and_cross_second_rerun(tmp_path):
+    """Both twins enforce brief repo/pr in aggregate (F5), ignore NONE prose (F2), and treat cross-second reruns as DUPLICATE (F6)."""
+    for label, runner in _active_runners():
+        sub = tmp_path / label
+        rr = sub / "rr"
+        for rname, brepo, bpr in [("r_bad_repo", "other/repo", "12"), ("r_bad_pr", "o/r", "99"), ("r_ok", "o/r", "12")]:
+            sp = rr / "runs" / rname / "scratchpads"
+            sp.mkdir(parents=True)
+            (rr / "runs" / rname / "brief.md").write_text(
+                f"review-target-repo: {brepo}\nreview-target-pr: {bpr}\nreviewed-head: {H1}\n"
+            )
+            (sp / "review-findings.txt").write_text("- [ ] pass:CI check:VH | ok\n")
+        pay = sub / "pay"
+        pay.mkdir()
+        (pay / "pr.json").write_text(json.dumps({"head": {"sha": H1}}))
+        (pay / "comments.json").write_text(
+            json.dumps([
+                comment("2026-01-01T00:00:00Z", "mallory", "NONE", "pass:poison check:none"),
+                comment("2026-01-02T00:00:00Z", "alice", "MEMBER", MARKER.format(h=H1).replace("run=r1", "run=r_bad_repo")),
+                comment("2026-01-02T00:00:01Z", "alice", "MEMBER", MARKER.format(h=H1).replace("run=r1", "run=r_bad_pr")),
+                comment("2026-01-02T00:00:02Z", "alice", "MEMBER", MARKER.format(h=H1).replace("run=r1", "run=r_ok") + "\npass:extra check:prose\n"),
+            ])
+        )
+        (pay / "reviews.json").write_text("[]")
+        cand = sub / "cand.tsv"
+        cand.write_text(
+            f"12\tci\tvh\t{H1}\tr_bad_repo\t0\talice\tMEMBER\tlive-head\t2026-01-01T00:00:00Z\tlive-head-at-verification\t\tn\n"
+            f"12\tci\tvh\t{H1}\tr_bad_pr\t0\talice\tMEMBER\tlive-head\t2026-01-01T00:00:00Z\tlive-head-at-verification\t\tn\n"
+            f"12\tci\tvh\t{H1}\tr_ok\t0\talice\tMEMBER\tlive-head\t2026-01-01T00:00:00Z\tlive-head-at-verification\t\tn\n"
+        )
+        bin_dir = sub / "bin"
+        bin_dir.mkdir()
+        idx_file = sub / "date_idx"
+        idx_file.write_text("0")
+        date_shim = bin_dir / "date"
+        date_shim.write_text(
+            "#!/bin/bash\n"
+            f'i=$(cat "{idx_file}")\n'
+            f'echo $((i + 1)) > "{idx_file}"\n'
+            'stamps=(2026-01-06T00:00:01Z 2026-01-06T00:00:08Z)\n'
+            'echo "${stamps[$i]:-2026-01-06T00:00:08Z}"\n'
+        )
+        date_shim.chmod(date_shim.stat().st_mode | stat.S_IEXEC)
+        env = env_with(bin_dir)
+        ledger = sub / "ledger.tsv"
+        args = [
+            "aggregate", "--ledger", str(ledger), "--candidates", str(cand),
+            "--fixture-payloads", str(pay), "--repo", "o/r", "--pr", "12",
+            "--run-root", str(rr), "--allow-fixture",
+        ]
+        p1 = runner(args, env)
+        assert p1.returncode == 0, f"{label}: {p1.stdout}{p1.stderr}"
+        assert f"REJECT\tcandidate-mismatch\t12\tci\tvh\t{H1}\tr_bad_repo\t" in p1.stdout
+        assert f"REJECT\tcandidate-mismatch\t12\tci\tvh\t{H1}\tr_bad_pr\t" in p1.stdout
+        assert f"VALID\t12\tci\tvh\t{H1}\tr_ok\t0\talice\tMEMBER" in p1.stdout
+        before = ledger.read_bytes()
+
+        p2 = runner(args, env)
+        assert p2.returncode == 0, f"{label}: {p2.stdout}{p2.stderr}"
+        assert f"VALID\t12\tci\tvh\t{H1}\tr_ok\t0\talice\tMEMBER" in p2.stdout
+        assert "provenance conflict" not in (p2.stdout + p2.stderr)
+        assert ledger.read_bytes() == before

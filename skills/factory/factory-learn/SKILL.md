@@ -19,6 +19,7 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 ## When to use
 
 - You want to extract and compile hard-won session learnings into your team's centralized `team-ai-directives` repository.
+- You want to turn a reviewed PR and its agent run into candidate team CDRs with evidence links.
 - You want to mine git commit history to capture the rationale (ChDRs) behind past reverts and hotfixes.
 - You want to run "Build to Delete" (Harness Decay checks) to prune redundant rules.
 
@@ -38,6 +39,45 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 3. **`publish`** (`build` phase) -> Invoke `team-levelup` to package accepted CDRs, index them, and compile a draft PR targeting the `team-ai-directives` repository.
 4. **`prune`** (`analyze` phase) -> Runs the cleanup bot over the directive store to detect and propose deprecations of superseded, contradictory, or stale rules. Deprecations feed back to `team-levelup`.
 
+### PR + Agent-Run Review Route (`--pr <id> --run <run_id>`, on-demand)
+Turns one reviewed PR and the agent run that produced it into CDR candidates —
+the richest signal source, because it carries the review verdict (what an
+independent reviewer flagged) plus the run record (what the agent actually did).
+
+1. **`collect`** (`generate` phase) -> Gather the two evidence sources; abort
+   with a named gap (never infer) when either is missing:
+   - PR evidence: exact-head review verdict (`factory-review` verdict comment
+     with `head=<sha>` + `outcome=`), the PR diff, and Important findings.
+   - Run evidence: the run's shared state (`.adlc/workflows/runs/<run_id>/state.json`
+     via `adlc-cli workflow status`) and evidence files.
+   - Correction signal: human corrections on review threads (the reviewer asked
+     for a change and the agent applied it) — each is a CDR candidate by
+     default; a correction the agent already applied without a rule change is
+     the strongest candidate.
+2. **`suggest`** (`analyze` phase) -> Classify each pattern through the
+   correction-elimination ladder BEFORE drafting anything, then write only what
+   the classification allows:
+   - **Tier 1 structural** -> route to `/architect-specify` and an ADR. No CDR
+     draft is created.
+   - **Tier 2 mechanical** -> route to action **P — Promote to check**, or to
+     `/evals-specify` when a new eval criterion is the vehicle. At most a thin
+     pointer CDR is created.
+   - **Tier 3 judgment-only** -> draft the CDR on the shared template at
+     `skills/team/templates/cdr-draft-template.md`.
+   Scoring never overrides this classification, and a mechanically checkable
+   mistake never defaults to a prose CDR. Every Tier-3 candidate MUST cite both
+   sources: PR link + verdict head SHA, and run ID + step/state pointer. A
+   candidate with no PR link or no run pointer is incomplete — send it back to
+   `collect`, do not publish it.
+3. **`clarify`⭐** (`clarify` phase) -> Present the candidates one at a time
+   under the same A/B/C/D/P choice contract as `team-levelup` Phase 3 (D accepts
+   all remaining). The human accepts, rejects, or promotes each candidate. This
+   route never auto-approves — not even in autonomous mode — and nothing
+   publishes without this gate.
+4. **`publish`** (`build` phase) -> Accepted CDRs follow the Session Learnings
+   route `publish` step: package, index, and compile a draft PR targeting the
+   `team-ai-directives` repository.
+
 ### Historical Mining Route (brownfield)
 1. **`init`** (`generate` phase) -> Invoke `change-init` to mine git history and issue trackers for Change Decision Records (ChDRs).
 2. **`clarify`⭐** (`clarify` phase) -> Invoke `change-clarify` to run interactive provenance reviews on mined claims.
@@ -54,8 +94,8 @@ Runs periodically or on-demand to analyze past runs of other factory skills (e.g
 1. **`analyze`** (`analyze` phase) -> Scan completed/failed runs' shared state (`.adlc/workflows/runs/<run_id>/state.json` via `adlc-cli workflow status`) and evidence files. Identify patterns, recurring errors, or successful corrections.
    - Also sweep `.adlc/drafts/{adr,pdr,chdr,cdr,evals}/` for unclarified entries (frontmatter/heading status proposed/discovered/draft); surface each as a finding (Draft ID + type + age), independent of whether session_end/file_edited hooks ever fired.
    - **Git correction signals** (reuse `change-init` Phase 6 semantics verbatim — do not duplicate or reinterpret): `git log --grep='^Revert "'` and `git log --grep='revert' -i` for reverts; commits whose subject matches `fix(?!ed)?\b` or `hotfix` touching the same files as an earlier commit for fix chains. Record pairs as negative knowledge attached to the finding.
-   - **Repeated REVIEW.md findings across PRs**: recurrence identity is same pass + same check item (the Twice-Mistake identity in `factory-review/references/review-policy.md`), sourced from run scratchpads (`runs/<run_id>/scratchpads/review-findings.txt`) and verdict markers. The recurrence evidence lives in `adlc-team-skills` where the findings originate; a proposed CDR or check's destination repo does not move the evidence. Validated observations append to `references/recurrence-ledger.tsv` (schema in `references/recurrence-ledger.md`) via `scripts/bash/verify-recurrence.sh run` only: live-head-at-verification rows (`verified-how=live-head`, `standing=live-head-at-verification`), append-only, observation-identity idempotence (recurrence rerun-idempotency decision: same recurrence key + same provenance — `verified-at` excluded as confirmation metadata — reruns report DUPLICATE with ledger bytes unchanged; any other provenance difference aborts on conflict), abort on provenance conflict. Only one ledger-writer PR may be open at a time (`ledger-writer-active` + blocking PR number, exit 2); rebase onto latest `origin/main`, union both row sets, deduplicate, re-validate, re-green CI. The ledger is historical evidence, not merge standing — `check-verdict-head.sh` remains the live merge-gate authority. `memory.jsonl` contract unchanged.
-   - **Event-stream seed signals** (admissibility + thresholds in `references/eval-seed-taxonomy.md` — the four highest-frequency signals are named inputs to the retrospective): converge CONTINUE / score-regression / circuit-breaker events from `state.json` across runs; gate rejects with revise routing from gate payloads; human edits between gate approval and merge (gate `head=<sha>` vs merged diff); reopens after merge (`factory-tickets`). Every signal follows the same seed contract as REVIEW.md findings: 2 reproduced occurrences in ≥2 distinct runs before any criterion is authored; prose comments are admissible only when the failure was reproduced.
+   - **Repeated REVIEW.md findings across PRs**: recurrence identity is same pass + same check item (the Twice-Mistake identity in `factory-review/references/review-policy.md`), sourced from run scratchpads (`runs/<run_id>/scratchpads/review-findings.txt`) and verdict markers. The recurrence evidence lives in `adlc-team-skills` where the findings originate; a proposed CDR or check's destination repo does not move the evidence. Validated observations append to `references/recurrence-ledger.tsv` (schema in `references/recurrence-ledger.md`) via `scripts/bash/verify-recurrence.sh run` (or `scripts/powershell/verify-recurrence.ps1 run`) only: live-head-at-verification rows (`verified-how=live-head`, `standing=live-head-at-verification`), append-only, observation-identity idempotence (recurrence rerun-idempotency decision: same recurrence key + same provenance — `verified-at` excluded as confirmation metadata — reruns report DUPLICATE with ledger bytes unchanged; any other provenance difference aborts on conflict), abort on provenance conflict. Only one ledger-writer PR may be open at a time (`ledger-writer-active` + blocking PR number, exit 2); rebase onto latest `origin/main`, union both row sets, deduplicate, re-validate, re-green CI. The ledger is historical evidence, not merge standing — `check-verdict-head.sh` remains the live merge-gate authority. `memory.jsonl` contract unchanged.
+    - **Event-stream seed signals** (admissibility + thresholds in `references/eval-seed-taxonomy.md` — the four highest-frequency signals are named inputs to the retrospective): converge CONTINUE / score-regression / circuit-breaker events from `state.json` across runs; gate rejects with revise routing from gate payloads; human edits between gate approval and merge (gate `head=<sha>` vs merged diff); reopens after merge (`factory-tickets`). Every signal follows the same seed contract as REVIEW.md findings: 2 reproduced occurrences in ≥2 distinct runs before any criterion is authored; prose comments are admissible only when the failure was reproduced.
 2. **`clarify`⭐** -> Present proposed memories (active vs tentative) to the user (in gated/hybrid modes) or auto-approve (in autonomous mode). Route each recurring correction through the ordered elimination ladder (Tier 1 structural → `/architect-specify`/ADR; Tier 2 mechanical → team-levelup action P or `/evals-specify`; Tier 3 judgment → prose CDR). Classify before scoring. A mechanically checkable mistake must never default to a prose CDR. Tier-2 split (check vs eval, decided by decidability), seed admissibility (event stream, reproduction rule), authoring threshold (2 reproduced occurrences in ≥2 distinct runs), and temporal holdout follow `references/eval-seed-taxonomy.md`.
 3. **`publish`** (`build` phase) -> Write approved memories to `.adlc/workflows/memory.jsonl` (workspace-global). Memories carry weights and use counts; stale or counter-productive memories are automatically archived. The `memory.jsonl` contract (weights, use counts, auto-archive) is unchanged — ladder routing decisions are recorded in the finding, not as schema changes.
 

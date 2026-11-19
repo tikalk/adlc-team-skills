@@ -706,3 +706,73 @@ def test_setup_architect_preview_flag_exists(tmp_path):
     src = SETUP_ARCH.read_text(encoding="utf-8")
     assert "--preview" in src, "setup-architect.sh must accept --preview"
     assert "PREVIEW" in src, "implement must gate writes behind PREVIEW"
+
+
+# ── ADR-514: numbering takes the max across drafts AND both store roots ──────
+
+CHDR_LIB = ROOT / "skills/change/change-clarify/scripts/bash/chdr-lib.sh"
+SETUP_CHANGE_SPECIFY = ROOT / "skills/change/change-specify/scripts/bash/setup-change-specify.sh"
+
+
+def test_next_adr_number_spans_the_legacy_memory_root(tree):
+    """A record surviving only in legacy .adlc/memory still holds its slot."""
+    harness = _extract_func(tree, SETUP_ARCH, "next_adr_number")
+    _write_fm(tree / ".adlc/memory/adr/ADR-017-legacy-straggler.md")
+    r = _run(f'source "{harness}"; next_adr_number "{tree}"', tree)
+    assert r.returncode == 0, r.stderr
+    # drafts max is 004 (suffixed); the legacy store holds 017.
+    assert r.stdout.strip() == "018"
+
+
+def test_next_adr_number_takes_max_across_distinct_roots(tree):
+    """Repo mode: drafts live at PROJECT_ROOT, the store at the resolved
+    memory root — the slot is the max across both (ADR-514)."""
+    harness = _extract_func(tree, SETUP_ARCH, "next_adr_number")
+    store = tree / "store"
+    _write_fm(store / "docs/adlc/memory/adr/ADR-030-repo-mode.md")
+    r = _run(f'source "{harness}"; next_adr_number "{tree}"', tree,
+             env_extra={"MEMORY_ROOT": str(store)})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "031"
+
+
+def test_next_pdr_number_spans_drafts_docs_and_legacy(tree):
+    """next_pdr_number: max across drafts + docs store + legacy store."""
+    _write_fm(tree / ".adlc/memory/pdr/PDR-033-legacy-straggler.md")
+    r = _run(f'source "{PDR_LIB}"; next_pdr_number "{tree}"', tree)
+    assert r.returncode == 0, r.stderr
+    # drafts max is 009 (suffixed); the legacy store holds 033.
+    assert r.stdout.strip() == "034"
+
+
+def test_next_pdr_number_takes_max_across_distinct_roots(tree):
+    store = tree / "store"
+    _write_fm(store / ".adlc/memory/pdr/PDR-044-repo-mode.md")
+    r = _run(f'source "{PDR_LIB}"; next_pdr_number "{tree}"', tree,
+             env_extra={"MEMORY_ROOT": str(store)})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "045"
+
+
+def test_next_chdr_number_spans_drafts_docs_and_legacy(tmp_path):
+    """The ChDR slot takes the max across the drafts root and both stores."""
+    _write_fm(tmp_path / ".adlc/drafts/chdr/ChDR-002.md")
+    _write_fm(tmp_path / "docs/adlc/memory/chdr/ChDR-010.md")
+    _write_fm(tmp_path / ".adlc/memory/chdr/ChDR-007.md")
+    r = _run(f'source "{CHDR_LIB}"; next_chdr_number '
+             f'"{tmp_path}/.adlc/drafts/chdr" '
+             f'"{tmp_path}/docs/adlc/memory/chdr" '
+             f'"{tmp_path}/.adlc/memory/chdr"', tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "011"
+
+
+def test_change_specify_next_chdr_spans_the_store_roots(tmp_path):
+    """setup-change-specify.sh NEXT_CHDR: drafts + docs + legacy max, driven
+    by the resolved memory root — not drafts alone."""
+    import json as _json
+    _write_fm(tmp_path / ".adlc/drafts/chdr/ChDR-002.md")
+    _write_fm(tmp_path / "docs/adlc/memory/chdr/ChDR-010.md")
+    r = _run(f'bash "{SETUP_CHANGE_SPECIFY}"', tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert _json.loads(r.stdout)["NEXT_CHDR"] == "011"

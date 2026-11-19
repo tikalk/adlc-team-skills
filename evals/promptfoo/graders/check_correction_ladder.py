@@ -37,15 +37,32 @@ _ACTION = r"(add|creat\w+|implement|introduc\w+|enforce|requir\w+|mandate|block|
 # Hedge/secondary markers: the vehicle is mentioned, not enacted.
 _HEDGE = re.compile(
     r"\b(could|might|consider|maybe|possibly|later|secondary|"
-    r"evidence|mention|remember|potential|optionally|usually)\b",
+    r"evidence|mention|remember|potential|optionally|usually|"
+    r"not|never|don['\u2019]t|doesn['\u2019]t|won['\u2019]t|cannot|can['\u2019]t)\b",
     re.IGNORECASE,
 )
+# Immediate preceding negation in the same clause before an operation/action verb.
+_NEG_PREFIX = re.compile(
+    r"\b(?:do\s+not|don['\u2019]t|does\s+not|doesn['\u2019]t|"
+    r"did\s+not|didn['\u2019]t|will\s+not|won['\u2019]t|"
+    r"should\s+not|shouldn['\u2019]t|must\s+not|cannot|can['\u2019]t|"
+    r"not\s+to|no\s+need\s+to|never|without|avoid|"
+    r"instead\s+of|rather\s+than)\s+(?:(?:\w+|to)\s+){0,2}$",
+    re.IGNORECASE,
+)
+
+
+def _is_negated(text: str, pos: int) -> bool:
+    clause_prefix = re.split(r"[.!?;,]", text[max(0, pos - 60):pos])[-1]
+    return bool(_NEG_PREFIX.search(clause_prefix))
+
+
 # Verb governs vehicle: "add <vehicle>", no sentence break, no hedge between.
 # Vehicle framed as enforcing: "<vehicle> ... failing/blocks ...".
 # Both use the same named group "gap" for the intervening text so the
 # hedge filter always reads the gap — never a verb capture group.
 _LINK_VERB_VEHICLE = re.compile(
-    _ACTION + r"(?P<gap>[^.!?;]{0,50}?)" + _VEHICLE, re.IGNORECASE
+    r"\b" + _ACTION + r"(?P<gap>[^.!?;]{0,50}?)" + _VEHICLE, re.IGNORECASE
 )
 _LINK_VEHICLE_FAILS = re.compile(
     _VEHICLE + r"(?P<gap>[^.!?;]{0,60}?)" + r"(?:fail\w*|block\w*)",
@@ -70,24 +87,29 @@ def _tier1(output: str) -> bool:
         # check each semicolon segment on its own.
         segs = re.split(r";", sent) if ";" in sent else [sent]
         for seg in segs:
-            if op.search(seg) and route.search(seg) and not _DISTANCING.search(seg):
+            ops_seg = [m for m in op.finditer(seg) if not _is_negated(seg, m.start())]
+            if ops_seg and route.search(seg) and not _DISTANCING.search(seg):
                 return True
         # Full sentence still qualifies when its route clause is attached:
         # operation and route co-occur, no distancing marker sits between
         # them, and a routing verb governs the route token.
-        m_op, m_route = op.search(sent), route.search(sent)
-        if m_op and m_route and not _DISTANCING.search(
-            sent[min(m_op.start(), m_route.start()):max(m_op.end(), m_route.end())]
-        ):
-            span = sent[min(m_op.start(), m_route.start()):max(m_op.end(), m_route.end())]
-            if _ROUTE_VERB.search(span):
-                return True
+        ops_sent = [m for m in op.finditer(sent) if not _is_negated(sent, m.start())]
+        m_route = route.search(sent)
+        for m_op in ops_sent:
+            if m_route and not _DISTANCING.search(
+                sent[min(m_op.start(), m_route.start()):max(m_op.end(), m_route.end())]
+            ):
+                span = sent[min(m_op.start(), m_route.start()):max(m_op.end(), m_route.end())]
+                if _ROUTE_VERB.search(span):
+                    return True
     return False
 
 
 def _tier2(output: str) -> bool:
     for pat in (_LINK_VERB_VEHICLE, _LINK_VEHICLE_FAILS):
         for m in pat.finditer(output):
+            if _is_negated(output, m.start()):
+                continue
             if not _HEDGE.search(m.group("gap")):
                 return True
     return False

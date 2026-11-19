@@ -44,9 +44,11 @@ LOCAL_EXAMPLE_IDS = {
     "ADR-004", "ADR-004-workspace-profile", "ADR-005", "ADR-006", "ADR-007",
     "ADR-008", "ADR-008-amendment-2", "ADR-009", "ADR-009-workspace-profile",
     "ADR-012", "ADR-0123", "ADR-017-monitoring-connector",
+    "ADR-017-legacy-straggler", "ADR-030-repo-mode",
     "PDR-000", "PDR-001", "PDR-002", "PDR-002-amendment-2", "PDR-003",
     "PDR-004", "PDR-005", "PDR-008", "PDR-009", "PDR-009-amendment-2",
     "PDR-012", "PDR-0123", "PDR-021-agentic-verification-depth",
+    "PDR-033-legacy-straggler", "PDR-044-repo-mode",
     "PDR-127", "PDR-128",
 }
 
@@ -64,12 +66,13 @@ LOCAL_EXAMPLE_IDS = {
 #   ADR-473            shared factory run mechanics live in factory-runbook
 #   ADR-462            oracle-independence detection algorithm
 #   ADR-524            eval seeding, Tier-2 check-vs-eval split, temporal holdout
+#   ADR-514            per-skill resolve_memory_root / memory store location
 #   PDR-131            factory-review issue-conformance pass scope
 #   PDR-145            oracle independence in tests & graders
 GOVERNING_RECORDS = {
     "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
     "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-457",
-    "ADR-462", "ADR-473", "ADR-524", "PDR-131", "PDR-145",
+    "ADR-462", "ADR-473", "ADR-514", "ADR-524", "PDR-131", "PDR-145",
 }
 
 # The surfaces the rule covers.

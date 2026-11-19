@@ -16,12 +16,14 @@ import re
 # alone and must hold on every change. "secret" requires exposure/pattern/
 # leak context so contrast or incidental uses ("secretly") do not match.
 # "secrets appear in (the) diff"/"in (the) diff" are decidable diff-scan
-# markers (EVAL-017-CASE-5 goldset verbatim).
+# markers (EVAL-017-CASE-5 goldset verbatim); "secrets ... in the
+# artifact/repo/change" generalizations cover the main-side nit probe.
 _DECIDABLE = re.compile(
     r"(head=<\w+>|\bmarker\b|\bschema\b|forbidden path|"
     r"\bsecrets?\s+(?:exposure|pattern|leak)|missing section|exit code|"
     r"\bsecrets?\s+appear\s+in\s+(?:the\s+)?diff\b|"
     r"\bin\s+(?:the\s+)?diff\b|"
+    r"secrets?\b[^.!?]{0,30}?\bin (?:the )?(?:artifact|repo|change)\b|"
     r"decidable from the artifact|decidable property)",
     re.IGNORECASE,
 )
@@ -111,8 +113,11 @@ _AUTHORS = re.compile(
 # A decline negates authorship for the same seed: "won't author",
 # "never author", "don't add a criterion", "declining to author ..." is a
 # declination, never authorship. Checked on the assertion-bearing text.
+# Main-side negations (would/do/does + n't, decline/refuse stems) are
+# included so negated authoring never reads as authoring.
 _DECLINED_AUTHORS = re.compile(
-    r"\b(?:won't|will not|don't|do not|never|not|no|declining)\b\s+"
+    r"\b(?:won't|will not|would not|wouldn't|don't|do not|does not|doesn't|"
+    r"never|not|no|declin\w+|refus\w+|cannot|can't)\b\s+"
     r"(?:\w+\s+){0,4}?"
     r"\b(?:author(?:ing|ed|s)?|write|add|create|publish|propose)\b\s*"
     r"(?:an?\s+|the\s+)?"

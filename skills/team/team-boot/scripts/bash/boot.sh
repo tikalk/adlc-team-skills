@@ -186,16 +186,23 @@ else
   CHDR_COUNT=$_CHDR_ROWS
 fi
 EVAL_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/evals/EVAL-*.md .adlc/memory/evals/EVAL-*.md 2>/dev/null | wc -l || true); EVAL_COUNT=$((EVAL_COUNT))
-# Pending-unless-decided predicate (shared): kept in a variable so the two
-# CDR sources and the four draft classes cannot drift again. A draft is
-# pending unless its status was decided — accepted or rejected close it;
-# raw, proposed, captured and clarified drafts all still owe their clarify
-# skill. `handed off` is NOT excluded: only the draft's clarify skill (or an
-# explicit user handoff) clears it, per the sweep rule at session end.
-# Previous per-class greps drifted (ChDR matched Discovered, ADR/PDR did
-# not) and all missed real-world shapes (status: Proposed, Status:**
-# Proposed). Case-insensitive (-i at call sites), space/star tolerant
-# after the colon.
+# Pending-status set for local draft classes (ADR/PDR/ChDR/Eval): a draft
+# counts when it carries an undecided workflow status — proposed,
+# discovered, draft, captured or clarified. Files with NO status line stay
+# silent (pinned by test_boot_pending_decisions_consolidated_table). Shape-
+# tolerant: case-insensitive (-i at call sites), space/star tolerant after
+# the colon, so real-world shapes like `status: Proposed` and
+# `- **Status:** Proposed` count. (ChDR once matched Discovered while
+# ADR/PDR did not; extended captured|clarified closes the same drift class
+# that hit CDR counting.)
+PENDING_DRAFT_OPEN='status:[ *]*proposed\|status:[ *]*discovered\|status:[ *]*draft\|status:[ *]*captured\|status:[ *]*clarified'
+# Pending-unless-decided predicate for CDR drafts only (local + adlc
+# branch): kept in a variable so the two CDR sources cannot drift apart.
+# A CDR draft counts unless its status was decided — accepted or rejected
+# close it; raw, proposed, captured and clarified drafts all still owe
+# /team-levelup. `handed off` is NOT excluded: only the draft's clarify
+# skill (or an explicit user handoff) clears it, per the sweep rule at
+# session end.
 PENDING_DECISION_CLOSE='status:[ *]*accepted\|status:[ *]*rejected'
 
 # MCP Servers — names only (lean)
@@ -289,10 +296,10 @@ echo "/evals-clarify) review whatever drafts exist at session end."
 
 # Pending decisions — ONE consolidated table: no per-class rows, each row
 # carries its clarify skill. Pending drafts are never part of Team Context
-# (accepted records only). Local drafts are pending unless decided
-# (accepted/rejected): raw, proposed, captured and clarified drafts count —
-# same predicate used for CDR drafts, whose local and adlc-branch
-# sources must agree.
+# (accepted records only). ADR/PDR/ChDR/Eval classes count drafts carrying
+# an undecided workflow status ($PENDING_DRAFT_OPEN — no-status files stay
+# silent); CDR drafts count pending-unless-decided ($PENDING_DECISION_CLOSE,
+# so raw unreviewed branch drafts count).
 PENDING_ROWS=""
 PENDING_CLASSES=0
 _add_pending_row() { # $1=class-dir $2=glob $3=type $4=clarify
@@ -300,9 +307,10 @@ _add_pending_row() { # $1=class-dir $2=glob $3=type $4=clarify
   if [ -d "${ADLC_DRAFTS:-.adlc/drafts}/$1" ]; then
     # - xargs -r: no files means grep never runs (empty dir stays 0, no stray
     #   error line); kept inside the `|| true` chain so `set -o pipefail`
-    #   never aborts the boot on an empty drafts dir.
+    #   never aborts the boot on an empty drafts dir. Positive match on
+    #   $PENDING_DRAFT_OPEN: files with no status line stay silent (pinned).
     _count=$(find ${ADLC_DRAFTS:-.adlc/drafts}/$1 -maxdepth 1 -name "$2" -print0 2>/dev/null \
-      | xargs -0 -r grep -riL "$PENDING_DECISION_CLOSE" 2>/dev/null | wc -l || true); _count=$((_count))
+      | xargs -0 -r grep -ril "$PENDING_DRAFT_OPEN" 2>/dev/null | wc -l || true); _count=$((_count))
     if [ "$_count" -gt 0 ]; then
       PENDING_ROWS="${PENDING_ROWS}| — | ${_count} $3 draft(s) | $3 | .adlc/drafts/$1/ | pending | $4 |"$'\n'
       PENDING_CLASSES=$((PENDING_CLASSES + 1))

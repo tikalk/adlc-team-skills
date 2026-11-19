@@ -186,14 +186,19 @@ if ($ChdrFileCount -gt 0) {
     }
 }
 $EvalCount = @(Get-ChildItem "docs/adlc/memory/evals/EVAL-*.md" -ErrorAction SilentlyContinue).Count + @(Get-ChildItem ".adlc/memory/evals/EVAL-*.md" -ErrorAction SilentlyContinue).Count
-# Shared pending-unless-decided predicate: kept in a variable so the draft
-# classes, the local CDR count and the adlc-branch loop cannot drift again.
-# A draft is pending unless its status was decided — accepted or rejected
-# close it; raw, proposed, captured and clarified drafts all still owe their
-# clarify skill (`handed off` is NOT excluded: only the draft's clarify
+# Pending-status set for local draft classes (ADR/PDR/ChDR/Eval): a draft
+# counts when it carries an undecided workflow status — proposed,
+# discovered, draft, captured or clarified. Files with NO status line stay
+# silent (pinned by test_boot_pending_decisions_consolidated_table).
+# -match is case-insensitive; [ *]* tolerates "Status:** Proposed" shapes.
+$PendingDraftOpen = 'status:[ *]*(proposed|discovered|draft|captured|clarified)'
+# Pending-unless-decided predicate for CDR drafts only (local + adlc
+# branch): kept in a variable so the two CDR sources cannot drift apart. A
+# CDR draft counts unless its status was decided — accepted or rejected
+# close it; raw, proposed, captured and clarified drafts all still owe
+# /team-levelup (`handed off` is NOT excluded: only the draft's clarify
 # skill, or an explicit user handoff, clears it, per the sweep rule at
-# session end). -match is case-insensitive; [ *]* tolerates
-# "Status:** Proposed" shapes.
+# session end).
 $PendingDecisionClose = 'status:[ *]*(accepted|rejected)'
 
 # MCP Servers — names only (lean)
@@ -289,13 +294,15 @@ Write-Output "/evals-clarify) review whatever drafts exist at session end."
 
 # Pending decisions — ONE consolidated table: no per-class rows, each row
 # carries its clarify skill. Pending drafts are never part of Team Context
-# (accepted records only). All classes use the shared $PendingDecisionClose
-# predicate — undecided drafts count, decided (accepted/rejected) ones don't.
+# (accepted records only). ADR/PDR/ChDR/Eval classes count drafts carrying
+# an undecided workflow status ($PendingDraftOpen — no-status files stay
+# silent); CDR drafts count pending-unless-decided ($PendingDecisionClose,
+# so raw unreviewed branch drafts count).
 $pendingRows = @()
 function Add-PendingRow {
     param($Dir, $Type, $Clarify)
     $files = Get-ChildItem ".adlc/drafts/$Dir/*.md" -ErrorAction SilentlyContinue
-    $n = @($files | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue) -notmatch $PendingDecisionClose }).Count
+    $n = @($files | Where-Object { (Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue) -match $PendingDraftOpen }).Count
     if ($n -gt 0) {
         $script:pendingRows += "| — | $n $Type draft(s) | $Type | .adlc/drafts/$Dir/ | pending | $Clarify |"
     }

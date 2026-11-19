@@ -80,6 +80,13 @@ without a run context (`scripts/bash/run-context.sh` prints `factory_run=no`).
 Only an orchestrator-invoked runbook commits, pushes and opens the MR, and
 only through these helpers; lifecycle skills never do.
 
+**Lifecycle labels:** `bash scripts/bash/set-lifecycle.sh --issue <ref> --to
+<state>` is the Set Lifecycle step of `references/tracker-integration.md`
+Operation 9 as one command: it adds the target, removes every other lifecycle
+label in the same call, re-reads the labels and exits 0 only when exactly the
+target remains (1: another lifecycle label is still there; 2: usage or
+tracker error). `--issue` defaults to the run's issue.
+
 ---
 
 ## Run contracts (`references/`)

@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The Set Lifecycle step is a command that checks itself** (SF-SKILL-04; octopus-next#1507 stayed `executing` after its code MR !1302 opened, with the move to `validation` already in the skill). New `factory-runbook/scripts/bash/set-lifecycle.sh --to <state> [--issue <ref>]` (and PowerShell twin) adds the target, removes every other lifecycle label in the same call, re-reads the labels and exits 1 unless exactly the target remains; it never touches `resume`, defaults `--issue` to the run's issue (run-context), and refuses (exit 2) when a repo maps custom label names. `factory-mission`'s factory-run steps 3 (`validation`) and 4 (edge 12, `spec-gated`) and tracker-integration Operation 9 now name it; workflow overrides can call it as a `shell` step. Pinned by `tests/unit/test_set_lifecycle_script.py` (both twins against the fake tracker `tests/fixtures/fake-tracker/glab`).
 - **factory-mission / mission-brief functionality restoration** (`skills/factory/factory-mission/`, `skills/mission/mission-brief/`):
   converge-loop control (counters, circuit breaker, score regression,
   `max_spec_corrections` bound) restored to `factory-mission` as a new

@@ -63,12 +63,13 @@ LOCAL_EXAMPLE_IDS = {
 #   ADR-457            issue-conformance pass mechanism (governing brief judged)
 #   ADR-473            shared factory run mechanics live in factory-runbook
 #   ADR-462            oracle-independence detection algorithm
+#   ADR-524            eval seeding, Tier-2 check-vs-eval split, temporal holdout
 #   PDR-131            factory-review issue-conformance pass scope
 #   PDR-145            oracle independence in tests & graders
 GOVERNING_RECORDS = {
     "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
     "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-457",
-    "ADR-462", "ADR-473", "PDR-131", "PDR-145",
+    "ADR-462", "ADR-473", "ADR-524", "PDR-131", "PDR-145",
 }
 
 # The surfaces the rule covers.

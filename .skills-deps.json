@@ -21,7 +21,8 @@
       "factory-runbook"
     ],
     "factory-learn": [
-      "factory-runbook"
+      "factory-runbook",
+      "evals-analyze"
     ],
     "factory-mission": [
       "factory-runbook"

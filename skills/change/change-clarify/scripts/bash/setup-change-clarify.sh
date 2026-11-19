@@ -10,24 +10,17 @@ DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
-resolve_project_root() {
-  local dir
-  dir="$(pwd)"
-  while [[ "$dir" != "/" ]]; do
-    if [[ -d "${dir}/.adlc" ]]; then
-      echo "$dir"
-      return
-    fi
-    dir="$(dirname "$dir")"
-  done
-  git rev-parse --show-toplevel 2>/dev/null || pwd
-}
+# Shared family helpers — chdr-lib.sh sits next to this script (the sibling
+# change-* skills vendor the same functions per the scope rule: skills never
+# source each other's scripts).
+source "$(dirname "${BASH_SOURCE[0]}")/chdr-lib.sh"
 
 PROJECT_ROOT=$(resolve_project_root)
 CHDR_DRAFTS_DIR="${PROJECT_ROOT}/${ADLC_DRAFTS:-.adlc/drafts}/chdr"
-#  published ChDRs live under docs/adlc/memory (legacy .adlc/memory/chdr
-# stays read-compatible — dual-read).
-MEMORY_DIR="${PROJECT_ROOT}/docs/adlc/memory/chdr"
+#  published ChDRs live under docs/adlc/memory at the resolved store root
+#  (ADR-514); legacy .adlc/memory/chdr stays read-compatible — dual-read).
+MEMORY_ROOT=$(resolve_memory_root)
+MEMORY_DIR="${MEMORY_ROOT}/docs/adlc/memory/chdr"
 
 mkdir -p "$CHDR_DRAFTS_DIR" 2>/dev/null || true
 

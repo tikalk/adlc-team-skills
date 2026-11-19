@@ -20,7 +20,7 @@ When `ADLC_RUN_ID` is not set, a person is in this session, and nothing else wil
 
 ## What this skill does
 
-`mission-brief` owns the mission lifecycle end to end as one DAG: it turns the mission's brief into a spec whose acceptance criteria each answer yes or no, into an ordered plan, into tested code, into a converge verdict — judged against the brief, never against the implementer's claims. It works under the shared executor contract (invoke the `factory-runbook` skill; contract at `references/executor.md` in that skill): the `brief` step emits the Mission Brief draft per `references/mission-brief-template.md`; `specify` reads `brief.md` and emits a draft; `clarify` reads `spec.md` and emits a decision; `plan` reads `spec.md` plus the clarify decision and emits `plan.md`; `test` reads `spec.md` and emits an `artifact-ref`; `code` reads that `test` artifact plus `spec.md` and `plan.md`; `verify` reads the `test` and `code` artifacts and emits severity-ranked findings; `converge` reads `brief.md` and emits one verdict of `DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`. A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate, never to code.
+`mission-brief` owns the mission lifecycle end to end as one DAG: it turns the mission's brief into a spec whose acceptance criteria each answer yes or no, into an ordered plan, into tested code, into a converge verdict — judged against the brief, never against the implementer's claims. It works under the shared executor contract (invoke the `factory-runbook` skill; contract at `references/executor.md` in that skill): the `brief` step emits the Mission Brief draft per `references/mission-brief-template.md`; `specify` reads `brief.md` and emits a draft; `clarify` reads `spec.md` and emits a decision; `plan` reads `spec.md` plus the clarify decision and emits `plan.md`; `test` reads `spec.md` and emits an `artifact-ref`; `code` reads that `test` artifact plus `spec.md` and `plan.md`; `verify` reads the `test` and `code` artifacts and emits severity-ranked findings; `converge` reads `brief.md` and emits one verdict of `DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`. A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate, never to code. The `plan` step also runs the record check (§Record check at the end of plan): a plan that needs decision records yields proposals for the owning clarify gate, never edits to Accepted records.
 
 The lane-carrying sections below keep one pointer per framework lane; the lane prose lives in its own home and is linked, never duplicated here. Lane resolution is a session instruction (Phase 0), never a script or table lookup.
 
@@ -54,7 +54,7 @@ Default lane built into this skill.
 5. Resolve each surfaced item at the clarify phase — ask the person in a gated run, or in autonomous mode record the decision with its basis. The resulting decision is the `clarify` output.
 6. Treat the spec's acceptance criteria as the plan's definition of done. List every file to create or modify, each with a one-line purpose. Order the work so each step leaves the tree valid — no step relies on a later step to make it correct or runnable.
 7. Name the exact test command that will prove the change, and put the test-first order ahead of the implementation steps.
-8. Write `plan.md`: the files table, the test-first order, and the risk notes for anything that could invalidate that order.
+8. Write `plan.md`: the files table, the test-first order, and the risk notes for anything that could invalidate that order, then run the end-of-plan record check (§Record check at the end of plan) across every lane before leaving `plan`.
 9. Write the failing suite first, based on `spec.md`, with `tests/` as the only writable surface and source mounted read-only.
 10. Run it — the **RED gate** requires that **at least one test fails** before any implementation exists. A suite that passes immediately means the behavior exists or the assertions are empty: stop and route to the owning clarify gate for spec correction. Record the failing count in the run log.
 11. Write the minimum code with source as the only writable surface and `tests/`, `spec.md` and `plan.md` mounted read-only.
@@ -132,6 +132,41 @@ Canonical home: addy framework integration.
 | `code` | build | artifact-ref | `test`, `spec.md`, `plan.md` | `src/` |
 | `verify` | verify | findings | `test`, `code` | — |
 | `converge` | verify | decision | `brief.md` | — |
+
+## Record check at the end of plan
+
+At the end of `plan` (across Default, Speckit, Superpowers, Matt, and Addy lanes — keeping the 7-step lifecycle table intact), evaluate `spec.md` and `plan.md` against the Accepted record indexes at `docs/adlc/memory/adr/adr.md` and `docs/adlc/memory/pdr/pdr.md` (dual-read order: `docs/adlc/memory` first, legacy `.adlc/memory` fallback) and emit one record-check verdict:
+
+- `PASS` — `spec.md` and `plan.md` neither contradict an Accepted record nor introduce an unrecorded architecture/product choice (tech stack, pattern, dependency, interface contract, persona, feature scope, or non-goal change).
+- `DECISION_RECORDS_CAPTURE_NEEDED` — `spec.md` or `plan.md` contradicts an Accepted record or makes an unrecorded architecture/product decision that belongs in project memory. Emit proposal record(s) under `.adlc/drafts/` (below) and surface the verdict to the caller.
+
+`mission-brief` never edits Accepted records under `docs/adlc/memory/` (or `.adlc/memory/`) and never edits `adr.md` / `pdr.md` directly. When `ADLC_RUN_ID` is not set (direct local/interactive invocation with no harness), `DECISION_RECORDS_CAPTURE_NEEDED` is **advisory**: because `architect-clarify` and `product-clarify` require direct human invocation (`disable-model-invocation: true`) and only mark drafts `Accepted` in place inside `.adlc/drafts/{adr,pdr}/`, write and package the `.adlc/drafts/{adr,pdr}/*.md` proposal path(s), report the verdict to the user, and instruct the human to run `/architect-clarify` + `/architect-implement` (for architecture proposals) or `/product-clarify` + `/product-implement` (for product proposals; or `factory-intent` when full two-lane intent is warranted) to promote proposals into `docs/adlc/memory/{adr,pdr}/` and regenerate `adr.md` / `pdr.md` (or reject them) rather than auto-invoking them or blocking local iteration.
+
+### Proposal records
+
+On `DECISION_RECORDS_CAPTURE_NEEDED`, write one markdown draft per needed decision under `.adlc/drafts/adr/ADR-<NNN>-<slug>.md` or `.adlc/drafts/pdr/PDR-<NNN>-<slug>.md` (slot allocated across both `.adlc/drafts/` and `docs/adlc/memory/`) with YAML frontmatter and minimal required Markdown body headings (`# <ADR|PDR>-<NNN>: <title>`, `## Context and Problem Statement`, `## Decision Outcome`) so gate-packet parsers extract a non-empty `Decision:` summary:
+
+```markdown
+---
+status: proposed
+date: <YYYY-MM-DD>
+approvers: [<decision-makers from the contradicted record, else repo/team owners>]
+proposed-by: <run_id | direct>
+source: "<spec.md and plan.md sections that surfaced the decision>"
+---
+
+# <ADR|PDR>-<NNN>: <title>
+
+## Context and Problem Statement
+
+<2-3 sentences naming the problem or contradicted Accepted record.>
+
+## Decision Outcome
+
+<Concise summary of the proposed decision extracted by gate-packet parsers as the `Decision:` summary.>
+```
+
+Proposal records stay `status: proposed` until a human runs the owning clarify gate and promotion step (`/architect-clarify` + `/architect-implement` for `architect-clarify` architecture proposals, `/product-clarify` + `/product-implement` for `product-clarify` product proposals; the clarify gates carry `disable-model-invocation: true` and mark drafts `Accepted` in place inside `.adlc/drafts/{adr,pdr}/`, while `architect-implement` / `product-implement` move Accepted records into `docs/adlc/memory/{adr,pdr}/` and regenerate `adr.md` / `pdr.md`) or rejects them.
 
 ## Gates
 

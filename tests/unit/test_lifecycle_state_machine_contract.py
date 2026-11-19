@@ -27,6 +27,7 @@ EDGES = [
     ("intent", "cancelled"),
     ("spec-gated", "executing"),
     ("executing", "spec-gated"),
+    ("executing", "intent"),
     ("executing", "parked"),
     ("parked", "executing"),
     ("executing", "validation"),

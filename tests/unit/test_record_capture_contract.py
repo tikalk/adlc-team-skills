@@ -19,17 +19,23 @@ Contract pinned here (naming decisions in words; local example IDs only):
    `## Decision Outcome` body headings, and never edits Accepted records under
    `docs/adlc/memory/` or index files directly. Direct `mission-brief`
    invocation (outside `ADLC_RUN_ID`) stays advisory and instructs the human to
-   invoke `/architect-clarify` or `/product-clarify`.
+   run `/architect-clarify` + `/architect-implement` or `/product-clarify` +
+   `/product-implement` to promote proposals into `docs/adlc/memory/`.
 3. `factory-mission` delegates after `plan` via `Invoke the `factory-runbook`
    skill` (`--kind code`, `--output-type draft --step plan`) in canonical
    branch-first order (check out/reuse mission branch -> stage/commit
    allowlisted proposals -> push and open/reuse early draft MR when commits
    exist ahead of base; 0-commit `PASS` omits `mr_url`) without naming
    `factory-runbook` scripts directly, handles both `--plan` (`return 0`,
-   keeping `executing`) and unattended `DECISION_RECORDS_CAPTURE_NEEDED`
-   (`reason=decision-records`, `executing` -> `spec-gated`, non-zero exit)
-   before Step 3 (`validation`), and tracks `record_captures` bounded by
-   `max_record_captures: 2` in `mission-template.yml`.
+   keeping `executing`, with `gate-spec` `reject` / `on_reject: abort` ->
+   promote via `*-clarify` + `*-implement` -> re-run `factory-supervised` when
+   `status: proposed` drafts are listed) and unattended
+   `DECISION_RECORDS_CAPTURE_NEEDED` (`reason=decision-records`, `executing` ->
+   `spec-gated`, non-zero exit) before Step 3 (`validation`), and tracks
+   `record_captures` durably via prior `reason=decision-records` issue comments
+   and `mission-state.json` (never writing custom keys into engine-owned
+   `runs/<run_id>/state.json`) bounded by `max_record_captures: 2` in
+   `mission-template.yml`.
 """
 
 import re
@@ -247,7 +253,9 @@ def test_mission_brief_runs_record_check_at_end_of_plan():
         ".adlc/memory",
         "disable-model-invocation: true",
         "/architect-clarify",
+        "/architect-implement",
         "/product-clarify",
+        "/product-implement",
     ):
         assert token in check, f"record-check section missing {token!r}"
     assert "never edits" in check.lower(), (
@@ -268,8 +276,11 @@ def test_mission_brief_defines_proposal_records_and_advisory_direct_mode():
         "# <ADR|PDR>-<NNN>: <title>",
         "## Context and Problem Statement",
         "## Decision Outcome",
-        "architect-clarify",
-        "product-clarify",
+        "/architect-clarify",
+        "/architect-implement",
+        "/product-clarify",
+        "/product-implement",
+        "docs/adlc/memory/{adr,pdr}/",
     ):
         assert token in proposals, f"proposal-records contract missing {token!r}"
 
@@ -340,6 +351,14 @@ def test_factory_mission_enforces_early_exits_record_cap_and_spec_gated_bounce()
         "plan-ready",
         "plan-ready: decision-records-proposed",
         "only when an MR/PR was opened or reused",
+        "gate-spec",
+        "on_reject: abort",
+        "factory-supervised",
+        "/architect-clarify",
+        "/architect-implement",
+        "/product-clarify",
+        "/product-implement",
+        "docs/adlc/memory/",
         "DECISION_RECORDS_CAPTURE_NEEDED",
         "Safety Constraint 8",
         "<!-- factory-run:ended run=<run_id> issue=<iid> reason=decision-records -->",
@@ -359,7 +378,13 @@ def test_factory_mission_enforces_early_exits_record_cap_and_spec_gated_bounce()
         "Safety Constraint 8",
         "disable-model-invocation: true",
         "/architect-clarify",
+        "/architect-implement",
         "/product-clarify",
+        "/product-implement",
+        "docs/adlc/memory/",
+        "on_reject: abort",
+        "factory-supervised",
+        ".adlc/workflows/runs/<run_id>/mission-state.json",
         "exit non-zero",
     ):
         assert setup_token in setup, f"Phase 0 to 4 setup missing {setup_token!r}"
@@ -368,3 +393,50 @@ def test_factory_mission_enforces_early_exits_record_cap_and_spec_gated_bounce()
     assert not re.search(r"`executing`\s*(?:→|->|to)\s*`spec`", text), (
         "lifecycle bounce must target `spec-gated`, never bare `spec`"
     )
+
+
+def test_promotion_chain_supervised_gate_reject_flow_and_durable_record_captures():
+    brief_text = BRIEF_MD.read_text(encoding="utf-8")
+    factory_text = FACTORY_MD.read_text(encoding="utf-8")
+
+    # Both skills must name clarify + implement to move Accepted proposals into docs/adlc/memory/.
+    for label, doc in (
+        ("mission-brief/SKILL.md", brief_text),
+        ("factory-mission/SKILL.md", factory_text),
+    ):
+        assert "`/architect-clarify` + `/architect-implement`" in doc, (
+            f"{label} must pair /architect-clarify + /architect-implement for promotion"
+        )
+        assert "`/product-clarify` + `/product-implement`" in doc, (
+            f"{label} must pair /product-clarify + /product-implement for promotion"
+        )
+        assert "docs/adlc/memory/" in doc, (
+            f"{label} must target docs/adlc/memory/ when promoting proposals"
+        )
+
+    # Supervised Phase 1 (`--plan`) must document gate-spec reject -> promote -> re-run factory-supervised.
+    setup = section_body(factory_text, "### Phase 0 to 4: Setup & Compilation")
+    step8 = next(
+        (ln for ln in setup.splitlines() if ln.strip().startswith("8.")),
+        "",
+    )
+    reject_idx = step8.index("rejects `gate-spec` (`on_reject: abort`)")
+    promote_idx = step8.index("`/architect-clarify` + `/architect-implement`")
+    rerun_idx = step8.index("re-runs `factory-supervised`")
+    assert reject_idx < promote_idx < rerun_idx, (
+        "step 8 must order gate-spec reject -> promote via clarify+implement -> re-run factory-supervised"
+    )
+
+    # Durable record_captures tracking: prior reason=decision-records issue comments + mission-state.json,
+    # never writing record_captures into engine-owned runs/<run_id>/state.json.
+    step9 = next(
+        (ln for ln in setup.splitlines() if ln.strip().startswith("9.")),
+        "",
+    )
+    assert "reason=decision-records" in step9
+    assert ".adlc/workflows/runs/<run_id>/mission-state.json" in step9
+    assert "never writing custom keys into `runs/<run_id>/state.json`" in step9
+    assert not re.search(
+        r"track\s+`?record_captures`?\s+in\s+`?(?:\.adlc/workflows/)?runs/<run_id>/state\.json`?",
+        factory_text,
+    ), "factory-mission must not instruct writing record_captures into runs/<run_id>/state.json"

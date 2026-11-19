@@ -140,7 +140,7 @@ At the end of `plan` (across Default, Speckit, Superpowers, Matt, and Addy lanes
 - `PASS` — `spec.md` and `plan.md` neither contradict an Accepted record nor introduce an unrecorded architecture/product choice (tech stack, pattern, dependency, interface contract, persona, feature scope, or non-goal change).
 - `DECISION_RECORDS_CAPTURE_NEEDED` — `spec.md` or `plan.md` contradicts an Accepted record or makes an unrecorded architecture/product decision that belongs in project memory. Emit proposal record(s) under `.adlc/drafts/` (below) and surface the verdict to the caller.
 
-`mission-brief` never edits Accepted records under `docs/adlc/memory/` (or `.adlc/memory/`) and never edits `adr.md` / `pdr.md` directly. When `ADLC_RUN_ID` is not set (direct local/interactive invocation with no harness), `DECISION_RECORDS_CAPTURE_NEEDED` is **advisory**: because `architect-clarify` and `product-clarify` require direct human invocation (`disable-model-invocation: true`), write and package the `.adlc/drafts/{adr,pdr}/*.md` proposal path(s), report the verdict to the user, and instruct the human to invoke `/architect-clarify` or `/product-clarify` (or `factory-intent` when full two-lane intent is warranted) rather than auto-invoking them or blocking local iteration.
+`mission-brief` never edits Accepted records under `docs/adlc/memory/` (or `.adlc/memory/`) and never edits `adr.md` / `pdr.md` directly. When `ADLC_RUN_ID` is not set (direct local/interactive invocation with no harness), `DECISION_RECORDS_CAPTURE_NEEDED` is **advisory**: because `architect-clarify` and `product-clarify` require direct human invocation (`disable-model-invocation: true`) and only mark drafts `Accepted` in place inside `.adlc/drafts/{adr,pdr}/`, write and package the `.adlc/drafts/{adr,pdr}/*.md` proposal path(s), report the verdict to the user, and instruct the human to run `/architect-clarify` + `/architect-implement` (for architecture proposals) or `/product-clarify` + `/product-implement` (for product proposals; or `factory-intent` when full two-lane intent is warranted) to promote proposals into `docs/adlc/memory/{adr,pdr}/` and regenerate `adr.md` / `pdr.md` (or reject them) rather than auto-invoking them or blocking local iteration.
 
 ### Proposal records
 
@@ -166,7 +166,7 @@ source: "<spec.md and plan.md sections that surfaced the decision>"
 <Concise summary of the proposed decision extracted by gate-packet parsers as the `Decision:` summary.>
 ```
 
-Proposal records stay `status: proposed` until a human invokes the owning clarify gate (`/architect-clarify` for `architect-clarify` architecture proposals, `/product-clarify` for `product-clarify` product proposals; both carry `disable-model-invocation: true`) to promote them to Accepted memory or reject them.
+Proposal records stay `status: proposed` until a human runs the owning clarify gate and promotion step (`/architect-clarify` + `/architect-implement` for `architect-clarify` architecture proposals, `/product-clarify` + `/product-implement` for `product-clarify` product proposals; the clarify gates carry `disable-model-invocation: true` and mark drafts `Accepted` in place inside `.adlc/drafts/{adr,pdr}/`, while `architect-implement` / `product-implement` move Accepted records into `docs/adlc/memory/{adr,pdr}/` and regenerate `adr.md` / `pdr.md`) or rejects them.
 
 ## Gates
 

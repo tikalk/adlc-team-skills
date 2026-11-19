@@ -32,6 +32,8 @@ CANONICAL = {
     "mermaid-generator.ps1": SKILLS / "architect/architect-clarify/scripts/powershell/mermaid-generator.ps1",
     "pdr-lib.sh": SKILLS / "product/product-clarify/scripts/bash/pdr-lib.sh",
     "pdr-lib.ps1": SKILLS / "product/product-clarify/scripts/powershell/pdr-lib.ps1",
+    "chdr-lib.sh": SKILLS / "change/change-clarify/scripts/bash/chdr-lib.sh",
+    "chdr-lib.ps1": SKILLS / "change/change-clarify/scripts/powershell/chdr-lib.ps1",
     # Intent run helpers (ADR-431-amendment C1, adlc-workspace#26).
     "run-branch.sh": SKILLS / "factory/factory-runbook/scripts/bash/run-branch.sh",
     "commit-step.sh": SKILLS / "factory/factory-runbook/scripts/bash/commit-step.sh",

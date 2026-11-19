@@ -16,6 +16,7 @@ workflow:
   # Convergence loop budgets.
   max_iterations: 5          # do-while cap on implement↺converge
   max_spec_corrections: 2    # outer spec-correction cap (triggered by SPEC_CORRECTION_NEEDED signal)
+  max_record_captures: 2     # record-capture cap on end-of-plan DECISION_RECORDS_CAPTURE_NEEDED rounds
   circuit_breaker: 3         # max consecutive non-converging iterations
 
   # Quality threshold (optional). If set (0-100), converge must report a

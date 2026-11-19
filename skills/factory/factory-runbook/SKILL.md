@@ -87,6 +87,14 @@ label in the same call, re-reads the labels and exits 0 only when exactly the
 target remains (1: another lifecycle label is still there; 2: usage or
 tracker error). `--issue` defaults to the run's issue.
 
+**Completion record:** `bash scripts/bash/post-completion.sh --outcome
+<done|no-op|blocked|failed> --conclusion "<one line>" [--mr-url <url>]
+[--details-file <md>]` leaves a mission run's one completion record on its
+issue (`<!-- factory-mission:step=complete … run=<run id> … outcome=… -->`;
+blocked/failed records also carry the `factory-run:ended` marker). The run id
+comes from the run context only; a run that already has a record posts
+nothing; the record is read back (exit 0 only when it is on the issue).
+
 ---
 
 ## Run contracts (`references/`)

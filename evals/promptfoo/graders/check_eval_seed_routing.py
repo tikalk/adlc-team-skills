@@ -1,4 +1,5 @@
 import re
+import unicodedata
 
 # EVAL-017: Tier-2 split and eval seed admissibility.
 #
@@ -66,12 +67,17 @@ _EVAL = re.compile(
 # Reproduction evidence: the failure it describes was reproduced by
 # artifact, not asserted in prose. Only assertion-bearing text counts
 # (negated clauses are stripped before matching). Incidentals — bare
-# "revert", "revert if it fails", bare "reproduced" — are not artifacts.
+# "revert if it fails", bare "reproduced" — are not artifacts.
+# "revert" binds only with a recorded-artifact complement (recorded,
+# evidence, logged, captured) so "revert the change" control prose
+# never counts.
 _REPRODUCED = re.compile(
     r"(failing (?:test|run|suite)|CI red|"
     r"state transition recorded|state transitions recorded|"
     r"recorded state transition|recorded state transitions|"
     r"recorded in two|state\.json records|\bdiff\b|screenshot|"
+    r"revert\w*(?:\s+\w+){0,3}\s+(?:record(?:ed|s)?|evidence|log(?:ged|s)?|captured)|"
+    r"(?:record(?:ed|s)?|evidence|log(?:ged|s)?|captured)(?:\s+\w+){0,3}\s+revert\w*|"
     r"\bin two (?:distinct )?(?:runs?|separate runs)\b|"
     r"across two (?:distinct )?runs?|two distinct runs|"
     r"two recorded state transitions|two failing runs)",
@@ -84,9 +90,10 @@ _REPRODUCED = re.compile(
 # phrasing only — bare "said"/"wrote"/"issue"/"thread" over-match log
 # observations ("the log said ... flaky") and tool warnings ("will issue").
 _COMMENT = re.compile(
-    r"\b(?:comments?|remarks?|review notes?|"
-    r"reviewer (?:feedback|said|wrote)|"
+    r"\b(?:comments?|remarks?|review notes?|testimony|witness testimony|"
+    r"reviewer (?:feedback|said|wrote|note|comment)s?|"
     r"review (?:feedback|comment|note)s?|"
+    r"threads?\s+(?:noted|reported)|issues?\s+(?:noted|reported)|"
     r"\bfeedback\b|\bcomments?\s+(?:said|say|note|state)\b)",
     re.IGNORECASE,
 )
@@ -105,7 +112,7 @@ _LLM_JUDGMENT = re.compile(
 _AUTHORS = re.compile(
     r"\b(?:author(?:ed|ing|s)?|writ(?:e|ing|ten)|add(?:ed|ing|s)?|"
     r"creat(?:e|ed|ing|es)|publish(?:ed|ing)?|propos(?:e|ed|ing))"
-    r"(?<!won't author)\b[^.!?]{0,80}?"
+    r"(?<!won['\u2019]t author)\b[^.!?]{0,80}?"
     r"\b(?:eval(?:uation)?\s+)?(?:criterion|criteria|grader|goldset|case)\b",
     re.IGNORECASE,
 )
@@ -116,8 +123,8 @@ _AUTHORS = re.compile(
 # Main-side negations (would/do/does + n't, decline/refuse stems) are
 # included so negated authoring never reads as authoring.
 _DECLINED_AUTHORS = re.compile(
-    r"\b(?:won't|will not|would not|wouldn't|don't|do not|does not|doesn't|"
-    r"never|not|no|declin\w+|refus\w+|cannot|can't)\b\s+"
+    r"\b(?:won['\u2019]t|will not|would not|wouldn['\u2019]t|don't|do not|does not|doesn['\u2019]t|"
+    r"never|not|no|declin\w+|refus\w+|cannot|can['\u2019]t)\b\s+"
     r"(?:\w+\s+){0,4}?"
     r"\b(?:author(?:ing|ed|s)?|write|add|create|publish|propose)\b\s*"
     r"(?:an?\s+|the\s+)?"
@@ -129,11 +136,13 @@ _DECLINED_AUTHORS = re.compile(
 # criterion. declin* must bind to authoring/criterion language
 # ("declining to author a criterion") — bare "declining"/"readings
 # declining" does not pass.
+# Unicode-normalized before match (curly quotes, en/em dashes NFKC-folded
+# to ASCII in get_assert), so straight forms suffice here.
 _DECLINATION = re.compile(
-    r"(\bTier[- ]3\b[^.!?]{0,40}?\b(?:preference|no criterion|not a criterion)\b|"
-    r"\bstays a Tier[- ]3 preference\b|\bno criterion\b|\bnot a criterion\b|"
+    r"(\bTier[\- \u2013\u2014]3\b[^.!?]{0,40}?\b(?:preference|no criterion|not a criterion)\b|"
+    r"\bstays a Tier[\- \u2013\u2014]3 preference\b|\bno criterion\b|\bnot a criterion\b|"
     r"\bdeclin\w+(?:\s+\w+){0,3}?\s+(?:to\s+)?(?:author\w*|writ\w*|criterion|criteria|grader|goldset)\b|"
-    r"\b(?:will not|won't|refus\w+|choos(?:e|ing) not)\s+(?:to\s+)?(?:author\w*|writ\w*)(?:\s+\w+){0,3}?\s+(?:criterion|criteria|grader|goldset)\b)",
+    r"\b(?:will not|won['\u2019]t|refus\w+|choos(?:e|ing) not)\s+(?:to\s+)?(?:author\w*|writ\w*)(?:\s+\w+){0,3}?\s+(?:criterion|criteria|grader|goldset)\b)",
     re.IGNORECASE,
 )
 
@@ -149,13 +158,13 @@ _VEHICLE_OR_EVIDENCE = (
     r"\bunit tests?\b|\bpre-?commit(?:\s+hook)?\b|\bschema validation\b|"
     r"\bdeterministic check\b|check-verdict-head|"
     r"\brequired[- ]marker checks?\b|\bREVIEW\.md pass\b|"
-    r"/evals-specify|\beval criterion\b|\bgoldset\b|"
-    r"\bbinary grader\b|\bbehavioral grader\b|\bLLM grader\b|"
-    r"\blength grader\b|\bhybrid grader\b|\bself-report\b"
+    r"/evals-specify|\beval criteri(?:a|on)\b|\bgoldset\b|"
+    r"\bbinary graders?\b|\bbehavioral graders?\b|\bLLM graders?\b|"
+    r"\blength graders?\b|\bhybrid graders?\b|\bself-report\b"
 )
 
 _NEGATOR = (
-    r"no|not|never|without|none|isn't|aren't|wasn't|weren't|"
+    r"no|not|never|without|lacking|absent|devoid|with\s+no|none|isn't|aren't|wasn't|weren't|"
     r"don't|doesn't|didn't|won't|wouldn't|can't|couldn't|shouldn't"
 )
 
@@ -229,21 +238,29 @@ def _strip_negated(text: str) -> str:
         r"\b(?:" + _NEGATOR + r")\b"
         r"(?=[^.!?;]{0,80}?(?:" + _DENIED_EVIDENCE + r"))"
         r"[^.!?;]{0,80}?"
-        r"(?:backing it|backs?\s+(?:it|them|this|the (?:\w+ )?(?:seed|claim|note|review|comment))|evidence\s+exists|\bexists\b)"
+        r"(?:backing it|backs?\s+(?:it|them|this|the (?:\w+ )?(?:seed|claim|note|review|comment))|evidence\s+exists|\bexists\b)",
+        re.IGNORECASE,
     )
     pre = re.compile(
         r",?\s*\b(?:" + _NEGATOR + r")\b[^.!?;,]{0,12}?"
-        r"(?:" + _VEHICLE_OR_EVIDENCE + r")\b"
+        r"(?:" + _VEHICLE_OR_EVIDENCE + r")\b",
+        re.IGNORECASE,
     )
     post = re.compile(
         r"\b(?:" + _VEHICLE_OR_EVIDENCE + r")\b[^.!?;]{0,40}?"
-        r"\b(?:is not warranted|is not needed|are not needed|not needed|"
-        r"not required|rejected|declined|refused)\b"
+        r"\b(?:is not warranted|are not warranted|is not needed|are not needed|"
+        r"is unnecessary|is unneeded|is useless|are useless|"
+        r"won't help|will not help|should not be used|is inappropriate|"
+        r"not warranted|not needed|not required|unnecessary|unneeded|rejected|declined|refused)\b",
+        re.IGNORECASE,
     )
     refused_judgment = re.compile(
         r"\b(?:ask (?:a|the) model|model to judge|judge whether)\b"
         r"[^.!?;]{0,80}?"
-        r"\b(?:is not warranted|is not needed|not needed|rejected|declined|refused)\b"
+        r"\b(?:is not warranted|is not needed|not warranted|not needed|"
+        r"is unnecessary|is useless|won't help|will not help|should not be used|"
+        r"is inappropriate|rejected|declined|refused)\b",
+        re.IGNORECASE,
     )
     denied_comment = re.compile(
         r"\b(?:" + _NEGATOR + r")\b[^.!?;]{0,30}?\bcomment seed\b|\bnot a comment\b",
@@ -275,8 +292,11 @@ def _strip_negated(text: str) -> str:
 _CLAUSE_SPLIT = re.compile(
     r"[!?]+|\.(?=\s+[A-Z0-9\"'\-(\u2013\u2014])|(?<=[.!?])\s*\b(?:Separately|Unrelatedly|Additionally|"
     r"Meanwhile|Alternatively|In contrast)\b,?|"
-    r"\bSeparately\b,?|\bUnrelatedly\b,?|\bAdditionally\b,?|"
-    r"\bMeanwhile\b,?|\bAlternatively\b,?|\bIn contrast\b,?"
+    r"(?<=[.!?;])\s*\bSeparately\b,?|(?<=[.!?;])\s*\bUnrelatedly\b,?|(?<=[.!?;])\s*\bAdditionally\b,?|"
+    r"(?<=[.!?;])\s*\bMeanwhile\b,?|(?<=[.!?;])\s*\bAlternatively\b,?|(?<=[.!?;])\s*\bIn contrast\b,?|"
+    r"\s+but\s+(?=[^.!?;]{0,80}?\b(?:won['\u2019]t|will not|never|declin\w+|refus\w+|author|draft|writ|creat)\b)|"
+    r";\s*(?=[^.!?]{0,80}?\b(?:won['\u2019]t|will not|never|declin\w+|refus\w+)\b[^.!?]{0,80}?\b(?:author|draft|writ|creat)\b)",
+    re.IGNORECASE,
 )
 
 
@@ -299,13 +319,54 @@ def _restore(text: str) -> str:
     )
 
 
+def _contrast_eval_excuse(c: str) -> bool:
+    # Excuse ONLY when the same clause routes the behavioral class
+    # to an eval vehicle while the decidable mention is negated
+    # contrast ("not a marker or schema property") — mere co-mention
+    # of both classes with an eval vehicle is NOT an excuse.
+    sc = _strip_negated(c)
+    return bool(
+        _BEHAVIORAL.search(sc)
+        and _EVAL.search(sc)
+        and _excused_class(c, "decidable")
+    )
+
+
+def _contrast_check_excuse(c: str) -> bool:
+    # Mirror: excuse ONLY when the same clause routes the decidable
+    # class to a check vehicle while the behavioral mention is
+    # negated contrast — mere co-mention is NOT an excuse.
+    sc = _strip_negated(c)
+    return bool(
+        _DECIDABLE.search(sc)
+        and _CHECK.search(sc)
+        and _excused_class(c, "behavioral")
+    )
+
+
 def _clauses(text: str) -> list:
-    """Split the decision into route clauses. Sentence boundaries and
-    explicit multi-property adverbials split; protected abbreviations,
-    filenames, and decimals never split. Commas and bare semicolons do
-    not split (contrast phrasing lives in one clause)."""
+    """Split the decision into route clauses. Sentence boundaries,
+    guarded but/; joins (both sides carry authoring verbs), and explicit
+    multi-property adverbials split; protected abbreviations, filenames,
+    and decimals never split. Bare commas never split (contrast phrasing
+    lives in one clause). Adverbial matching is case-insensitive."""
     parts = [p for p in _CLAUSE_SPLIT.split(_protect(text)) if p.strip()]
     return [_restore(p).strip() for p in parts if _restore(p).strip()]
+
+
+def _clause_flags(clauses):
+    """Per-clause vehicle attribution: which clauses bind decidable+check
+    or behavioral+eval in the SAME clause (assertion-bearing text)."""
+    out = []
+    for c in clauses:
+        sc = _strip_negated(c)
+        out.append({
+            "decidable_check": bool(_DECIDABLE.search(sc)) and bool(_CHECK.search(sc)),
+            "behavioral_eval": bool(_BEHAVIORAL.search(sc)) and bool(_EVAL.search(sc)),
+            "contrast_eval": _contrast_eval_excuse(c),
+            "contrast_check": _contrast_check_excuse(c),
+        })
+    return out
 
 
 def _branches_1_to_5(norm, clauses, decidable, behavioral, check, ev,
@@ -313,6 +374,11 @@ def _branches_1_to_5(norm, clauses, decidable, behavioral, check, ev,
                       clause_contrast_eval, clause_contrast_check):
     """Shared grading core: returns the branch 1-5 verdict dict, or None
     when the text needs branch-0 handling by the caller."""
+    cflags = _clause_flags(clauses)
+    # Same-clause excuse scope: a contrast routing excuses only the clause
+    # it sits in, never a misroute in another clause.
+    excused_eval = {i for i, f in enumerate(cflags) if f["contrast_eval"]}
+    excused_check = {i for i, f in enumerate(cflags) if f["contrast_check"]}
 
     # 1. Unreproduced comment becomes a criterion: the seed is prose with
     #    no reproduction evidence anywhere in the decision.
@@ -325,9 +391,15 @@ def _branches_1_to_5(norm, clauses, decidable, behavioral, check, ev,
 
     # 2. Behavioral mistake routed to a deterministic check: a lint rule
     #    or unit test cannot grade a distribution over model behavior.
-    #    A contrast routing in the same clause excuses; document-wide
-    #    co-occurrence does not (wrong-route guard).
-    if behavioral and check and not clause_contrast_check:
+    #    A same-clause contrast routing excuses its own clause only;
+    #    document-wide co-occurrence does not (wrong-route guard). A
+    #    behavioral clause carrying its own eval vehicle is consistently
+    #    routed even when another clause pairs a check with a decidable
+    #    property (per-clause vehicle attribution).
+    behavioral_excused = any(
+        f["behavioral_eval"] or i in excused_check for i, f in enumerate(cflags)
+    )
+    if behavioral and check and not behavioral_excused:
         return {
             "pass": False,
             "score": 0.0,
@@ -336,8 +408,13 @@ def _branches_1_to_5(norm, clauses, decidable, behavioral, check, ev,
 
     # 3. Decidable property routed to an LLM-judged eval: spending sampled
     #    judgment where a check decides. Yields to a same-clause contrast
-    #    behavioral routing.
-    if decidable and _LLM_JUDGMENT.search(norm) and not clause_contrast_eval:
+    #    behavioral routing only — a contrast excuse in another clause
+    #    never clears this clause's misroute.
+    llm_clauses = {
+        i for i, c in enumerate(clauses)
+        if _LLM_JUDGMENT.search(_strip_negated(c))
+    }
+    if decidable and llm_clauses and not (llm_clauses <= excused_eval):
         return {
             "pass": False,
             "score": 0.0,
@@ -367,21 +444,29 @@ def _branches_1_to_5(norm, clauses, decidable, behavioral, check, ev,
         }
 
     # 5. Consistent routing. A decidable class must carry a check vehicle;
-    #    a behavioral class must carry an eval vehicle — a same-clause
-    #    contrast routing excuses, but document-wide co-occurrence does
-    #    not (wrong-route guard).
-    if decidable and not check and not clause_contrast_eval:
-        return {
-            "pass": False,
-            "score": 0.0,
-            "reason": "failed class-to-vehicle consistency: a decidable property was named without a deterministic check vehicle.",
-        }
-    if behavioral and not ev and not clause_contrast_check:
-        return {
-            "pass": False,
-            "score": 0.0,
-            "reason": "failed class-to-vehicle consistency: a behavioral property was named without an eval criterion vehicle.",
-        }
+    #    a behavioral class must carry an eval vehicle — per-clause
+    #    attribution (a vehicle in the same clause satisfies its class),
+    #    with a same-clause contrast routing as the only excuse.
+    if decidable and not check:
+        decidable_ok = any(
+            f["decidable_check"] or i in excused_eval for i, f in enumerate(cflags)
+        )
+        if not decidable_ok and not clause_contrast_eval:
+            return {
+                "pass": False,
+                "score": 0.0,
+                "reason": "failed class-to-vehicle consistency: a decidable property was named without a deterministic check vehicle.",
+            }
+    if behavioral and not ev:
+        behavioral_ok = any(
+            f["behavioral_eval"] or i in excused_check for i, f in enumerate(cflags)
+        )
+        if not behavioral_ok and not clause_contrast_check:
+            return {
+                "pass": False,
+                "score": 0.0,
+                "reason": "failed class-to-vehicle consistency: a behavioral property was named without an eval criterion vehicle.",
+            }
 
     return None
 
@@ -393,6 +478,7 @@ def get_assert(output: str, context: dict = None) -> dict:
     ("no diff exists", "a lint rule is not needed") are stripped first, so
     refused vehicles and denied evidence never count.
     """
+    output = unicodedata.normalize("NFKC", output)
     norm = _strip_negated(output)
     clauses = _clauses(norm)
     stripped_clauses = _clauses(_strip_negated(output))
@@ -419,29 +505,6 @@ def get_assert(output: str, context: dict = None) -> dict:
     # Document-wide co-occurrence in a different clause never excuses
     # (wrong-route guard: branch 2 requires NO eval anywhere; branch 3
     # and the wrong-route halves of branch 5 require NO check anywhere).
-    def _contrast_eval_excuse(c: str) -> bool:
-        # Excuse ONLY when the same clause routes the behavioral class
-        # to an eval vehicle while the decidable mention is negated
-        # contrast ("not a marker or schema property") — mere co-mention
-        # of both classes with an eval vehicle is NOT an excuse.
-        sc = _strip_negated(c)
-        return bool(
-            _BEHAVIORAL.search(sc)
-            and _EVAL.search(sc)
-            and _excused_class(c, "decidable")
-        )
-
-    def _contrast_check_excuse(c: str) -> bool:
-        # Mirror: excuse ONLY when the same clause routes the decidable
-        # class to a check vehicle while the behavioral mention is
-        # negated contrast — mere co-mention is NOT an excuse.
-        sc = _strip_negated(c)
-        return bool(
-            _DECIDABLE.search(sc)
-            and _CHECK.search(sc)
-            and _excused_class(c, "behavioral")
-        )
-
     clause_contrast_eval = any(_contrast_eval_excuse(c) for c in clauses)
     clause_contrast_check = any(_contrast_check_excuse(c) for c in clauses)
 
@@ -479,7 +542,7 @@ def get_assert(output: str, context: dict = None) -> dict:
     # second (post-declination) half only, so the declination's own
     # "won't author" span cannot mask the later authoring.
     if bool(_DECLINED_AUTHORS.search(norm)) and authoring_clauses:
-        tail_idx = max(i for i, c in enumerate(clauses) if _DECLINED_AUTHORS.search(c))
+        tail_idx = min(i for i, c in enumerate(clauses) if _DECLINED_AUTHORS.search(c))
         tail = " ".join(clauses[tail_idx:])
         tail_norm = _strip_negated(tail)
         tail_clauses = _clauses(tail_norm)

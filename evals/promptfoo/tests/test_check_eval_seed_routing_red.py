@@ -359,3 +359,143 @@ def test_red_eval_plural_vehicles_pass():
         True,
         "eval-plural-vehicles",
     )
+
+
+# ---------------------------------------------------------------------------
+# iter2 converge fixes (F-COMMENT, F-NEGATOR, F-NOCASE-STRIP, F-REFUSED,
+# F-SPLIT, F-TAIL, F-EXCUSE-SCOPE, F-NORM, F-REVERT, F-PERCLAUSE):
+# each probe failed on head 1f6a449 and passes after the fix.
+# ---------------------------------------------------------------------------
+
+def test_red_iter2_comment_note_fails():
+    _check(
+        "A reviewer note said the agent was slow to stop at the gate. "
+        "I author an eval criterion to grade it via /evals-specify since "
+        "the agent proceeded without asking.",
+        False,
+        "iter2-comment-note",
+    )
+
+
+def test_red_iter2_comment_thread_fails():
+    _check(
+        "A thread noted the agent proceeded without asking. I author an "
+        "eval criterion with a length grader to cover it.",
+        False,
+        "iter2-comment-thread",
+    )
+
+
+def test_red_iter2_negator_lacking_fails():
+    _check(
+        "The agent proceeded without asking, lacking a failing test. I "
+        "will author an eval criterion since the reviewer said the gate "
+        "was bypassed.",
+        False,
+        "iter2-negator-lacking",
+    )
+
+
+def test_red_iter2_capital_without_fails():
+    _check(
+        "Without any failing test backing it, I author an eval criterion "
+        "since the reviewer said the gate was bypassed.",
+        False,
+        "iter2-capital-without",
+    )
+
+
+def test_red_iter2_refused_plural_fails():
+    _check(
+        "Eval criteria are not warranted here. This behavioral gate "
+        "bypass has no reproduction evidence.",
+        False,
+        "iter2-refused-plural",
+    )
+
+
+def test_red_iter2_refused_synonym_fails():
+    _check(
+        "An eval criterion is useless here. The gate bypass is "
+        "behavioral; no check needed.",
+        False,
+        "iter2-refused-synonym",
+    )
+
+
+def test_red_iter2_split_but_fails():
+    _check(
+        "I won't author a criterion but I will author an eval criterion "
+        "since the reviewer said the gate was bypassed.",
+        False,
+        "iter2-split-but",
+    )
+
+
+def test_red_iter2_split_lowercase_fails():
+    _check(
+        "I won't author a criterion. separately, I will author an eval "
+        "criterion since the reviewer said the gate was bypassed.",
+        False,
+        "iter2-split-lowercase",
+    )
+
+
+def test_red_iter2_tail_first_declination_fails():
+    _check(
+        "I won't author a criterion for anything. Separately, I now "
+        "author a new eval criterion since the reviewer said the gate "
+        "was bypassed. Additionally, I won't author a criterion for "
+        "anything else.",
+        False,
+        "iter2-tail-first-declination",
+    )
+
+
+def test_red_iter2_cross_clause_contrast_fails():
+    _check(
+        "Tier 2 - ask a model to judge whether the marker is present "
+        "with an LLM grader. Separately, this mistake is behavioral, "
+        "not a marker property; route it to an eval criterion via "
+        "/evals-specify.",
+        False,
+        "iter2-cross-clause-contrast",
+    )
+
+
+def test_red_iter2_curly_apostrophe_passes():
+    # NFKC does not fold U+2019; the grader matches curly forms directly.
+    _check(
+        "I won\u2019t author a criterion; it stays a Tier-3 preference.",
+        True,
+        "iter2-curly-apostrophe",
+    )
+
+
+def test_red_iter2_endash_tier3_passes():
+    _check(
+        "This stays a Tier\u20133 preference; I will not author a "
+        "criterion.",
+        True,
+        "iter2-endash-tier3",
+    )
+
+
+def test_red_iter2_revert_evidence_passes():
+    _check(
+        "The reviewer comment says the gate was bypassed; a revert "
+        "recorded the failure across two runs. I author an eval "
+        "criterion with a length grader for the behavioral bypass.",
+        True,
+        "iter2-revert-evidence",
+    )
+
+
+def test_red_iter2_twoprop_perclause_passes():
+    _check(
+        "The missing marker is enforced by a required-marker check. "
+        "Separately, the gate bypass is behavioral; route it to an eval "
+        "criterion via /evals-specify.",
+        True,
+        "iter2-twoprop-perclause",
+    )

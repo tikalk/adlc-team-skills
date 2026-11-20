@@ -45,7 +45,9 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
    `scripts/powershell/`). Checks out the run branch (`factory/intent/<repo>-<iid>`
    from `ADLC_ISSUE_REF` for intent runs — the default; `factory/mission/<repo>-<iid>`
    with `--kind code` for mission code runs) in the project root, reusing it
-   or continuing from `origin`. Shared by both intent lanes and with
+   or continuing from `origin`. A new code branch starts from origin's default
+   branch, never from the checked-out intent branch, so the intent step's
+   drafts stay out of the code MR. Shared by both intent lanes and with
    re-dispatches. Without a run context (`ADLC_RUN_ID`, or the lane's
    `WORKFLOW_INPUTS.run_id` adopted through `scripts/bash/run-context.sh`)
    this is a no-op.
@@ -92,4 +94,5 @@ only through these helpers; lifecycle skills never do.
 | `mission-brief-template.md` | brief/milestone authors (queue, orchestrator) — canonical home `mission-brief/references/` |
 | `issues-provider.yml` | provider resolution template (setup writes the repo copy) |
 | `run-context.md` | run-mode vs local-session rules |
+| `project-contract.md` | consumer projects — what their `REVIEW.md`, `AGENTS.md`, skills and workflow override may and may not change in a factory run |
 | `mission-template.yml` | run policy defaults (execution, supervision, budgets) |

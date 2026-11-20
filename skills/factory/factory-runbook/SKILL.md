@@ -97,6 +97,16 @@ blocked/failed records also carry the `factory-run:ended` marker). The run id
 comes from the run context only; a run that already has a record posts
 nothing; the record is read back (exit 0 only when it is on the issue).
 
+**Proof of work:** `bash scripts/bash/check-proof-of-work.sh --issue <ref>
+--summary-file <md>` checks the mission's ledger
+(`.adlc/workflows/runs/<run id>/proof-of-work.json`, one entry per item of
+the issue's `## Definition of Done`) against the issue: exit 0 every item
+done (not-applicable items disclosed with their reason), 3 some skipped and
+disclosed, 1 an item unaccounted for / `done` without evidence / "pending" as
+a reason, 2 usage or read error. The summary block goes into the completion
+record. Policy for skipped items (owner decision, SF-SKILL-07): accepted when
+disclosed (exit 3); pass `--fail-on-skip` to make any skip fail (exit 1).
+
 ---
 
 ## Run contracts (`references/`)

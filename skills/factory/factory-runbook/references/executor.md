@@ -53,6 +53,7 @@ The executor is runtime-independent: it works with any agent CLI in any session.
 6. **Authorship Preservation**: Verify that any git operation preserves historical authorship. A rebase, cherry-pick, or amend over someone else's commit must keep that commit's original author; never `--reset-author` or `--amend --author="..."` across it. Pushing is restricted to the target's own head branch, and force-push requires `--force-with-lease` for the exact previously observed remote SHA.
 7. Never `checkout`, `switch`, `reset`, `clean`, or `stash` in the user's main checkout. Work only in the run's worktree via absolute paths.
 8. Register worktree path and validated git identity in state file and brief.
+9. `factory-intent` consumes this contract via its head `isolate-worktree` step (run_id `intent-<repo>-<iid>`); tail `tail-merge-reindex` merges head + regenerates all four ADR/PDR indexes before publish.
 
 ### Phase 0.7 — Lane & Context Parameter Resolution
 

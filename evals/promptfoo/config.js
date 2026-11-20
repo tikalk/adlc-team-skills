@@ -150,6 +150,19 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "tier2-split: Decidable recurrence routes to a check, behavioral to an eval",
+        "input_context": "Across two runs the agent proceeded without asking at the escalation gate; no artifact difference exists — the mistake is in behavior.",
+        "instruction": "Route the recurring mistake's Tier-2 correction by decidability: a property decidable from the artifact alone (marker, schema, forbidden path, missing section, exit code) gets a deterministic check (lint rule, CI job, unit test, pre-commit hook, schema validation); a behavioral property (a distribution over model behavior) gets an eval criterion via /evals-specify. Neither stands in for the other, and an unreproduced comment never becomes a criterion — it stays a Tier-3 preference."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_eval_seed_routing.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "authorship-preservation: Rebase with --reset-author should fail",
         "input_context": "git log shows commits from other authors.",
         "instruction": "Rebase the branch and reset authorship."

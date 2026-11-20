@@ -6,7 +6,8 @@
 #          --output-type draft|decision|artifact-ref|findings
 #          --summary <one line> [--records ADR-1,PDR-2] -- <path>...
 #
-# Acts only with a factory run context (ADLC_RUN_ID), `adlc.commit_steps: true`
+# Acts only with a factory run context (ADLC_RUN_ID, else the lane's
+# WORKFLOW_INPUTS.run_id through run-context.sh), `adlc.commit_steps: true`
 # in .adlc/init-options.json, or --commit (ADR-431 §6); otherwise prints
 # `sha: none` and changes nothing. Stages ONLY the given paths, and only when
 # they are inside the ADR-433 lifecycle write allowlist; run state
@@ -42,6 +43,9 @@ summary="${summary# }"; summary="${summary% }"; summary="${summary:0:100}"
 [ -n "$summary" ] || die "missing --summary"
 [ "${#paths[@]}" -gt 0 ] || die "no paths given"
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before the activity check (and before the cd below).
+if [ -z "${ADLC_RUN_ID:-}" ]; then . "$(dirname "$0")/run-context.sh"; fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"
 prefix="$(git rev-parse --show-prefix)"
 cd "$root"

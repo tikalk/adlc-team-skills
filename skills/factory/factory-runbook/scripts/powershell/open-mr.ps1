@@ -6,7 +6,8 @@
 #
 # Usage: open-mr.ps1 [--kind <intent|code>] (default intent).
 #
-# With a factory run context (ADLC_RUN_ID): pushes ONLY the current run branch
+# With a factory run context (ADLC_RUN_ID, else the lane's WORKFLOW_INPUTS.run_id
+# through run-context.ps1): pushes ONLY the current run branch
 # (fast-forward only — also when reusing an open MR/PR, never --force)
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
 # description states the merge-commit rule, ADR-431 §5), with the issue's
@@ -18,7 +19,7 @@
 # factory/code/*, mission-flavoured title). The tracker token's
 # scopes are checked before anything is pushed or created (ADR-432); a missing
 # scope or a tracker refusal blocks: non-zero exit, nothing written. Without
-# ADLC_RUN_ID this is a no-op. Prints the MR URL.
+# a run context this is a no-op. Prints the MR URL.
 
 $ErrorActionPreference = 'Stop'
 $script:ErrorView = 'ConciseView'
@@ -41,8 +42,11 @@ function json([string]$Script, [string[]]$JArgs = @()) {
     if ($JArgs.Count -gt 0) { node -e $Script @JArgs } else { node -e $Script }
 }
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+if (-not $env:ADLC_RUN_ID) { . (Join-Path $PSScriptRoot 'run-context.ps1') }
 if (-not $env:ADLC_RUN_ID) {
-    [Console]::Error.WriteLine('open-mr: no run context (ADLC_RUN_ID unset) — skipped')
+    [Console]::Error.WriteLine('open-mr: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped')
     exit 0
 }
 $root = git rev-parse --show-toplevel 2>$null

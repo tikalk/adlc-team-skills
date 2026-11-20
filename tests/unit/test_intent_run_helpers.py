@@ -44,7 +44,10 @@ def git(cwd, *args, check=True):
 
 
 def run(script, cwd, *args, env=None):
-    full_env = {k: v for k, v in os.environ.items() if not k.startswith("ADLC_")}
+    # ADLC_* and the lane's WORKFLOW_INPUTS are the run context (run-context.sh):
+    # a test run inside a runner pod must not inherit the pod's own context.
+    full_env = {k: v for k, v in os.environ.items()
+                if not k.startswith("ADLC_") and k != "WORKFLOW_INPUTS"}
     full_env.update(env or {})
     return subprocess.run(["bash", str(script), *args], cwd=cwd, capture_output=True, text=True, env=full_env)
 

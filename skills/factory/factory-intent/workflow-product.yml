@@ -12,6 +12,12 @@
 # dispatch (init vs specify vs analyze-first). The steps below encode the
 # greenfield default for headless runs.
 #
+# Worktree isolation (product-lane scoped): head step
+# `isolate-worktree` FIRST (`run_id = intent-<repo>-<iid>` from
+# `ADLC_ISSUE_REF`, reuse under `ADLC_RUN_ID`, clone-path guard); tail step
+# `tail-merge-reindex` AFTER `build-and-verify` (fetch→merge→regen 4 indexes
+# incl. PDR drafts `.adlc/drafts/pdr/*.md` →commit→PRD publish; renumber loser).
+#
 # Correction loop: `analyze` ends with a terminal
 # `VERDICT: OK | HIGH | CRITICAL` line; HIGH/CRITICAL re-runs the bounded
 # build-and-verify cycle (max_iterations = 1 + mission max_corrections,
@@ -35,6 +41,9 @@ inputs:
     type: string
     default: ""
 steps:
+  - id: isolate-worktree
+    type: command
+    command: isolate-worktree
   - id: specify
     type: command
     command: product-specify
@@ -67,3 +76,6 @@ steps:
       - id: analyze
         type: command
         command: product-analyze
+  - id: tail-merge-reindex
+    type: command
+    command: tail-merge-reindex

@@ -470,9 +470,9 @@ instead (the dual-read order applies: ``docs/adlc/memory`` first, legacy
 | team-levelup | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-levelup |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
 
-Each class boot emits its class context section and its own searched line (_Searched N records, K matched._).
+Each class boot emits its class context section and its own searched line (_Searched N records, K matched._). Pull rule bodies on demand.
 
-**Every response MUST include** a Team Context & Decisions section before the task answer (Status ``in use`` rows ground the session in accepted records; Status ``pending`` rows capture emerging decisions in the same table):
+**Every response MUST include** a Team Context & Decisions section before the task answer — include the table only when an accepted record grounded the answer or a pending decision emerged; otherwise (0 rows matched) emit the section heading + counts line only (Status ``in use`` rows ground the session in accepted records; Status ``pending`` rows capture emerging decisions in the same table):
 
 ## Team Context & Decisions
 

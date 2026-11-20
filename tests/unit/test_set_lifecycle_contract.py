@@ -93,3 +93,18 @@ def test_lease_acquire_and_dependency_revert_use_the_step():
     mission = ACTORS["factory-mission"].read_text(encoding="utf-8")
     gate = next(line for line in mission.splitlines() if "Dependency hard gate" in line)
     assert STEP in gate, "the dependency-gate revert to `spec-gated` must use the step"
+
+
+def test_factory_run_section_moves_the_issue_to_validation():
+    """adlc-workspace#92: under ADLC_RUN_ID the agent follows only the
+    "In a factory run — do exactly this" section. Without an explicit
+    lifecycle step there, a workflow-path run left its issue `executing`
+    after opening the code MR (#88), while the raw path set `validation`."""
+    text = ACTORS["factory-mission"].read_text(encoding="utf-8")
+    start = text.index("## In a factory run")
+    section = text[start:text.index("## In a local session", start)]
+    assert STEP in section, "the factory-run section must name the Set Lifecycle step"
+    assert "`validation`" in section, "the factory-run section must move the issue to `validation`"
+    assert "with no MR" in section.lower() or "no mr" in section.lower(), (
+        "the step must say what happens when no MR was opened"
+    )

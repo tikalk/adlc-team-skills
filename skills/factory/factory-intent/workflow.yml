@@ -11,6 +11,14 @@
 # adaptive (LLM) executor at dispatch (init vs specify vs analyze-first per
 # lane). The steps below encode the greenfield default for headless runs.
 #
+# Worktree isolation: head step `isolate-worktree` runs FIRST
+# (derive `run_id = intent-<repo>-<iid>` from `ADLC_ISSUE_REF`, worktree path
+# `<worktree_root>/<run_id>/` default `.adlc/worktrees`; reuse under
+# `ADLC_RUN_ID`, clone-path guard, never checkout in user checkout).
+# Tail step `tail-merge-reindex` runs AFTER `build-and-verify`, BEFORE publish
+# (fetch merge head → merge into run branch → regen all four indexes from disk
+# via clarify skills → commit → publish sequence; conflict rule: renumber loser).
+#
 # Correction loop: each lane's `analyze` ends with a terminal
 # `VERDICT: OK | HIGH | CRITICAL` line; HIGH/CRITICAL re-runs that lane's
 # bounded build-and-verify cycle (max_iterations = 1 + mission
@@ -45,6 +53,9 @@ inputs:
     type: string
     default: ""
 steps:
+  - id: isolate-worktree
+    type: command
+    command: isolate-worktree
   - id: product-specify
     type: command
     command: product-specify
@@ -97,3 +108,6 @@ steps:
       - id: architecture-analyze
         type: command
         command: architect-analyze
+  - id: tail-merge-reindex
+    type: command
+    command: tail-merge-reindex

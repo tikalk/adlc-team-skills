@@ -96,4 +96,27 @@ if ($localExists) {
     git switch -q -c $branch
     if ($LASTEXITCODE -ne 0) { Die "git switch -c failed" }
 }
+
+# An existing intent branch (e.g. created at capture by /adlc open) may be
+# behind the default branch: catch it up with one merge commit — never a
+# rebase, never --force (merge-commit rule). Code branches are left alone.
+if (($localExists -or $onOrigin) -and $kind -eq 'intent') {
+    $default = ''
+    foreach ($line in @(git ls-remote --symref origin HEAD 2>$null)) {
+        if ($line -match '^ref: refs/heads/(\S+)\s+HEAD$') { $default = $Matches[1] }
+    }
+    if (-not $default) { $default = 'main' }
+    git check-ref-format "refs/heads/$default" 2>$null
+    if ($LASTEXITCODE -ne 0) { Die "invalid default branch name: $default" }
+    git fetch -q origin "+refs/heads/${default}:refs/remotes/origin/${default}"
+    if ($LASTEXITCODE -ne 0) { Die "fetch of origin/$default failed" }
+    git merge-base --is-ancestor "refs/remotes/origin/$default" HEAD *> $null
+    if ($LASTEXITCODE -ne 0) {
+        git merge -q --no-edit "refs/remotes/origin/$default" *> $null
+        if ($LASTEXITCODE -ne 0) {
+            git merge --abort *> $null
+            Die "$branch is behind origin/$default and merging it conflicts — resolve $branch by hand"
+        }
+    }
+}
 Write-Output $branch

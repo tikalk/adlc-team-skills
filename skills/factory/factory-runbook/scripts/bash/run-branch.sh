@@ -8,7 +8,9 @@
 #   factory/mission/<repo>-<iid>  from ADLC_ISSUE_REF, or
 #   factory/mission/run-<run_id>  without an issue (with --kind code);
 # continuing from origin when it has the branch (a local copy is fast-forwarded;
-# a local copy that diverged from origin halts), else creating it. The branch is shared by both intent lanes and by re-dispatches of the
+# a local copy that diverged from origin halts), else creating it. An existing
+# intent branch behind origin/<default> is caught up with one merge commit
+# (never a rebase or --force; a conflict halts naming the branch). The branch is shared by both intent lanes and by re-dispatches of the
 # same issue. Without ADLC_RUN_ID this is a no-op (interactive sessions never
 # switch branches). Prints the branch name on stdout.
 set -euo pipefail
@@ -66,7 +68,9 @@ if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
   on_origin=1
 fi
 
+existed="$on_origin"
 if git show-ref --verify --quiet "refs/heads/$branch"; then
+  existed=1
   if [ "$on_origin" = 1 ]; then
     local_ref="refs/heads/$branch" remote_ref="refs/remotes/origin/$branch"
     git merge-base --is-ancestor "$local_ref" "$remote_ref" \
@@ -84,5 +88,21 @@ elif [ "$on_origin" = 1 ]; then
   git switch -q -c "$branch" "refs/remotes/origin/$branch"
 else
   git switch -q -c "$branch"
+fi
+
+# An existing intent branch (e.g. created at capture by /adlc open) may be
+# behind the default branch: catch it up with one merge commit — never a
+# rebase, never --force (merge-commit rule). Code branches are left alone.
+if [ "$existed" = 1 ] && [ "$kind" = intent ]; then
+  default="$(git ls-remote --symref origin HEAD 2>/dev/null | sed -n 's#^ref: refs/heads/\(.*\)[[:space:]]HEAD$#\1#p')"
+  default="${default:-main}"
+  git check-ref-format "refs/heads/$default" || die "invalid default branch name: $default"
+  git fetch -q origin "+refs/heads/$default:refs/remotes/origin/$default" || die "fetch of origin/$default failed"
+  if ! git merge-base --is-ancestor "refs/remotes/origin/$default" HEAD; then
+    if ! git merge -q --no-edit "refs/remotes/origin/$default" >/dev/null 2>&1; then
+      git merge --abort >/dev/null 2>&1 || true
+      die "$branch is behind origin/$default and merging it conflicts — resolve $branch by hand"
+    fi
+  fi
 fi
 echo "$branch"

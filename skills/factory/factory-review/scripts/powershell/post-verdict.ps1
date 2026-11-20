@@ -22,7 +22,8 @@
 #
 # Posting mode checks the body before anything is sent: its first non-blank
 # line must be the ONE `<!-- factory-review:step=review … -->` marker, the
-# marker's head= must equal --head and it must carry a run=. It then posts
+# marker's head= must equal --head and it must carry a run=, and the whole
+# body must pass `verdict-schema.ps1 lint` (SF-SKILL-02). It then posts
 # (GitLab: a threaded MR discussion; GitHub: a COMMENT review bound to --head —
 # never an approval), reads the thread back and requires a comment carrying a
 # review marker with this head, run= and iter=. A verdict already on the
@@ -58,7 +59,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         '--run'        { if (-not $next) { Die '--run requires a value' }; $runFilter = $next; $i++; continue }
         '--check-only' { $checkOnly = $true; continue }
         { $_ -in @('-h', '--help') } {
-            Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 37 | ForEach-Object { $_ -replace '^# ?', '' }
+            Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 38 | ForEach-Object { $_ -replace '^# ?', '' }
             exit 0
         }
         default        { Die "unknown argument '$a'" }
@@ -198,6 +199,13 @@ if ($bodyHead -cne $headSha) { Die "the marker names head=$bodyHead but --head i
 if ($bodyRun -eq '-') { Die 'the marker carries no run=' }
 if ($bodyRun -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\z') { Die "the marker's run=$bodyRun is not a valid run id" }
 if ($bodyIter -eq '-') { $bodyIter = '' }
+# The full schema — marker fields, run id, counts, headings, wording
+# (SF-SKILL-02). A body that fails it is never sent.
+$lintOut = & (Join-Path $PSScriptRoot 'verdict-schema.ps1') lint $bodyFile
+if ($LASTEXITCODE -ne 0) {
+    foreach ($l in @($lintOut)) { [Console]::Error.WriteLine([string]$l) }
+    Die 'the body does not follow the verdict schema (verdict-schema.ps1 lint); nothing was posted'
+}
 
 $id = Find-Verdict $bodyRun $bodyIter
 if ($id) {

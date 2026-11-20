@@ -106,9 +106,12 @@ def tracker(tmp_path):
 
 
 def run(tracker, interpreter, *args, **knobs):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("FAKE_")}
+    # A lane run: the run id comes from WORKFLOW_INPUTS, as in a review pod
+    # (the verdict schema requires the marker's run= to be this run's id).
+    env = {k: v for k, v in os.environ.items() if not k.startswith("FAKE_") and k != "ADLC_RUN_ID"}
     env.update({"PATH": f"{tracker['bin']}{os.pathsep}{env['PATH']}", "FAKE_TRACKER_DIR": str(tracker["state"]),
-                "GITLAB_HOST": "gitlab.example.test", "POST_VERDICT_BACKOFF": "0"})
+                "GITLAB_HOST": "gitlab.example.test", "POST_VERDICT_BACKOFF": "0",
+                "WORKFLOW_INPUTS": json.dumps({"issue_ref": MR, "run_id": RUN, "dispatch": "autonomous"})})
     for k, v in knobs.items():
         if v is None:
             env.pop(k, None)
@@ -320,3 +323,29 @@ def test_both_twins_run_the_same_node_scripts():
         js_sh = sh.split(f"{bash_var}='\n", 1)[1].split("\n'\n", 1)[0]
         js_ps = ps.split(f"{ps_var} = @'\n", 1)[1].split("\n'@", 1)[0]
         assert js_sh == js_ps, f"{bash_var} differs between the twins"
+
+
+# ── SF-SKILL-02: the schema lint runs before anything is posted ─────────────
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+@pytest.mark.parametrize("text, why", [
+    # an invented run id (octopus-next!1335 carried run=mr-1335)
+    (BODY.replace(f"run={RUN}", "run=mr-1298"), "run=mr-1298 but this run is " + RUN),
+    # findings=0 with a nit (octopus-next!1321)
+    (BODY.replace("findings=2", "findings=0"), "findings=0 but important+nits=2"),
+    # interactive wording (adlc-argo-wf!84)
+    (BODY + "\nVerdict preview — not yet posted (needs your confirm)\n", "interactive hand-off"),
+], ids=["invented-run-id", "inconsistent-counts", "interactive-wording"])
+def test_a_body_that_fails_the_schema_is_never_posted(tracker, interpreter, text, why):
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, text))
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "does not follow the verdict schema" in r.stderr and why in r.stderr
+    assert posts(tracker) == []
+
+
+def test_post_verdict_lints_before_it_posts():
+    for script, needle in ((SCRIPT, 'verdict-schema.sh" lint'), (PS_SCRIPT, "'verdict-schema.ps1') lint")):
+        text = script.read_text(encoding="utf-8")
+        assert needle in text, script.name
+        assert text.index(needle) < text.index("-X"), f"{script.name}: lint must run before the POST"
+

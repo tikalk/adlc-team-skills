@@ -46,6 +46,8 @@ In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `
 
 When triggered with `--pr <id>` (without `--self-heal`):
 
+**Executor:** run the passes yourself, inline — do not dispatch sub-agents. Do not use the adversarial trio (Auditor/Adversary/Pragmatist): the trio belongs to `--self-heal` (§3) only. A single review that needs parallel depth is a `--self-heal` run; do not borrow its machinery into this path.
+
 1. Discover credentials and PR hosting tools (`factory-runbook/references/tracker-integration.md`).
 2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
  3. Fetch the PR diff and description.
@@ -191,6 +193,15 @@ the mechanical action; it must not become the primary correction mechanism.
 requires human judgment and cannot be eliminated structurally or checked
 mechanically. Package the rule as a CDR draft (via `factory-learn`)
 targeting the `team-ai-directives` repository.
+
+**Eval evidence on factory self-changes:** a diff touching agent-facing
+factory config (skill, hook, workflow, prompt) carries behavior that a
+static pass cannot grade. A verdict on such a change must include eval
+evidence per the eval-seeding decision — Tier-2 split and seed admissibility live in
+`factory-learn/references/eval-seed-taxonomy.md`; behavioral properties
+need an eval criterion with a binary grader (`/evals-specify`), decidable
+properties need a check. A green suite on behaviorally-graded ground is an
+`unverified` result, not a clean one.
 
 Also flag any changes that make current directives outdated.
 

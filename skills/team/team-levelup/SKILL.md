@@ -143,7 +143,7 @@ Wait for user input before proceeding. Update CDR file after each decision.
 Classify every Rule-type CDR by enforceability BEFORE review:
 
 - **Mechanical** (fixed syntactic pattern, banned API, import shape, file-location rule, head-SHA binding, regex anchoring, assertion ordering) → candidate **P — Promote to check**.
-- **Judgement call** (cross-file consistency, style matching, intent) → normal A/B/C/D path.
+- **Judgment call** (cross-file consistency, style matching, intent) → normal A/B/C/D path.
 
 For a P candidate, the reviewer must produce in the same PR:
 
@@ -151,9 +151,9 @@ For a P candidate, the reviewer must produce in the same PR:
 2. A thin pointer CDR beside the check (one-liner + path to the check) — acceptable. A CDR-only fix for a mechanical rule is not.
 3. Proof the check fails without the fix and passes with it (Prove It Works — constitution 15).
 
-Once the check exists and runs in CI, deprecate the full-text CDR or reduce it to a pointer. The `factory-learn` Maintenance route (`verify` → build-to-delete + promote-to-check, EVAL-010) re-verifies: if the model passes without the rule, flag it redundant; if a check can enforce it, flag it for promotion here.
+Once the check exists and runs in CI, deprecate the full-text CDR or reduce it to a pointer. The `factory-learn` Maintenance route (`verify` → build-to-delete + promote-to-check) re-verifies: if the model passes without the rule, flag it redundant; if a check can enforce it, flag it for promotion here.
 
-Examples already in force: `check-verdict-head.sh` (CDR-005), `check_factory_init_matrix.py` + `check_team_context_table.py` (CDR-001), executable-line-anchored drift guards (CDR-003), deterministic-first e2e ordering (CDR-004).
+Examples already in force: the verdict-head check script, the factory-intent matrix grader plus the team-context table grader, executable-line-anchored drift guards, deterministic-first end-to-end ordering.
 
 ## Absent Context
 

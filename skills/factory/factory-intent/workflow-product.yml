@@ -60,6 +60,11 @@ steps:
       records: [".adlc/drafts/pdr/*.md"]
       since: "last_approved"
       link: "{{ inputs.mr_url }}"
+  # Eval obligation (ADR-524): when the intent's capability is agent-mediated
+  # (skill/hook/prompt behavior rather than deterministic code), the artifacts
+  # build-and-verify produces must include eval evidence — an eval criterion
+  # + grader via /evals-specify — and the analyze VERDICT may not read OK
+  # without it. Split and seed admissibility: factory-learn/references/eval-seed-taxonomy.md.
   - id: build-and-verify
     type: do-while
     condition: "{{ steps.analyze.output.stdout | contains('VERDICT: CRITICAL') or steps.analyze.output.stdout | contains('VERDICT: HIGH') }}"

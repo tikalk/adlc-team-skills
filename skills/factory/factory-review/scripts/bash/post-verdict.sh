@@ -22,7 +22,8 @@
 #
 # Posting mode checks the body before anything is sent: its first non-blank
 # line must be the ONE `<!-- factory-review:step=review … -->` marker, the
-# marker's head= must equal --head and it must carry a run=. It then posts
+# marker's head= must equal --head and it must carry a run=, and the whole
+# body must pass `verdict-schema.sh lint` (SF-SKILL-02). It then posts
 # (GitLab: a threaded MR discussion; GitHub: a COMMENT review bound to --head —
 # never an approval), reads the thread back and requires a comment carrying a
 # review marker with this head, run= and iter=. A verdict already on the
@@ -49,7 +50,7 @@ while [ "$#" -gt 0 ]; do
     --retries)    [[ "${2:-}" =~ ^[1-9]$ ]] || die "--retries takes 1-9"; RETRIES="$2"; shift 2 ;;
     --run)        [ -n "${2:-}" ] || die "--run requires a value"; RUN_FILTER="$2"; shift 2 ;;
     --check-only) CHECK_ONLY=1; shift ;;
-    -h|--help)    sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)    sed -n '2,39p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)            die "unknown argument '$1'" ;;
   esac
 done
@@ -175,6 +176,12 @@ IFS=$'\t' read -r count first_ok body_head body_run body_iter <<< "$fields"
 [ "$body_run" != "-" ] || die "the marker carries no run="
 [[ "$body_run" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "the marker's run=$body_run is not a valid run id"
 [ "$body_iter" != "-" ] || body_iter=""
+# The full schema — marker fields, run id, counts, headings, wording
+# (SF-SKILL-02). A body that fails it is never sent.
+if ! lint_out="$(bash "$(dirname "$0")/verdict-schema.sh" lint "$BODY_FILE")"; then
+  printf '%s\n' "$lint_out" >&2
+  die "the body does not follow the verdict schema (verdict-schema.sh lint); nothing was posted"
+fi
 
 if lookup "$body_run" "$body_iter"; then
   echo "post-verdict: OK — already on $MR (comment $id), not posted twice"; exit 0

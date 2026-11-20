@@ -15,8 +15,8 @@ import yaml
 ROOT = Path(__file__).parent.parent.parent
 SKILL = ROOT / "skills/factory/factory-runbook"
 
-BASH_SCRIPTS = ["run-branch.sh", "commit-step.sh", "open-mr.sh", "resolve-mr-ownership.sh"]
-PS_SCRIPTS = ["run-branch.ps1", "commit-step.ps1", "open-mr.ps1", "resolve-mr-ownership.ps1"]
+BASH_SCRIPTS = ["run-branch.sh", "commit-step.sh", "open-mr.sh", "resolve-mr-ownership.sh", "run-context.sh"]
+PS_SCRIPTS = ["run-branch.ps1", "commit-step.ps1", "open-mr.ps1", "resolve-mr-ownership.ps1", "run-context.ps1"]
 REFERENCES = [
     "executor.md",
     "tracker-integration.md",

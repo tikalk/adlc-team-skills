@@ -20,6 +20,8 @@ from test_intent_run_helpers import (
     GH_FULL,
     GLAB,
     INTENT,
+    INTENT_DRAFTS,
+    MISSION,
     advance_origin_main,
     posted_body,
     RUN_ENV,
@@ -62,7 +64,10 @@ def repo(tmp_path):
 
 
 def run(script, cwd, *args, env=None):
-    full_env = {k: v for k, v in os.environ.items() if not k.startswith("ADLC_")}
+    # ADLC_* and the lane's WORKFLOW_INPUTS are the run context (run-context.sh):
+    # a test run inside a runner pod must not inherit the pod's own context.
+    full_env = {k: v for k, v in os.environ.items()
+                if not k.startswith("ADLC_") and k != "WORKFLOW_INPUTS"}
     full_env.update(env or {})
     return subprocess.run(["pwsh", "-NoProfile", "-File", str(script), *args],
                           cwd=cwd, capture_output=True, text=True, env=full_env)
@@ -616,6 +621,67 @@ def test_run_branch_never_merges_main_into_a_code_branch(repo, tmp_path):
     r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
     assert r.returncode == 0, r.stderr
     assert git(w, "rev-parse", "HEAD") == before
+
+
+# ── a new code branch starts from origin's default branch (SF-SKILL-08) ────
+
+def ps_on_intent_branch_with_drafts(repo):
+    w = repo["work"]
+    run(PS / "run-branch.ps1", w, env=RUN_ENV)
+    for rel in INTENT_DRAFTS:
+        write(w, rel, "draft\n")
+    git(w, "add", "-A")
+    git(w, "commit", "-q", "-m", "intent drafts")
+    assert git(w, "branch", "--show-current") == INTENT
+
+
+def test_a_new_code_branch_does_not_inherit_the_intent_drafts(repo):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == MISSION
+    assert git(w, "rev-parse", "HEAD") == git(repo["bare"], "rev-parse", "main")
+    for rel in INTENT_DRAFTS:
+        assert not (w / rel).exists(), rel
+
+
+def test_a_new_code_branch_starts_from_the_latest_origin_default(repo, tmp_path):
+    ps_on_intent_branch_with_drafts(repo)
+    main_head = advance_origin_main(repo, tmp_path)
+    r = run(PS / "run-branch.ps1", repo["work"], "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(repo["work"], "rev-parse", "HEAD") == main_head
+
+
+def test_a_new_code_branch_keeps_the_missions_uncommitted_files(repo):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    write(w, ".adlc/drafts/adr/ADR-7-cache.md", "proposed\n")
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert (w / ".adlc/drafts/adr/ADR-7-cache.md").read_text() == "proposed\n"
+
+
+def test_a_new_code_branch_uses_the_known_default_when_origin_is_silent(repo, tmp_path):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    git(w, "remote", "set-url", "origin", str(tmp_path / "unreachable.git"))
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(w, "rev-parse", "HEAD") == git(w, "rev-parse", "refs/remotes/origin/main")
+
+
+def test_a_new_code_branch_warns_when_no_default_branch_is_known(repo, tmp_path):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    head = git(w, "rev-parse", "HEAD")
+    git(w, "remote", "set-url", "origin", str(tmp_path / "unreachable.git"))
+    git(w, "update-ref", "-d", "refs/remotes/origin/main")
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert "no origin default branch found" in r.stderr and MISSION in r.stderr
+    assert git(w, "rev-parse", "HEAD") == head
 
 
 def test_commit_step_accepts_the_capture_file(repo):

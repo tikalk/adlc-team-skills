@@ -140,7 +140,7 @@ The orchestrator runs `test`/`code` → `verify` → `converge` as a loop and ow
 4. If tracker-integrated:
    - Post the completion record with `factory-runbook/scripts/bash/post-completion.sh` (marker `factory-mission:step=complete status=<completed|failed> run=<run_id> type=decision outcome=<outcome>`, one per run; the older `factory-mission:status=completed:run=<run_id>` spelling is retired).
    - Move the issue from `executing` to `validation` (or `done` if merged) through the Set Lifecycle step (tracker-integration Operation 9), which also removes any other lifecycle label.
-   - Stamp `agent-authored` on opened PRs.
+   - Stamp `agent-authored` on opened PRs with an add-only label call (tracker-integration Operation 9, "Other label writes") — never a call that lists the PR's labels: it would delete every label not in the list.
    - In a factory run, write the code MR/PR URL as `mr_url` into `ADLC_STEP_OUTPUT` (see "In a factory run" above). Open it via the runbook with `--kind code` so the mission branch (`factory/mission/*`, `factory/code/*`) and mission title are used.
    - Defer PR merge to code-owner approval (never auto-merge without approval).
 5. Output the complete audit summary.

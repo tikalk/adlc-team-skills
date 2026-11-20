@@ -45,7 +45,7 @@ Operates on candidate issues (labeled `intent`) or local draft briefs:
    - **WIP Check**: Count active issues in `executing` + `validation`; if at or above the WIP cap (default `5`), triage recommends deferral (`deferred: wip-limit`).
 3. **Intent Gate Presentation**: Present candidate briefs + advisory scores to the human. If running unattended (no active human terminal), publish the Intent Gate presentation and AI scores as a structured comment with marker `<!-- factory-queue:triage:proposal -->` on the candidate issue. The queue run pauses. The human reviews the proposal, and approves by commenting "approve" or changing the label to `spec-gated`. When resumed, the queue reads the comment/label state and continues. **The Human Intent Gate is non-negotiable**; no brief is auto-approved or auto-rejected.
 4. **Label Stamping**:
-   - On approval: move the issue `intent` ──► `spec-gated` through the Set Lifecycle step (tracker-integration Operation 9). Stamp automation-gating (`agent-can-execute` or `human-required`) and dispatch (`autonomous` | `supervised` | `interactive`) labels.
+   - On approval: move the issue `intent` ──► `spec-gated` through the Set Lifecycle step (tracker-integration Operation 9). Stamp automation-gating (`agent-can-execute` or `human-required`) and dispatch (`autonomous` | `supervised` | `interactive`) labels, each with an add-only call (tracker-integration Operation 9, "Other label writes") — never a call that lists the issue's labels: it would delete every label not in the list.
    - On rejection: move the issue `intent` ──► `cancelled` through the Set Lifecycle step (or delete draft).
    - On deferral: Move to backlog.
 

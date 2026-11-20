@@ -135,6 +135,7 @@ Publish a step's terminal output as a structured comment.
 | MCP (atlassian) | `create_issue_comment` |
 | CLI (gh) | `gh pr comment <pr> --body-file <file>` or `gh issue comment <issue> --body-file <file>` |
 | CLI (glab) | `glab mr note <mr> --message <body>` or `glab issue note <issue> --message <body>` |
+| CLI (glab api) | `glab api --hostname <host> -X POST projects/<url-encoded-path>/merge_requests/<iid>/notes -H 'Content-Type: application/json' --input <json-file>` (issue: `…/issues/<iid>/notes`) |
 | CLI (linear) | `linear issue comment <id> --body <body>` |
 | CLI (jira) | `jira issue add comment <id> --body <body>` |
 
@@ -169,6 +170,7 @@ Retrieve all comments matching a marker pattern.
 | MCP (atlassian) | `get_issue_comments` |
 | CLI (gh) | `gh pr view <pr> --comments --json comments` |
 | CLI (glab) | `glab mr notes <mr>` |
+| CLI (glab api) | `glab api --hostname <host> "projects/<url-encoded-path>/merge_requests/<iid>/notes?sort=desc&per_page=100"` (issue: `…/issues/<iid>/notes`) |
 | CLI (linear) | `linear issue comments <id>` |
 | CLI (jira) | `jira issue list-comments <id>` |
 
@@ -224,6 +226,9 @@ General comments (Operation 4) stay reserved for status, lease, and decisions.
 | GitHub CLI | `gh pr review <pr> --comment --body-file <file>` |
 | GitLab MCP | review-type threaded discussion note on the MR (provider-native surface, not a plain issue note) |
 | GitLab CLI | review-type threaded discussion note via `glab` (never `glab mr approve`) |
+| Script (GitLab, GitHub) | `factory-review/scripts/bash/post-verdict.sh --mr <ref> --head <sha> --body-file <file>` (PowerShell twin `post-verdict.ps1`) — posts through `glab api` (`…/merge_requests/<iid>/discussions`) or `gh api` (COMMENT review) and reads the thread back; the preferred path in runner pods |
+
+**`glab api` works where `glab auth status` does not.** In agentic-container runner pods `glab auth status` reports no login, but `glab api --hostname <host>` authenticates from `GITLAB_TOKEN` — `open-mr.sh` opens every factory MR that way. Use `glab api` (or the script); never improvise `curl` with the token, and never print it.
 
 Rules: one-marker-one-comment — a Review-type verdict submission carries exactly one marker
 (idempotent per `run=<run_id> iter=<k> head=<sha>`), never batched verdicts in one submission.
@@ -232,7 +237,8 @@ marker; the consolidated verdict comment names every thread. A head move invalid
 the standing Review: re-submission on the new head is required. GitLab fallback: where
 the provider cannot attach a review-type threaded discussion note, post a labeled general
 note carrying `head=<sha>` plus an explicit degradation line (`degraded: review-type
-unavailable, general note used`) — never `glab mr approve`.
+unavailable, general note used`) — never `glab mr approve`. After any submission, confirm it landed by reading
+the comments back (Operation 5; `post-verdict.sh` does both): an unposted verdict is a failed review, not a completed one.
 
 ### Operation 8 — Post Decision
 
@@ -442,8 +448,11 @@ scope in the error and stop the run.
 
 1. **MCP server** — if connected (detected via MCP capabilities), use
    it. Richer typed responses, no shell execution.
-2. **CLI tool** — if on PATH and authenticated. Simpler, no MCP
-   dependency.
+2. **CLI tool** — if on PATH and able to reach the tracker. Simpler, no MCP
+   dependency. For GitLab, test with a real call (`glab api --hostname <host>
+   user`), not with `glab auth status`: in runner pods `glab auth status`
+   reports no login while `glab api` authenticates from `GITLAB_TOKEN`. Prefer
+   the `glab api` rows above there.
 3. **Neither** — if tracker-integrated, halt with error listing what's
    needed. If not tracker-integrated, skip comment bus entirely — the
    executor runs in local-only mode (see executor.md Phase 5 §6).

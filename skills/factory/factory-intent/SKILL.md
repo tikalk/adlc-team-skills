@@ -63,7 +63,7 @@ from `ADLC_ISSUE_REF` (runbook Phase 0.5 slug rule); worktree path
 `<worktree_root>/<run_id>/`, default `.adlc/worktrees`. If `ADLC_RUN_ID` set
 → worktree exists via dispatch → reuse, never create second; reuse on
 re-dispatch. Middle runs stay worktree-private (slot claims, promotion, index
-generation). ADR-454 guard: CWD inside `adlc-cli/` → use clone path, never a
+generation). Clone-path guard: CWD inside `adlc-cli/` → use clone path, never a
 worktree there. Never `checkout/switch/reset/clean/stash` in user checkout;
 work via absolute paths.
 

@@ -11,10 +11,10 @@
 # adaptive (LLM) executor at dispatch (init vs specify vs analyze-first per
 # lane). The steps below encode the greenfield default for headless runs.
 #
-# Worktree isolation (ADR-536): head step `isolate-worktree` runs FIRST
+# Worktree isolation: head step `isolate-worktree` runs FIRST
 # (derive `run_id = intent-<repo>-<iid>` from `ADLC_ISSUE_REF`, worktree path
 # `<worktree_root>/<run_id>/` default `.adlc/worktrees`; reuse under
-# `ADLC_RUN_ID`, ADR-454 clone-path guard, never checkout in user checkout).
+# `ADLC_RUN_ID`, clone-path guard, never checkout in user checkout).
 # Tail step `tail-merge-reindex` runs AFTER `build-and-verify`, BEFORE publish
 # (fetch merge head → merge into run branch → regen all four indexes from disk
 # via clarify skills → commit → publish sequence; conflict rule: renumber loser).

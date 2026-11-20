@@ -53,7 +53,7 @@ workflow:
   # derived from orchestrator + target slug.
   worktree_root: .adlc/worktrees
   # `factory-intent` reuses this root via its head `isolate-worktree` step
-  # (`intent-<repo>-<iid>`); tail merges + reindexes before publish (ADR-536).
+  # (`intent-<repo>-<iid>`); tail merges + reindexes before publish.
 
   # ── Lease liveness ─────────────────────────────────────────
   # How long (seconds) a heartbeat remains valid before a run is

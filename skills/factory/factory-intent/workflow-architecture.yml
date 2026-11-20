@@ -13,9 +13,9 @@
 # dispatch (init vs specify vs analyze-first). The steps below encode the
 # greenfield default for headless runs.
 #
-# Worktree isolation (ADR-536, architecture-lane scoped): head step
+# Worktree isolation (architecture-lane scoped): head step
 # `isolate-worktree` FIRST (`run_id = intent-<repo>-<iid>` from
-# `ADLC_ISSUE_REF`, reuse under `ADLC_RUN_ID`, ADR-454 clone guard); tail step
+# `ADLC_ISSUE_REF`, reuse under `ADLC_RUN_ID`, clone-path guard); tail step
 # `tail-merge-reindex` AFTER `build-and-verify` (fetch→merge→regen 4 indexes
 # incl. ADR drafts `.adlc/drafts/adr/*.md` →commit→AD publish; renumber loser).
 #

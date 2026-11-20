@@ -406,6 +406,21 @@ def test_agents_md_simplified():
     assert "J MUST equal the number of rows" in AGENTS
 
 
+def test_boot_and_helpers_on_demand_table_and_rule_bodies():
+    """Team Context table is emitted only when a record grounded the answer or
+    a pending decision emerged; rule bodies are pulled on demand."""
+    surfaces = {
+        "boot.sh": (ROOT / "skills/team/team-boot/scripts/bash/boot.sh").read_text(encoding="utf-8"),
+        "boot.ps1": (ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1").read_text(encoding="utf-8"),
+        "team-helpers.sh": (ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh").read_text(encoding="utf-8"),
+        "team-helpers.ps1": (ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1").read_text(encoding="utf-8"),
+    }
+    for label, text in surfaces.items():
+        lowered = text.lower()
+        assert "grounded the answer" in lowered, f"{label}: missing grounded-answer condition"
+        assert "pull rule bodies on demand" in lowered, f"{label}: missing on-demand rule-body rule"
+
+
 def test_radar_search_sh_uses_jq():
     """radar-search.sh must use jq for JSON parsing, no Python."""
     assert "jq" in RADAR_SH

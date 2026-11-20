@@ -359,7 +359,7 @@ def test_converge_reads_synthesis_output():
     )
 
 
-# ── C. Single-review executor fence (no-trio borrow + wait/timeout rules) ────
+# ── C. Single-review executor fence (inline executor + no-trio borrow) ────
 
 def test_single_review_path_names_inline_executor():
     """§2 single-review must state the agent runs the passes inline itself."""
@@ -382,7 +382,7 @@ def test_single_review_path_prohibits_adversarial_trio():
     section = content.split("### 2.")[1].split("### 3.")[0]
     assert re.search(
         r"do not (dispatch|use) the (adversarial trio|Auditor/Adversary)|"
-        r"trio belongs to --self-heal|trio is --self-heal-only|"
+        r"trio belongs to `--self-heal`|trio is --self-heal-only|"
         r"no adversarial trio in single",
         section,
         re.IGNORECASE | re.DOTALL,

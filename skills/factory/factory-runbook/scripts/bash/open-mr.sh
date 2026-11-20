@@ -39,9 +39,16 @@ esac
 
 # Raw lane runs (reviews, autonomous missions) carry the run id only in
 # WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+ADLC_RUN_CONTEXT_SOURCE=""
 if [ -z "${ADLC_RUN_ID:-}" ]; then . "$(dirname "$0")/run-context.sh"; fi
 if [ -z "${ADLC_RUN_ID:-}" ]; then
   echo "open-mr: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped" >&2
+  exit 0
+fi
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref) and nothing to publish: stay a no-op there (SF-FIX-11).
+if [ "$ADLC_RUN_CONTEXT_SOURCE" = lane ] && [ -z "${ADLC_ISSUE_REF:-}" ]; then
+  echo "open-mr: review run (a lane run id and no issue) — skipped" >&2
   exit 0
 fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"

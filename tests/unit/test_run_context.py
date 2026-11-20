@@ -242,12 +242,100 @@ def test_powershell_helpers_publish_a_raw_lane_run_under_the_lane_run_id(repo):
     raw_lane_publish(repo, "pwsh")
 
 
+# ── a review run is a lane run too: the publish helpers stay out of it (SF-FIX-11) ─
+
+# What a review pod has: the lane's run id and a merge-request ref in issue_ref
+# (workflow-template-review.yaml). Since SF-SKILL-03 the helpers adopt the lane
+# run id, so in a review pod run-branch switched the review checkout to
+# factory/intent/run-<uuid> and commit-step / open-mr were live as well.
+REVIEW_INPUTS = json.dumps({"issue_ref": "g/adlc-workspace!41", "run_id": LANE_RUN_ID, "dispatch": "autonomous"})
+
+
+def review_run_is_left_alone(repo, interpreter):
+    ext = "sh" if interpreter == "bash" else "ps1"
+    d = BASH_DIR if interpreter == "bash" else PS_DIR
+    w = repo["work"]
+    bin_dir = fake_cli(repo["tmp"], "glab", GLAB)
+    log = repo["tmp"] / "glab.log"
+    env = {"WORKFLOW_INPUTS": REVIEW_INPUTS, "GITLAB_HOST": "gl.test", "FAKE_LOG": str(log),
+           "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    head = git(w, "rev-parse", "HEAD")
+
+    for kind in ("intent", "code"):
+        r = run_helper(interpreter, d / f"run-branch.{ext}", w, "--kind", kind, env=env)
+        assert r.returncode == 0, r.stderr
+        assert r.stdout.strip() == "" and "skipped" in r.stderr and "review run" in r.stderr
+    assert git(w, "branch", "--show-current") == "main"
+    assert git(w, "branch", "--list", "factory/*") == ""
+
+    write(w, ".adlc/drafts/adr/ADR-9.md", "a\n")
+    r = run_helper(interpreter, d / f"commit-step.{ext}", w, *CODE_ARGS, ".adlc/drafts/adr/ADR-9.md", env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "sha: none" and "review run" in r.stderr
+    assert git(w, "rev-parse", "HEAD") == head
+
+    r = run_helper(interpreter, d / f"open-mr.{ext}", w, "--kind", "code", env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "" and "skipped" in r.stderr and "review run" in r.stderr
+    assert not log.exists(), "no tracker call in a review run"
+    assert git(repo["bare"], "branch", "--list", "factory/*") == ""
+
+    # The explicit opt-in still works, and the commit names the real run.
+    r = run_helper(interpreter, d / f"commit-step.{ext}", w, *CODE_ARGS[:-1], "--commit", "--",
+                   ".adlc/drafts/adr/ADR-9.md", env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() != "sha: none"
+    assert git(w, "branch", "--show-current") == "main"
+    assert f"Run-Id: {LANE_RUN_ID}" in git(w, "log", "-1", "--format=%B")
+
+
+@pytest.mark.requires_bash
+@pytest.mark.skipif(shutil.which("git") is None or shutil.which("node") is None, reason="needs git and node")
+def test_bash_helpers_stay_out_of_a_review_run(repo):
+    review_run_is_left_alone(repo, "bash")
+
+
+@needs_pwsh
+def test_powershell_helpers_stay_out_of_a_review_run(repo):
+    review_run_is_left_alone(repo, "pwsh")
+
+
+@pytest.mark.requires_bash
+@needs_node
+@pytest.mark.parametrize("env, source", [
+    ({"WORKFLOW_INPUTS": REVIEW_INPUTS}, "lane"),
+    ({"WORKFLOW_INPUTS": LANE_INPUTS}, "lane"),
+    ({"ADLC_RUN_ID": "7c1446ae", "WORKFLOW_INPUTS": REVIEW_INPUTS}, "adlc"),
+    ({}, "none"),
+])
+def test_sourcing_tells_the_helper_where_the_run_id_came_from(env, source):
+    probe = (f'set -euo pipefail; . "{SCRIPT}"; printf "%s|" "$ADLC_RUN_CONTEXT_SOURCE"; '
+             'bash -c \'printf "%s" "${ADLC_RUN_CONTEXT_SOURCE:-not-exported}"\'')
+    r = subprocess.run(["bash", "-c", probe], capture_output=True, text=True, env=clean_env(env))
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == f"{source}|not-exported"
+
+
+@needs_pwsh
+def test_powershell_dot_source_tells_the_helper_where_the_run_id_came_from():
+    cmd = f". '{PS_SCRIPT}'; Write-Output \"$AdlcRunContextSource|$([bool]$env:AdlcRunContextSource)\""
+    r = subprocess.run(["pwsh", "-NoProfile", "-Command", cmd], capture_output=True, text=True,
+                       env=clean_env({"WORKFLOW_INPUTS": REVIEW_INPUTS}))
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "lane|False"
+
+
+def test_run_context_reference_says_the_helpers_skip_a_review_run():
+    text = RUN_CONTEXT_MD.read_text(encoding="utf-8")
+    assert "In a review run" in text and "no-ops" in text
+
+
 @pytest.mark.parametrize("helper", ["run-branch", "open-mr", "commit-step"])
 def test_every_helper_adopts_the_lane_context_before_its_no_op_check(helper):
     for path, adopt, gate in [
         (BASH_DIR / f"{helper}.sh", '/run-context.sh"', '-n "${ADLC_RUN_ID:-}" ]' if helper == "commit-step"
          else 'if [ -z "${ADLC_RUN_ID:-}" ]; then\n'),
-        (PS_DIR / f"{helper}.ps1", "'run-context.ps1')", "if ($env:ADLC_RUN_ID -or $force)" if helper == "commit-step"
+        (PS_DIR / f"{helper}.ps1", "'run-context.ps1')", "$env:ADLC_RUN_ID) -or $force)" if helper == "commit-step"
          else "if (-not $env:ADLC_RUN_ID) {\n"),
     ]:
         text = path.read_text(encoding="utf-8")

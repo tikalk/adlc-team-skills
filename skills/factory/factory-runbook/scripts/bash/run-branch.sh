@@ -8,7 +8,9 @@
 #   factory/mission/<repo>-<iid>  from ADLC_ISSUE_REF, or
 #   factory/mission/run-<run_id>  without an issue (with --kind code);
 # continuing from origin when it has the branch (a local copy is fast-forwarded;
-# a local copy that diverged from origin halts), else creating it. An existing
+# a local copy that diverged from origin halts), else creating it — a new
+# intent branch from HEAD, a new code branch from origin's default branch
+# (never from the checked-out intent branch, SF-SKILL-08). An existing
 # intent branch behind origin/<default> is caught up with one merge commit
 # (never a rebase or --force; a conflict halts naming the branch). The branch is shared by both intent lanes and by re-dispatches of the
 # same issue. Without ADLC_RUN_ID this is a no-op (interactive sessions never
@@ -16,6 +18,12 @@
 set -euo pipefail
 
 die() { echo "run-branch: $*" >&2; exit 2; }
+
+# origin's default branch name, as origin reports it (empty when it does not,
+# e.g. origin is unreachable — never an error under pipefail).
+origin_default() {
+  { git ls-remote --symref origin HEAD 2>/dev/null || true; } | sed -n 's#^ref: refs/heads/\(.*\)[[:space:]]HEAD$#\1#p'
+}
 
 usage() {
   echo 'usage: run-branch.sh [--kind <intent|code>]' >&2
@@ -86,6 +94,31 @@ elif [ "$on_origin" = 1 ]; then
   # refuses to track a ref outside it. Nothing needs the upstream: open-mr
   # pushes with an explicit refspec.
   git switch -q -c "$branch" "refs/remotes/origin/$branch"
+elif [ "$kind" = code ]; then
+  # A new code branch starts from origin's default branch, never from whatever
+  # is checked out: after the intent step HEAD is the intent run branch, and
+  # its planning drafts (.adlc/drafts/**, docs/adlc/**) rode into every code MR
+  # (SF-SKILL-08; octopus-next !1308, !1312, !1315). Those records stay on the
+  # intent MR. Files the mission wrote but has not committed are untracked and
+  # move along with the switch.
+  start=""
+  default="$(origin_default)"
+  if [ -n "$default" ] && git check-ref-format "refs/heads/$default" \
+    && git fetch -q origin "+refs/heads/$default:refs/remotes/origin/$default" 2>/dev/null; then
+    start="refs/remotes/origin/$default"
+  else
+    # origin did not answer: the default branch this clone already knows
+    # (the same order open-mr.sh uses for its base).
+    for b in "$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)" origin/main origin/master; do
+      if [ -n "$b" ] && git rev-parse -q --verify "$b^{commit}" >/dev/null; then start="$b"; break; fi
+    done
+  fi
+  if [ -n "$start" ]; then
+    git switch -q -c "$branch" "$start"
+  else
+    echo "run-branch: no origin default branch found — $branch starts from HEAD" >&2
+    git switch -q -c "$branch"
+  fi
 else
   git switch -q -c "$branch"
 fi
@@ -94,7 +127,7 @@ fi
 # behind the default branch: catch it up with one merge commit — never a
 # rebase, never --force (merge-commit rule). Code branches are left alone.
 if [ "$existed" = 1 ] && [ "$kind" = intent ]; then
-  default="$(git ls-remote --symref origin HEAD 2>/dev/null | sed -n 's#^ref: refs/heads/\(.*\)[[:space:]]HEAD$#\1#p')"
+  default="$(origin_default)"
   default="${default:-main}"
   git check-ref-format "refs/heads/$default" || die "invalid default branch name: $default"
   git fetch -q origin "+refs/heads/$default:refs/remotes/origin/$default" || die "fetch of origin/$default failed"

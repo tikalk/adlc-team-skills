@@ -46,6 +46,8 @@ In `--self-heal` mode, it enters a **three-sub-agent converge loop** mirroring `
 
 When triggered with `--pr <id>` (without `--self-heal`):
 
+**Executor:** run the passes yourself, inline — do not dispatch sub-agents. Do not use the adversarial trio (Auditor/Adversary/Pragmatist): the trio belongs to `--self-heal` (§3) only. A single review that needs parallel depth is a `--self-heal` run; do not borrow its machinery into this path.
+
 1. Discover credentials and PR hosting tools (`factory-runbook/references/tracker-integration.md`).
 2. **Exact-head checkout**: Create an isolated checkout under the factory worktree root: `.adlc/worktrees/factory-review-<sha-short>/`. Check out the exact PR `headRefOid` in detached state: `git checkout --detach <head-sha>`. Review from this checkout, not the user's working tree, the base branch, or a rendered GitHub diff alone. Never reuse another run's checkout. Do not edit source code in this checkout. If the head moves during review: discard all evidence, remove the checkout, re-review the new head. Define the reviewed revision as `(head SHA, base SHA, merge base)`.
  3. Fetch the PR diff and description.

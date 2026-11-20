@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A new code run branch starts from origin's default branch, not from HEAD** (SF-SKILL-08; octopus-next !1308 review finding C1, hand commits on !1312 and !1315). `run-branch.sh --kind code` (and its PowerShell twin) created `factory/mission/<repo>-<iid>` from whatever was checked out — after the intent step, the intent run branch — so the run's planning drafts (`.adlc/drafts/**`, `docs/adlc/**`) landed in every supervised code MR. A new code branch now starts from origin's default branch (asked with `git ls-remote --symref` and fetched, else the clone's `origin/HEAD`, `origin/main`, `origin/master`; HEAD only when none exists, with a warning). Files the mission wrote but has not committed yet (its proposal records) move along. Existing code branches and all intent branches are unchanged. Pinned by the `test_a_new_code_branch_*` tests in `tests/unit/test_intent_run_helpers.py` and its PowerShell twin module.
 - **factory-mission / mission-brief functionality restoration** (`skills/factory/factory-mission/`, `skills/mission/mission-brief/`):
   converge-loop control (counters, circuit breaker, score regression,
   `max_spec_corrections` bound) restored to `factory-mission` as a new

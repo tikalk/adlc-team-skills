@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Fake `glab api` for post-verdict / set-lifecycle / post-completion tests.
+# State lives in $FAKE_TRACKER_DIR: notes.json (MR or issue notes, newest
+# first), labels.json (issue labels), calls.log (one line per call).
+# Knobs: FAKE_DROP=1 accept posts but never store them (the silent-loss case);
+# FAKE_REFUSE=1 refuse posts; FAKE_READ_FAIL=1 fail every GET.
+set -u
+d="${FAKE_TRACKER_DIR:?}"
+[ "${1:-}" = api ] || { echo "fake glab: only 'api' is supported" >&2; exit 64; }
+shift
+method=GET path="" input=0 fields=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --hostname) shift 2 ;;
+    -X) method="$2"; shift 2 ;;
+    -H) shift 2 ;;
+    --input) input=1; shift 2 ;;
+    -f|-F) fields+=("$2"); shift 2 ;;
+    *) path="$1"; shift ;;
+  esac
+done
+echo "$method $path" >> "$d/calls.log"
+[ -f "$d/notes.json" ] || echo '[]' > "$d/notes.json"
+[ -f "$d/labels.json" ] || echo '[]' > "$d/labels.json"
+if [ "$method" = GET ]; then
+  [ "${FAKE_READ_FAIL:-0}" = 1 ] && { echo "fake glab: 500" >&2; exit 1; }
+  case "$path" in
+    *"/notes"*) cat "$d/notes.json" ;;
+    */issues/[0-9]*) node -e 'console.log(JSON.stringify({labels: JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}))' "$d/labels.json" ;;
+    *) echo '{}' ;;
+  esac
+  exit 0
+fi
+[ "${FAKE_REFUSE:-0}" = 1 ] && { echo "fake glab: 403" >&2; exit 1; }
+body=""; [ "$input" = 1 ] && body="$(cat)"
+case "$path" in
+  */discussions|*/notes)
+    [ "${FAKE_DROP:-0}" = 1 ] && { echo '{}'; exit 0; }
+    node -e '
+      const fs = require("fs"); const [f, raw] = process.argv.slice(1);
+      const notes = JSON.parse(fs.readFileSync(f, "utf8"));
+      const b = JSON.parse(raw).body;
+      notes.unshift({id: 1000 + notes.length, body: b});
+      fs.writeFileSync(f, JSON.stringify(notes));
+      console.log("{}");' "$d/notes.json" "$body" ;;
+  */issues/[0-9]*)
+    node -e '
+      const fs = require("fs"); const [f, raw] = process.argv.slice(1);
+      const o = JSON.parse(raw); let l = JSON.parse(fs.readFileSync(f, "utf8"));
+      const add = (o.add_labels || "").split(",").filter(Boolean), rem = (o.remove_labels || "").split(",").filter(Boolean);
+      if (process.env.FAKE_IGNORE_REMOVE !== "1") l = l.filter(x => !rem.includes(x));
+      for (const a of add) if (!l.includes(a)) l.push(a);
+      fs.writeFileSync(f, JSON.stringify(l)); console.log(JSON.stringify({labels: l}));' "$d/labels.json" "$body" ;;
+  *) echo '{}' ;;
+esac

@@ -312,7 +312,7 @@ the transition based on provider type:
    - Statuses are the bare lifecycle labels of §2 (e.g. `executing`, no prefix), resolved through the `labels:` mapping; the edges and their owners are the §2 transition table.
    - Transitions must **atomically add the new label and remove the old label**, through the **Set Lifecycle** step below. Every actor that moves an issue's lifecycle label calls this step; none adds or removes a lifecycle label on its own.
 
-   **Set Lifecycle** (the shared step; inputs: the issue and the target state):
+   **Set Lifecycle** (the shared step; inputs: the issue and the target state). In a runner pod (and in a workflow `shell` step) run it as one command — `bash scripts/bash/set-lifecycle.sh --issue <group>/<project>#<iid> --to <state>` (PowerShell twin `scripts/powershell/set-lifecycle.ps1`; GitLab through `glab api`, GitHub through `gh api`). It performs steps 1–5 below for the canonical label names and exits 0 only when exactly the target remains, 1 when another lifecycle label is left beside it, 2 on a usage or tracker error (and when the repo maps custom label names — then follow the steps below by hand):
    1. Resolve the effective names of all seven lifecycle states through the `labels:` mapping (§2 name resolution).
    2. Read the issue's current labels. `<others>` = every current label that is a lifecycle state other than the target. This is **any other lifecycle label**, not only the expected previous one: a stray pair such as `intent` + `parked` is cleaned by the next transition.
    3. Add the target and remove `<others>` in the **same call** (omit the remove flag when `<others>` is empty):

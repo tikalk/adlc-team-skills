@@ -24,10 +24,14 @@ two halves:
 It never approves or merges. The engine's gate after the step is the approval.
 
 **Direct-invocation guard:** publishing needs a run context — `ADLC_RUN_ID`
-(and usually `ADLC_ISSUE_REF` plus `ADLC_STEP_OUTPUT`) from a factory run, or
-explicit orchestrator-provided args (orchestrator name, step id, output type,
-paths). Never invent a branch name, a step, or paths to commit. Without a run
-context and without them, state what is missing and stop.
+(and usually `ADLC_ISSUE_REF` plus `ADLC_STEP_OUTPUT`) from a workflow run, the
+lane's `WORKFLOW_INPUTS` in a raw lane run (reviews, `autonomous` missions:
+`bash scripts/bash/run-context.sh` prints `factory_run=yes` and the `run_id` /
+`issue_ref` to use, and the helpers below adopt it on their own), or explicit
+orchestrator-provided args (orchestrator name, step id, output type, paths).
+Never invent a branch name, a step, paths to commit, or a run id, and never
+set `ADLC_RUN_ID` by hand. Without a run context and without them, state what
+is missing and stop.
 
 ---
 
@@ -41,8 +45,12 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
    `scripts/powershell/`). Checks out the run branch (`factory/intent/<repo>-<iid>`
    from `ADLC_ISSUE_REF` for intent runs — the default; `factory/mission/<repo>-<iid>`
    with `--kind code` for mission code runs) in the project root, reusing it
-   or continuing from `origin`. Shared by both intent lanes and with
-   re-dispatches. Without `ADLC_RUN_ID` this is a no-op.
+   or continuing from `origin`. A new code branch starts from origin's default
+   branch, never from the checked-out intent branch, so the intent step's
+   drafts stay out of the code MR. Shared by both intent lanes and with
+   re-dispatches. Without a run context (`ADLC_RUN_ID`, or the lane's
+   `WORKFLOW_INPUTS.run_id` adopted through `scripts/bash/run-context.sh`)
+   this is a no-op.
 2. Run the lifecycle steps. After **each** step that changed files:
    `bash scripts/bash/commit-step.sh --orchestrator <name> --step <id> --output-type
    <draft|decision|artifact-ref|findings> --summary "<one line, no issue text>"
@@ -69,10 +77,17 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
 Outside a factory run the helpers do nothing unless the user opted in
 (`adlc.commit_steps: true` in `.adlc/init-options.json`, or `--commit`
 forwarded to `commit-step.sh`); `run-branch.sh` and `open-mr.sh` never act
-without `ADLC_RUN_ID`.
+without a run context (`scripts/bash/run-context.sh` prints `factory_run=no`).
 
 Only an orchestrator-invoked runbook commits, pushes and opens the MR, and
 only through these helpers; lifecycle skills never do.
+
+**Lifecycle labels:** `bash scripts/bash/set-lifecycle.sh --issue <ref> --to
+<state>` is the Set Lifecycle step of `references/tracker-integration.md`
+Operation 9 as one command: it adds the target, removes every other lifecycle
+label in the same call, re-reads the labels and exits 0 only when exactly the
+target remains (1: another lifecycle label is still there; 2: usage or
+tracker error). `--issue` defaults to the run's issue.
 
 ---
 
@@ -86,4 +101,5 @@ only through these helpers; lifecycle skills never do.
 | `mission-brief-template.md` | brief/milestone authors (queue, orchestrator) — canonical home `mission-brief/references/` |
 | `issues-provider.yml` | provider resolution template (setup writes the repo copy) |
 | `run-context.md` | run-mode vs local-session rules |
+| `project-contract.md` | consumer projects — what their `REVIEW.md`, `AGENTS.md`, skills and workflow override may and may not change in a factory run |
 | `mission-template.yml` | run policy defaults (execution, supervision, budgets) |

@@ -138,6 +138,23 @@ Reply with your choice (A/B/C/D/P).
 
 Wait for user input before proceeding. Update CDR file after each decision.
 
+### Phase 2b: Promote to Check (mechanical rules only)
+
+Classify every Rule-type CDR by enforceability BEFORE review:
+
+- **Mechanical** (fixed syntactic pattern, banned API, import shape, file-location rule, head-SHA binding, regex anchoring, assertion ordering) → candidate **P — Promote to check**.
+- **Judgement call** (cross-file consistency, style matching, intent) → normal A/B/C/D path.
+
+For a P candidate, the reviewer must produce in the same PR:
+
+1. The check itself (unit test, binary grader, pre-commit hook, lint rule, CI job, or `scripts/bash/*.sh` + CI wiring). Pay once for the check instead of re-injecting a fuzzy rule into every session.
+2. A thin pointer CDR beside the check (one-liner + path to the check) — acceptable. A CDR-only fix for a mechanical rule is not.
+3. Proof the check fails without the fix and passes with it (Prove It Works — constitution 15).
+
+Once the check exists and runs in CI, deprecate the full-text CDR or reduce it to a pointer. The `factory-learn` Maintenance route (`verify` → build-to-delete + promote-to-check, EVAL-010) re-verifies: if the model passes without the rule, flag it redundant; if a check can enforce it, flag it for promotion here.
+
+Examples already in force: `check-verdict-head.sh` (CDR-005), `check_factory_init_matrix.py` + `check_team_context_table.py` (CDR-001), executable-line-anchored drift guards (CDR-003), deterministic-first e2e ordering (CDR-004).
+
 ## Absent Context
 
 If `team-boot` injected no team context this session (no Team Context & Decisions section in the first user message — unconfigured project or hook failure): say so in one line, maintain rows in Team Context & Decisions with a `0 CDRs matched (no team context injected — run /team-setup)` source line, and continue the task on directly-read CDR modules. Never treat a missing injection as an empty record set. Recovery: run `/team-diagnose`.

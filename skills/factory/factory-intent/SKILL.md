@@ -143,7 +143,7 @@ same-number/different-content = normal add/add merge conflict on the record
 path → resolve at merge time (renumber loser) → regenerate index from the
 agreed file set.
 
-1. **Branch:** `factory/intent/<repo>-<iid>` (from `ADLC_ISSUE_REF`) — shared by both lanes and with re-dispatches; continues from `origin`.
+1. **Branch:** `factory/intent/<repo>-<iid>` (from `ADLC_ISSUE_REF`) — shared by both lanes and with re-dispatches; continues from `origin`. In a run with a target branch (`ADLC_TARGET_BRANCH` set — `factory-runbook/references/run-context.md`, "Target branch") the helpers start it from and catch it up with `origin/<target>` and open the MR into `<target>`; the tail merge's merge head is that branch too, never the default branch.
 2. **Step commits** (`specify`/`init`, `clarify`, `implement`, `analyze` fixes): every path the step wrote, moved or deleted (a promoted draft's old path too), restricted to the lifecycle write allowlists (`.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, `docs/adlc/product/PRD.md`, `.adlc/product/sections/`, `.adlc/product/state.json`, `.adlc/drafts/adr/`, `docs/adlc/memory/adr/`, `docs/adlc/architect/AD.md`, `docs/adlc/architect/views/`, `.adlc/architect/state.json`). Put the returned `sha` in the step's bus marker (the bus carries pointers, not content). Never stage `.adlc/workflows/**`.
 3. **Draft MR + conclusion:** Call it whatever the outcome — even when nothing was committed (`sha: none`, an analyze-only pass): with no commits on the run branch it opens nothing and the gate shows there is nothing to review. In a factory run the engine's gate after this step **is** the approval: do not ask for approval yourself — finish the steps the issue needs, state the conclusion and return.
 

@@ -41,6 +41,36 @@ commit. The run id is still the one to use in markers.
 - A helper's non-zero exit (refused path, missing committer identity, tracker
   scope) stops the run — report it, do not work around it.
 
+## Target branch (a run against a branch other than the default branch)
+
+A mission normally works against the default branch: its run branch is cut
+from it and its MR goes into it. The lane can dispatch a mission against
+another branch instead — a person puts the label `target-branch::<branch>` on
+the issue, the lane's gate checks it, and the runner pod then **clones that
+branch** and carries `ADLC_TARGET_BRANCH=<branch>` (also
+`WORKFLOW_INPUTS.target_branch`). This is how the factory is tested end to end
+without touching the default branch: the test branch can be cut from an old
+commit and carries its own `.adlc/` files. On every other pod
+`ADLC_TARGET_BRANCH` is empty, which means "no target".
+
+- **One resolver:** `bash scripts/bash/target-branch.sh` (PowerShell twin
+  `scripts/powershell/target-branch.ps1`) prints `target_branch=<branch|>` and
+  `source=<env|lane|none>`. `run-branch.sh` and `open-mr.sh` use it on their
+  own: with a target, a new run branch starts from `origin/<target>`, an
+  existing intent branch is caught up with `origin/<target>`, and the MR/PR is
+  opened into `<target>`.
+- **The target replaces the default branch everywhere in the run.** Where a
+  step needs a base (a diff, `base..HEAD`, a merge head), use
+  `origin/<target>`. Never switch to, merge from, rebase onto, or open an
+  MR/PR into the default branch in a target-branch run.
+- **Never fall back.** A target that is invalid, that the two sources
+  disagree on, or that is not on `origin` makes the helper exit 2 with the
+  reason. That stops the run — report it; do not retry without the variable,
+  do not unset it, and do not open the MR by hand.
+- **The label is not yours.** Never add, remove or change a
+  `target-branch::` label, and never read the label to pick a branch: the
+  environment is the only source.
+
 ## In a local session (`run-context.sh` prints `factory_run=no`)
 
 Writes stay on disk, uncommitted, unless the user opted in (same flags).

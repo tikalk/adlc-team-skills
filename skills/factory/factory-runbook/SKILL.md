@@ -25,7 +25,7 @@ two halves:
 
 It never approves or merges. The engine's gate after the step is the approval.
 
-**Reference-only rule:** this skill is reference-only (ADR-507) — never
+**Reference-only rule:** this skill is reference-only — never
 invoke it via the Skill tool. Orchestrators read the procedure below and run
 the helpers in `scripts/` directly.
 

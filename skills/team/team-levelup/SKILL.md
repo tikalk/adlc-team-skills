@@ -84,6 +84,28 @@ For each pattern, create a CDR draft using the shared template at `skills/team/t
 
 Write session trace to `adlc` branch: `reports/sessions/<user>/<YYYY-MM>.md`.
 
+### Phase 1b: Classify Corrections (elimination ladder — before scoring)
+
+For each extracted candidate that is a *recurring correction* (same mistake
+seen before — same review pass + check item, revert/fix-chain evidence, or
+repeated eval failure), classify it through the ordered ladder BEFORE Phase 2
+scoring. Scoring never overrides this classification:
+
+- **Tier 1 — Structural elimination:** the mistake is eliminable by
+  architecture, types, schemas, or data structures → route to
+  `/architect-specify` and an ADR. No CDR is created.
+- **Tier 2 — Mechanical enforcement:** the mistake is checkable by a
+  concrete vehicle (REVIEW.md pass, lint rule, unit test, pre-commit hook,
+  CI job, binary eval grader) → route to action **P — Promote to check**
+  (Phase 3, preferred; see EVAL-010 deterministic-checks-first and EVAL-016
+  ladder routing) or `/evals-specify` where a new eval criterion is
+  the vehicle. A CDR carries at most a thin pointer to the check.
+- **Tier 3 — Judgment:** the issue genuinely requires human judgment and is
+  coverable by neither structure nor a check → proceed as a prose CDR
+  through Phase 2 scoring and Phase 3 review.
+
+A mechanically checkable mistake must never default to a prose CDR.
+
 ### Phase 2: Score Confidence
 
 For each extracted CDR, calculate confidence:
@@ -131,12 +153,29 @@ Present CDRs one at a time (same as former team-learn logic):
 | B | Reject — Decline with reason |
 | C | Defer — Skip for now, keep pending |
 | D | Accept all remaining — Accept this and all pending CDRs |
-| P | Promote to check (mechanical rules only) |
+| P | Promote to check (mechanical rules only — preferred vehicle for Tier 2 corrections) |
 
 Reply with your choice (A/B/C/D/P).
 ```
 
 Wait for user input before proceeding. Update CDR file after each decision.
+
+### Phase 2b: Promote to Check (mechanical rules only)
+
+Classify every Rule-type CDR by enforceability BEFORE review:
+
+- **Mechanical** (fixed syntactic pattern, banned API, import shape, file-location rule, head-SHA binding, regex anchoring, assertion ordering) → candidate **P — Promote to check**.
+- **Judgment call** (cross-file consistency, style matching, intent) → normal A/B/C/D path.
+
+For a P candidate, the reviewer must produce in the same PR:
+
+1. The check itself (unit test, binary grader, pre-commit hook, lint rule, CI job, or `scripts/bash/*.sh` + CI wiring). Pay once for the check instead of re-injecting a fuzzy rule into every session.
+2. A thin pointer CDR beside the check (one-liner + path to the check) — acceptable. A CDR-only fix for a mechanical rule is not.
+3. Proof the check fails without the fix and passes with it (Prove It Works — constitution 15).
+
+Once the check exists and runs in CI, deprecate the full-text CDR or reduce it to a pointer. The `factory-learn` Maintenance route (`verify` → build-to-delete + promote-to-check) re-verifies: if the model passes without the rule, flag it redundant; if a check can enforce it, flag it for promotion here.
+
+Examples already in force: the verdict-head check script, the factory-intent matrix grader plus the team-context table grader, executable-line-anchored drift guards, deterministic-first end-to-end ordering.
 
 ## Absent Context
 

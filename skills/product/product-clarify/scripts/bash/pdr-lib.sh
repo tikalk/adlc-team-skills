@@ -63,6 +63,103 @@ fi
 export REPO_ROOT
 
 # ============================================================================
+# Decision-record store resolution (ADR-514)
+#
+# Vendored byte-identical from the canonical block in change-clarify's
+# chdr-lib.sh — scope rule: scripts stay skill-local.
+# tests/unit/test_resolve_memory_root.py pins the copies against each other.
+# ============================================================================
+
+# _memory_root_has_marker DIR — does DIR carry a decision-record store marker?
+# A marker is a decision-record family subdir (adr/, pdr/, chdr/) or a family
+# index file (adr.md/pdr.md/chdr.md) under docs/adlc/memory/ or the legacy
+# .adlc/memory/. A bare .adlc/ is NOT a marker; a memory dir holding only
+# non-decision content (evals/, constitution.md) is NOT a marker.
+_memory_root_has_marker() {
+    local root="$1" mem fam
+    for mem in "docs/adlc/memory" ".adlc/memory"; do
+        [[ -d "$root/$mem" ]] || continue
+        for fam in adr pdr chdr; do
+            if [[ -d "$root/$mem/$fam" || -f "$root/$mem/$fam.md" || -f "$root/$mem/$fam/$fam.md" ]]; then
+                return 0
+            fi
+        done
+    done
+    return 1
+}
+
+# _workspace_root_above DIR — is any strict ancestor of DIR a workspace root
+# (a directory holding .gitmodules or .adlc/workspace.yml)? Lets a submodule
+# child climb past its own git toplevel toward the workspace store.
+_workspace_root_above() {
+    local up
+    up="$(dirname "$1")"
+    while [[ "$up" != "/" ]]; do
+        if [[ -f "$up/.gitmodules" || -f "$up/.adlc/workspace.yml" ]]; then
+            return 0
+        fi
+        up="$(dirname "$up")"
+    done
+    return 1
+}
+
+# resolve_memory_root — the decision-record store root for the current working
+# directory. ONE bounded walk-up from pwd:
+#   1. the nearest ancestor with a decision-record family marker wins;
+#   2. else the nearest workspace root (.gitmodules or .adlc/workspace.yml)
+#      — the workspace-centralized default;
+#   3. else the git toplevel (standalone repo).
+# The walk never climbs past the git toplevel unless a workspace root sits
+# above it (a submodule child inside a workspace). Side-effect-free: reads
+# never create anything.
+resolve_memory_root() {
+    local dir toplevel
+    dir="$(pwd -P)"
+    toplevel="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)"
+    while [[ "$dir" != "/" ]]; do
+        if _memory_root_has_marker "$dir"; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        if [[ -f "$dir/.gitmodules" || -f "$dir/.adlc/workspace.yml" ]]; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        if [[ -n "$toplevel" && "$dir" == "$toplevel" ]] && ! _workspace_root_above "$dir"; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    if [[ -n "$toplevel" ]]; then
+        printf '%s\n' "$toplevel"
+    else
+        pwd -P
+    fi
+}
+
+# ensure_memory_store ROOT FAMILY — write-path guard for record promotion.
+# Creates ROOT/docs/adlc/memory/FAMILY when missing and says so LOUDLY: the
+# created store is the opt-in marker and travels with clones. Silent when the
+# store already exists; reads never call this.
+ensure_memory_store() {
+    local root="$1" family="$2"
+    local store="$root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/$family"
+    if [[ ! -d "$store" ]]; then
+        mkdir -p "$store"
+        echo "No decision-record store found — initialized $store; commit it to opt $(basename "$root") into repo-scoped memory." >&2
+    fi
+}
+
+# Store root for the current working directory (ADR-514). Drafts stay at
+# REPO_ROOT (nearest .adlc/ ancestor); published records live under the
+# resolved store root.
+if [ -z "${MEMORY_ROOT:-}" ]; then
+    MEMORY_ROOT="$(resolve_memory_root)"
+fi
+export MEMORY_ROOT
+
+# ============================================================================
 # YAML frontmatter parser (copied from setup-architect.sh parse_fm_field)
 # ============================================================================
 
@@ -159,7 +256,8 @@ parse_pdr_field() {
     # Fallback: heading-based (Title Case the field name for heading matching)
     # Accept both "Feature-Area" and "feature-area" heading styles
     local title_field
-    title_field=$(echo "$field" | awk -F'-' '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS='-')
+    # LC_ALL=C: macOS awk aborts on multi-byte chars in substr() under UTF-8.
+    title_field=$(echo "$field" | LC_ALL=C awk -F'-' '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1' OFS='-')
     value=$(parse_pdr_heading_field "$file" "$title_field")
     if [ -n "$value" ]; then
         echo "$value"
@@ -208,7 +306,13 @@ parse_pdr_title() {
 # Fails loudly on blank cells (warns to stderr; applies defaults so no row is blank).
 generate_pdr_index() {
     local scope="${1:-drafts}"
-    local pdr_dir="$REPO_ROOT/.adlc/$scope/pdr"
+    # ADR-514: drafts live at REPO_ROOT (nearest .adlc/ ancestor); the memory
+    # scope indexes the resolved store root.
+    local base="$REPO_ROOT"
+    if [ "$scope" = "memory" ]; then
+        base="${MEMORY_ROOT:-$REPO_ROOT}"
+    fi
+    local pdr_dir="$base/.adlc/$scope/pdr"
 
     # dual-read: the memory scope indexes the canonical
     # docs/adlc/memory root plus any records still in the legacy .adlc/memory
@@ -216,7 +320,7 @@ generate_pdr_index() {
     # live — docs preferred whenever it holds any record, else legacy.
     local scan_dirs=("$pdr_dir")
     if [ "$scope" = "memory" ]; then
-        local docs_pdr_dir="$REPO_ROOT/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr"
+        local docs_pdr_dir="$base/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr"
         if compgen -G "$docs_pdr_dir/PDR-*.md" >/dev/null 2>&1; then
             scan_dirs=("$docs_pdr_dir" "$pdr_dir")
         fi
@@ -230,7 +334,7 @@ generate_pdr_index() {
 
     # publication closure: the Source line must name the directory
     # this index file actually lives in (docs for migrated repos).
-    local index_rel_dir="${scan_dirs[0]#"$REPO_ROOT"/}"
+    local index_rel_dir="${scan_dirs[0]#"$base"/}"
 
     local index_content="# Product Decision Records"
     if [ "$scope" = "memory" ]; then
@@ -283,10 +387,11 @@ generate_pdr_index() {
         category=$(parse_pdr_field "$f" "category")
         feature_area=$(parse_pdr_field "$f" "feature-area")
 
-        # Defaults — no silent blank cells (status title-cased to match
+        # Defaults — no silent blank cells (first letter capitalised to match
         # the ADR display convention: frontmatter 'accepted' → 'Accepted').
+        # The rest stays as written, so ids like PDR-003 are not mangled.
         _raw="$status"
-        [ -z "$_raw" ] && { status="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Status"; } || status="$(printf '%s' "$_raw" | awk '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); print}')"
+        [ -z "$_raw" ] && { status="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Status"; } || status="$(printf '%s' "${_raw:0:1}" | tr '[:lower:]' '[:upper:]')${_raw:1}"
         [ -z "$date" ] && { date="YYYY-MM-DD"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Date"; }
         [ -z "$owner" ] && { owner="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Owner"; }
         [ -z "$category" ] && { category="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Category"; }
@@ -325,9 +430,12 @@ move_pdr() {
     local from_dir="$REPO_ROOT/.adlc/$from_scope/pdr"
     local to_dir="$REPO_ROOT/.adlc/$to_scope/pdr"
     # dual-read: promotion writers write the NEW path only — the memory
-    # scope targets docs/adlc/memory (readers dual-read the legacy root).
+    # scope targets docs/adlc/memory at the resolved store root (ADR-514),
+    # created loudly when absent (readers dual-read the legacy root).
     if [ "$to_scope" = "memory" ]; then
-        to_dir="$REPO_ROOT/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr"
+        local memory_root="${MEMORY_ROOT:-$REPO_ROOT}"
+        to_dir="$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr"
+        ensure_memory_store "$memory_root" pdr
     fi
 
     # Resolve exact stems first (PDR-<given>.md verbatim); numeric fallback
@@ -568,6 +676,20 @@ next_record_number() {
     done
   done
   printf '%03d' "$((max + 1))"
+}
+
+# next_pdr_number [DRAFTS_ROOT] — the PDR ledger slot under ADR-514: the max
+# across the drafts root (DRAFTS_ROOT/.adlc/drafts/pdr — drafts stay at the
+# nearest .adlc/ ancestor) AND both store roots of the resolved memory root
+# ($MEMORY_ROOT, defaulting to DRAFTS_ROOT): docs/adlc/memory/pdr and legacy
+# .adlc/memory/pdr.
+next_pdr_number() {
+  local drafts_root="${1:-$REPO_ROOT}"
+  local memory_root="${MEMORY_ROOT:-$drafts_root}"
+  next_record_number PDR \
+    "$drafts_root/${ADLC_DRAFTS:-.adlc/drafts}/pdr" \
+    "$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr" \
+    "$memory_root/.adlc/memory/pdr"
 }
 
 ###############################################################################

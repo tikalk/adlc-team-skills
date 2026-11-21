@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## In a factory run — read this first
 
-When `ADLC_RUN_ID` is set, the workflow engine runs this step unattended and a gate follows it. Invoke the `factory-runbook` skill for the publish sequence (run branch → step commits → draft MR, plus the run-context rules); run the lifecycle steps the DAG resolves for the issue in between.
+When `ADLC_RUN_ID` is set, the workflow engine runs this step unattended and a gate follows it. A run without `ADLC_RUN_ID` is a factory run too when the `factory-runbook` skill's run-context resolver prints `factory_run=yes` (a raw lane run; `factory-runbook/references/run-context.md` is the one definition every factory skill uses): nobody answers there either, and no gate follows. Invoke the `factory-runbook` skill for the publish sequence (run branch → step commits → draft MR, plus the run-context rules); run the lifecycle steps the DAG resolves for the issue in between.
 
 **Never ask for approval** or wait for an answer. The engine's gate after this step is the approval. **Before you return, always:** write `mr_url` and a one-line `conclusion` into `ADLC_STEP_OUTPUT`, whatever the outcome.
 
@@ -55,6 +55,18 @@ of the both-lanes `workflow.yml`:
 Each entry mirrors the removed twin's step shape with the gate-context
 contract (records/since/link); the adaptive executor resolves its `route`
 input at dispatch the same way.
+
+## Worktree Isolation (Head Step)
+
+Head step `isolate-worktree` runs FIRST: derive `run_id = intent-<repo>-<iid>`
+from `ADLC_ISSUE_REF` (runbook Phase 0.5 slug rule); worktree path
+`<worktree_root>/<run_id>/`, default `.adlc/worktrees`. If `ADLC_RUN_ID` set
+(a workflow run; see `factory-runbook/references/run-context.md`)
+→ worktree exists via dispatch → reuse, never create second; reuse on
+re-dispatch. Middle runs stay worktree-private (slot claims, promotion, index
+generation). Clone-path guard: CWD inside `adlc-cli/` → use clone path, never a
+worktree there. Never `checkout/switch/reset/clean/stash` in user checkout;
+work via absolute paths.
 
 ---
 
@@ -118,9 +130,18 @@ enforced at dispatch, not by a gate in that file).
 
 ## Run Branch, Step Commits and Draft MR
 
-**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
+**Requires:** the `factory-runbook` and `factory-learn` skills (provides the publish procedure and run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`
 
-In a factory run (`ADLC_RUN_ID` set by the workflow engine) this orchestrator — and only it, never the lane lifecycle skills — commits, pushes the run branch and opens the draft MR. Invoke the `factory-runbook` skill for the publish sequence with:
+In a factory run (`ADLC_RUN_ID` set by the workflow engine, or `factory_run=yes` from the run-context resolver — `factory-runbook/references/run-context.md`) this orchestrator — and only it, never the lane lifecycle skills — commits, pushes the run branch and opens the draft MR. Invoke the `factory-runbook` skill for the publish sequence with:
+
+**Tail merge + reindex (`tail-merge-reindex`, before publish):** fetch merge head → merge into run
+branch → regenerate all four indexes from files on disk (`generate_adr_index`
+drafts + memory, `generate_pdr_index` drafts + memory via clarify skills) →
+commit merged + re-indexed state → then the publish sequence as today
+(`run-branch.sh` → `commit-step.sh` → `open-mr.sh`). Conflict rule:
+same-number/different-content = normal add/add merge conflict on the record
+path → resolve at merge time (renumber loser) → regenerate index from the
+agreed file set.
 
 1. **Branch:** `factory/intent/<repo>-<iid>` (from `ADLC_ISSUE_REF`) — shared by both lanes and with re-dispatches; continues from `origin`.
 2. **Step commits** (`specify`/`init`, `clarify`, `implement`, `analyze` fixes): every path the step wrote, moved or deleted (a promoted draft's old path too), restricted to the lifecycle write allowlists (`.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, `docs/adlc/product/PRD.md`, `.adlc/product/sections/`, `.adlc/product/state.json`, `.adlc/drafts/adr/`, `docs/adlc/memory/adr/`, `docs/adlc/architect/AD.md`, `docs/adlc/architect/views/`, `.adlc/architect/state.json`). Put the returned `sha` in the step's bus marker (the bus carries pointers, not content). Never stage `.adlc/workflows/**`.

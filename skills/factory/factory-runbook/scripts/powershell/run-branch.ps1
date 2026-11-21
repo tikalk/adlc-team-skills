@@ -5,14 +5,17 @@
 #
 # Usage: run-branch.ps1 [--kind <intent|code>] (default intent).
 #
-# Factory run context (ADLC_RUN_ID, ADR-444): check out
+# Factory run context (ADLC_RUN_ID, ADR-444; in a raw lane run the lane's
+# WORKFLOW_INPUTS.run_id, adopted through run-context.ps1): check out
 # factory/intent/<repo>-<iid> from ADLC_ISSUE_REF (<group>/<repo>#<iid>), or
 # factory/intent/run-<run_id> without an issue (intent, the default);
 # factory/mission/<repo>-<iid> from ADLC_ISSUE_REF, or
 # factory/mission/run-<run_id> without an issue (with --kind code), reusing the local branch or
 # continuing from origin (local copy fast-forwarded; diverged halts), else
-# creating it. The branch is shared by both intent lanes and by re-dispatches
-# of the same issue. Without ADLC_RUN_ID: no-op (interactive sessions never
+# creating it — a new intent branch from HEAD, a new code branch from origin's
+# default branch (never from the checked-out intent branch, SF-SKILL-08).
+# The branch is shared by both intent lanes and by re-dispatches
+# of the same issue. Without a run context: no-op (interactive sessions never
 # switch branches). Prints the branch name on stdout.
 
 $ErrorActionPreference = 'Stop'
@@ -21,6 +24,14 @@ $script:ErrorView = 'ConciseView'
 function Die([string]$Message) {
     [Console]::Error.WriteLine("run-branch: $Message")
     exit 2
+}
+
+# origin's default branch name, as origin reports it (empty when it does not).
+function Get-OriginDefault {
+    foreach ($line in @(git ls-remote --symref origin HEAD 2>$null)) {
+        if ($line -match '^ref: refs/heads/(\S+)\s+HEAD$') { return $Matches[1] }
+    }
+    return ''
 }
 
 $kind = 'intent'
@@ -32,8 +43,18 @@ for ($i = 0; $i -lt $args.Count; $i++) {
 }
 if ($kind -notin @('intent', 'code')) { Die "unsupported --kind: $kind (expected 'intent' or 'code')" }
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+$AdlcRunContextSource = ''
+if (-not $env:ADLC_RUN_ID) { . (Join-Path $PSScriptRoot 'run-context.ps1') }
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref) and nothing to publish: stay a no-op there (SF-FIX-11).
+if ($env:ADLC_RUN_ID -and $AdlcRunContextSource -eq 'lane' -and -not $env:ADLC_ISSUE_REF) {
+    [Console]::Error.WriteLine('run-branch: review run (a lane run id and no issue) — skipped')
+    exit 0
+}
 if (-not $env:ADLC_RUN_ID) {
-    [Console]::Error.WriteLine("run-branch: no run context (ADLC_RUN_ID unset) — skipped")
+    [Console]::Error.WriteLine("run-branch: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped")
     exit 0
 }
 if ($env:ADLC_RUN_ID -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { Die "invalid ADLC_RUN_ID" }
@@ -92,8 +113,63 @@ if ($localExists) {
     # pushes with an explicit refspec.
     git switch -q -c $branch "refs/remotes/origin/$branch"
     if ($LASTEXITCODE -ne 0) { Die "git switch -c from origin/$branch failed" }
+} elseif ($kind -eq 'code') {
+    # A new code branch starts from origin's default branch, never from whatever
+    # is checked out: after the intent step HEAD is the intent run branch, and
+    # its planning drafts (.adlc/drafts/**, docs/adlc/**) rode into every code MR
+    # (SF-SKILL-08; octopus-next !1308, !1312, !1315). Those records stay on the
+    # intent MR. Files the mission wrote but has not committed are untracked and
+    # move along with the switch.
+    $start = ''
+    $default = Get-OriginDefault
+    if ($default) {
+        git check-ref-format "refs/heads/$default" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            git fetch -q origin "+refs/heads/${default}:refs/remotes/origin/${default}" 2>$null
+            if ($LASTEXITCODE -eq 0) { $start = "refs/remotes/origin/$default" }
+        }
+    }
+    if (-not $start) {
+        # origin did not answer: the default branch this clone already knows
+        # (the same order open-mr uses for its base).
+        foreach ($b in @((git symbolic-ref -q --short refs/remotes/origin/HEAD 2>$null), 'origin/main', 'origin/master')) {
+            $b = if ($b) { $b.Trim() } else { '' }
+            if ($b) {
+                git rev-parse -q --verify "$b^{commit}" *> $null
+                if ($LASTEXITCODE -eq 0) { $start = $b; break }
+            }
+        }
+    }
+    if ($start) {
+        git switch -q -c $branch $start
+        if ($LASTEXITCODE -ne 0) { Die "git switch -c from $start failed" }
+    } else {
+        [Console]::Error.WriteLine("run-branch: no origin default branch found — $branch starts from HEAD")
+        git switch -q -c $branch
+        if ($LASTEXITCODE -ne 0) { Die "git switch -c failed" }
+    }
 } else {
     git switch -q -c $branch
     if ($LASTEXITCODE -ne 0) { Die "git switch -c failed" }
+}
+
+# An existing intent branch (e.g. created at capture by /adlc open) may be
+# behind the default branch: catch it up with one merge commit — never a
+# rebase, never --force (merge-commit rule). Code branches are left alone.
+if (($localExists -or $onOrigin) -and $kind -eq 'intent') {
+    $default = Get-OriginDefault
+    if (-not $default) { $default = 'main' }
+    git check-ref-format "refs/heads/$default" 2>$null
+    if ($LASTEXITCODE -ne 0) { Die "invalid default branch name: $default" }
+    git fetch -q origin "+refs/heads/${default}:refs/remotes/origin/${default}"
+    if ($LASTEXITCODE -ne 0) { Die "fetch of origin/$default failed" }
+    git merge-base --is-ancestor "refs/remotes/origin/$default" HEAD *> $null
+    if ($LASTEXITCODE -ne 0) {
+        git merge -q --no-edit "refs/remotes/origin/$default" *> $null
+        if ($LASTEXITCODE -ne 0) {
+            git merge --abort *> $null
+            Die "$branch is behind origin/$default and merging it conflicts — resolve $branch by hand"
+        }
+    }
 }
 Write-Output $branch

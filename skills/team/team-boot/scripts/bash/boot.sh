@@ -186,11 +186,24 @@ else
   CHDR_COUNT=$_CHDR_ROWS
 fi
 EVAL_COUNT=$(ls "${DOCS_ADLC_MEMORY:-docs/adlc/memory}"/evals/EVAL-*.md .adlc/memory/evals/EVAL-*.md 2>/dev/null | wc -l || true); EVAL_COUNT=$((EVAL_COUNT))
-# Normalized pending-status set — one dialect for every class. Previous
-# per-class greps drifted (ChDR matched Discovered, ADR/PDR did not) and all
-# missed real-world shapes (status: Proposed, Status:** Proposed). Case-
-# insensitive (-i at call sites), space/star tolerant after the colon.
-PENDING_STATUS='status:[ *]*proposed\|status:[ *]*discovered\|status:[ *]*draft'
+# Pending-status set for local draft classes (ADR/PDR/ChDR/Eval): a draft
+# counts when it carries an undecided workflow status — proposed,
+# discovered, draft, captured or clarified. Files with NO status line stay
+# silent (pinned by test_boot_pending_decisions_consolidated_table). Shape-
+# tolerant: case-insensitive (-i at call sites), space/star tolerant after
+# the colon, so real-world shapes like `status: Proposed` and
+# `- **Status:** Proposed` count. (ChDR once matched Discovered while
+# ADR/PDR did not; extended captured|clarified closes the same drift class
+# that hit CDR counting.)
+PENDING_DRAFT_OPEN='status:[ *]*proposed\|status:[ *]*discovered\|status:[ *]*draft\|status:[ *]*captured\|status:[ *]*clarified'
+# Pending-unless-decided predicate for CDR drafts only (local + adlc
+# branch): kept in a variable so the two CDR sources cannot drift apart.
+# A CDR draft counts unless its status was decided — accepted or rejected
+# close it; raw, proposed, captured and clarified drafts all still owe
+# /team-levelup. `handed off` is NOT excluded: only the draft's clarify
+# skill (or an explicit user handoff) clears it, per the sweep rule at
+# session end.
+PENDING_DECISION_CLOSE='status:[ *]*accepted\|status:[ *]*rejected'
 
 # MCP Servers — names only (lean)
 echo "## MCP Servers"
@@ -199,11 +212,11 @@ jq -r '.mcpServers | keys[]' "$TEAM_AI_DIRECTIVES/.mcp.json" 2>/dev/null | while
 done || echo "(none)"
 echo ""
 
-echo "Read full CDR.md, .skills.json, and context module files on demand when a task matches."
+echo "Read full CDR.md, .skills.json, and context module files on demand when a task matches. Pull rule bodies on demand."
 echo "Invoke the matching class boot when a task or decision matches a Class Boots row."
 echo "Prefer targeted file searches over broad directory listings to conserve context."
 echo ""
-echo "**Every response MUST include** a Team Context & Decisions section before the task answer:"
+echo "**Every response MUST include** a Team Context & Decisions section before the task answer — include the table only when an accepted record grounded the answer or a pending decision emerged; otherwise (0 rows matched) emit the section heading + counts line only — no table:"
 echo "Match entries from the lists above (any indexed type) to the current task."
 echo "Status in use + Clarify — rows ground the session in ACCEPTED records only — pending drafts never appear as in use rows; they appear as pending decision rows in the same table."
 echo ""
@@ -283,15 +296,21 @@ echo "/evals-clarify) review whatever drafts exist at session end."
 
 # Pending decisions — ONE consolidated table: no per-class rows, each row
 # carries its clarify skill. Pending drafts are never part of Team Context
-# (accepted records only). Status set is normalized (PENDING_STATUS): one
-# dialect for every class.
+# (accepted records only). ADR/PDR/ChDR/Eval classes count drafts carrying
+# an undecided workflow status ($PENDING_DRAFT_OPEN — no-status files stay
+# silent); CDR drafts count pending-unless-decided ($PENDING_DECISION_CLOSE,
+# so raw unreviewed branch drafts count).
 PENDING_ROWS=""
 PENDING_CLASSES=0
 _add_pending_row() { # $1=class-dir $2=glob $3=type $4=clarify
   _count=0
   if [ -d "${ADLC_DRAFTS:-.adlc/drafts}/$1" ]; then
-    # shellcheck disable=SC2086
-    _count=$(grep -ril "$PENDING_STATUS" ${ADLC_DRAFTS:-.adlc/drafts}/$1/$2 2>/dev/null | wc -l || true); _count=$((_count))
+    # - xargs -r: no files means grep never runs (empty dir stays 0, no stray
+    #   error line); kept inside the `|| true` chain so `set -o pipefail`
+    #   never aborts the boot on an empty drafts dir. Positive match on
+    #   $PENDING_DRAFT_OPEN: files with no status line stay silent (pinned).
+    _count=$(find ${ADLC_DRAFTS:-.adlc/drafts}/$1 -maxdepth 1 -name "$2" -print0 2>/dev/null \
+      | xargs -0 -r grep -ril "$PENDING_DRAFT_OPEN" 2>/dev/null | wc -l || true); _count=$((_count))
     if [ "$_count" -gt 0 ]; then
       PENDING_ROWS="${PENDING_ROWS}| — | ${_count} $3 draft(s) | $3 | .adlc/drafts/$1/ | pending | $4 |"$'\n'
       PENDING_CLASSES=$((PENDING_CLASSES + 1))
@@ -308,16 +327,28 @@ _add_pending_row evals "*.md" Eval /evals-clarify
 # (git storage, not files). Row emits whenever either source is non-zero.
 PENDING_CDRS=0
 if [ -d "${ADLC_DRAFTS:-.adlc/drafts}/cdr" ]; then
+  # A CDR draft is pending unless it was decided (accepted/rejected): raw,
+  # proposed, captured and clarified drafts all still owe /team-levelup.
+  # Same $PENDING_DECISION_CLOSE predicate as every _add_pending_row class
+  # and the adlc-branch loop below — one dialect, three call sites.
   # shellcheck disable=SC2086
-  _local_cdrs=$(grep -ril "$PENDING_STATUS" ${ADLC_DRAFTS:-.adlc/drafts}/cdr/*.md 2>/dev/null | wc -l || true); _local_cdrs=$((_local_cdrs))
+  _local_cdrs=$(grep -riL "$PENDING_DECISION_CLOSE" ${ADLC_DRAFTS:-.adlc/drafts}/cdr/*.md 2>/dev/null | wc -l || true); _local_cdrs=$((_local_cdrs))
   PENDING_CDRS=$((_local_cdrs))
 fi
 # `.git` may be a directory (plain clone) or a file (submodule/worktree
 # gitfile) — `-d` misses the latter, hiding the whole adlc branch.
 if [ -n "$TEAM_AI_DIRECTIVES" ] && [ -e "$TEAM_AI_DIRECTIVES/.git" ]; then
   if git -C "$TEAM_AI_DIRECTIVES" show-ref --verify --quiet "refs/heads/adlc" 2>/dev/null; then
-    _branch_cdrs=$(git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/" 2>/dev/null | grep -c "CDR-" || true)
-    case "$_branch_cdrs" in ''|*[!0-9]*) _branch_cdrs=0 ;; esac
+    _branch_cdrs=0
+    # NUL-delimited: a filename containing spaces must survive as one record
+    # (command-substitution word-splitting silently dropped such files).
+    while IFS= read -r -d '' _cdr_file; do
+      case "$_cdr_file" in CDR-*.md) ;; *) continue ;; esac
+      # Same $PENDING_DECISION_CLOSE predicate as the local drafts above.
+      if ! git -C "$TEAM_AI_DIRECTIVES" show "adlc:drafts/cdr/$_cdr_file" 2>/dev/null | grep -iq "$PENDING_DECISION_CLOSE"; then
+        _branch_cdrs=$((_branch_cdrs + 1))
+      fi
+    done < <(git -C "$TEAM_AI_DIRECTIVES" ls-tree -z --name-only "adlc:drafts/cdr/" 2>/dev/null || true)
     PENDING_CDRS=$((PENDING_CDRS + _branch_cdrs))
   fi
 fi

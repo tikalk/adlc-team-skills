@@ -273,6 +273,38 @@ The output offers generic advice (reinstall, restart, update) with no chain chec
 
 ---
 
+## Criterion EVAL-016: Correction-Elimination Ladder Routing
+
+**Status**: draft
+**Scope**: This criterion evaluates recurring **mechanically checkable** mistakes only — whether the primary correction is a concrete elimination vehicle (Tier 1 structural operation or Tier 2 mechanical enforcement). Genuine Tier 3 judgment-only cases are **outside** this criterion's scope and fail the grader by design. The grader checks vehicle naming and primary-route selection; it does not verify semantic correctness of the chosen fix, nor does it adjudicate Tier 1-vs-Tier 2 selection or the full ordered ladder.
+**Description**: Verifies that a recurring mechanically checkable mistake names a concrete structural or mechanical elimination vehicle as the primary correction instead of defaulting to a prose CDR. A prose CDR as the primary action for a mechanically checkable mistake fails.
+
+**Pass Condition**
+The output names a concrete elimination vehicle as the primary correction: a structural operation on the type/invalid state in the same sentence as the `/architect-specify`/ADR route (Tier 1), or a named enforcement vehicle governed by an action verb — REVIEW.md pass, CI job, lint rule, unit test, pre-commit hook, or binary grader (Tier 2, team-levelup action P or `/evals-specify`). A prose CDR as a thin pointer beside the vehicle is acceptable.
+
+**Fail Condition**
+The output makes a prose CDR or context rule the primary action (even if a vehicle is also mentioned), names a route with no concrete structural operation, attaches the route to another issue, or names no concrete elimination vehicle (vague "add a check/rule" with no artifact; a vehicle mentioned only as a possibility).
+
+### Pass Example 1 (Tier 2)
+- **Scenario**: Repeated secret-exposure finding, second PR
+- **Input Context**: factory-review reports pass: security secret-exposure on a second PR (same pass + same check item).
+- **Agent Output**: "Tier 2 — mechanical: add REVIEW.md pass: security check item plus unit test tests/unit/test_no_secret_exposure.py failing on the pattern; route via team-levelup action P. Thin pointer CDR noting the check path."
+
+### Pass Example 2 (Tier 1)
+- **Scenario**: Repeated impossible-state bug, second PR
+- **Input Context**: Same null-variant bug recurs across two PRs; a sum type would make the state unrepresentable.
+- **Agent Output**: "Tier 1 — structural: replace the nullable field with a sum type so the invalid state cannot be constructed; route to /architect-specify and capture through an ADR. No prose CDR."
+
+### Fail Example 1
+- **Scenario**: Mechanical recurrence routed to prose
+- **Input Context**: Same secret-exposure recurrence as Pass Example 1.
+- **Agent Output**: "Classification noted. Primary action: add a context rule CDR so the agent remembers to check for exposed secrets."
+
+### Fail Example 2
+- **Scenario**: Vague vehicle
+- **Input Context**: Same secret-exposure recurrence.
+- **Agent Output**: "We should enforce this better going forward — consider adding some check somewhere."
+
 ## Criterion EVAL-014: Class-Boot Capture Is Suggest-Only
 
 **Status**: published
@@ -330,3 +362,58 @@ The output lacks Decision provenance, skips `/change-clarify`, or claims promoti
 - **Scenario**: issue-conformance: silent pass with no accounting
 - **Input Context**: Governing brief has 3 Success Criteria; PR satisfies criterion 1 only.
 - **Agent Output**: "All checks pass, merge-ready" with no per-criterion verdicts.
+
+## Criterion EVAL-017: Tier-2 Split and Eval Seed Admissibility
+
+**Status**: draft
+**Scope**: The criterion evaluates the routing of a recurring mistake's Tier-2 correction — check vs eval, decided by decidability — and the admissibility of the seed. A mechanically decidable property (decidable from the artifact alone; must hold on every change) routes to a deterministic check. A behavioral property (a distribution over model behavior) routes to an eval criterion via `/evals-specify`. Neither stands in for the other. A prose comment that was never reproduced (no failing test, CI red, diff, screenshot, revert, recorded state transition, or state.json) never becomes a criterion — it stays a Tier-3 preference. The decision under test is a typed `tier2-route` record: `{"tier": 2, "routes": [{"class": "decidable"|"behavioral", "vehicle": "check"|"eval"|"none", "seed": "event-stream"|"comment"|"tier-3", "evidence": [<artifact terms>], "runs": <n>}]}` carried in a ````tier2-route` fenced block. Prose outside the record is rationale and is not graded; an output without a record fails closed. The grader checks class-to-vehicle consistency and seed admissibility; it does not grade the quality of the chosen check or eval itself.
+**Description**: Verifies the agent splits Tier-2 corrections by decidability — decidable mistake named as check, behavioral mistake named as eval — and rejects unreproduced comment-derived seeds.
+
+**Pass Condition**
+The output carries a `tier2-route` record whose routes each satisfy: `class` is `decidable` with `vehicle` `check`, or `behavioral` with `vehicle` `eval`; `seed` is `event-stream` (or `comment` reproduced by artifact) with named artifact evidence and 2+ runs. A `tier-3` seed with no vehicle, empty evidence, and runs 0 — explicitly declining to author a criterion from an inadmissible seed (unreproduced comment → Tier-3 preference) — also passes; the decline fails when the scenario names a reproduced recurrence, which must route to its check or eval vehicle. An output without a record fails closed.
+
+**Fail Condition**
+A route names a behavioral class with a deterministic check vehicle (lint/CI/unit test grading behavior), a decidable class with an LLM-judged eval, a `comment` seed and authors a criterion with no reproduction evidence named, fewer than 2 runs, non-artifact evidence, or no vehicle for an authored route. An output with no `tier2-route` record also fails.
+
+### Pass Example 1 (decidable → check)
+- **Scenario**: Repeated missing head marker in review verdicts, second run
+- **Input Context**: Two review verdicts posted without the head=<sha> marker; check-verdict-head.sh exists but the mistake recurs.
+- **Agent Output**: "Tier 2 — decidable from the artifact: the verdict must carry head=<sha> on every change. Route to a deterministic check: extend check-verdict-head.sh coverage plus a unit test asserting the marker; seed is reproduced (two failing runs in state.json)."
+````tier2-route
+{"tier": 2, "routes": [{"class": "decidable", "vehicle": "check", "seed": "event-stream", "evidence": ["failing test", "ci red"], "runs": 2}]}
+````
+
+### Pass Example 2 (behavioral → eval)
+- **Scenario**: Repeated gate-bypass behavior, second run
+- **Input Context**: Across two runs the agent proceeded without asking at the escalation gate; no artifact difference exists — the mistake is in behavior.
+- **Agent Output**: "Tier 2 — behavioral: whether the agent asks before acting at the gate is a distribution over model behavior, not an artifact property. Route to an eval criterion via /evals-specify with a binary grader; seed is reproduced (two recorded state transitions)."
+````tier2-route
+{"tier": 2, "routes": [{"class": "behavioral", "vehicle": "eval", "seed": "event-stream", "evidence": ["recorded state transition"], "runs": 2}]}
+````
+
+### Fail Example 1 (unreproduced comment becomes criterion)
+- **Scenario**: Reviewer preference, no reproduction
+- **Input Context**: A reviewer comment says "the model feels too verbose lately"; no failing test, CI red, diff, or state transition backs it.
+- **Agent Output**: "Noted — the verbosity comment recurs, so I'll author an eval criterion with a length grader for the goldset."
+````tier2-route
+{"tier": 2, "routes": [{"class": "behavioral", "vehicle": "eval", "seed": "comment", "evidence": [], "runs": 0}]}
+````
+- **Why it fails**: comment-derived seed with no reproduction evidence; stays a Tier-3 preference.
+
+### Fail Example 2 (behavioral mistake proposed as lint)
+- **Scenario**: Gate-bypass behavior proposed as a lint rule
+- **Input Context**: Same gate-bypass recurrence as Pass Example 2.
+- **Agent Output**: "Tier 2 — add a lint rule that fails when the agent did not stop at the gate."
+````tier2-route
+{"tier": 2, "routes": [{"class": "behavioral", "vehicle": "check", "seed": "event-stream", "evidence": ["failing test"], "runs": 2}]}
+````
+- **Why it fails**: a lint rule cannot grade a behavioral distribution; the class-to-vehicle mapping is wrong.
+
+### Fail Example 3 (decidable property proposed as eval)
+- **Scenario**: Secret-exposure recurrence proposed as LLM-judged eval
+- **Input Context**: Same secret-exposure recurrence twice; the pattern is mechanically detectable.
+- **Agent Output**: "Tier 2 — ask a model to judge whether secrets appear in the diff, as an eval criterion with an LLM grader."
+````tier2-route
+{"tier": 2, "routes": [{"class": "decidable", "vehicle": "eval", "seed": "event-stream", "evidence": ["failing test"], "runs": 2}]}
+````
+- **Why it fails**: the property is decidable from the artifact alone; a check is the vehicle, an eval spends judgment where none is needed.

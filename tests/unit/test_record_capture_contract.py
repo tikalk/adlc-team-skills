@@ -21,12 +21,13 @@ Contract pinned here (naming decisions in words; local example IDs only):
    invocation (outside `ADLC_RUN_ID`) stays advisory and instructs the human to
    run `/architect-clarify` + `/architect-implement` or `/product-clarify` +
    `/product-implement` to promote proposals into `docs/adlc/memory/`.
-3. `factory-mission` delegates after `plan` via `Invoke the `factory-runbook`
-   skill` (`--kind code`, `--output-type draft --step plan`) in canonical
+3. `factory-mission` delegates after `plan` by reading the `factory-runbook`
+   publish procedure and running `<skills dir>/factory-runbook/scripts/bash/<name>.sh`
+   (`--kind code`, `--output-type draft --step plan`) in canonical
    branch-first order (check out/reuse mission branch -> stage/commit
    allowlisted proposals -> push and open/reuse early draft MR when commits
-   exist ahead of base; 0-commit `PASS` omits `mr_url`) without naming
-   `factory-runbook` scripts directly, handles both `--plan` (`return 0`,
+   exist ahead of base; 0-commit `PASS` omits `mr_url`) without naming literal
+   `factory-runbook` script files, handling both `--plan` (`return 0`,
    keeping `executing`, with `gate-spec` `reject` / `on_reject: abort` ->
    promote via `*-clarify` + `*-implement` -> re-run `factory-supervised` when
    `status: proposed` drafts are listed) and unattended
@@ -315,8 +316,9 @@ def test_factory_mission_encapsulates_runbook_and_orders_branch_first():
         (ln for ln in setup.splitlines() if ln.strip().startswith("8.")),
         "",
     )
-    assert "Invoke the `factory-runbook` skill" in step8, (
-        "Phase 0 to 4 step 8 must contain 'Invoke the `factory-runbook` skill'"
+    assert "factory-runbook/scripts/bash/<name>.sh" in step8, (
+        "Phase 0 to 4 step 8 must point at the runbook helpers "
+        "('factory-runbook/scripts/bash/<name>.sh')"
     )
     assert "`--kind code`" in step8 and "`--output-type draft --step plan`" in step8
     branch_idx = step8.index("factory/mission/<repo>-<iid>")
@@ -345,7 +347,7 @@ def test_factory_mission_enforces_early_exits_record_cap_and_spec_gated_bounce()
 
     # Step 2 must cover both early exits before Step 3 (`validation`).
     for step2_token in (
-        "Invoke the `factory-runbook` skill",
+        "factory-runbook/scripts/bash/<name>.sh",
         "--plan",
         "return `0`",
         "plan-ready",

@@ -260,11 +260,14 @@ def test_runbook_body_is_read_and_run():
         )
 
 
-def test_intent_orchestrators_invoke_the_runbook():
+def test_intent_orchestrators_read_and_run_the_runbook():
     for doc in INTENT_ORCHESTRATORS:
         content = doc.read_text(encoding="utf-8")
-        assert "Invoke the `factory-runbook` skill" in content, (
-            f"{doc.parent.name}/SKILL.md: must delegate publish to the runbook"
+        assert "factory-runbook/scripts/bash/<name>.sh" in content, (
+            f"{doc.parent.name}/SKILL.md: must point at the runbook helpers"
+        )
+        assert "Invoke the `factory-runbook` skill" not in content, (
+            f"{doc.parent.name}/SKILL.md: must not invoke the runbook via the Skill tool"
         )
         assert "Requires" in content and "--skill factory-runbook" in content, (
             f"{doc.parent.name}/SKILL.md: no Requires line for factory-runbook"

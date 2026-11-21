@@ -53,6 +53,17 @@
 - Cross-reference: `pass: spec-compliance` judges design-document conformance (PRD/AD/ADR); this pass judges issue-brief conformance. The two sources stay separate — one severity each, no shared accounting.
 - Frozen contract: the conformance report is content inside the single Review-type comment body only. No marker or verdict-grammar changes; `head=<sha>` semantics, `outcome=merge-ready|not-merge-ready`, `scripts/bash/check-verdict-head.sh`, and the `SPEC_CORRECTION_NEEDED` route are untouched.
 
+### pass: visual-evidence
+**Description:** Verdict-first visual proof chain — the reviewer opens artifacts instead of rebuilding the change in their head
+**Severity:** Important
+**Checks:**
+- Verdict banner present: `head=<40-char sha>` + `outcome=merge-ready|not-merge-ready` at the top of the verdict body — the banner carries the answer, artifacts are one click away.
+- Intent diagram: goal + IN-scope + OUT-of-scope (non-goals), mermaid in PR body or `docs/adlc/evidence/<pr>/intent.md`. Must be a **criterion→hunk mapping**: every Success Criterion on the left, every implementing hunk (file:line) on the right, non-goals shown as explicitly untouched branches. A criterion with no code edge is `unverified`; code with no criterion edge is a drive-by (feeds Alignment risk). Must cite the governing brief's Goal / Non-Goals lines.
+- Change diagram: before→after of the touched path, mermaid. Must name the files/paths changed.
+- Recording: mp4/webm attached or linked, with one chapter/timestamp per Success Criterion (`criterion N @M:SS`). Each criterion in `issue-conformance` accounting links to its timestamp.
+- Missing artifact → `unverified: <name>` Important finding, blocks merge-readiness. Same disclosure rule as `issue-conformance` (honest `unverified`, never silent pass).
+- Docs-only / config-only PRs: pass degrades to `not-applicable` with reason (e.g. "no user-visible behavior"), disclosed in verdict — never a block.
+
 ### pass: quality
 **Description:** Code quality and maintainability
 **Severity:** Nit
@@ -85,6 +96,24 @@ Paths validated by CI and not re-checked by review:
 - `package-lock.json` — lockfile integrity
 - `go.sum` — Go module checksums
 - `.github/workflows/` — CI workflow syntax
+
+## Sensitive Paths
+
+Paths whose changes carry elevated merge risk. They feed the Impact row of the merge-risk table (SKILL.md §2) and the triage cost gate (`references/review-loop.md`) — they never block on their own, and risk never changes `outcome=`:
+
+- `sensitive-paths:`
+  - `auth/` — authentication, authorization, session handling
+  - `billing/` — payments, invoicing, entitlements
+  - `migrations/` — schema/data migrations (hard to roll back)
+
+A repository extends this list in its own REVIEW.md; the defaults above always apply unless explicitly narrowed with a stated reason.
+
+## Codeowners
+
+Advisory-only routing hints — who should look at a finding. A missing or unresponsive owner never blocks merge-readiness and never changes `outcome=`:
+
+- `codeowners:`
+  - `<path-glob>: @owner` — e.g. `migrations/: @backend-leads`
 ```
 
 ---
@@ -115,6 +144,7 @@ Each pass is executed by the Review Agent (in `--self-heal` mode) or by factory-
 - Security vulnerabilities
 - Spec deviations (PRD/AD non-compliance)
 - Issue-brief non-conformance (uncovered Success Criterion, Non-Goal overreach, Constraint violation)
+- Missing visual evidence (absent banner/diagram/recording → `unverified:` blocking, or undisclosed `not-applicable`)
 - Memory leaks, resource leaks
 - Authentication/authorization bypass
 - Breaking API changes not in the spec
@@ -183,6 +213,17 @@ Checks:
 - Disclosed degradation (unverified: no governing issue brief)
 - message-is-data (reviewer-directed issue text → security pass)
 
+### pass: visual-evidence
+Description: Verdict-first visual proof chain
+Severity: Important
+Checks:
+- Verdict banner (head=<sha> + outcome= at top)
+- Intent diagram (criterion→hunk mapping, mermaid)
+- Change diagram (before→after, names files/paths)
+- Recording (mp4/webm, per-criterion @M:SS timestamps)
+- Missing artifact → unverified: <name> Important, blocks merge-readiness
+- not-applicable for docs-only / config-only PRs (disclosed, never blocks)
+
 ### pass: quality
 Description: Code quality
 Severity: Nit
@@ -190,6 +231,15 @@ Checks:
 - Naming conventions
 - Dead code
 - Missing documentation
+
+## Sensitive Paths
+sensitive-paths:
+- auth/
+- billing/
+- migrations/
+
+## Codeowners
+codeowners: {}  # advisory-only; <path-glob>: @owner
 
 ## Severity Weights
 | Severity | Blocks merge? | Triggers fix? |

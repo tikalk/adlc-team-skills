@@ -586,5 +586,7 @@ def test_the_skill_text_names_the_target_branch_rule():
     for skill in ("factory-mission", "factory-intent"):
         text = (ROOT / "skills/factory" / skill / "SKILL.md").read_text()
         assert "target branch" in text.lower() and "ADLC_TARGET_BRANCH" in text, skill
+    executor = (RUNBOOK / "references/executor.md").read_text()
+    assert "ADLC_TARGET_BRANCH" in executor and "<base-branch>" in executor
     review = (ROOT / "skills/factory/factory-review/SKILL.md").read_text()
     assert "target branch" in review.lower()

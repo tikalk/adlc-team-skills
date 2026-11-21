@@ -55,13 +55,16 @@ def _frontmatter(skill_file: Path) -> dict:
     return yaml.safe_load(parts[1]) or {}
 
 
-def test_runbook_skill_is_present_and_invocable():
+def test_runbook_skill_is_reference_only():
     meta = _frontmatter(SKILL / "SKILL.md")
     assert meta.get("name") == "factory-runbook", "skill name must match its directory"
     description = meta.get("description")
     assert isinstance(description, str) and description.strip(), "runbook needs a trigger description"
-    assert not meta.get("disable-model-invocation"), (
-        "the runbook is invoked by orchestrators — it must stay model-invocable"
+    assert meta.get("reference-only") is True, (
+        "ADR-507: the runbook is reference-only — frontmatter must carry reference-only: true"
+    )
+    assert meta.get("disable-model-invocation") is True, (
+        "ADR-507: the runbook is never invoked — frontmatter must carry disable-model-invocation: true"
     )
 
 

@@ -1,6 +1,8 @@
 ---
 name: factory-runbook
 description: Use when a factory run must post its changes — check out the run branch, commit a step's allowlisted paths, push only that branch, and open or reuse one draft MR/PR with milestone/assignee ownership. Also the shared home for factory run contracts (executor, tracker integration, lanes, brief and provider templates).
+reference-only: true
+disable-model-invocation: true
 ---
 
 # factory-runbook

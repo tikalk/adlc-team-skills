@@ -43,7 +43,9 @@ BODY = MARKER + "\n\n## Verdict\n**Outcome:** merge-ready\n\n## Important findin
 # Knobs: FAKE_DROP=1 accept posts but never store them (the silent-loss case);
 # FAKE_REFUSE=1 refuse posts; FAKE_READ_FAIL=1 fail every GET;
 # FAKE_READ_GARBAGE=1 answer GETs with non-JSON; FAKE_PAGES=1 answer a
-# --paginate GET as two concatenated arrays.
+# --paginate GET as two concatenated arrays; FAKE_PAGE_SIZE=<n> answer a GET
+# of the thread with its first n comments only, unless --paginate is passed.
+# A refusal prints the HTTP status on stderr the way the real CLIs do.
 FAKE = r'''#!/usr/bin/env bash
 set -u
 d="${FAKE_TRACKER_DIR:?}"
@@ -63,16 +65,20 @@ done
 echo "$method $path" >> "$d/calls.log"
 [ -f "$d/notes.json" ] || echo '[]' > "$d/notes.json"
 if [ "$method" = GET ]; then
-  [ "${FAKE_READ_FAIL:-0}" = 1 ] && { echo "fake: 500" >&2; exit 1; }
+  [ "${FAKE_READ_FAIL:-0}" = 1 ] && { echo "fake: 500 Internal Server Error (HTTP 500)" >&2; exit 1; }
   [ "${FAKE_READ_GARBAGE:-0}" = 1 ] && { echo "<html>busy</html>"; exit 0; }
   case "$path" in
     */issues/*/comments*) cat "$d/comments.json" 2>/dev/null || echo '[]' ;;
     *) if [ "$paginate" = 1 ] && [ "${FAKE_PAGES:-0}" = 1 ]; then printf '[{"id":1,"body":"x"}]'; fi
-       cat "$d/notes.json" ;;
+       if [ -n "${FAKE_PAGE_SIZE:-}" ] && [ "$paginate" = 0 ]; then
+         node -e 'const a = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(a.slice(0, Number(process.argv[2]))))' "$d/notes.json" "$FAKE_PAGE_SIZE"
+       else
+         cat "$d/notes.json"
+       fi ;;
   esac
   exit 0
 fi
-[ "${FAKE_REFUSE:-0}" = 1 ] && { echo "fake: 403" >&2; exit 1; }
+[ "${FAKE_REFUSE:-0}" = 1 ] && { printf 'fake: 403 Forbidden (HTTP 403)\ntry again later\n\n' >&2; exit 1; }
 if [ "$input" = - ]; then body="$(cat)"; else body="$(cat "$input")"; fi
 printf '%s\n' "$body" >> "$d/posted.jsonl"
 [ "${FAKE_DROP:-0}" = 1 ] && { echo '{}'; exit 0; }
@@ -306,6 +312,40 @@ def test_unreadable_thread_fails_closed(tracker, interpreter, knob):
     r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY), **{knob: "1"})
     assert r.returncode == 2
     assert posts(tracker) == []
+
+
+# ── SF-FIX-11: a busy GitLab thread, and the tracker's own error text ───────
+
+def _busy_thread(n):
+    return [{"id": 5000 - i, "body": f"comment {i}", "system": i % 2 == 0} for i in range(n)]
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_a_gitlab_verdict_older_than_one_page_is_found(tracker, interpreter):
+    """The GitLab read was the newest 100 notes; system notes and inline diff
+    notes count toward the 100. On a busy MR --check-only said MISSING for a
+    verdict that was there, and the dedup lookup posted it a second time."""
+    (tracker["state"] / "notes.json").write_text(json.dumps(_busy_thread(100) + [{"id": 77, "body": BODY}]))
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--check-only", FAKE_PAGE_SIZE="100")
+    assert r.returncode == 0 and "comment 77" in r.stdout, r.stdout + r.stderr
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY),
+            FAKE_PAGE_SIZE="100")
+    assert r.returncode == 0 and "not posted twice" in r.stdout, r.stdout + r.stderr
+    assert posts(tracker) == []
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+@pytest.mark.parametrize("mr", [MR, PR])
+def test_the_trackers_own_error_is_in_the_error_line(tracker, interpreter, mr):
+    """A 401, a 403 and a 404 all read "cannot read the notes" / "the tracker
+    refused the post"; the CLI's stderr line with the HTTP status is now kept."""
+    r = run(tracker, interpreter, "--mr", mr, "--head", HEAD, "--check-only", FAKE_READ_FAIL="1")
+    assert r.returncode == 2 and "cannot read the" in r.stderr
+    assert "fake: 500 Internal Server Error (HTTP 500)" in r.stderr
+    r = run(tracker, interpreter, "--mr", mr, "--head", HEAD, "--body-file", body_file(tracker, BODY),
+            "--retries", "2", FAKE_REFUSE="1")
+    assert r.returncode == 1
+    assert r.stderr.count("the tracker refused the post — fake: 403 Forbidden (HTTP 403)") == 2
 
 
 def test_never_calls_an_approve_endpoint():

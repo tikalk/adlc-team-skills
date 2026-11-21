@@ -27,6 +27,7 @@
 #   0  exactly the target lifecycle label is on the issue (moved now, or already there)
 #   1  the re-read shows another lifecycle label next to the target, or no target
 #   2  usage error, refused custom names, or the tracker could not be read/written
+#      (the line ends with the tracker CLI's own error line — the HTTP status)
 set -uo pipefail
 
 die()  { echo "set-lifecycle: $*" >&2; exit 2; }
@@ -75,14 +76,28 @@ case "$provider" in
   *) die "unsupported ISSUE_PROVIDER: $provider" ;;
 esac
 
+err_file="$(mktemp)"; trap 'rm -f "$err_file"' EXIT
+
+# Why the tracker CLI failed: the line of its stderr that carries the HTTP
+# status (glab and gh print e.g. "glab: 403 Forbidden (HTTP 403)"), else its
+# last line — one line, at most 200 characters, token-shaped strings removed.
+why() {
+  local l
+  l="$(grep -E 'HTTP [0-9]{3}' "$err_file" 2>/dev/null | tail -n 1)"
+  [ -n "$l" ] || l="$(grep -v '^[[:space:]]*$' "$err_file" 2>/dev/null | tail -n 1)"
+  l="$(printf '%s' "$l" | tr -d '\000-\037' | cut -c1-200 \
+    | sed -E 's/(glpat-|ghp_|gho_|ghs_|github_pat_)[A-Za-z0-9_-]+/<redacted>/g')"
+  printf '%s' "${l:-no error text from the tracker CLI}"
+}
+
 # The issue's labels, one per line (GitLab: strings; GitHub: objects with .name).
 read_labels() {
-  api "$issue_path" 2>/dev/null \
+  api "$issue_path" 2>"$err_file" \
     | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log((JSON.parse(s).labels||[]).map(l=>typeof l==="string"?l:l.name).join("\n")))'
 }
 lifecycle_of() { local l; while IFS= read -r l; do case " $STATES " in *" $l "*) [ -n "$l" ] && echo "$l" ;; esac; done; }
 
-current="$(read_labels)" || die "cannot read the labels of $ISSUE"
+current="$(read_labels)" || die "cannot read the labels of $ISSUE — $(why)"
 others="$(printf '%s\n' "$current" | lifecycle_of | grep -vx -- "$TO" | paste -sd, -)"
 has_target="$(printf '%s\n' "$current" | grep -cx -- "$TO")"
 
@@ -93,19 +108,19 @@ fi
 if [ "$provider" = gitlab ]; then
   # One call: add the target and remove every other lifecycle label.
   json 'const [a, r] = process.argv.slice(1); const o = {add_labels: a}; if (r) o.remove_labels = r; console.log(JSON.stringify(o))' "$TO" "$others" \
-    | api -X PUT "$issue_path" -H 'Content-Type: application/json' --input - >/dev/null 2>&1 \
-    || die "the tracker refused to update the labels of $ISSUE"
+    | api -X PUT "$issue_path" -H 'Content-Type: application/json' --input - >/dev/null 2>"$err_file" \
+    || die "the tracker refused to update the labels of $ISSUE — $(why)"
 else
   json 'console.log(JSON.stringify({labels: [process.argv[1]]}))' "$TO" \
-    | api -X POST "$issue_path/labels" --input - >/dev/null 2>&1 || die "the tracker refused to add '$TO' to $ISSUE"
+    | api -X POST "$issue_path/labels" --input - >/dev/null 2>"$err_file" || die "the tracker refused to add '$TO' to $ISSUE — $(why)"
   IFS=, read -r -a rm_list <<< "$others"
   for l in "${rm_list[@]}"; do
     [ -n "$l" ] || continue
-    api -X DELETE "$issue_path/labels/$l" >/dev/null 2>&1 || die "the tracker refused to remove '$l' from $ISSUE"
+    api -X DELETE "$issue_path/labels/$l" >/dev/null 2>"$err_file" || die "the tracker refused to remove '$l' from $ISSUE — $(why)"
   done
 fi
 
-after="$(read_labels)" || die "cannot re-read the labels of $ISSUE"
+after="$(read_labels)" || die "cannot re-read the labels of $ISSUE — $(why)"
 left="$(printf '%s\n' "$after" | lifecycle_of | paste -sd, -)"
 if [ "$left" = "$TO" ]; then
   echo "set-lifecycle: OK — $ISSUE moved to '$TO'${others:+ (removed: $others)}"; exit 0

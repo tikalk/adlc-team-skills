@@ -33,10 +33,16 @@
 # this run, with --run) on the thread?" — the question a lane step asks after
 # the agent has exited.
 #
+# Every read asks for all pages (`--paginate`, both providers): on GitLab the
+# newest 100 notes are not the whole thread — system notes and inline diff
+# notes count too — and a one-page read made --check-only miss a verdict and
+# the already-posted lookup post it twice (SF-FIX-11).
+#
 # Exit codes:
 #   0  the verdict is on the thread (posted now, or already there)
 #   1  not on the thread after all retries (posting mode) / not found (check)
 #   2  usage error, invalid body, or the tracker could not be read
+# A tracker error line ends with the CLI's own error line (the HTTP status).
 set -uo pipefail
 
 die() { echo "post-verdict: $*" >&2; exit 2; }
@@ -133,6 +139,19 @@ if (hits.length) console.log(String(hits[0].id));
 
 tmp_dir="$(mktemp -d)" || die "cannot create a temporary directory"
 trap 'rm -rf "$tmp_dir"' EXIT
+err_file="$tmp_dir/api.err"
+
+# Why the tracker CLI failed: the line of its stderr that carries the HTTP
+# status (glab and gh print e.g. "glab: 403 Forbidden (HTTP 403)"), else its
+# last line — one line, at most 200 characters, token-shaped strings removed.
+why() {
+  local l
+  l="$(grep -E 'HTTP [0-9]{3}' "$err_file" 2>/dev/null | tail -n 1)"
+  [ -n "$l" ] || l="$(grep -v '^[[:space:]]*$' "$err_file" 2>/dev/null | tail -n 1)"
+  l="$(printf '%s' "$l" | tr -d '\000-\037' | cut -c1-200 \
+    | sed -E 's/(glpat-|ghp_|gho_|ghs_|github_pat_)[A-Za-z0-9_-]+/<redacted>/g')"
+  printf '%s' "${l:-no error text from the tracker CLI}"
+}
 
 # Writes all thread comments (GitLab notes; GitHub reviews + issue comments)
 # to $tmp_dir/thread.json as concatenated JSON. Fails closed: an unreadable
@@ -140,12 +159,12 @@ trap 'rm -rf "$tmp_dir"' EXIT
 read_thread() {
   local f="$tmp_dir/thread.json"
   if [ "$provider" = gitlab ]; then
-    api "projects/$p/merge_requests/$iid/notes?sort=desc&order_by=created_at&per_page=100" > "$f" 2>/dev/null \
-      || die "cannot read the notes of $MR"
+    api --paginate "projects/$p/merge_requests/$iid/notes?sort=desc&order_by=created_at&per_page=100" > "$f" 2>"$err_file" \
+      || die "cannot read the notes of $MR — $(why)"
   else
-    api --paginate "repos/$project/pulls/$iid/reviews?per_page=100" > "$f" 2>/dev/null || die "cannot read the reviews of $MR"
+    api --paginate "repos/$project/pulls/$iid/reviews?per_page=100" > "$f" 2>"$err_file" || die "cannot read the reviews of $MR — $(why)"
     printf '\n' >> "$f"
-    api --paginate "repos/$project/issues/$iid/comments?per_page=100" >> "$f" 2>/dev/null || die "cannot read the comments of $MR"
+    api --paginate "repos/$project/issues/$iid/comments?per_page=100" >> "$f" 2>"$err_file" || die "cannot read the comments of $MR — $(why)"
   fi
 }
 
@@ -202,11 +221,11 @@ while [ "$attempt" -le "$RETRIES" ]; do
     echo "post-verdict: OK — posted and confirmed on $MR (comment $id, head=$HEAD_SHA, run=$body_run)"; exit 0
   fi
   if [ "$provider" = gitlab ]; then
-    api -X POST "projects/$p/merge_requests/$iid/discussions" -H 'Content-Type: application/json' --input "$payload_file" >/dev/null 2>&1 \
-      || echo "post-verdict: attempt $attempt: the tracker refused the post" >&2
+    api -X POST "projects/$p/merge_requests/$iid/discussions" -H 'Content-Type: application/json' --input "$payload_file" >/dev/null 2>"$err_file" \
+      || echo "post-verdict: attempt $attempt: the tracker refused the post — $(why)" >&2
   else
-    api -X POST "repos/$project/pulls/$iid/reviews" --input "$payload_file" >/dev/null 2>&1 \
-      || echo "post-verdict: attempt $attempt: the tracker refused the post" >&2
+    api -X POST "repos/$project/pulls/$iid/reviews" --input "$payload_file" >/dev/null 2>"$err_file" \
+      || echo "post-verdict: attempt $attempt: the tracker refused the post — $(why)" >&2
   fi
   if lookup "$body_run" "$body_iter"; then
     echo "post-verdict: OK — posted and confirmed on $MR (comment $id, head=$HEAD_SHA, run=$body_run)"; exit 0

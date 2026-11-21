@@ -106,6 +106,18 @@ Subsequent work on the same item goes back to the context that already has it �
 
 Resolve the existing context via run state + comment bus markers. If genuinely no prior context exists (e.g. a human-authored PR the factory never touched), route per the table and say so in one line.
 
+### Brief packing
+
+Every hand-off carries exactly what that stage needs — no more, no less:
+
+- The request, in its exact words, with attached logs, screenshots, and links. Do not paraphrase it.
+- The work-item / issue reference, current with the latest status and spec/PR refs as work moves through stages.
+- The originating conversation or thread link, when it differs from the work item.
+- The requester's identity, with platform identifiers you have (for set assignee/reviewer).
+- Findings and decisions from prior stages, but only the parts relevant to this stage.
+
+Relevant context accumulates downstream (triage adds issue + findings, spec adds spec PR + resolved decisions, implementation adds the PR), so a later brief usually carries more than an earlier one — but never forwards everything to everyone.
+
 **Verdict invalidation is mandatory**: any fix push — babysit, self-heal, or human — supersedes the standing review verdict. The verdict applies to exactly one head SHA. Before re-declaring merge-readiness, `factory-review` must re-run its passes on the new head (`factory-review` §2 step 8). The orchestrator never pushes fixes itself to keep a PR moving.
 
 ---
@@ -115,6 +127,7 @@ Resolve the existing context via run state + comment bus markers. If genuinely n
 You are the only communicator with the end user:
 
 - **Acknowledge immediately** — one sentence showing the request was understood, before any stage work starts. Never work silently for minutes and let the first response be a result.
+- **Heartbeat on long steps** — if a stage runs long, send a short liveness note rather than going silent. One line stating what the factory is doing now is enough; never paste stage internals.
 - **Filter what you relay**: questions, decisions, deliverables, blockers. Absorb dispatch notices, progress noise, and internal hand-offs silently.
 - **Speak in one voice**: rewrite relayed content; never paste a stage skill's output verbatim. Say what the factory does, not how ("I'm looking into it", not "I dispatched factory-queue").
 - **Link every distinct PR/MR, issue, and spec you name, in every message that names it.** Two different PR numbers are two different targets; a repeated mention of the same target in one message links only its first occurrence.

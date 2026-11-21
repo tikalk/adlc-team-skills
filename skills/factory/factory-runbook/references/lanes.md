@@ -15,6 +15,7 @@ independence.
 | `inline` | Orchestrator follows the skill in this session | None — shared context | Yes |
 | `agent` | Spawn a fresh session of same CLI (e.g., `opencode -p`) | Fresh context — no memory of previous steps | Yes |
 | `cli:<runtime>` | Spawn a different CLI (e.g., `claude --print`) | Fresh context + different model | Only if CLI on PATH (degrades to `agent`) |
+| `browser` | Drive the staged app through the computer-use `browser` tool (screenshots + recording) | Sees the staged app — no session memory | Only where browser tooling exists (degrades to `agent`) |
 
 **The `agent` lane is the default for unattended stages.** It provides
 the maker/checker separation — the reviewer reads code from the
@@ -66,7 +67,14 @@ or `agent` (unattended stages). This is the default — backward compatible.
 
 ```
 cli:<runtime>  →  agent (this runtime)  →  inline
+browser        →  agent (suite-only)    →  inline
 ```
+
+The `browser` lane degrades when no computer-use `browser` tool is
+available in the session, or when the staged app fails to launch. Each
+degradation step is disclosed to the user when it happens. A `browser`
+lane that degrades to `agent` runs suite-only and marks behavioral
+criteria `unverified` — evidence is never faked.
 
 Each degradation step is:
 - Disclosed to the user when it happens

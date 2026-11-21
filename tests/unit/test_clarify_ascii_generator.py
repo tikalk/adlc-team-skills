@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 BASH_GEN = ROOT / "skills/authoring/scripts/bash/render-decision-map.sh"
-PWSH_GEN = ROOT / "skills/authoring/scripts/powershell/Render-DecisionMap.ps1"
+PWSH_GEN = ROOT / "skills/authoring/scripts/powershell/render-decision-map.ps1"
 
 FIXTURE = {
     "id": "PDR-001",

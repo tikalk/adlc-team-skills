@@ -61,5 +61,3 @@ function Render-DecisionMap {
     Write-Row "IF-UNDECIDED" $IfUndecided
     Write-Bar
 }
-
-Export-ModuleMember -Function @('Render-StatusBox', 'Render-DecisionMap')

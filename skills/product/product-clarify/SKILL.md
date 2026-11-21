@@ -120,7 +120,7 @@ Write every clarification in Simplified Technical English (short sentences, one 
 
 Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap. See the tier rule in the shared reference:
 
-- **0–1 boundaries**: present one clarification at a time in plain STE prose, using this format, however severe the gap:
+- **0–1 boundaries**: invoke `skills/authoring/scripts/bash/render-decision-map.sh` (`render_status_box`, or `Render-DecisionMap.ps1` → `Render-StatusBox` on Windows) rather than hand-draw — draw the compact STATUS BOX first, then the prose below it, using this format, however severe the gap:
 
 ```markdown
 ## Clarification [N]: PDR-XXX — [Gap Type]
@@ -137,7 +137,7 @@ Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap. See the
 - **C**: [Custom response]
 ```
 
-- **2 or more boundaries**: draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints.
+- **2 or more boundaries**: invoke `skills/authoring/scripts/bash/render-decision-map.sh` (`render_decision_map`, or `Render-DecisionMap.ps1` → `Render-DecisionMap` on Windows) rather than hand-draw — draw the full ASCII decision map first (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED), then the prose beneath it. Render unknown gaps as `?` slots, never hand-draw brackets or prose complaints. A map that would exceed ADR-515 size caps falls back to prose plus `payload_status: map-omitted (size cap)`.
 
 **Rules**:
 - Present **one clarification at a time**

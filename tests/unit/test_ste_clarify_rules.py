@@ -167,3 +167,10 @@ def test_canonical_requires_ascii_first_and_full_ste():
     assert "75" in text  # box width budget
     assert "payload_status" in text  # ADR-515 overflow fallback
     assert "present-tense verb" in text.lower() or "present tense" in text.lower()
+
+
+def test_all_four_clarify_skills_invoke_shared_generator():
+    for skill in CLARIFY_SKILLS:
+        content = (ROOT / skill).read_text(encoding="utf-8")
+        assert "render-decision-map" in content
+        assert "never hand-draw" in content or "rather than hand-draw" in content

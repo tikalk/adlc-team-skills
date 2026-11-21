@@ -69,7 +69,10 @@ forever while behavior rots); an eval cannot enforce a decidable property
    "decidable"|"behavioral", "vehicle": "check"|"eval"|"none", "seed":
    "event-stream"|"comment"|"tier-3", "evidence": ["failing test"|"ci red"|
    "diff"|"screenshot"|"revert"|"recorded state transition"|"state.json"],
-   "runs": 2}]}`. Prose around it is rationale and is not graded.
+   "runs": 2}]}`. Prose around it is rationale and is not graded. A
+   `tier-3` seed (vehicle `none`, empty evidence, runs 0) declines an
+   inadmissible seed to a Tier-3 preference — never a reproduced
+   recurrence, which must route to its check or eval vehicle.
 4. **Verify the evidence rule** — every occurrence reproduced by artifact,
    not by assertion; a comment-only occurrence fails here.
 5. **Author the vehicle** — check via team-levelup action P; eval criterion

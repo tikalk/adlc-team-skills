@@ -41,6 +41,41 @@ _EVIDENCE = frozenset({
 })
 
 
+# A reproduced recurrence the decline must not excuse: artifact terms
+# (the _EVIDENCE vocabulary) or an explicit run count in the scenario
+# text. The check is intentionally narrow — it only fires when the
+# scenario itself names reproduction, in which case declining to Tier-3
+# is unambiguously wrong. Anything else leaves the decline standing,
+# because the grader grades the record, not the scenario prose.
+_REPRO_SIGNAL = re.compile(
+    r"failing test|ci red|\bdiff\b|screenshot|\brevert\b|"
+    r"recorded state transition|state\.json|"
+    r"\btwo runs\b|\bacross two runs\b|\btwice\b|\brecurs\b|\brecurrence\b|"
+    r"\bsecond run\b|\brepeated\b",
+    re.IGNORECASE,
+)
+
+
+def _scenario_text(context):
+    if not isinstance(context, dict):
+        return None
+    vars_ = context.get("vars")
+    if not isinstance(vars_, dict):
+        return None
+    parts = []
+    for key in ("scenario", "input_context", "instruction"):
+        value = vars_.get(key)
+        if isinstance(value, str) and value.strip():
+            parts.append(value)
+    if not parts:
+        return None
+    return "\n".join(parts)
+
+
+def _looks_reproduced(scenario: str) -> bool:
+    return _REPRO_SIGNAL.search(scenario) is not None
+
+
 def _no_duplicate_keys(pairs):
     seen = {}
     for key, value in pairs:
@@ -54,7 +89,7 @@ def _fail(reason):
     return {"pass": False, "score": 0.0, "reason": "failed " + reason}
 
 
-def _check_seed(r, i):
+def _check_seed(r, i, context=None):
     seed = r["seed"]
     if seed not in _SEEDS:
         return _fail(
@@ -66,6 +101,29 @@ def _check_seed(r, i):
             return _fail(
                 "route %d: a tier-3 seed must not name a vehicle — "
                 "declining to author a criterion is the vehicle." % i
+            )
+        if not isinstance(r["evidence"], list) or r["evidence"]:
+            return _fail(
+                "route %d: a tier-3 decline carries no reproduction "
+                "evidence and runs 0 — it declines the seed, it does not "
+                "grade it." % i
+            )
+        if (
+            isinstance(r["runs"], bool) or not isinstance(r["runs"], int)
+            or r["runs"] != 0
+        ):
+            return _fail(
+                "route %d: a tier-3 decline carries no reproduction "
+                "evidence and runs 0 — it declines the seed, it does not "
+                "grade it." % i
+            )
+        scenario = _scenario_text(context)
+        if scenario is not None and _looks_reproduced(scenario):
+            return _fail(
+                "route %d declines a reproduced recurrence to Tier-3 — "
+                "a tier-3 decline passes only for an inadmissible seed "
+                "(an unreproduced comment); a reproduced recurrence "
+                "must route to its check or eval vehicle." % i
             )
         return None
     if seed == "comment":
@@ -105,10 +163,8 @@ def _check_seed(r, i):
     return None
 
 
-def _check_route(r, i):
-    if not isinstance(r, dict) or tuple(r.keys()) != _ROUTE_KEYS and set(
-        r.keys()
-    ) != set(_ROUTE_KEYS):
+def _check_route(r, i, context=None):
+    if not isinstance(r, dict) or set(r.keys()) != set(_ROUTE_KEYS):
         return _fail(
             "route %d must name exactly class/vehicle/seed/evidence/runs." % i
         )
@@ -142,7 +198,7 @@ def _check_route(r, i):
             "deterministic check — behavioral properties route to an "
             "eval criterion via /evals-specify."
         )
-    return _check_seed(r, i)
+    return _check_seed(r, i, context)
 
 
 def get_assert(output: str, context: dict = None) -> dict:
@@ -151,6 +207,14 @@ def get_assert(output: str, context: dict = None) -> dict:
     The graded decision is the ````tier2-route` fenced record. Anything
     outside it is rationale and is not graded. Text without a record
     fails closed.
+
+    A tier-3 decline is gated on the scenario: promptfoo passes the test
+    vars as ``context`` (``context["vars"]["input_context"]`` etc.), and
+    when the scenario names reproduction the decline fails — the
+    recurrence must route to its check or eval vehicle. When no scenario
+    context is available (unit probes calling ``get_assert(output)``),
+    the decline stands on the record alone: vehicle none, empty
+    evidence, runs 0.
     """
     text = unicodedata.normalize("NFKC", output)
     blocks = _FENCE.findall(text)
@@ -184,7 +248,7 @@ def get_assert(output: str, context: dict = None) -> dict:
             "the routing record must carry at least one route."
         )
     for i, route in enumerate(routes):
-        verdict = _check_route(route, i)
+        verdict = _check_route(route, i, context)
         if verdict is not None:
             return verdict
     return {

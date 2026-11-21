@@ -18,8 +18,8 @@ def rec(routes):
     return "```tier2-route\n" + json.dumps({"tier": 2, "routes": routes}) + "\n```"
 
 
-def _check(decision: str, expected: bool, label: str) -> None:
-    result = get_assert(decision)
+def _check(decision: str, expected: bool, label: str, context=None) -> None:
+    result = get_assert(decision, context)
     assert result["pass"] is expected, (
         f"{label}: expected {'PASS' if expected else 'FAIL'}, got "
         f"{'PASS' if result['pass'] else 'FAIL'} — {result['reason']}"
@@ -208,4 +208,21 @@ def test_red_record_tier3_decline_passes():
                 "seed": "tier-3", "evidence": [], "runs": 0}]),
         True,
         "record-tier3-decline",
+    )
+
+
+def test_red_record_tier3_decline_of_reproduced_recurrence_fails():
+    # Universal-decline bypass: same record, but the scenario names a
+    # reproduced recurrence — the decline must fail closed.
+    _check(
+        "Gate bypass recurrence declined to Tier-3.\n"
+        + rec([{"class": "behavioral", "vehicle": "none",
+                "seed": "tier-3", "evidence": [], "runs": 0}]),
+        False,
+        "record-tier3-decline-reproduced",
+        context={"vars": {
+            "scenario": "tier2-split",
+            "input_context": "The gate bypass recurs across two runs; "
+            "two recorded state transitions back it.",
+        }},
     )

@@ -34,8 +34,8 @@ def route(cls, vehicle, seed, evidence=None, runs=0):
     }
 
 
-def _assert_fail(decision: str, *reason_fragments: str) -> None:
-    result = get_assert(decision)
+def _assert_fail(decision: str, *reason_fragments: str, context=None) -> None:
+    result = get_assert(decision, context)
     assert result["pass"] is False
     assert result["score"] == 0.0
     assert "failed" in result["reason"].lower()
@@ -45,8 +45,8 @@ def _assert_fail(decision: str, *reason_fragments: str) -> None:
         )
 
 
-def _assert_pass(decision: str) -> None:
-    result = get_assert(decision)
+def _assert_pass(decision: str, context=None) -> None:
+    result = get_assert(decision, context)
     assert result["pass"] is True
     assert result["score"] == 1.0
 
@@ -102,11 +102,27 @@ def test_pass_multi_route_consistent():
 
 def test_pass_tier3_declination():
     # Declining to author a criterion from an inadmissible seed is the
-    # right answer, not a missing vehicle.
+    # right answer, not a missing vehicle. With no scenario context the
+    # decline stands on the record alone; with a reproduced recurrence
+    # in the scenario it must fail (tier-3 is not an excuse for a
+    # reproduced seed).
     _assert_pass(
         "The verbosity remark recurs with nothing behind it; it stays a "
         "Tier-3 preference.\n"
         + rec([route("behavioral", "none", "tier-3")])
+    )
+
+
+def test_pass_tier3_declination_with_unreproduced_scenario():
+    _assert_pass(
+        "The verbosity remark recurs with nothing behind it; it stays a "
+        "Tier-3 preference.\n"
+        + rec([route("behavioral", "none", "tier-3")]),
+        context={"vars": {
+            "scenario": "unreproduced comment",
+            "input_context": "A reviewer comment says 'the model feels "
+            "too verbose lately'; no test backs it.",
+        }},
     )
 
 
@@ -300,6 +316,38 @@ def test_fail_tier3_with_vehicle():
         rec([{"class": "behavioral", "vehicle": "eval", "seed": "tier-3",
               "evidence": [], "runs": 0}]),
         "must not name a vehicle",
+    )
+
+
+def test_fail_tier3_decline_with_evidence():
+    _assert_fail(
+        rec([{"class": "behavioral", "vehicle": "none", "seed": "tier-3",
+              "evidence": ["failing test"], "runs": 0}]),
+        "carries no reproduction evidence",
+    )
+
+
+def test_fail_tier3_decline_with_runs():
+    _assert_fail(
+        rec([{"class": "behavioral", "vehicle": "none", "seed": "tier-3",
+              "evidence": [], "runs": 2}]),
+        "carries no reproduction evidence",
+    )
+
+
+def test_fail_tier3_decline_of_reproduced_recurrence():
+    # The universal-decline bypass: a reproduced gate-bypass recurrence
+    # must route to its check/eval vehicle, not to Tier-3.
+    _assert_fail(
+        "Two corrections.\n"
+        + rec([route("behavioral", "none", "tier-3")]),
+        "reproduced recurrence",
+        context={"vars": {
+            "scenario": "tier2-split: behavioral recurrence routes to eval",
+            "input_context": "Across two runs the agent proceeded without "
+            "asking at the escalation gate; no artifact difference exists "
+            "— the mistake is in behavior.",
+        }},
     )
 
 

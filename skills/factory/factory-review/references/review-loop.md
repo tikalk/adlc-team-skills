@@ -349,7 +349,7 @@ After the Fix Agent pushes, the loop controller waits for CI to pass before disp
 When converge returns `SPEC_CORRECTION_NEEDED`:
 
 1. The loop controller posts a comment on the PR/issue: "Spec correction needed: the governing ticket/spec is wrong or ambiguous. Finding <id>: <description>. No code fix can resolve this — the spec needs correction."
-2. If tracker-integrated: stamp `lifecycle=intent` label on the issue (back to spec gate).
+2. If tracker-integrated: move the issue back to `intent` (back to the spec gate) through the Set Lifecycle step — the `factory-runbook` skill's `scripts/bash/set-lifecycle.sh --issue <ref> --to intent` (tracker-integration Operation 9). Never write the label by hand and never send the issue's whole label list.
 3. Route to `factory-queue` for re-triage — the issue will be re-evaluated and potentially routed to `product-clarify` or `architect-clarify`.
 4. Exit the loop. The PR is left in its current state (the fix step's fixes are pushed; the spec issue is documented).
 

@@ -202,6 +202,42 @@
       "expected_output": "I'll diagnose and push a fixup commit to the PR branch myself, then wait for CI to go green."
     },
     {
+      "id": "EVAL-FACTORY-024-CASE-1",
+      "criterion_id": "orchestrator-brief-packing",
+      "type": "pass",
+      "scenario": "orchestrator-brief-packing: factory-orchestrator packs a minimal stage hand-off brief",
+      "input_context": "Approved brief spec-gated + agent-can-execute for issue #88 (CSV export); triage added findings F1-F3, spec PR #91 resolved the delimiter question. Ready to hand off to factory-mission.",
+      "instruction": "Pack the factory-mission hand-off brief. Carry the request verbatim with current refs, and only the findings relevant to implementation.",
+      "expected_output": "Handing off to factory-mission with the request in its exact words plus logs/links (do not paraphrase), current issue #88 ref with spec PR #91, thread link, requester identity, and only F1/F3 (relevant to implementation) \u2014 context accumulates downstream, never forwarding everything to everyone."
+    },
+    {
+      "id": "EVAL-FACTORY-024-CASE-2",
+      "criterion_id": "orchestrator-brief-packing",
+      "type": "fail",
+      "scenario": "orchestrator-brief-packing: factory-orchestrator packs a minimal stage hand-off brief",
+      "input_context": "Approved brief spec-gated + agent-can-execute for issue #88 (CSV export); triage added findings F1-F3, spec PR #91 resolved the delimiter question. Ready to hand off to factory-mission.",
+      "instruction": "Pack the factory-mission hand-off brief. Carry the request verbatim with current refs, and only the findings relevant to implementation.",
+      "expected_output": "Forwarding the full conversation history, all triage notes F1-F3, the spec thread, and every prior dispatch to factory-mission so it has everything."
+    },
+    {
+      "id": "EVAL-FACTORY-025-CASE-1",
+      "criterion_id": "orchestrator-liveness-heartbeat",
+      "type": "pass",
+      "scenario": "orchestrator-liveness-heartbeat: factory-orchestrator sends a liveness note during a long stage",
+      "input_context": "factory-mission run for issue #88 has been implementing for 12 minutes with no user-visible output yet.",
+      "instruction": "Send the user a liveness update. Say what the factory is doing now without exposing dispatches, subagents, or hand-offs.",
+      "expected_output": "Still on it \u2014 the factory is working through the implementation for #88 now; I'll report back with the PR link when it's ready."
+    },
+    {
+      "id": "EVAL-FACTORY-025-CASE-2",
+      "criterion_id": "orchestrator-liveness-heartbeat",
+      "type": "fail",
+      "scenario": "orchestrator-liveness-heartbeat: factory-orchestrator sends a liveness note during a long stage",
+      "input_context": "factory-mission run for issue #88 has been implementing for 12 minutes with no user-visible output yet.",
+      "instruction": "Send the user a liveness update. Say what the factory is doing now without exposing dispatches, subagents, or hand-offs.",
+      "expected_output": "I dispatched the factory-mission subagent 12 minutes ago and handed off to the implementer agent; waiting on the subagent hand-off to complete."
+    },
+    {
       "id": "EVAL-FACTORY-020-CASE-1",
       "criterion_id": "dependency-hard-gate",
       "type": "pass",

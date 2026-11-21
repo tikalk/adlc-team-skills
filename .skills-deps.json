@@ -14,26 +14,36 @@
     "architect-specify": [
       "architect-clarify"
     ],
+    "change-specify": [
+      "change-clarify"
+    ],
+    "evals-specify": [
+      "evals-clarify"
+    ],
     "factory-init": [
       "factory-runbook"
     ],
     "factory-intent": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-learn": [
       "factory-runbook"
     ],
     "factory-mission": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-orchestrator": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-queue": [
       "factory-runbook"
     ],
     "factory-review": [
-      "factory-runbook"
+      "factory-runbook",
+      "factory-learn"
     ],
     "factory-setup": [
       "factory-runbook"
@@ -42,7 +52,8 @@
       "factory-runbook"
     ],
     "mission-brief": [
-      "factory-mission"
+      "factory-mission",
+      "factory-learn"
     ],
     "product-analyze": [
       "architect-clarify"

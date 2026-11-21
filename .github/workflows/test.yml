@@ -5,6 +5,7 @@ name: Test & Evaluate Skills
 # as the token it's handed; neither job here needs to write to the repo.
 permissions:
   contents: read
+  pull-requests: read
 
 on:
   push:
@@ -31,9 +32,27 @@ jobs:
         # explicitly instead of relying on that as a side effect.
         run: |
           pip install pytest==9.1.1 deepeval==4.1.5 pyyaml==6.0.3
+      - name: Install PowerShell
+        run: |
+          sudo apt-get update && sudo apt-get install -y powershell=7.7.0*
+      - name: Verify PowerShell version
+        run: |
+          pwsh --version
+          pwsh -NoProfile -Command '$v = $PSVersionTable.PSVersion; if ("$($v.Major).$($v.Minor).$($v.Patch)" -ne "7.7.0") { throw "pinned PowerShell 7.7.0 required, found $($v)" }'
       - name: Run Pytest
         run: |
           pytest tests/ evals/promptfoo/tests/ -v
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Node dependencies
+        # --ignore-scripts for the same reason as the PromptFoo install below
+        # (incident 2026-08-04, commit 74f317d): blocks pre/postinstall
+        # scripts in any transitive dependency.
+        run: npm ci --ignore-scripts
+      - name: Run oracle-detector unit tests
+        run: node tests/unit/oracle-independence-detection.test.js
 
   evaluate-skills:
     name: Run PromptFoo (Skill Evals)
@@ -59,3 +78,80 @@ jobs:
         if: ${{ env.OPENAI_API_KEY != '' }}
         run: |
           promptfoo eval --config evals/promptfoo/config.js --no-cache
+
+  ledger-integrity:
+    name: Recurrence Ledger Integrity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Branch must be up to date with main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor origin/main HEAD || { echo "branch is behind origin/main: rebase, union ledger rows, deduplicate, re-validate"; exit 1; }
+      - name: Ledger header, duplicates, provenance conflicts
+        run: |
+          python3 - <<'EOF'
+          from pathlib import Path
+          p = Path("skills/factory/factory-learn/references/recurrence-ledger.tsv")
+          lines = p.read_text().splitlines()
+          assert lines[0] == "PR\tpass\tcheck-item\tverdict-head\trun\titer\tauthor\tassoc\tverified-how\tverified-at\tstanding\ttier\tnote", "ledger header"
+          rows = [l for l in lines[1:] if l.strip()]
+          assert len(rows) == len(set(rows)), "duplicate full rows"
+          seen = {}
+          for r in rows:
+              c = r.split("\t")
+              assert len(c) == 13, f"expected 13 columns, got {len(c)}: {r!r}"
+              k = (c[0], c[1], c[2], c[5])
+              rest = (c[3].lower(), c[4]) + tuple(c[6:])
+              if k in seen and seen[k] != rest:
+                  raise SystemExit(f"provenance conflict for {k}")
+              seen[k] = rest
+          print(f"ledger OK: {len(rows)} rows")
+          EOF
+      - name: Ledger-writer label required for writer changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A PR that modifies writer paths must carry the ledger-writer label.
+          # Read-only PRs (no writer-path changes) never require the label.
+          # push events have no PR number and are exempt (exit 0 before any check).
+          me="${{ github.event.pull_request.number }}"
+          if [ -z "$me" ]; then
+            echo "no PR number (push event): ledger-writer label gate skipped"
+            exit 0
+          fi
+          writers=$(git diff --name-only origin/main...HEAD -- skills/factory/factory-learn/references/recurrence-ledger.tsv skills/factory/factory-learn/scripts/bash/verify-recurrence.sh skills/factory/factory-learn/scripts/powershell/verify-recurrence.ps1)
+          if [ -z "$writers" ]; then
+            echo "no writer-path changes: ledger-writer label not required"
+            exit 0
+          fi
+          mine=$(gh api "repos/${{ github.repository }}/pulls/$me" --jq '[.labels[].name] | map(select(. == "ledger-writer")) | length')
+          [ "$mine" -ge 1 ] || { echo "this PR modifies writer paths but lacks the ledger-writer label"; exit 1; }
+          echo "ledger-writer label present for writer PR $me"
+      - name: Single active ledger-writer PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Writer intent marker: a PR opts in by carrying the ledger-writer
+          # label. File-match alone is not writer intent (any PR can touch the
+          # ledger path in passing); the label distinguishes the writer.
+          # The current PR is excluded: one active writer passes, two fail.
+          # push events have no PR number and are exempt (exit 0 before any check).
+          me="${{ github.event.pull_request.number }}"
+          if [ -z "$me" ]; then
+            echo "no PR number (push event): single-writer check skipped"
+            exit 0
+          fi
+          case "$me" in
+            *[!0-9]*)
+              echo "invalid PR number: $me" >&2
+              exit 1
+              ;;
+          esac
+          others=$(gh api "search/issues?q=repo:${{ github.repository }}+type:pr+state:open+label:ledger-writer" --jq "[.items[] | select(.number != ($me | tonumber)) | .number] | length")
+          [ "$others" -le 0 ] || { echo "another open ledger-writer PR exists"; exit 1; }
+          echo "ledger-writer check OK (current PR: $me, other writers: $others)"

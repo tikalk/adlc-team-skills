@@ -357,3 +357,36 @@ def test_converge_reads_synthesis_output():
     assert "synthesize-findings.ps1" in content, (
         "converge must name the PowerShell synthesis twin too"
     )
+
+
+# ── C. Single-review executor fence (inline executor + no-trio borrow) ────
+
+def test_single_review_path_names_inline_executor():
+    """§2 single-review must state the agent runs the passes inline itself."""
+    content = SKILL_MD.read_text(encoding="utf-8")
+    section = content.split("### 2.")[1].split("### 3.")[0]
+    assert re.search(
+        r"run the passes yourself|runs the passes itself|"
+        r"no sub-agent|do not dispatch|without dispatching",
+        section,
+        re.IGNORECASE,
+    ), (
+        "§2 must state the agent runs REVIEW.md passes itself "
+        "(inline, no sub-agent dispatch)"
+    )
+
+
+def test_single_review_path_prohibits_adversarial_trio():
+    """§2 must fence the §3 trio out of single-review mode explicitly."""
+    content = SKILL_MD.read_text(encoding="utf-8")
+    section = content.split("### 2.")[1].split("### 3.")[0]
+    assert re.search(
+        r"do not (dispatch|use) the (adversarial trio|Auditor/Adversary)|"
+        r"trio belongs to `--self-heal`|trio is --self-heal-only|"
+        r"no adversarial trio in single",
+        section,
+        re.IGNORECASE | re.DOTALL,
+    ), (
+        "§2 must state the Auditor/Adversary/Pragmatist trio "
+        "belongs to --self-heal only, not single review"
+    )

@@ -6,7 +6,8 @@
 #          --output-type draft|decision|artifact-ref|findings
 #          --summary <one line> [--records ADR-1,PDR-2] -- <path>...
 #
-# Acts only with a factory run context (ADLC_RUN_ID), `adlc.commit_steps: true`
+# Acts only with a factory run context (ADLC_RUN_ID, else the lane's
+# WORKFLOW_INPUTS.run_id through run-context.ps1), `adlc.commit_steps: true`
 # in .adlc/init-options.json, or --commit (ADR-431 §6); otherwise prints
 # `sha: none` and changes nothing. Stages ONLY the given paths, and only when
 # they are inside the ADR-433 lifecycle write allowlist; run state
@@ -55,12 +56,24 @@ if ($LASTEXITCODE -ne 0 -or -not $root) { Die 'not inside a git work tree' }
 $prefix = (git rev-parse --show-prefix).Trim()
 Set-Location $root.Trim()
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before the activity check.
+$AdlcRunContextSource = ''
+if (-not $env:ADLC_RUN_ID) { . (Join-Path $PSScriptRoot 'run-context.ps1') }
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref): its run id alone does not turn commits on (SF-FIX-11). --commit
+# and the commit_steps opt-in still do, and the commit then names the real run.
+$reviewRun = ($AdlcRunContextSource -eq 'lane' -and -not $env:ADLC_ISSUE_REF)
 $active = $false
-if ($env:ADLC_RUN_ID -or $force) { $active = $true }
+if ((-not $reviewRun -and $env:ADLC_RUN_ID) -or $force) { $active = $true }
 elseif ((Test-Path '.adlc/init-options.json') -and
         ((Get-Content '.adlc/init-options.json' -Raw) -match '"commit_steps"\s*:\s*true')) { $active = $true }
 if (-not $active) {
-    [Console]::Error.WriteLine('commit-step: commits disabled (no run context or opt-in)')
+    if ($reviewRun) {
+        [Console]::Error.WriteLine('commit-step: review run (a lane run id and no issue) — commits disabled without --commit')
+    } else {
+        [Console]::Error.WriteLine('commit-step: commits disabled (no run context or opt-in)')
+    }
     Write-Output 'sha: none'
     exit 0
 }
@@ -77,7 +90,8 @@ foreach ($p in $paths) {
           ($rp -eq 'docs/adlc/product/PRD.md') -or ($rp -eq 'docs/adlc/architect/AD.md') -or
           ($rp -like 'docs/adlc/architect/views/*') -or
           ($rp -like '.adlc/product/sections/*') -or ($rp -eq '.adlc/product/state.json') -or
-          ($rp -eq '.adlc/architect/state.json')
+          ($rp -eq '.adlc/architect/state.json') -or
+          ($rp -like 'docs/adlc/intent/*')  # the /adlc open capture file
     if (-not $ok) { Die "path $rp is outside the ADR-433 lifecycle write allowlist" }
     $rel.Add($rp)
 }
@@ -87,7 +101,8 @@ foreach ($p in $paths) {
 # old draft stays an uncommitted deletion and the engine's gate refuses it.
 $allow = @('.adlc/drafts/pdr', '.adlc/drafts/adr', 'docs/adlc/memory/pdr', 'docs/adlc/memory/adr',
            'docs/adlc/product/PRD.md', 'docs/adlc/architect/AD.md', 'docs/adlc/architect/views',
-           '.adlc/product/sections', '.adlc/product/state.json', '.adlc/architect/state.json')
+           '.adlc/product/sections', '.adlc/product/state.json', '.adlc/architect/state.json',
+           'docs/adlc/intent')
 $deleted = @(git ls-files --deleted -- $allow) + @(git diff --cached --name-only --diff-filter=D -- $allow)
 foreach ($d in $deleted) { if ($d -and -not $rel.Contains($d)) { $rel.Add($d) } }
 

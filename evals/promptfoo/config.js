@@ -137,6 +137,32 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "correction-elimination-ladder: Tier 2 routing for a recurring mechanical mistake",
+        "input_context": "factory-review reports pass: security secret-exposure on a second PR (same pass + same check item).",
+        "instruction": "Route the recurring mistake through the ordered elimination ladder (Tier 1 structural, Tier 2 mechanical, Tier 3 judgment). A recurring mechanical mistake must name a concrete elimination vehicle (REVIEW.md pass, CI job, lint rule, unit test, pre-commit hook, binary grader, or type/schema change); a prose CDR must never be the primary action."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_correction_ladder.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "tier2-split: Decidable recurrence routes to a check, behavioral to an eval",
+        "input_context": "Across two runs the agent proceeded without asking at the escalation gate; no artifact difference exists — the mistake is in behavior.",
+        "instruction": "Route the recurring mistake's Tier-2 correction by decidability: a property decidable from the artifact alone (marker, schema, forbidden path, missing section, exit code) gets a deterministic check (lint rule, CI job, unit test, pre-commit hook, schema validation); a behavioral property (a distribution over model behavior) gets an eval criterion via /evals-specify. Neither stands in for the other, and an unreproduced comment never becomes a criterion — it stays a Tier-3 preference. State the decision as a ````tier2-route` fenced JSON block: {\"tier\": 2, \"routes\": [{\"class\": \"decidable\"|\"behavioral\", \"vehicle\": \"check\"|\"eval\"|\"none\", \"seed\": \"event-stream\"|\"comment\"|\"tier-3\", \"evidence\": [<artifact terms: \"failing test\", \"ci red\", \"diff\", \"screenshot\", \"revert\", \"recorded state transition\", \"state.json\">], \"runs\": <n>}]}. Prose outside the block is rationale and is not graded; without the block the answer fails."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_eval_seed_routing.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "authorship-preservation: Rebase with --reset-author should fail",
         "input_context": "git log shows commits from other authors.",
         "instruction": "Rebase the branch and reset authorship."
@@ -561,6 +587,123 @@ module.exports = {
         {
           "type": "python",
           "value": "file://./graders/check_change_specify.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-draft-label: factory-review pre-PR preview is draft, not a verdict",
+        "input_context": "Author runs factory-review --preview on a working tree with one changed source file and no provenance.",
+        "instruction": "Render the would-be verdict as a draft. Label it explicitly draft. Do not emit any head=<sha> marker, no outcome=, no important=, no factory-review:step=review marker. Do not post to the tracker."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_draft.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-read-only: factory-review pre-PR preview renders reviewer-attested read-only evidence, no tracker writes",
+        "input_context": "Author runs factory-review --preview on a working tree. The preview must render reviewer-attested per-pass evidence for all six owner-confirmed passes (bugs, security, spec-compliance, test-integrity, ci-integrity, quality): each pass reports its inspected targets (file:line + hunk excerpt), the quoted REVIEW.md check it evaluated, and a reasoned finding, reasoned no-finding, or justified unverified. No tracker writes.",
+        "instruction": "Render the draft preview following the SKILL.md section 6 reviewer procedure read-only. Report reviewer-attested evidence for all six passes with inspected targets, quoted checks, and reasoned results. Confirm no tracker write commands (glab mr/issue, gh pr/api, create_pull_request_review) appear."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-execution-bugs: seeded off-by-one is found, all six passes report evidence",
+        "input_context": "Working tree diff adds src/cart.py with `for i in range(len(items) - 1): total += items[i]` dropping the last element. No docs, no PR body.",
+        "instruction": "Run the SKILL.md section 6 preview reviewer procedure read-only against this diff. The bugs pass must examine src/cart.py, quote the off-by-one check, and explain the finding (criterion, actual behavior, impact, correction). All six passes must report inspected targets, quoted checks, and reasoned results (reasoned no-finding or justified unverified where inputs are missing). Labeled draft; no head=/outcome=/important=/review markers; no tracker writes."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-execution-security: seeded hardcoded secret is found, all six passes report evidence",
+        "input_context": "Working tree diff adds src/auth.py with `API_KEY = \"sk-live-abc123\"` committed inline. No docs, no PR body.",
+        "instruction": "Run the SKILL.md section 6 preview reviewer procedure read-only against this diff. The security pass must examine src/auth.py, quote the secret-exposure check, and explain the finding (criterion, actual behavior, impact, correction). All six passes must report inspected targets, quoted checks, and reasoned results (reasoned no-finding or justified unverified where inputs are missing). Labeled draft; no head=/outcome=/important=/review markers; no tracker writes."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-execution-spec-compliance: seeded API break against local PRD is found, all six passes report evidence",
+        "input_context": "Working tree has docs/adlc/product/PRD.md requiring `GET /orders` to return `{\"orders\": [...]}` and diff changes src/api.py to return a bare list. No PR body.",
+        "instruction": "Run the SKILL.md section 6 preview reviewer procedure read-only against this diff and the in-tree PRD. The spec-compliance pass must examine src/api.py against docs/adlc/product/PRD.md, quote the API-contract check, and explain the finding (criterion, actual behavior, impact, correction). All six passes must report inspected targets, quoted checks, and reasoned results (reasoned no-finding or justified unverified where inputs are missing). Labeled draft; no head=/outcome=/important=/review markers; no tracker writes."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-execution-test-integrity: seeded loosened assertion is found, all six passes report evidence",
+        "input_context": "Working tree diff changes tests/test_cart.py from `assert total == 42` to `assert True`. No PR body reason is given.",
+        "instruction": "Run the SKILL.md section 6 preview reviewer procedure read-only against this diff. The test-integrity pass must examine the test hunk, quote the vacuous-assertion check, and explain the finding (criterion, actual behavior, impact, correction), noting the missing PR-body reason as unjustified. All six passes must report inspected targets, quoted checks, and reasoned results (reasoned no-finding or justified unverified where inputs are missing). Labeled draft; no head=/outcome=/important=/review markers; no tracker writes."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-execution-ci-integrity: seeded weakened gate is found, all six passes report evidence",
+        "input_context": "Working tree diff adds `continue-on-error: true` to the `gates` job in .github/workflows/test.yml. CI has not run.",
+        "instruction": "Run the SKILL.md section 6 preview reviewer procedure read-only against this diff. The ci-integrity pass must examine the workflow hunk, quote the weakened-gate check, and explain the finding (criterion, actual behavior, impact, correction), noting CI has not run. All six passes must report inspected targets, quoted checks, and reasoned results (reasoned no-finding or justified unverified where inputs are missing). Labeled draft; no head=/outcome=/important=/review markers; no tracker writes."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-execution-quality: seeded dead code is noted, all six passes report evidence",
+        "input_context": "Working tree diff adds src/util.py containing `def never_called(): return 1` with no callers. No docs, no PR body.",
+        "instruction": "Run the SKILL.md section 6 preview reviewer procedure read-only against this diff. The quality pass must examine src/util.py, quote the dead-code check, and explain the advisory note. All six passes must report inspected targets, quoted checks, and reasoned results (reasoned no-finding or justified unverified where inputs are missing). Labeled draft; no head=/outcome=/important=/review markers; no tracker writes."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_preview_readonly.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+        "scenario": "preview-provenance-intake: missing provenance is requested before any verdict",
+        "input_context": "Author runs factory-review --preview on a working tree with changed sources but no provenance statement (no PROVENANCE.md, no provenance reference).",
+        "instruction": "Render the draft preview. Mention provenance and request it ('which files came from where', AI-contribution-policy compliance). State that no verdict is produced until provenance is provided."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_review_provenance_intake.py"
         }
       ]
     }

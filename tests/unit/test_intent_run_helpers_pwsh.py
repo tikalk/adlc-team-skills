@@ -8,6 +8,7 @@ logic, fake tracker CLI, STEP_ARGS) are imported from the bash module; only
 the interpreter differs. Skipped when pwsh is not installed (CI runs it).
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -16,7 +17,12 @@ from pathlib import Path
 import pytest
 
 from test_intent_run_helpers import (
+    GH_FULL,
     GLAB,
+    INTENT,
+    INTENT_DRAFTS,
+    MISSION,
+    advance_origin_main,
     posted_body,
     RUN_ENV,
     STEP_ARGS,
@@ -58,7 +64,10 @@ def repo(tmp_path):
 
 
 def run(script, cwd, *args, env=None):
-    full_env = {k: v for k, v in os.environ.items() if not k.startswith("ADLC_")}
+    # ADLC_* and the lane's WORKFLOW_INPUTS are the run context (run-context.sh):
+    # a test run inside a runner pod must not inherit the pod's own context.
+    full_env = {k: v for k, v in os.environ.items()
+                if not k.startswith("ADLC_") and k != "WORKFLOW_INPUTS"}
     full_env.update(env or {})
     return subprocess.run(["pwsh", "-NoProfile", "-File", str(script), *args],
                           cwd=cwd, capture_output=True, text=True, env=full_env)
@@ -298,7 +307,7 @@ def test_open_mr_creates_a_draft_mr_with_issue_ownership(repo):
 
 def test_open_mr_reuses_an_open_mr_and_keeps_other_output_fields(repo):
     on_run_branch(repo)
-    env, log, out = open_mr_env(repo, extra={"FAKE_EXISTING": '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/9"}]'})
+    env, log, out = open_mr_env(repo, extra={"FAKE_EXISTING": '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/9","source_project_id":1,"target_project_id":1}]'})
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text('{"conclusion": "two PDR drafts"}')
     r = run(PS / "open-mr.ps1", repo["work"], env=env)
@@ -309,6 +318,45 @@ def test_open_mr_reuses_an_open_mr_and_keeps_other_output_fields(repo):
     data = _json.loads(out.read_text())
     assert data["mr_url"] == "https://gl.test/g/adlc-workspace/-/merge_requests/9"
     assert data["conclusion"] == "two PDR drafts"
+
+
+# A GitLab project's MR list also returns MRs opened from forks into it. A fork
+# can name its branch after the predictable run branch, so only an MR whose
+# source branch lives in this project is reused.
+FORK_MR = '{"web_url":"https://gl.test/fork/adlc-workspace/-/merge_requests/66","source_project_id":2,"target_project_id":1}'
+OWN_MR = '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}'
+
+
+def test_open_mr_never_reuses_an_mr_opened_from_a_fork(repo):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": f"[{FORK_MR}]"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/77"  # created, not the fork's
+    assert any("-X POST" in l and "merge_requests" in l for l in log.read_text().splitlines())
+    assert "merge_requests/66" not in out.read_text()
+
+
+@pytest.mark.parametrize("listed", [f"[{FORK_MR},{OWN_MR}]", f"[{OWN_MR},{FORK_MR}]"])
+def test_open_mr_reuses_the_projects_own_mr_whatever_the_list_order(repo, listed):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": listed})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/70"
+    assert "-X POST" not in log.read_text()
+
+
+@pytest.mark.parametrize("entry", [
+    '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70"}',
+    '{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","target_project_id":1}',
+])
+def test_open_mr_does_not_reuse_an_mr_without_a_proven_source_project(repo, entry):
+    on_run_branch(repo)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": f"[{entry}]"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip().endswith("/merge_requests/77")
 
 
 def test_open_mr_assignee_falls_back_to_the_runner(repo):
@@ -475,3 +523,240 @@ def test_open_mr_block_names_the_scope_before_push(repo):
     assert "api" in blocked["reason"]
     src = (PS / "open-mr.ps1").read_text()
     assert "denied_scope" in src or '"block"' in src
+
+
+# ── capture-time branch and MR reuse (adlc-workspace#111) ──────────────────
+
+def ps_capture_branch_on_origin(repo):
+    w = repo["work"]
+    run(PS / "run-branch.ps1", w, env=RUN_ENV)
+    write(w, "docs/adlc/intent/adlc-workspace-12.md", "captured\n")
+    git(w, "add", "-A")
+    git(w, "commit", "-q", "-m", "capture")
+    git(w, "push", "-q", "origin", INTENT)
+    git(w, "switch", "-q", "main")
+
+
+EXISTING_70 = '[{"web_url":"https://gl.test/g/adlc-workspace/-/merge_requests/70","source_project_id":1,"target_project_id":1}]'
+
+
+def test_open_mr_reuse_pushes_the_run_commits_fast_forward(repo):
+    ps_capture_branch_on_origin(repo)
+    run(PS / "run-branch.ps1", repo["work"], env=RUN_ENV)
+    write(repo["work"], ".adlc/drafts/pdr/PDR-1.md", "a\n")
+    run(PS / "commit-step.ps1", repo["work"], *STEP_ARGS, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
+    head = git(repo["work"], "rev-parse", "HEAD")
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": EXISTING_70})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://gl.test/g/adlc-workspace/-/merge_requests/70"
+    assert git(repo["bare"], "rev-parse", INTENT) == head
+    calls = log.read_text()
+    assert "-X POST" not in calls and "-X PUT" not in calls and "-X PATCH" not in calls
+    assert "issues/12" not in calls
+
+
+def test_open_mr_reuse_dies_on_a_non_fast_forward_push_and_never_forces(repo, tmp_path):
+    ps_capture_branch_on_origin(repo)
+    run(PS / "run-branch.ps1", repo["work"], env=RUN_ENV)
+    _push_from_other_pod(repo, tmp_path, "moved on the remote")
+    remote_head = git(repo["bare"], "rev-parse", INTENT)
+    write(repo["work"], ".adlc/drafts/pdr/PDR-1.md", "a\n")
+    run(PS / "commit-step.ps1", repo["work"], *STEP_ARGS, ".adlc/drafts/pdr/PDR-1.md", env=RUN_ENV)
+    env, log, out = open_mr_env(repo, {"FAKE_EXISTING": EXISTING_70})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode != 0
+    assert "moved on the remote" in r.stderr and "re-run run-branch" in r.stderr
+    assert git(repo["bare"], "rev-parse", INTENT) == remote_head
+    assert not out.exists()
+
+
+def test_run_branch_catches_up_a_stale_intent_branch_with_one_merge_commit(repo, tmp_path):
+    ps_capture_branch_on_origin(repo)
+    before = git(repo["bare"], "rev-parse", INTENT)
+    main_head = advance_origin_main(repo, tmp_path)
+    r = run(PS / "run-branch.ps1", repo["work"], env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    w = repo["work"]
+    assert git(w, "rev-list", "--count", f"{before}..HEAD") == "2"
+    assert git(w, "rev-list", "--count", "--merges", f"{before}..HEAD") == "1"
+    assert git(w, "rev-parse", "HEAD^1") == before and git(w, "rev-parse", "HEAD^2") == main_head
+    assert git(repo["bare"], "rev-parse", INTENT) == before
+
+
+def test_run_branch_leaves_an_up_to_date_intent_branch_unchanged(repo):
+    ps_capture_branch_on_origin(repo)
+    before = git(repo["bare"], "rev-parse", INTENT)
+    r = run(PS / "run-branch.ps1", repo["work"], env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(repo["work"], "rev-parse", "HEAD") == before
+
+
+def test_run_branch_dies_naming_the_branch_on_a_catch_up_conflict(repo, tmp_path):
+    w = repo["work"]
+    run(PS / "run-branch.ps1", w, env=RUN_ENV)
+    write(w, "README.md", "intent side\n")
+    git(w, "commit", "-q", "-am", "intent edits README")
+    git(w, "push", "-q", "origin", INTENT)
+    before = git(w, "rev-parse", "HEAD")
+    git(w, "switch", "-q", "main")
+    advance_origin_main(repo, tmp_path, rel="README.md", text="main side\n", msg="main edits README")
+    r = run(PS / "run-branch.ps1", w, env=RUN_ENV)
+    assert r.returncode != 0
+    assert INTENT in r.stderr and "conflict" in r.stderr
+    assert git(w, "rev-parse", "HEAD") == before
+    assert not (w / ".git" / "MERGE_HEAD").exists()
+
+
+def test_run_branch_never_merges_main_into_a_code_branch(repo, tmp_path):
+    w = repo["work"]
+    run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    write(w, "src.txt", "c\n")
+    git(w, "add", "-A")
+    git(w, "commit", "-q", "-m", "code")
+    git(w, "push", "-q", "origin", "factory/mission/adlc-workspace-12")
+    before = git(w, "rev-parse", "HEAD")
+    git(w, "switch", "-q", "main")
+    advance_origin_main(repo, tmp_path)
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(w, "rev-parse", "HEAD") == before
+
+
+# ── a new code branch starts from origin's default branch (SF-SKILL-08) ────
+
+def ps_on_intent_branch_with_drafts(repo):
+    w = repo["work"]
+    run(PS / "run-branch.ps1", w, env=RUN_ENV)
+    for rel in INTENT_DRAFTS:
+        write(w, rel, "draft\n")
+    git(w, "add", "-A")
+    git(w, "commit", "-q", "-m", "intent drafts")
+    assert git(w, "branch", "--show-current") == INTENT
+
+
+def test_a_new_code_branch_does_not_inherit_the_intent_drafts(repo):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == MISSION
+    assert git(w, "rev-parse", "HEAD") == git(repo["bare"], "rev-parse", "main")
+    for rel in INTENT_DRAFTS:
+        assert not (w / rel).exists(), rel
+
+
+def test_a_new_code_branch_starts_from_the_latest_origin_default(repo, tmp_path):
+    ps_on_intent_branch_with_drafts(repo)
+    main_head = advance_origin_main(repo, tmp_path)
+    r = run(PS / "run-branch.ps1", repo["work"], "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(repo["work"], "rev-parse", "HEAD") == main_head
+
+
+def test_a_new_code_branch_keeps_the_missions_uncommitted_files(repo):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    write(w, ".adlc/drafts/adr/ADR-7-cache.md", "proposed\n")
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert (w / ".adlc/drafts/adr/ADR-7-cache.md").read_text() == "proposed\n"
+
+
+def test_a_new_code_branch_uses_the_known_default_when_origin_is_silent(repo, tmp_path):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    git(w, "remote", "set-url", "origin", str(tmp_path / "unreachable.git"))
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(w, "rev-parse", "HEAD") == git(w, "rev-parse", "refs/remotes/origin/main")
+
+
+def test_a_new_code_branch_warns_when_no_default_branch_is_known(repo, tmp_path):
+    ps_on_intent_branch_with_drafts(repo)
+    w = repo["work"]
+    head = git(w, "rev-parse", "HEAD")
+    git(w, "remote", "set-url", "origin", str(tmp_path / "unreachable.git"))
+    git(w, "update-ref", "-d", "refs/remotes/origin/main")
+    r = run(PS / "run-branch.ps1", w, "--kind", "code", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert "no origin default branch found" in r.stderr and MISSION in r.stderr
+    assert git(w, "rev-parse", "HEAD") == head
+
+
+def test_commit_step_accepts_the_capture_file(repo):
+    w = repo["work"]
+    write(w, "docs/adlc/intent/adlc-workspace-12.md", "captured\n")
+    r = run(PS / "commit-step.ps1", w, *STEP_ARGS, "docs/adlc/intent/adlc-workspace-12.md", env=RUN_ENV)
+    assert r.returncode == 0, r.stderr
+    assert git(w, "show", "--name-only", "--format=", "HEAD") == "docs/adlc/intent/adlc-workspace-12.md"
+
+
+@pytest.mark.parametrize("path", ["docs/adlc/intentx/a.md", "docs/adlc/other.md", "docs/adlc/intent"])
+def test_commit_step_still_refuses_neighbours_of_the_capture_path(repo, path):
+    w = repo["work"]
+    write(w, "docs/adlc/intentx/a.md", "x\n")
+    write(w, "docs/adlc/other.md", "x\n")
+    head = git(w, "rev-parse", "HEAD")
+    r = run(PS / "commit-step.ps1", w, *STEP_ARGS, path, env=RUN_ENV)
+    assert r.returncode != 0
+    assert "allowlist" in r.stderr
+    assert git(w, "rev-parse", "HEAD") == head
+
+
+# ── the code host picks the provider (cross-host code MR) ───────────────────
+
+def ps_on_github_origin(repo):
+    git(repo["work"], "remote", "set-url", "origin", "https://github.com/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://github.com/g/adlc-workspace.git")
+    on_run_branch(repo)
+
+
+def ps_github_env(repo, extra):
+    gh_bin = fake_cli(repo["tmp"], "gh", GH_FULL)
+    env, glab_log, out = open_mr_env(repo)
+    gh_log = repo["tmp"] / "gh.log"
+    env.update(PATH=f"{gh_bin}:{env['PATH']}", FAKE_LOG=str(gh_log))
+    env.update(extra)
+    return env, gh_log, out
+
+
+def test_open_mr_cross_host_opens_a_github_pr_for_a_gitlab_issue(repo):
+    ps_on_github_origin(repo)
+    env, log, out = ps_github_env(repo, {"ISSUE_PROVIDER": "gitlab", "ADLC_INITIATOR": "U123"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "https://github.com/g/adlc-workspace/pull/9"
+    calls = log.read_text()
+    create = next(l for l in calls.splitlines() if "-X POST" in l and "/pulls" in l)
+    assert "Issue: https://gl.test/g/adlc-workspace/-/issues/12" in create
+    assert "issues/12" not in calls.replace("-/issues/12", "")
+    assert "-X PATCH" not in calls
+    assigned = [l for l in calls.splitlines() if "/assignees" in l]
+    assert len(assigned) == 1 and "assignees[]=runner-bot" in assigned[0]
+    assert not (repo["tmp"] / "glab.log").exists()
+    assert json.loads(out.read_text())["mr_url"].endswith("/pull/9")
+
+
+def test_open_mr_same_host_github_still_propagates_the_issue_milestone(repo):
+    ps_on_github_origin(repo)
+    env, log, out = ps_github_env(repo, {"ISSUE_PROVIDER": "github"})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode == 0, r.stderr
+    calls = log.read_text()
+    assert "repos/g/adlc-workspace/issues/12" in calls
+    assert any("-X PATCH" in l and "milestone=3" in l for l in calls.splitlines())
+    assert any("assignees[]=octo" in l for l in calls.splitlines())
+
+
+@pytest.mark.parametrize("issue_provider", ["gitlab", "github"])
+def test_open_mr_refuses_an_unknown_origin_host_before_any_api_call(repo, issue_provider):
+    git(repo["work"], "remote", "set-url", "origin", "https://bitbucket.org/g/adlc-workspace.git")
+    git(repo["work"], "config", f"url.{repo['bare']}.insteadOf", "https://bitbucket.org/g/adlc-workspace.git")
+    on_run_branch(repo)
+    env, log, out = ps_github_env(repo, {"ISSUE_PROVIDER": issue_provider})
+    r = run(PS / "open-mr.ps1", repo["work"], env=env)
+    assert r.returncode != 0
+    assert "bitbucket.org" in r.stderr and "no token is sent" in r.stderr
+    assert not log.exists() and not (repo["tmp"] / "glab.log").exists()
+    assert not out.exists()

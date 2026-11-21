@@ -6,7 +6,8 @@
 #          --output-type draft|decision|artifact-ref|findings
 #          --summary <one line> [--records ADR-1,PDR-2] -- <path>...
 #
-# Acts only with a factory run context (ADLC_RUN_ID), `adlc.commit_steps: true`
+# Acts only with a factory run context (ADLC_RUN_ID, else the lane's
+# WORKFLOW_INPUTS.run_id through run-context.sh), `adlc.commit_steps: true`
 # in .adlc/init-options.json, or --commit (ADR-431 §6); otherwise prints
 # `sha: none` and changes nothing. Stages ONLY the given paths, and only when
 # they are inside the ADR-433 lifecycle write allowlist; run state
@@ -42,18 +43,31 @@ summary="${summary# }"; summary="${summary% }"; summary="${summary:0:100}"
 [ -n "$summary" ] || die "missing --summary"
 [ "${#paths[@]}" -gt 0 ] || die "no paths given"
 
+# Raw lane runs (reviews, autonomous missions) carry the run id only in
+# WORKFLOW_INPUTS; adopt it before the activity check (and before the cd below).
+ADLC_RUN_CONTEXT_SOURCE=""
+if [ -z "${ADLC_RUN_ID:-}" ]; then . "$(dirname "$0")/run-context.sh"; fi
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref): its run id alone does not turn commits on (SF-FIX-11). --commit
+# and the commit_steps opt-in still do, and the commit then names the real run.
+review_run=0
+if [ "$ADLC_RUN_CONTEXT_SOURCE" = lane ] && [ -z "${ADLC_ISSUE_REF:-}" ]; then review_run=1; fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"
 prefix="$(git rev-parse --show-prefix)"
 cd "$root"
 
 active=0
-if [ -n "${ADLC_RUN_ID:-}" ] || [ "$force" = 1 ]; then
+if { [ "$review_run" = 0 ] && [ -n "${ADLC_RUN_ID:-}" ]; } || [ "$force" = 1 ]; then
   active=1
 elif [ -f .adlc/init-options.json ] && grep -Eq '"commit_steps"[[:space:]]*:[[:space:]]*true' .adlc/init-options.json; then
   active=1
 fi
 if [ "$active" != 1 ]; then
-  echo "commit-step: commits disabled (no run context or opt-in)" >&2
+  if [ "$review_run" = 1 ]; then
+    echo "commit-step: review run (a lane run id and no issue) — commits disabled without --commit" >&2
+  else
+    echo "commit-step: commits disabled (no run context or opt-in)" >&2
+  fi
   echo "sha: none"
   exit 0
 fi
@@ -70,6 +84,7 @@ for p in "${paths[@]}"; do
     .adlc/drafts/pdr/*|.adlc/drafts/adr/*|docs/adlc/memory/pdr/*|docs/adlc/memory/adr/*) ;;
     docs/adlc/product/PRD.md|docs/adlc/architect/AD.md|docs/adlc/architect/views/*) ;;
     .adlc/product/sections/*|.adlc/product/state.json|.adlc/architect/state.json) ;;
+    docs/adlc/intent/*) ;;  # the /adlc open capture file
     *) die "path $p is outside the ADR-433 lifecycle write allowlist" ;;
   esac
   rel+=("$p")
@@ -80,7 +95,8 @@ done
 # old draft stays an uncommitted deletion and the engine's gate refuses it.
 allow=(.adlc/drafts/pdr .adlc/drafts/adr docs/adlc/memory/pdr docs/adlc/memory/adr
   docs/adlc/product/PRD.md docs/adlc/architect/AD.md docs/adlc/architect/views
-  .adlc/product/sections .adlc/product/state.json .adlc/architect/state.json)
+  .adlc/product/sections .adlc/product/state.json .adlc/architect/state.json
+  docs/adlc/intent)
 while IFS= read -r -d '' d; do
   rel+=("$d")
 done < <(git ls-files -z --deleted -- "${allow[@]}"; git diff --cached -z --name-only --diff-filter=D -- "${allow[@]}")

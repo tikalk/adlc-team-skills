@@ -14,7 +14,7 @@ Conducts **bottom-up error analysis** following **EDD Principles III & IX** (Err
 1. **Draft Eval Records** - Individual `EVAL-*.md` files in `.adlc/drafts/evals/` with open coding notes
 2. **Error Pattern Documentation** - Bottom-up failure taxonomy from actual traces
 3. **Pass/Fail Examples** - Real examples that should pass/fail each criterion
-4. **Auto-handoff** to `/evals-clarify` for axial coding and clustering
+4. **Context handoff** to `/evals-clarify` — draft context is packaged for axial coding and clustering; the user runs the clarify gate (the agent cannot invoke it)
 
 **Key EDD Principles Applied**:
 - **Principle III**: Error Analysis & Pattern Discovery - Open coding → failure taxonomy
@@ -67,11 +67,12 @@ Group patterns into draft criteria. For each:
 - Populate metadata and error analysis notes.
 - Regenerate index at `.adlc/drafts/evals/evals.md`.
 
-#### Phase 4: Auto-Handoff
-Trigger `/evals-clarify` for axial coding and clustering.
+#### Phase 4: Context Handoff
+Produce the handoff context and name `/evals-clarify` as the next step — the
+user runs it; clarify is a human gate and cannot be model-invoked.
 
 ## Verification
 - Draft files created at `.adlc/drafts/evals/EVAL-*.md`
 - Index file `.adlc/drafts/evals/evals.md` updated with draft summaries
 - Each draft contains: status "draft", pass/fail conditions, trace sources, and concrete examples
-- Auto-handoff context produced with list of created drafts
+- Handoff context produced with list of created drafts, and `/evals-clarify` named as the next step

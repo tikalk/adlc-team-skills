@@ -78,7 +78,7 @@ If already full format, proceed with normal review.
 #### Phase 2: Refinement & Adversarial Generation
 - Generate 3-5 adversarial (attack) examples per criterion to test robustness.
 - Balance pass/fail examples (~50/50 ratio).
-- Write every clarification point and criterion revision in Simplified Technical English (short sentences, one idea each, active voice, imperative asks, named referents, plain words). Read the contract at `skills/authoring/references/ste-rules.md` before drafting. Count crossed boundaries (`record`, `lane`, `team`, `now`): **0–1 boundaries** use plain STE prose, however severe the gap; **2 or more boundaries** draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints.
+- Read the contract at `skills/authoring/references/ste-rules.md` before drafting. Invoke `skills/authoring/scripts/bash/render-decision-map.sh` (`render_decision_map` / `render_status_box`, or `render-decision-map.ps1` on Windows) rather than hand-draw any visual. Count crossed boundaries (`record`, `lane`, `team`, `now`): **0–1 boundaries** draw the STATUS BOX first, then plain STE prose beneath, however severe the gap; **2 or more boundaries** draw the full ASCII decision map first (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED), then prose beneath. Render unknown gaps as `?` slots, never prose complaints. A map that would exceed gate payload size caps falls back to prose plus `payload_status: map-omitted (size cap)`.
 
 #### Phase 3: Holdout Isolation
 - For randomly seeded criteria: isolate exactly 20% of examples as a

@@ -1,6 +1,6 @@
 # Tracker-Agnostic Integration Layer
 
-> **Scope rule**: scripts stay skill-local — invoke `factory-runbook` for publish operations. `scripts/` below is relative to the `factory-runbook` skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
+> **Scope rule**: scripts stay skill-local — never source a script from another skill. For publish operations, read the `factory-runbook` procedure and run its `scripts/` directly. `scripts/` below is relative to the `factory-runbook` skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
 ## Overview
 

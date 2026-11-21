@@ -729,7 +729,7 @@ def test_factory_run_checklist_comes_first(skill):
     assert head in text
     assert text.index(head) < text.index("## What this skill does")
     block = text[text.index(head):text.index("## What this skill does")]
-    for needle in ("Invoke the `factory-runbook` skill", "Never ask for approval", "conclusion", "ADLC_STEP_OUTPUT"):
+    for needle in ("factory-runbook/scripts/bash/<name>.sh", "Never ask for approval", "conclusion", "ADLC_STEP_OUTPUT"):
         assert needle in block, needle
 # ── open-mr delegates to resolve-mr-ownership (factory-mission-issue-20, RED) ──
 

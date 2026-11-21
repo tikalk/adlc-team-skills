@@ -106,8 +106,12 @@ on the issue).
 the issue's `## Definition of Done`) against the issue: exit 0 every item
 done (not-applicable items disclosed with their reason), 3 some skipped and
 disclosed, 1 an item unaccounted for / `done` without evidence / "pending" as
-a reason, 2 usage or read error. The summary block goes into the completion
-record. Policy for skipped items (owner decision, SF-SKILL-07): accepted when
+a reason, 2 usage or read error — including an issue with no
+`## Definition of Done` section, where the mission skips the check and says so
+in the completion record. It checks that every item is accounted for in a
+ledger the mission wrote about itself, not the work: `"evidence": "done"`
+passes. The summary block goes into the completion record. Policy for skipped
+items (owner decision, SF-SKILL-07): accepted when
 disclosed (exit 3); pass `--fail-on-skip` to make any skip fail (exit 1).
 
 ---

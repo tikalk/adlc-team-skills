@@ -21,12 +21,18 @@
 # Usage:
 #   . run-context.ps1            # dot-sourced (the helpers do this): sets
 #                                # $env:ADLC_RUN_ID and $env:ADLC_ISSUE_REF when
-#                                # resolvable, changes nothing else
+#                                # resolvable, and the variable
+#                                # $AdlcRunContextSource (adlc | lane | none; not
+#                                # an environment variable) — changes nothing else
 #   pwsh -File run-context.ps1   # prints four key=value lines:
 #                                #   factory_run=yes|no  run_id=<id|>
 #                                #   issue_ref=<ref|>    source=<adlc|lane|none>
 # Exit: 0, also when nothing resolves (absence is an answer, not an error);
 # 2 on a usage error. node is the JSON engine (same as the bash twin).
+#
+# A review run is a lane run with a run id and NO issue (its issue_ref is the
+# MR ref). run-branch, commit-step and open-mr read $AdlcRunContextSource to
+# stay no-ops there (SF-FIX-11).
 
 $__adlcRcDotSourced = ($MyInvocation.InvocationName -eq '.')
 
@@ -75,6 +81,8 @@ if ($__adlcRcDotSourced) {
     # Dot-sourced: adopt what resolved, leave everything else alone.
     if ($__adlcRc.RunId) { $env:ADLC_RUN_ID = $__adlcRc.RunId }
     if ($__adlcRc.IssueRef) { $env:ADLC_ISSUE_REF = $__adlcRc.IssueRef }
+    # Where the run id came from — for the dot-sourcing script only.
+    $AdlcRunContextSource = $__adlcRc.Source
     Remove-Variable -Name __adlcRc, __adlcRcDotSourced -ErrorAction SilentlyContinue
     return
 }

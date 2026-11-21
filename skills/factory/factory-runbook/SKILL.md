@@ -94,8 +94,11 @@ tracker error). `--issue` defaults to the run's issue.
 [--details-file <md>]` leaves a mission run's one completion record on its
 issue (`<!-- factory-mission:step=complete … run=<run id> … outcome=… -->`;
 blocked/failed records also carry the `factory-run:ended` marker). The run id
-comes from the run context only; a run that already has a record posts
-nothing; the record is read back (exit 0 only when it is on the issue).
+comes from the run context only; a run whose newest record already says this
+outcome posts nothing, and a different outcome (the run was retried or resumed
+and ended differently) is posted as a record that names the one it replaces;
+the record is read back over every page of the thread (exit 0 only when it is
+on the issue).
 
 **Proof of work:** `bash scripts/bash/check-proof-of-work.sh --issue <ref>
 --summary-file <md>` checks the mission's ledger
@@ -103,8 +106,12 @@ nothing; the record is read back (exit 0 only when it is on the issue).
 the issue's `## Definition of Done`) against the issue: exit 0 every item
 done (not-applicable items disclosed with their reason), 3 some skipped and
 disclosed, 1 an item unaccounted for / `done` without evidence / "pending" as
-a reason, 2 usage or read error. The summary block goes into the completion
-record. Policy for skipped items (owner decision, SF-SKILL-07): accepted when
+a reason, 2 usage or read error — including an issue with no
+`## Definition of Done` section, where the mission skips the check and says so
+in the completion record. It checks that every item is accounted for in a
+ledger the mission wrote about itself, not the work: `"evidence": "done"`
+passes. The summary block goes into the completion record. Policy for skipped
+items (owner decision, SF-SKILL-07): accepted when
 disclosed (exit 3); pass `--fail-on-skip` to make any skip fail (exit 1).
 
 ---

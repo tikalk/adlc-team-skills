@@ -19,12 +19,19 @@
 #
 # Usage:
 #   . run-context.sh        # sourced (the helpers do this): exports ADLC_RUN_ID
-#                           # and ADLC_ISSUE_REF when resolvable, changes nothing else
+#                           # and ADLC_ISSUE_REF when resolvable, and sets the
+#                           # shell variable ADLC_RUN_CONTEXT_SOURCE (adlc |
+#                           # lane | none; not exported) — changes nothing else
 #   bash run-context.sh     # prints four key=value lines:
 #                           #   factory_run=yes|no  run_id=<id|>
 #                           #   issue_ref=<ref|>    source=<adlc|lane|none>
 # Exit: 0, also when nothing resolves (absence is an answer, not an error);
 # 2 on a usage error. PowerShell twin: ../powershell/run-context.ps1.
+#
+# A review run is a lane run with a run id and NO issue (its issue_ref is the
+# MR ref). run-branch, commit-step and open-mr read ADLC_RUN_CONTEXT_SOURCE to
+# stay no-ops there: a review has no run branch to cut and no MR to open
+# (SF-FIX-11).
 
 # One string field of WORKFLOW_INPUTS, or "" when it is absent, not JSON, or
 # not a string.
@@ -69,6 +76,8 @@ if [ "${BASH_SOURCE[0]}" != "$0" ]; then
   # Sourced: adopt what resolved, leave everything else alone.
   if [ -n "$_adlc_rc_run_id" ]; then export ADLC_RUN_ID="$_adlc_rc_run_id"; fi
   if [ -n "$_adlc_rc_issue_ref" ]; then export ADLC_ISSUE_REF="$_adlc_rc_issue_ref"; fi
+  # Where the run id came from — for the sourcing script only, never exported.
+  ADLC_RUN_CONTEXT_SOURCE="$_adlc_rc_source"
   unset -f _adlc_rc_field _adlc_rc_resolve
   unset _adlc_rc_run_id _adlc_rc_issue_ref _adlc_rc_source
   return 0

@@ -170,7 +170,7 @@ Retrieve all comments matching a marker pattern.
 | MCP (atlassian) | `get_issue_comments` |
 | CLI (gh) | `gh pr view <pr> --comments --json comments` |
 | CLI (glab) | `glab mr notes <mr>` |
-| CLI (glab api) | `glab api --hostname <host> "projects/<url-encoded-path>/merge_requests/<iid>/notes?sort=desc&per_page=100"` (issue: `…/issues/<iid>/notes`) |
+| CLI (glab api) | `glab api --hostname <host> --paginate "projects/<url-encoded-path>/merge_requests/<iid>/notes?sort=desc&per_page=100"` (issue: `…/issues/<iid>/notes`). Keep `--paginate`: one page is the newest 100 notes, system notes included, and a marker older than that is missed — the idempotency check of Safety Constraint 8 then posts a duplicate. The output is one JSON array per page, back to back. |
 | CLI (linear) | `linear issue comments <id>` |
 | CLI (jira) | `jira issue list-comments <id>` |
 

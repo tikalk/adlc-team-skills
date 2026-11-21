@@ -44,7 +44,14 @@ function json([string]$Script, [string[]]$JArgs = @()) {
 
 # Raw lane runs (reviews, autonomous missions) carry the run id only in
 # WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+$AdlcRunContextSource = ''
 if (-not $env:ADLC_RUN_ID) { . (Join-Path $PSScriptRoot 'run-context.ps1') }
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref) and nothing to publish: stay a no-op there (SF-FIX-11).
+if ($env:ADLC_RUN_ID -and $AdlcRunContextSource -eq 'lane' -and -not $env:ADLC_ISSUE_REF) {
+    [Console]::Error.WriteLine('open-mr: review run (a lane run id and no issue) — skipped')
+    exit 0
+}
 if (-not $env:ADLC_RUN_ID) {
     [Console]::Error.WriteLine('open-mr: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped')
     exit 0

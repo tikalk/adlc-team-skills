@@ -96,6 +96,24 @@ Paths validated by CI and not re-checked by review:
 - `package-lock.json` — lockfile integrity
 - `go.sum` — Go module checksums
 - `.github/workflows/` — CI workflow syntax
+
+## Sensitive Paths
+
+Paths whose changes carry elevated merge risk. They feed the Impact row of the merge-risk table (SKILL.md §2) and the triage cost gate (`references/review-loop.md`) — they never block on their own, and risk never changes `outcome=`:
+
+- `sensitive-paths:`
+  - `auth/` — authentication, authorization, session handling
+  - `billing/` — payments, invoicing, entitlements
+  - `migrations/` — schema/data migrations (hard to roll back)
+
+A repository extends this list in its own REVIEW.md; the defaults above always apply unless explicitly narrowed with a stated reason.
+
+## Codeowners
+
+Advisory-only routing hints — who should look at a finding. A missing or unresponsive owner never blocks merge-readiness and never changes `outcome=`:
+
+- `codeowners:`
+  - `<path-glob>: @owner` — e.g. `migrations/: @backend-leads`
 ```
 
 ---
@@ -213,6 +231,15 @@ Checks:
 - Naming conventions
 - Dead code
 - Missing documentation
+
+## Sensitive Paths
+sensitive-paths:
+- auth/
+- billing/
+- migrations/
+
+## Codeowners
+codeowners: {}  # advisory-only; <path-glob>: @owner
 
 ## Severity Weights
 | Severity | Blocks merge? | Triggers fix? |

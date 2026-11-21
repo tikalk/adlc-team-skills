@@ -18,9 +18,7 @@ A change is **small** when ALL of these hold:
    (e.g. `*.md`, `docs/`) or configuration (e.g. `*.yml`, `*.yaml`,
    `*.json`, `*.toml`) with no behavior change.
 2. **≤3 files** — at most 3 files changed (threshold N=3).
-3. **No sensitive paths** — no changed file touches a sensitive path:
-   `auth`, `billing`, or `migrations`. (Minimal inline list; Task 3
-   replaces it with the REVIEW.md policy field.)
+3. **No sensitive paths** — no changed file touches a `sensitive-paths:` entry from REVIEW.md (`references/review-policy.md`: `auth/`, `billing/`, `migrations/` by default, plus repo additions).
 
 | Triage result | `review-depth:` disclosure | What runs |
 |---------------|---------------------------|-----------|

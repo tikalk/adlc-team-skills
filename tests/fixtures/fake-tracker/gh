@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake `gh api`: the fake tracker in ./glab, answering as GitHub does (issue
+# comments oldest first). See ./glab for the state files and the knobs.
+FAKE_GH=1 exec bash "$(dirname "$0")/glab" "$@"

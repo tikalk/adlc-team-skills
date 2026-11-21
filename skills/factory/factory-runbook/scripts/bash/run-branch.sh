@@ -45,9 +45,16 @@ esac
 
 # Raw lane runs (reviews, autonomous missions) carry the run id only in
 # WORKFLOW_INPUTS; adopt it before deciding there is no run context.
+ADLC_RUN_CONTEXT_SOURCE=""
 if [ -z "${ADLC_RUN_ID:-}" ]; then . "$(dirname "$0")/run-context.sh"; fi
 if [ -z "${ADLC_RUN_ID:-}" ]; then
   echo "run-branch: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped" >&2
+  exit 0
+fi
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref) and nothing to publish: stay a no-op there (SF-FIX-11).
+if [ "$ADLC_RUN_CONTEXT_SOURCE" = lane ] && [ -z "${ADLC_ISSUE_REF:-}" ]; then
+  echo "run-branch: review run (a lane run id and no issue) — skipped" >&2
   exit 0
 fi
 [[ "$ADLC_RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "invalid ADLC_RUN_ID"

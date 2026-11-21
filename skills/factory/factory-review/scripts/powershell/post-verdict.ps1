@@ -44,6 +44,8 @@ $script:ErrorView = 'ConciseView'
 
 function Die([string]$Message) {
     [Console]::Error.WriteLine("post-verdict: $Message")
+    # The file that holds the tracker CLI's last stderr (set further down).
+    if ($script:errFile) { Remove-Item -LiteralPath $script:errFile -Force -ErrorAction SilentlyContinue }
     exit 2
 }
 
@@ -89,8 +91,25 @@ if ($mr -cmatch '^(([A-Za-z0-9_][A-Za-z0-9._-]*/)+[A-Za-z0-9_][A-Za-z0-9._-]*)!(
     Die '--mr must be <group>/<project>!<iid> (GitLab) or <owner>/<repo>#<number> (GitHub)'
 }
 
+# The CLI's stderr of the last call is kept in $script:errFile (see Get-Why).
+$script:errFile = [System.IO.Path]::GetTempFileName()
 function Api([string[]]$ApiArgs) {
-    if ($provider -eq 'gitlab') { glab api --hostname $apiHost @ApiArgs } else { gh api --hostname github.com @ApiArgs }
+    if ($provider -eq 'gitlab') { glab api --hostname $apiHost @ApiArgs 2> $script:errFile } else { gh api --hostname github.com @ApiArgs 2> $script:errFile }
+}
+
+# Why the tracker CLI failed: the line of its stderr that carries the HTTP
+# status, else its last line — one line, at most 200 characters, token-shaped
+# strings removed (same rule as the bash twin).
+function Get-Why {
+    $all = @()
+    if (Test-Path -LiteralPath $script:errFile) { $all = @(Get-Content -LiteralPath $script:errFile | Where-Object { $_ -match '\S' }) }
+    $l = [string](@($all | Where-Object { $_ -cmatch 'HTTP [0-9]{3}' }) | Select-Object -Last 1)
+    if (-not $l) { $l = [string]($all | Select-Object -Last 1) }
+    $l = $l -replace '[\x00-\x1f]', ''
+    if ($l.Length -gt 200) { $l = $l.Substring(0, 200) }
+    $l = $l -creplace '(glpat-|ghp_|gho_|ghs_|github_pat_)[A-Za-z0-9_-]+', '<redacted>'
+    if ($l) { return $l }
+    return 'no error text from the tracker CLI'
 }
 
 # Same marker parser as the bash twin. Prints
@@ -142,6 +161,7 @@ if (hits.length) console.log(String(hits[0].id));
 '@
 
 $tmpFiles = [System.Collections.Generic.List[string]]::new()
+$tmpFiles.Add($script:errFile)
 function New-TempFile { $f = [System.IO.Path]::GetTempFileName(); $tmpFiles.Add($f); return $f }
 function Remove-TempFiles { foreach ($f in $tmpFiles) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue } }
 
@@ -150,15 +170,16 @@ function Remove-TempFiles { foreach ($f in $tmpFiles) { Remove-Item -LiteralPath
 function Read-Thread {
     $out = [System.Collections.Generic.List[string]]::new()
     if ($provider -eq 'gitlab') {
-        $r = Api @("projects/$p/merge_requests/$iid/notes?sort=desc&order_by=created_at&per_page=100") 2>$null
-        if ($LASTEXITCODE -ne 0) { Remove-TempFiles; Die "cannot read the notes of $mr" }
+        # Every page: the newest 100 notes are not the whole thread (SF-FIX-11).
+        $r = Api @('--paginate', "projects/$p/merge_requests/$iid/notes?sort=desc&order_by=created_at&per_page=100")
+        if ($LASTEXITCODE -ne 0) { $why = Get-Why; Remove-TempFiles; Die "cannot read the notes of $mr — $why" }
         $out.Add((@($r) -join "`n"))
     } else {
-        $r = Api @('--paginate', "repos/$project/pulls/$iid/reviews?per_page=100") 2>$null
-        if ($LASTEXITCODE -ne 0) { Remove-TempFiles; Die "cannot read the reviews of $mr" }
+        $r = Api @('--paginate', "repos/$project/pulls/$iid/reviews?per_page=100")
+        if ($LASTEXITCODE -ne 0) { $why = Get-Why; Remove-TempFiles; Die "cannot read the reviews of $mr — $why" }
         $out.Add((@($r) -join "`n"))
-        $c = Api @('--paginate', "repos/$project/issues/$iid/comments?per_page=100") 2>$null
-        if ($LASTEXITCODE -ne 0) { Remove-TempFiles; Die "cannot read the comments of $mr" }
+        $c = Api @('--paginate', "repos/$project/issues/$iid/comments?per_page=100")
+        if ($LASTEXITCODE -ne 0) { $why = Get-Why; Remove-TempFiles; Die "cannot read the comments of $mr — $why" }
         $out.Add((@($c) -join "`n"))
     }
     $f = New-TempFile
@@ -232,11 +253,11 @@ for ($attempt = 1; $attempt -le $retries; $attempt++) {
         }
     }
     if ($provider -eq 'gitlab') {
-        Api @('-X', 'POST', "projects/$p/merge_requests/$iid/discussions", '-H', 'Content-Type: application/json', '--input', $payloadFile) *> $null
+        Api @('-X', 'POST', "projects/$p/merge_requests/$iid/discussions", '-H', 'Content-Type: application/json', '--input', $payloadFile) | Out-Null
     } else {
-        Api @('-X', 'POST', "repos/$project/pulls/$iid/reviews", '--input', $payloadFile) *> $null
+        Api @('-X', 'POST', "repos/$project/pulls/$iid/reviews", '--input', $payloadFile) | Out-Null
     }
-    if ($LASTEXITCODE -ne 0) { [Console]::Error.WriteLine("post-verdict: attempt ${attempt}: the tracker refused the post") }
+    if ($LASTEXITCODE -ne 0) { [Console]::Error.WriteLine("post-verdict: attempt ${attempt}: the tracker refused the post — $(Get-Why)") }
     $id = Find-Verdict $bodyRun $bodyIter
     if ($id) {
         Remove-TempFiles

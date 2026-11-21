@@ -58,13 +58,22 @@ Set-Location $root.Trim()
 
 # Raw lane runs (reviews, autonomous missions) carry the run id only in
 # WORKFLOW_INPUTS; adopt it before the activity check.
+$AdlcRunContextSource = ''
 if (-not $env:ADLC_RUN_ID) { . (Join-Path $PSScriptRoot 'run-context.ps1') }
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref): its run id alone does not turn commits on (SF-FIX-11). --commit
+# and the commit_steps opt-in still do, and the commit then names the real run.
+$reviewRun = ($AdlcRunContextSource -eq 'lane' -and -not $env:ADLC_ISSUE_REF)
 $active = $false
-if ($env:ADLC_RUN_ID -or $force) { $active = $true }
+if ((-not $reviewRun -and $env:ADLC_RUN_ID) -or $force) { $active = $true }
 elseif ((Test-Path '.adlc/init-options.json') -and
         ((Get-Content '.adlc/init-options.json' -Raw) -match '"commit_steps"\s*:\s*true')) { $active = $true }
 if (-not $active) {
-    [Console]::Error.WriteLine('commit-step: commits disabled (no run context or opt-in)')
+    if ($reviewRun) {
+        [Console]::Error.WriteLine('commit-step: review run (a lane run id and no issue) — commits disabled without --commit')
+    } else {
+        [Console]::Error.WriteLine('commit-step: commits disabled (no run context or opt-in)')
+    }
     Write-Output 'sha: none'
     exit 0
 }

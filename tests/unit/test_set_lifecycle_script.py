@@ -96,6 +96,18 @@ def test_usage_errors_and_an_unreadable_tracker_exit_2(cmd, tmp_path):
 
 
 @pytest.mark.parametrize("cmd", TWINS)
+def test_the_trackers_own_error_is_in_the_error_line(cmd, tmp_path):
+    """SF-FIX-11: a 401, a 403 and a 404 all read "cannot read the labels" /
+    "the tracker refused"; the CLI's stderr line (it carries the HTTP status)
+    is now part of the error line."""
+    r, _ = run(cmd, tmp_path, ["executing"], "--issue", ISSUE, "--to", "validation", FAKE_READ_FAIL="1")
+    assert r.returncode == 2 and "cannot read the labels" in r.stderr and "500" in r.stderr
+    r, labels = run(cmd, tmp_path, ["executing"], "--issue", ISSUE, "--to", "validation", FAKE_REFUSE="1")
+    assert r.returncode == 2 and labels == ["executing"]
+    assert "refused to update the labels" in r.stderr and "403" in r.stderr
+
+
+@pytest.mark.parametrize("cmd", TWINS)
 def test_the_issue_defaults_to_the_run_context(cmd, tmp_path):
     lane = {"WORKFLOW_INPUTS": json.dumps({"issue_ref": ISSUE, "run_id": "4335f623", "dispatch": "autonomous"})}
     r, labels = run(cmd, tmp_path, ["executing"], "--to", "validation", env_extra=lane)

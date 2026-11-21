@@ -126,6 +126,40 @@ def test_pass_tier3_declination_with_unreproduced_scenario():
     )
 
 
+def test_pass_tier3_declination_with_goldset_case3_vars():
+    # Negation-blindness guard: CASE-3's own negated-evidence wording
+    # ("no failing test, CI red, diff ...") must not read as
+    # reproduction. A correct decline on the canonical inadmissible
+    # seed passes.
+    goldset_case3 = {
+        "scenario": "Reviewer preference, no reproduction",
+        "input_context": "A reviewer comment says 'the model feels too "
+        "verbose lately'; no failing test, CI red, diff, or state "
+        "transition backs it.",
+    }
+    _assert_pass(
+        "The verbosity comment stays a Tier-3 preference; no admissible "
+        "seed.\n"
+        + rec([route("behavioral", "none", "tier-3")]),
+        context={"vars": goldset_case3},
+    )
+
+
+def test_pass_tier3_declination_with_recurs_but_denied():
+    # "recurs" detached from its denial by a clause split still leaves
+    # the decline standing — weak recurrence wording is downgraded by a
+    # denial anywhere in the scenario.
+    _assert_pass(
+        "The verbosity comment stays a Tier-3 preference.\n"
+        + rec([route("behavioral", "none", "tier-3")]),
+        context={"vars": {
+            "scenario": "Reviewer preference",
+            "input_context": "The verbosity comment recurs; nothing "
+            "backs it, no test.",
+        }},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Fail cases — wrong mapping, inadmissible seed, malformed record
 # ---------------------------------------------------------------------------

@@ -41,18 +41,41 @@ _EVIDENCE = frozenset({
 })
 
 
-# A reproduced recurrence the decline must not excuse: artifact terms
-# (the _EVIDENCE vocabulary) or an explicit run count in the scenario
-# text. The check is intentionally narrow — it only fires when the
-# scenario itself names reproduction, in which case declining to Tier-3
-# is unambiguously wrong. Anything else leaves the decline standing,
-# because the grader grades the record, not the scenario prose.
-_REPRO_SIGNAL = re.compile(
+# A reproduced recurrence the decline must not excuse. Two vocabularies:
+# strong artifact terms (the _EVIDENCE set) and weak recurrence wording
+# ("two runs", "recurs", ...). Weak wording alone never proves
+# reproduction for an artifact-backed claim, but for a behavioral
+# recurrence two observed runs ARE the reproduction (cf. goldset
+# CASE-2: no artifact difference, yet reproduced) — so weak wording
+# counts unless the scenario explicitly denies reproduction.
+# The check is intentionally narrow and reads only context["vars"]
+# (scenario + input_context), never the model output: when the scenario
+# unambiguously names reproduction, declining to Tier-3 is wrong.
+# Anything else leaves the decline standing, because the grader grades
+# the record, not the scenario prose.
+_STRONG_REPRO = re.compile(
     r"failing test|ci red|\bdiff\b|screenshot|\brevert\b|"
-    r"recorded state transition|state\.json|"
+    r"recorded state transition|state\.json",
+    re.IGNORECASE,
+)
+_WEAK_REPRO = re.compile(
     r"\btwo runs\b|\bacross two runs\b|\btwice\b|\brecurs\b|\brecurrence\b|"
     r"\bsecond run\b|\brepeated\b",
     re.IGNORECASE,
+)
+# Explicit denial of reproduction — "no failing test", "unreproduced",
+# "nothing backs it". A denied term is not a reproduction claim.
+_ABSENCE = re.compile(
+    r"unreproduced|never reproduced|not reproduced|no reproduction|"
+    r"without reproduction|no evidence|without evidence|nothing backs|"
+    r"not backed|without backing|no failing test|no ci red|"
+    r"no recorded state transition|no state\.json|no screenshot|"
+    r"no test\b.{0,30}backs|\bsans\b.{0,30}"
+    r"(evidence|reproduction|failing test)",
+    re.IGNORECASE,
+)
+_CLAUSE_SPLIT = re.compile(
+    r"[.;]|\bbut\b|\bhowever\b|\bthough\b|\balthough\b", re.IGNORECASE
 )
 
 
@@ -72,8 +95,30 @@ def _scenario_text(context):
     return "\n".join(parts)
 
 
+def _clause_denied(clause: str) -> bool:
+    return _ABSENCE.search(clause) is not None
+
+
 def _looks_reproduced(scenario: str) -> bool:
-    return _REPRO_SIGNAL.search(scenario) is not None
+    """True when the scenario unambiguously names a reproduction.
+
+    Strong artifact terms count per-clause: a clause that denies
+    reproduction ("no failing test") is skipped, but a positive clause
+    elsewhere ("...but two recorded state transitions") still fires —
+    mixed phrasing fails the decline. Weak recurrence wording ("recurs",
+    "twice") is downgraded by a denial anywhere in the scenario,
+    because it detaches so easily from its qualifier ("the comment came
+    up twice but was never reproduced").
+    """
+    clauses = _CLAUSE_SPLIT.split(scenario)
+    for clause in clauses:
+        if _clause_denied(clause):
+            continue
+        if _STRONG_REPRO.search(clause):
+            return True
+    if any(_clause_denied(c) for c in clauses):
+        return False
+    return any(_WEAK_REPRO.search(c) for c in clauses)
 
 
 def _no_duplicate_keys(pairs):

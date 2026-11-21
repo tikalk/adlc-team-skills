@@ -75,6 +75,8 @@ When triggered with `--pr <id>` (without `--self-heal`):
 
 When triggered with `--pr <id> --self-heal`, factory-review enters a three-sub-agent converge loop mirroring `factory-mission` Phase 5. The detailed specification are in `references/review-loop.md`.
 
+**Triage first:** before dispatching the loop, triage the change per the `review-loop.md` triage preamble — small changes (docs-only/config-only, ≤3 files, no sensitive paths) get one inline review (`review-depth: single (small change)`); anything else runs the full loop (`review-depth: full`). Overrides (`--self-heal=full`, `--depth=single`) are disclosed on the `review-depth:` line. Triage selects depth only; it never overrides `outcome=`.
+
 
 The `review` step runs an adversarial trio in parallel — **Auditor** (correctness, logic), **Adversary** (security, abuse cases), **Pragmatist** (maintainability, design) — each stay-in-lane in Round 1, then Round-2 cross-examination (validate, challenge, add) with deterministic synthesis; `fix` is gated on synthesis-tagged actionable Important findings
 (cross-validated + consensus, plus `solo` in `--single-round` mode — a degraded pass, disclosed;

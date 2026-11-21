@@ -181,6 +181,53 @@ def test_drifted_bodies_fail_the_lint(tmp_path, interpreter, mutate, why):
     assert r.returncode == 1 and why in r.stdout, r.stdout + r.stderr
 
 
+# ── quoted text is not hand-off wording (SF-FIX-11) ─────────────────────────
+
+# A review of a skill or doc file quotes its lines. octopus-next's own review
+# skill has a step that is literally "**Proposed comments**", so any MR that
+# touches it was refused with: phrasing: interactive hand-off text "Proposed comments".
+QUOTED = [
+    ("fenced", "The skill says:\n\n```markdown\n6. **Proposed comments** — nothing posted yet\n```\n"),
+    ("tilde-fence", "~~~\nVerdict preview — not yet posted (needs your confirm)\n~~~\n"),
+    ("block-quote", "> 6. **Proposed comments**: post all critical comments when asked\n"),
+    ("nested-block-quote", "- the file says:\n  > not yet posted\n"),
+    ("code-span", "Step 6 is titled `Proposed comments`; rename it, and drop ``nothing posted yet``.\n"),
+]
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+@pytest.mark.parametrize("quote", [q[1] for q in QUOTED], ids=[q[0] for q in QUOTED])
+def test_quoted_hand_off_text_passes_the_lint(tmp_path, interpreter, quote):
+    text = body(marker(0, 1), 0, 1).replace("### N0 — y\nwhy\n", "### N0 — y\n" + quote)
+    r = lint(tmp_path, text, interpreter=interpreter)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+@pytest.mark.parametrize("own_words", [
+    "## Proposed comments\n",                                   # the interactive layout as a heading
+    "Verdict preview — not yet posted (needs your confirm)\n",  # plain prose
+    "```\ncode\n```\n\nNothing posted yet.\n",                # prose after a closed fence
+    "A quote `x` and then: post all comments?\n",               # prose next to a code span
+])
+def test_hand_off_text_in_the_reviewers_own_words_still_fails(tmp_path, interpreter, own_words):
+    r = lint(tmp_path, body(marker(0, 1), 0, 1) + "\n" + own_words, interpreter=interpreter)
+    assert r.returncode == 1 and "interactive hand-off" in r.stdout, r.stdout + r.stderr
+    # The refusal says how to cite such a line without tripping the check.
+    assert "code span" in r.stdout
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_a_sub_heading_inside_a_finding_names_the_fix(tmp_path, interpreter):
+    """`### Evidence` inside a finding counts as a second finding; the lint
+    line now says to use `####` there, so the reviewer can repair the body."""
+    text = body(marker(0, 1), 0, 1).replace("### N0 — y\nwhy\n", "### N0 — y\nwhy\n\n### Evidence\nlog line\n")
+    r = lint(tmp_path, text, interpreter=interpreter)
+    assert r.returncode == 1 and '2 "### " finding(s) under "## Nits" but nits=1' in r.stdout
+    assert '"#### "' in r.stdout
+    assert lint(tmp_path, text.replace("### Evidence", "#### Evidence"), interpreter=interpreter).returncode == 0
+
+
 # ── twins and compatibility ─────────────────────────────────────────────────
 
 def _embedded_js(path, opener, closer):

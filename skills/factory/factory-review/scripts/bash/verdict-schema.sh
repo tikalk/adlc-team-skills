@@ -33,11 +33,15 @@
 #   5. Exactly one `## Verdict`, `## Important findings` and `## Nits`, in that
 #      order. `## Verdict` holds `**Outcome:** <the marker's outcome>`. Each
 #      finding is one `### ` heading under its section, so their counts equal
-#      important= and nits=; an empty section says `None.`. Project sections
-#      (other `## ` headings) may sit before, between or after them.
+#      important= and nits=; a heading inside a finding uses `#### `; an empty
+#      section says `None.`. Project sections (other `## ` headings) may sit
+#      before, between or after them.
 #   6. No interactive hand-off wording ("nothing posted yet", "not yet
 #      posted", "needs your confirm", "post all … comments", "proposed
-#      comments"): in a factory run nobody answers.
+#      comments"): in a factory run nobody answers. Only the reviewer's own
+#      words are checked: text inside a fenced code block, a block quote or a
+#      code span is a quotation (a review of a skill file cites such lines)
+#      and passes (SF-FIX-11).
 #
 # node runs the checks: the same script text is embedded in both twins.
 set -uo pipefail
@@ -154,12 +158,22 @@ if (cmd === "run-id") {
   for (const [k, key, name] of [[ii, "important", "Important findings"], [inn, "nits", "Nits"]]) {
     if (k < 0 || !/^[0-9]+$/.test(m[key] || "")) continue;
     const c = count(k), want = Number(m[key]);
-    if (c !== want) errs.push(`counts: ${c} "### " finding(s) under "## ${name}" but ${key}=${want}`);
+    if (c !== want) errs.push(`counts: ${c} "### " finding(s) under "## ${name}" but ${key}=${want} (every "### " heading in the section is one finding; a heading inside a finding uses "#### ")`);
     if (want === 0 && !body(k).some(l => l.trim() === "None.")) errs.push(`counts: an empty "## ${name}" section must say "None."`);
   }
+  // The wording check reads only what the reviewer wrote. A fenced code
+  // block, a block quote and a code span are quotations: a review of a skill
+  // or doc file cites lines such as "Proposed comments" without saying them.
+  let quoted = false;
+  const prose = lines.map(l => {
+    const t = l.trim();
+    if (/^(```|~~~)/.test(t)) { quoted = !quoted; return ""; }
+    if (quoted || t.startsWith(">")) return "";
+    return l.replace(/(`+).*?\1/g, "");
+  }).join("\n");
   for (const p of [/nothing posted yet/i, /not yet posted/i, /needs your confirm/i, /post all (critical |the )?comments/i, /proposed comments/i]) {
-    const hit = s.match(p);
-    if (hit) errs.push(`phrasing: interactive hand-off text "${hit[0]}" (in a factory run nobody answers; the verdict is posted now)`);
+    const hit = prose.match(p);
+    if (hit) errs.push(`phrasing: interactive hand-off text "${hit[0]}" (in a factory run nobody answers; the verdict is posted now; to cite such a line from a file, put it in a code span, a fenced block or a block quote)`);
   }
   if (errs.length) { for (const e of errs) console.log("verdict-schema: " + e); process.exit(1); }
   console.log("verdict-schema: OK");

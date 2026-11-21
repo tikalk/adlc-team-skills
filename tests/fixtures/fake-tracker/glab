@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # Fake `glab api` for post-verdict / set-lifecycle / post-completion tests.
+# The `gh` file next to this one runs it as a fake `gh api` (FAKE_GH=1): the
+# same state, but comments are listed oldest first, as GitHub lists them.
 # State lives in $FAKE_TRACKER_DIR: notes.json (MR or issue notes, newest
 # first), labels.json (issue labels), calls.log (one line per call).
 # Knobs: FAKE_DROP=1 accept posts but never store them (the silent-loss case);
-# FAKE_REFUSE=1 refuse posts; FAKE_READ_FAIL=1 fail every GET.
+# FAKE_REFUSE=1 refuse posts; FAKE_READ_FAIL=1 fail every GET;
+# FAKE_READ_FAIL_AFTER_POST=1 fail every GET once something was posted;
+# FAKE_PAGE_SIZE=<n> answer a notes GET with one page of n, or — with
+# --paginate — with every page as back-to-back JSON arrays (what the real
+# CLIs print).
 set -u
 d="${FAKE_TRACKER_DIR:?}"
 [ "${1:-}" = api ] || { echo "fake glab: only 'api' is supported" >&2; exit 64; }
 shift
-method=GET path="" input=0 fields=()
+method=GET path="" input=0 paginate=0 fields=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --hostname) shift 2 ;;
+    --paginate) paginate=1; shift ;;
     -X) method="$2"; shift 2 ;;
     -H) shift 2 ;;
     --input) input=1; shift 2 ;;
@@ -24,8 +31,18 @@ echo "$method $path" >> "$d/calls.log"
 [ -f "$d/labels.json" ] || echo '[]' > "$d/labels.json"
 if [ "$method" = GET ]; then
   [ "${FAKE_READ_FAIL:-0}" = 1 ] && { echo "fake glab: 500" >&2; exit 1; }
+  if [ "${FAKE_READ_FAIL_AFTER_POST:-0}" = 1 ] && grep -q '^POST ' "$d/calls.log"; then echo "fake glab: 502" >&2; exit 1; fi
   case "$path" in
-    *"/notes"*) cat "$d/notes.json" ;;
+    *"/notes"*|*"/comments"*)
+      node -e '
+        const fs = require("fs"); const [f, all] = process.argv.slice(1);
+        let a = JSON.parse(fs.readFileSync(f, "utf8"));
+        if (process.env.FAKE_GH === "1") a = a.slice().reverse();
+        const n = Number(process.env.FAKE_PAGE_SIZE || 0);
+        if (!n) console.log(JSON.stringify(a));
+        else if (all !== "1") console.log(JSON.stringify(a.slice(0, n)));
+        else { let out = ""; for (let i = 0; i === 0 || i < a.length; i += n) out += JSON.stringify(a.slice(i, i + n)); console.log(out); }
+      ' "$d/notes.json" "$paginate" ;;
     */issues/[0-9]*) node -e 'console.log(JSON.stringify({labels: JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}))' "$d/labels.json" ;;
     *) echo '{}' ;;
   esac
@@ -34,7 +51,7 @@ fi
 [ "${FAKE_REFUSE:-0}" = 1 ] && { echo "fake glab: 403" >&2; exit 1; }
 body=""; [ "$input" = 1 ] && body="$(cat)"
 case "$path" in
-  */discussions|*/notes)
+  */discussions|*/notes|*/comments)
     [ "${FAKE_DROP:-0}" = 1 ] && { echo '{}'; exit 0; }
     node -e '
       const fs = require("fs"); const [f, raw] = process.argv.slice(1);

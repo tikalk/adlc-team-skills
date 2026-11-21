@@ -14,6 +14,11 @@ Every clarification point must follow these core writing principles distilled fr
 4. **Imperative for the Ask**: When asking the human a question or requesting action, use direct imperative commands (e.g., "Choose an option", "Define the missing boundary").
 5. **Named Referents**: Never use bare pronouns (`it`, `they`, `this`, `that`). Always repeat the specific noun (e.g., "the PDR", "the worker process", "the timeout").
 6. **Plain Words**: Choose simple, direct, unambiguous words. Avoid idioms, jargon, and vague qualifiers. No licensed dictionary is enforced; focus on clarity and brevity.
+7. **Present-Tense Verbs Only**: Use the present-tense verb form. Do not use gerunds (`-ing` forms) as verbs. Write "the worker writes the file", never "the worker is writing the file".
+8. **One Command Per Sentence**: Give one instruction per sentence. Split compound commands into separate sentences.
+9. **Approved words**: Use plain English words with one clear sense. No project dictionary file exists. Check each content word. Flag jargon inline. Replace the flagged word with a plain word.
+10. **Short Noun Clusters**: Limit noun clusters to 3 words maximum. Expand longer clusters with prepositions (write "map of the decision", never "decision map rendering pipeline output").
+11. **No Hedging in Maps**: Never write "maybe", "possibly", "TBD", or "to be determined" inside a map. Render the unknown slot as an explicit `?` instead.
 
 ### STE-Lite Subset (for Context Injections and Boots)
 For session boots and context injections where tokens are constrained:
@@ -24,14 +29,16 @@ For session boots and context injections where tokens are constrained:
 
 ---
 
-## 2. Deterministic Clarification Tier Rule
+## 2. ASCII-first clarification tier rule
 
-Clarification points are classified strictly by consequence scope, **not** by severity:
+Every clarification renders its ASCII visual by default. Plain STE prose is the detail layer beneath the visual, never the only view. Classify the visual strictly by consequence scope, **not** by severity:
 
 - **Complex Tier ($\ge 2$ Boundaries Crossed)**:
-  Draw the full ASCII decision map.
+  Draw the full ASCII decision map. Invoke `skills/authoring/scripts/bash/render-decision-map.sh` (bash) or `skills/authoring/scripts/powershell/Render-DecisionMap.ps1` (Windows) — `render_decision_map(...) -> str`. Never hand-draw the map.
 - **Simple Tier (0 or 1 Boundary Crossed)**:
-  Use plain STE prose only, regardless of whether the gap is marked CRITICAL or HIGH. Severity determines presentation order; severity **never** upgrades a single-boundary item to a decision map.
+  Draw the compact 3-line ASCII status box via `render_status_box(...) -> str`, with plain STE prose beneath it. Never render prose alone, regardless of whether the gap is marked CRITICAL or HIGH. Severity determines presentation order; severity **never** upgrades a single-boundary item to a decision map.
+
+Box width budget: every output line stays within 75 columns. Truncate long fields with `…` rather than break the border. A map that would exceed ADR-515 size caps renders its prose fallback plus `payload_status: map-omitted (size cap)`.
 
 ### The Four Boundaries
 
@@ -92,7 +99,17 @@ When a clarification point crosses two or more boundaries, render the structured
 
 ## 4. Plain STE Format (for 0 or 1 Boundary)
 
-When a gap touches zero or one boundary (e.g., local file formatting, missing success metric in a single PDR, local phrasing):
+When a gap touches zero or one boundary (e.g., local file formatting, missing success metric in a single PDR, local phrasing), draw the compact status box first, then the prose beneath it:
+
+```text
++---------------------------------------------------------------------------+
+| CLARIFICATION: [ID] - [Gap Type]                                          |
++---------------------------------------------------------------------------+
+| Context: [One STE sentence quoting the item]                              |
+| Gap: [One STE sentence stating the missing element]                       |
+| Ask: [One direct imperative STE question]                                 |
++---------------------------------------------------------------------------+
+```
 
 ```markdown
 ## Clarification [N]: [ID] - [Gap Type]
@@ -105,4 +122,4 @@ When a gap touches zero or one boundary (e.g., local file formatting, missing su
 - **B**: [Option text]
 - **C**: [Custom response]
 ```
-Do not draw an ASCII map for 0 or 1 boundary, even if the gap is CRITICAL.
+Do not draw a full decision map for 0 or 1 boundary, even if the gap is CRITICAL. Never render prose without the status box above it.

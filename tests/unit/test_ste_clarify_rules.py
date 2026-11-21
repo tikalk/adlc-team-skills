@@ -158,3 +158,12 @@ def test_tier_boundary_classification_logic():
     assert "+-[team  ] --> ?" in m3
     assert "+-[now   ] --> ?" in m3
     assert "PROSE COMPLAINT" not in m3
+
+
+def test_canonical_requires_ascii_first_and_full_ste():
+    text = (ROOT / "skills/authoring/references/ste-rules.md").read_text(encoding="utf-8")
+    assert "ASCII-first" in text or "ASCII first" in text
+    assert "Approved words" in text or "approved wordlist" in text.lower()
+    assert "75" in text  # box width budget
+    assert "payload_status" in text  # ADR-515 overflow fallback
+    assert "present-tense verb" in text.lower() or "present tense" in text.lower()

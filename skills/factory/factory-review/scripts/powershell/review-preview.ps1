@@ -200,6 +200,37 @@ foreach ($__pass in $passOrder) {
     }
 }
 
+# Merge-risk draft (advisory, never a verdict): same evidence interface as
+# the six passes. `risk: <row> | <class> | <evidence>` per Holmes row;
+# optional `merge-risk: <low|medium|high>` caller-scored band. The twins
+# generate no scores — they only render. Without risk evidence every row
+# is unverified (honest, same pattern as the passes above).
+$riskRows = @(
+    @("Verification", "verification"),
+    @("Alignment", "alignment"),
+    @("Impact", "impact"),
+    @("Rollback cost", "rollback cost"),
+    @("Error detection", "error detection")
+)
+$riskBand = ""
+if (-not [string]::IsNullOrEmpty($evidenceRaw)) {
+    $bandHit = [regex]::Match($evidenceRaw, "(?im)^merge-risk:\s*(low|medium|high)")
+    if ($bandHit.Success) { $riskBand = $bandHit.Groups[1].Value.ToLower() }
+}
+if ($riskBand -ne "") {
+    Write-Output "**Merge risk: $riskBand (draft)**"
+} else {
+    Write-Output "Merge risk: no caller-scored band (draft — reviewer did not supply merge-risk: <band>)"
+}
+foreach ($pair in $riskRows) {
+    $rowName, $rowPat = $pair
+    if (-not [string]::IsNullOrEmpty($evidenceRaw) -and $evidenceRaw -match "(?im)^risk:\s*$rowPat\b") {
+        Write-Output "  risk: $rowName — evidence rendered above (reviewer-attested, see evidence lines)"
+    } else {
+        Write-Output "  risk: $rowName — unverified: reviewer procedure not invoked in this shell-only run"
+    }
+}
+
 @"
 Provenance:
 "@ | Out-String

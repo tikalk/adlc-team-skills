@@ -160,6 +160,20 @@ def test_pass_tier3_declination_with_recurs_but_denied():
     )
 
 
+def test_pass_tier3_declination_with_denied_diff_and_revert():
+    # The denial vocabulary mirrors the artifact list one-for-one; a
+    # correct decline on "no diff"/"no revert" must not fail.
+    _assert_pass(
+        "Stays a Tier-3 preference.\n"
+        + rec([route("behavioral", "none", "tier-3")]),
+        context={"vars": {
+            "scenario": "Reviewer preference",
+            "input_context": "No diff backs this preference; no revert "
+            "either.",
+        }},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Fail cases — wrong mapping, inadmissible seed, malformed record
 # ---------------------------------------------------------------------------
@@ -381,6 +395,35 @@ def test_fail_tier3_decline_of_reproduced_recurrence():
             "input_context": "Across two runs the agent proceeded without "
             "asking at the escalation gate; no artifact difference exists "
             "— the mistake is in behavior.",
+        }},
+    )
+
+
+def test_fail_tier3_decline_of_state_json_recurrence():
+    # Dotted artifact terms survive the clause splitter: a state.json
+    # backed recurrence must fail the decline.
+    _assert_fail(
+        "Declined to Tier-3.\n"
+        + rec([route("behavioral", "none", "tier-3")]),
+        "reproduced recurrence",
+        context={"vars": {
+            "scenario": "recurrence",
+            "input_context": "state.json recorded the transition across "
+            "two runs.",
+        }},
+    )
+
+
+def test_fail_tier3_decline_of_and_joined_affirmation():
+    # Same-clause denial does not excuse a same-clause positive:
+    # "no failing test and the diff shows it" still reproduces.
+    _assert_fail(
+        "Declined to Tier-3.\n"
+        + rec([route("behavioral", "none", "tier-3")]),
+        "reproduced recurrence",
+        context={"vars": {
+            "scenario": "mixed",
+            "input_context": "No failing test and the diff shows it.",
         }},
     )
 

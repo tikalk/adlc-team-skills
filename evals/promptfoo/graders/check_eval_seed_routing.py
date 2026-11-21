@@ -13,9 +13,10 @@ import unicodedata
 # criterion and is handled as a Tier-3 preference instead.
 #
 # Prose outside the record is rationale and is not graded. Free-form
-# text without a record fails closed, so there is no synonym vocabulary
-# to enumerate and no clause splitter, negator list, or authoring-verb
-# list to maintain.
+# text without a record fails closed. The tier-3 scenario gate below
+# reads only context["vars"] (scenario + input_context), never the
+# model output: a small clause splitter plus absence/presence
+# vocabularies confined to that gate.
 
 _FENCE = re.compile(
     r"```tier2-route[ \t]*\r?\n(.*?)\r?\n```",
@@ -64,18 +65,40 @@ _WEAK_REPRO = re.compile(
     re.IGNORECASE,
 )
 # Explicit denial of reproduction — "no failing test", "unreproduced",
-# "nothing backs it". A denied term is not a reproduction claim.
+# "nothing backs it". A denied term is not a reproduction claim. The
+# "no <term>" alternatives mirror _STRONG_REPRO one-for-one so a
+# correct decline never fails on a denied artifact ("no diff backs it").
 _ABSENCE = re.compile(
     r"unreproduced|never reproduced|not reproduced|no reproduction|"
     r"without reproduction|no evidence|without evidence|nothing backs|"
-    r"not backed|without backing|no failing test|no ci red|"
-    r"no recorded state transition|no state\.json|no screenshot|"
+    r"not backed|without backing|no failing test|no ci red|no diff|"
+    r"no screenshot|no revert|no recorded state transition|"
+    r"no state\.json|"
     r"no test\b.{0,30}backs|\bsans\b.{0,30}"
     r"(evidence|reproduction|failing test)",
     re.IGNORECASE,
 )
+# A positive reproduction claim: a strong artifact term standing as
+# the clause subject ("the diff shows", "two recorded state
+# transitions", "state.json recorded") — not a bare list item after a
+# denial ("no failing test, CI red, diff ... backs it", where the verb
+# belongs to the denied list). Tested against the blanked remainder so
+# denied spans cannot contribute the term.
+_SUBJECT_TERM = re.compile(
+    r"(the|a|an|two|2|recorded)\s+"
+    r"(failing test|ci red|diff|screenshot|revert|"
+    r"recorded state transition|state\.json)\b|"
+    r"\bstate\.json\s+recorded\b|"
+    r"\b(two|2)\s+recorded state transitions?\b",
+    re.IGNORECASE,
+)
+# Sentence-boundary splitter: split on ";" and on "." only at a
+# sentence end (followed by whitespace or end of string), so dotted
+# terms like "state.json" survive intact. Contrastive conjunctions
+# ("but", "however", ...) also start a new clause.
 _CLAUSE_SPLIT = re.compile(
-    r"[.;]|\bbut\b|\bhowever\b|\bthough\b|\balthough\b", re.IGNORECASE
+    r"[;]|\.(?=\s|$)|\bbut\b|\bhowever\b|\bthough\b|\balthough\b",
+    re.IGNORECASE,
 )
 
 
@@ -102,21 +125,32 @@ def _clause_denied(clause: str) -> bool:
 def _looks_reproduced(scenario: str) -> bool:
     """True when the scenario unambiguously names a reproduction.
 
-    Strong artifact terms count per-clause: a clause that denies
-    reproduction ("no failing test") is skipped, but a positive clause
-    elsewhere ("...but two recorded state transitions") still fires —
-    mixed phrasing fails the decline. Weak recurrence wording ("recurs",
-    "twice") is downgraded by a denial anywhere in the scenario,
-    because it detaches so easily from its qualifier ("the comment came
-    up twice but was never reproduced").
+    Strong artifact terms count per-clause, with denial spans blanked
+    first: in "no failing test and the diff shows it", the surviving
+    "and the diff shows it" still carries its own verb and fires. But a
+    denied list ("no failing test, CI red, diff ... backs it") leaves a
+    remainder whose verb belongs to the denial, not a new claim — it
+    does not fire. Weak recurrence wording ("recurs", "twice") is
+    downgraded by a denial anywhere in the scenario, because it
+    detaches so easily from its qualifier ("the comment came up twice
+    but was never reproduced").
     """
     clauses = _CLAUSE_SPLIT.split(scenario)
+    denied_anywhere = False
     for clause in clauses:
         if _clause_denied(clause):
+            denied_anywhere = True
+            # Blank out denied spans, then require a subject-position
+            # term in the remainder: "and the diff shows it" survives
+            # with "the diff"; ", CI red, diff ... backs it" leaves
+            # only bare list items and does not fire.
+            remainder = _ABSENCE.sub(" ", clause)
+            if _SUBJECT_TERM.search(remainder):
+                return True
             continue
         if _STRONG_REPRO.search(clause):
             return True
-    if any(_clause_denied(c) for c in clauses):
+    if denied_anywhere:
         return False
     return any(_WEAK_REPRO.search(c) for c in clauses)
 

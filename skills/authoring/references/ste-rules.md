@@ -34,11 +34,11 @@ For session boots and context injections where tokens are constrained:
 Every clarification renders its ASCII visual by default. Plain STE prose is the detail layer beneath the visual, never the only view. Classify the visual strictly by consequence scope, **not** by severity:
 
 - **Complex Tier ($\ge 2$ Boundaries Crossed)**:
-  Draw the full ASCII decision map. Invoke `skills/authoring/scripts/bash/render-decision-map.sh` (bash) or `skills/authoring/scripts/powershell/Render-DecisionMap.ps1` (Windows) — `render_decision_map(...) -> str`. Never hand-draw the map.
+  Draw the full ASCII decision map. Invoke `skills/authoring/scripts/bash/render-decision-map.sh` (bash) or `skills/authoring/scripts/powershell/render-decision-map.ps1` (Windows) — `render_decision_map(...) -> str`. Never hand-draw the map.
 - **Simple Tier (0 or 1 Boundary Crossed)**:
   Draw the compact 3-line ASCII status box via `render_status_box(...) -> str`, with plain STE prose beneath it. Never render prose alone, regardless of whether the gap is marked CRITICAL or HIGH. Severity determines presentation order; severity **never** upgrades a single-boundary item to a decision map.
 
-Box width budget: every output line stays within 75 columns. Truncate long fields with `…` rather than break the border. A map that would exceed ADR-515 size caps renders its prose fallback plus `payload_status: map-omitted (size cap)`.
+Box width budget: every output line stays within 75 columns. Truncate long fields with `…` rather than break the border. A map that would exceed gate payload size caps renders its prose fallback plus `payload_status: map-omitted (size cap)`.
 
 ### The Four Boundaries
 

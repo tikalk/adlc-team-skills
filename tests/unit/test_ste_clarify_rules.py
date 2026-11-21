@@ -165,7 +165,7 @@ def test_canonical_requires_ascii_first_and_full_ste():
     assert "ASCII-first" in text or "ASCII first" in text
     assert "Approved words" in text or "approved wordlist" in text.lower()
     assert "75" in text  # box width budget
-    assert "payload_status" in text  # ADR-515 overflow fallback
+    assert "payload_status" in text  # gate payload overflow fallback
     assert "present-tense verb" in text.lower() or "present tense" in text.lower()
 
 

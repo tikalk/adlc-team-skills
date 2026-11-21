@@ -3,7 +3,7 @@
 # Contract: skills/authoring/references/ste-rules.md §2 (ASCII-first), §3–§4.
 # Width budget: every output line stays within 75 columns. Never hand-draw maps
 # in skills — invoke render_decision_map / render_status_box from this file
-# (or the PowerShell twin Render-DecisionMap.ps1, byte-identical output).
+# (or the PowerShell twin render-decision-map.ps1, byte-identical output).
 #
 # Usage:
 #   source "$(dirname "${BASH_SOURCE[0]}")/render-decision-map.sh"

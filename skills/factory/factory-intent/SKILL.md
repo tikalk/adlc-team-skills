@@ -130,7 +130,7 @@ enforced at dispatch, not by a gate in that file).
 
 ## Run Branch, Step Commits and Draft MR
 
-**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
+**Requires:** the `factory-runbook` and `factory-learn` skills (provides the publish procedure and run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`
 
 In a factory run (`ADLC_RUN_ID` set by the workflow engine, or `factory_run=yes` from the run-context resolver — `factory-runbook/references/run-context.md`) this orchestrator — and only it, never the lane lifecycle skills — commits, pushes the run branch and opens the draft MR. Invoke the `factory-runbook` skill for the publish sequence with:
 

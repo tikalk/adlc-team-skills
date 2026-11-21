@@ -14,6 +14,8 @@ It operates as a **Kind-A DAG orchestrator** in alignment with the shared execut
 
 **Requires:** the `factory-runbook` skill (provides the shared executor contract): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
+> Consumes `evals-analyze` output for the feedback-loop ingestion step below; install it alongside when running retrospectives: `adlc-cli skills add tikalk/adlc-team-skills --skill evals-analyze`.
+
 ---
 
 ## When to use

@@ -63,7 +63,16 @@ forever while behavior rots); an eval cannot enforce a decidable property
 2. **Classify the tier** — ladder first (structural → mechanical →
    judgment); classification before scoring.
 3. **Split by decidability** — mechanical corrections route to a check or
-   an eval per the table above; state which and why in one line.
+   an eval per the table above; state which and why in one line. The
+   graded decision is a `tier2-route` record (the fenced JSON block the
+   EVAL-017 grader reads): `{"tier": 2, "routes": [{"class":
+   "decidable"|"behavioral", "vehicle": "check"|"eval"|"none", "seed":
+   "event-stream"|"comment"|"tier-3", "evidence": ["failing test"|"ci red"|
+   "diff"|"screenshot"|"revert"|"recorded state transition"|"state.json"],
+   "runs": 2}]}`. Prose around it is rationale and is not graded. A
+   `tier-3` seed (vehicle `none`, empty evidence, runs 0) declines an
+   inadmissible seed to a Tier-3 preference — never a reproduced
+   recurrence, which must route to its check or eval vehicle.
 4. **Verify the evidence rule** — every occurrence reproduced by artifact,
    not by assertion; a comment-only occurrence fails here.
 5. **Author the vehicle** — check via team-levelup action P; eval criterion
@@ -73,7 +82,9 @@ forever while behavior rots); an eval cannot enforce a decidable property
    not coverage (`docs/testing.md`); the criterion lands with its grader or
    not at all.
 7. **Declare the holdout** — later runs only; record the seed-window run
-   ids in the criterion.
+   ids in the criterion (`seed_window_run_ids` in the eval-criterion
+   template — factory-seeded criteria only, temporal holdout still
+   applies).
 8. **Close the back edge** — after the change ships, re-measure recurrence
    on the holdout: drop → keep; no change after 2 cycles → retire the
    criterion (build-to-delete applies to evals too).

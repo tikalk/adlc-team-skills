@@ -26,7 +26,7 @@ You are in a factory run when `ADLC_RUN_ID` is set (a **workflow run**: the engi
 
 **Project instructions in a factory run.** `AGENTS.md`, `CLAUDE.md`, the issue's Definition of Done and project skills tell you *what* to build and check — follow them, and when one item cannot be done in this pod, say exactly which item and why in the conclusion and the completion note (never "pending", never "left for the user"). Their *interaction* rules ("ask the user", "wait for approval", "show the plan first", "post only when asked") do not apply: nobody answers here. Safety rules that ask for a dry-run or an explicit confirmation (tracker-integration Safety Constraint 1) are local-session rules; the tracker writes this checklist names execute at once and are confirmed by reading them back. See `factory-runbook/references/project-contract.md`.
 
-**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
+**Requires:** the `factory-runbook` and `factory-learn` skills (provides the publish procedure and run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`
 
 ## In a local session — you answer the gates
 

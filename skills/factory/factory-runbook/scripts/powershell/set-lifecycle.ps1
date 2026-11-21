@@ -22,8 +22,13 @@
 $ErrorActionPreference = 'Stop'
 $script:ErrorView = 'ConciseView'
 
+# Removes the file that holds the tracker CLI's last stderr (set further down).
+function Remove-ErrFile {
+    if ($script:errFile) { Remove-Item -LiteralPath $script:errFile -Force -ErrorAction SilentlyContinue }
+}
 function Die([string]$Message) {
     [Console]::Error.WriteLine("set-lifecycle: $Message")
+    Remove-ErrFile
     exit 2
 }
 # json <node-script> [args...] — node is the JSON engine (same as the bash twin).
@@ -74,10 +79,28 @@ if ($provider -eq 'gitlab') {
     Die "unsupported ISSUE_PROVIDER: $provider"
 }
 
+# The tracker CLI's stderr of the last call (see Get-Why).
+$script:errFile = [System.IO.Path]::GetTempFileName()
+
+# Why the tracker CLI failed: the line of its stderr that carries the HTTP
+# status, else its last line — one line, at most 200 characters, token-shaped
+# strings removed (same rule as the bash twin).
+function Get-Why {
+    $all = @()
+    if (Test-Path -LiteralPath $script:errFile) { $all = @(Get-Content -LiteralPath $script:errFile | Where-Object { $_ -match '\S' }) }
+    $l = [string](@($all | Where-Object { $_ -cmatch 'HTTP [0-9]{3}' }) | Select-Object -Last 1)
+    if (-not $l) { $l = [string]($all | Select-Object -Last 1) }
+    $l = $l -replace '[\x00-\x1f]', ''
+    if ($l.Length -gt 200) { $l = $l.Substring(0, 200) }
+    $l = $l -creplace '(glpat-|ghp_|gho_|ghs_|github_pat_)[A-Za-z0-9_-]+', '<redacted>'
+    if ($l) { return $l }
+    return 'no error text from the tracker CLI'
+}
+
 # The issue's labels (GitLab: strings; GitHub: objects with .name). Ok is
 # $false when the tracker cannot be read (an issue with no labels is Ok).
 function Read-Labels {
-    if ($provider -eq 'gitlab') { $raw = glab api --hostname $glHost $issuePath 2>$null } else { $raw = gh api $issuePath 2>$null }
+    if ($provider -eq 'gitlab') { $raw = glab api --hostname $glHost $issuePath 2> $script:errFile } else { $raw = gh api $issuePath 2> $script:errFile }
     if ($LASTEXITCODE -ne 0) { return [pscustomobject]@{ Ok = $false; Labels = @() } }
     # The issue JSON goes in on stdin: a long description can exceed the
     # 128 KiB limit of one command-line argument.
@@ -87,13 +110,14 @@ function Read-Labels {
 }
 
 $read = Read-Labels
-if (-not $read.Ok) { Die "cannot read the labels of $issue" }
+if (-not $read.Ok) { Die "cannot read the labels of $issue — $(Get-Why)" }
 $current = @($read.Labels)
 $others = @($current | Where-Object { ($States -ccontains $_) -and ($_ -cne $to) })
 $hasTarget = $current -ccontains $to
 
 if ($others.Count -eq 0 -and $hasTarget) {
     Write-Output "set-lifecycle: OK — $issue is already '$to'"
+    Remove-ErrFile
     exit 0
 }
 
@@ -101,26 +125,28 @@ $othersCsv = $others -join ','
 if ($provider -eq 'gitlab') {
     # One call: add the target and remove every other lifecycle label.
     $body = json 'const [a, r] = process.argv.slice(1); const o = {add_labels: a}; if (r) o.remove_labels = r; console.log(JSON.stringify(o))' @($to, $othersCsv)
-    $body | glab api --hostname $glHost -X PUT $issuePath -H 'Content-Type: application/json' --input - *> $null
-    if ($LASTEXITCODE -ne 0) { Die "the tracker refused to update the labels of $issue" }
+    $body | glab api --hostname $glHost -X PUT $issuePath -H 'Content-Type: application/json' --input - 2> $script:errFile | Out-Null
+    if ($LASTEXITCODE -ne 0) { Die "the tracker refused to update the labels of $issue — $(Get-Why)" }
 } else {
     $body = json 'console.log(JSON.stringify({labels: [process.argv[1]]}))' @($to)
-    $body | gh api -X POST "$issuePath/labels" --input - *> $null
-    if ($LASTEXITCODE -ne 0) { Die "the tracker refused to add '$to' to $issue" }
+    $body | gh api -X POST "$issuePath/labels" --input - 2> $script:errFile | Out-Null
+    if ($LASTEXITCODE -ne 0) { Die "the tracker refused to add '$to' to $issue — $(Get-Why)" }
     foreach ($l in $others) {
-        gh api -X DELETE "$issuePath/labels/$l" *> $null
-        if ($LASTEXITCODE -ne 0) { Die "the tracker refused to remove '$l' from $issue" }
+        gh api -X DELETE "$issuePath/labels/$l" 2> $script:errFile | Out-Null
+        if ($LASTEXITCODE -ne 0) { Die "the tracker refused to remove '$l' from $issue — $(Get-Why)" }
     }
 }
 
 $after = Read-Labels
-if (-not $after.Ok) { Die "cannot re-read the labels of $issue" }
+if (-not $after.Ok) { Die "cannot re-read the labels of $issue — $(Get-Why)" }
 $left = @(@($after.Labels) | Where-Object { $States -ccontains $_ }) -join ','
 if ($left -ceq $to) {
     $removed = if ($othersCsv) { " (removed: $othersCsv)" } else { '' }
     Write-Output "set-lifecycle: OK — $issue moved to '$to'$removed"
+    Remove-ErrFile
     exit 0
 }
 $shown = if ($left) { $left } else { 'none' }
 [Console]::Error.WriteLine("set-lifecycle: FAIL — $issue carries lifecycle label(s) '$shown' after moving to '$to'; report this on the issue, never as done")
+Remove-ErrFile
 exit 1

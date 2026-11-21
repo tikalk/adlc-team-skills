@@ -94,8 +94,11 @@ tracker error). `--issue` defaults to the run's issue.
 [--details-file <md>]` leaves a mission run's one completion record on its
 issue (`<!-- factory-mission:step=complete … run=<run id> … outcome=… -->`;
 blocked/failed records also carry the `factory-run:ended` marker). The run id
-comes from the run context only; a run that already has a record posts
-nothing; the record is read back (exit 0 only when it is on the issue).
+comes from the run context only; a run whose newest record already says this
+outcome posts nothing, and a different outcome (the run was retried or resumed
+and ended differently) is posted as a record that names the one it replaces;
+the record is read back over every page of the thread (exit 0 only when it is
+on the issue).
 
 **Proof of work:** `bash scripts/bash/check-proof-of-work.sh --issue <ref>
 --summary-file <md>` checks the mission's ledger

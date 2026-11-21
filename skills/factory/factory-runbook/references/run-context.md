@@ -16,6 +16,12 @@ question, and the tracker comments are the only output anyone reads. In a
 review, `WORKFLOW_INPUTS.issue_ref` is the MR ref (`<group>/<project>!<iid>`):
 it is not an issue ref, so `issue_ref` prints empty.
 
+**In a review run the publish helpers are no-ops.** A review has a lane run id
+and no issue, and nothing to publish: `run-branch.sh` and `open-mr.sh` print
+"review run … skipped" and change nothing, and `commit-step.sh` prints
+`sha: none` unless `--commit` (or the `commit_steps` opt-in) asks for the
+commit. The run id is still the one to use in markers.
+
 - **Never ask for approval** or wait for an answer. The engine's gate after
   the step is the approval; a question here ends the step with nothing published.
 - **Before returning, always** write a one-line `conclusion` (plus `mr_url`

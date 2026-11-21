@@ -45,19 +45,29 @@ summary="${summary# }"; summary="${summary% }"; summary="${summary:0:100}"
 
 # Raw lane runs (reviews, autonomous missions) carry the run id only in
 # WORKFLOW_INPUTS; adopt it before the activity check (and before the cd below).
+ADLC_RUN_CONTEXT_SOURCE=""
 if [ -z "${ADLC_RUN_ID:-}" ]; then . "$(dirname "$0")/run-context.sh"; fi
+# A review run is a lane run too, but it has no issue (the lane's issue_ref is
+# the MR ref): its run id alone does not turn commits on (SF-FIX-11). --commit
+# and the commit_steps opt-in still do, and the commit then names the real run.
+review_run=0
+if [ "$ADLC_RUN_CONTEXT_SOURCE" = lane ] && [ -z "${ADLC_ISSUE_REF:-}" ]; then review_run=1; fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"
 prefix="$(git rev-parse --show-prefix)"
 cd "$root"
 
 active=0
-if [ -n "${ADLC_RUN_ID:-}" ] || [ "$force" = 1 ]; then
+if { [ "$review_run" = 0 ] && [ -n "${ADLC_RUN_ID:-}" ]; } || [ "$force" = 1 ]; then
   active=1
 elif [ -f .adlc/init-options.json ] && grep -Eq '"commit_steps"[[:space:]]*:[[:space:]]*true' .adlc/init-options.json; then
   active=1
 fi
 if [ "$active" != 1 ]; then
-  echo "commit-step: commits disabled (no run context or opt-in)" >&2
+  if [ "$review_run" = 1 ]; then
+    echo "commit-step: review run (a lane run id and no issue) — commits disabled without --commit" >&2
+  else
+    echo "commit-step: commits disabled (no run context or opt-in)" >&2
+  fi
   echo "sha: none"
   exit 0
 fi

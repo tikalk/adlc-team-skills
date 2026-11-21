@@ -1,9 +1,10 @@
 """RED probes for the Important grader findings (EVAL-017).
 
 Each probe is an independently worded Tier-2 decision exercising the
-canonical-fix defect. Expected outcomes follow goldset.md EVAL-017
-pass/fail conditions (branch numbers refer to get_assert).
+canonical-fix defect. Outputs carry a `tier2-route` record; probes that
+omit the record or name a wrong class, vehicle, or seed fail.
 """
+import json
 import sys
 from pathlib import Path
 
@@ -11,6 +12,10 @@ graders_dir = Path(__file__).parent.parent / "graders"
 sys.path.insert(0, str(graders_dir))
 
 from check_eval_seed_routing import get_assert
+
+
+def rec(routes):
+    return "```tier2-route\n" + json.dumps({"tier": 2, "routes": routes}) + "\n```"
 
 
 def _check(decision: str, expected: bool, label: str) -> None:
@@ -22,480 +27,185 @@ def _check(decision: str, expected: bool, label: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# grader-seed-gate-negation-and-provenance: negated evidence must not admit
-# a comment seed; asserted event-stream provenance must not false-fail.
+# Adversarial envelope: ten review rounds' worth of paraphrase families
+# cannot be expressed in the record; prose excuses are not the decision.
 # ---------------------------------------------------------------------------
 
-def test_red_seed_negated_list_denied():
-    # "no failing test, CI red, diff ... backing it" denies every term —
-    # the comment stays inadmissible (branch 1 fails).
+def test_red_comment_prose_without_record_fails():
+    # Prose names a reviewer note, an authoring, and no record.
     _check(
-        "The reviewer's comment says the model is too verbose lately; "
-        "there is no failing test, CI red, diff, or screenshot backing it "
-        "- it is behavioral, so I'll author an eval criterion with a "
-        "length grader.",
+        "A reviewer note says the agent was slow to stop at the gate. "
+        "I author an eval criterion to grade it via /evals-specify, "
+        "no reproduction evidence behind it.",
         False,
-        "seed-negated-list",
+        "comment-prose-no-record",
     )
 
 
-def test_red_seed_negated_short_list():
-    # Same denial, terse form.
+def test_red_negated_evidence_prose_without_record_fails():
+    # "sans any failing test" is prose; there is no record.
     _check(
-        "The reviewer comment says the model is too verbose; no diff, "
-        "failing test or revert evidence exists. Author an eval criterion "
-        "with a length grader - the mistake is behavioral.",
+        "The reviewer comment says the gate was bypassed, sans any "
+        "failing test, CI red, or diff. I author an eval criterion "
+        "for this behavioral issue.",
         False,
-        "seed-negated-short",
+        "negated-evidence-no-record",
     )
 
 
-def test_red_seed_asserted_event_stream_admits():
-    # "Not a comment seed" denies comment provenance; the asserted run
-    # window reproduces the failure — admissible (pass).
+def test_red_refused_vehicle_prose_without_record_fails():
+    # A refused vehicle in prose does not excuse the missing record.
     _check(
-        "Not a comment seed: state.json records the gate bypass across "
-        "two distinct runs. Author an eval criterion with a binary "
-        "behavioral grader.",
-        True,
-        "seed-asserted-event-stream",
-    )
-
-
-# ---------------------------------------------------------------------------
-# grader-wrong-route-guards-negation-and-document-wide: refused vehicles
-# never count; a misroute in one clause is not cleared by an unrelated
-# vehicle in another.
-# ---------------------------------------------------------------------------
-
-def test_red_wrong_route_refused_eval_still_fails():
-    # Refused eval is not an eval vehicle; behavioral->lint fails (branch 2).
-    _check(
-        "Tier 2 - add a lint rule that fails when the agent did not stop "
-        "at the gate; an eval criterion is not warranted.",
+        "Tier 2 - add a lint rule for the behavioral gate bypass; an "
+        "eval criterion is N/A here.",
         False,
-        "wrong-route-refused-eval",
+        "refused-vehicle-no-record",
     )
 
 
-def test_red_wrong_route_refused_check_still_fails():
-    # Refused check is not a check vehicle; decidable->LLM fails (branch 3).
+def test_red_declination_prose_without_record_fails():
+    # An explicit decline in prose is not the decision; the record is.
     _check(
-        "Tier 2 - ask a model to judge whether the missing marker is "
-        "present, with an LLM grader; a lint rule is not needed.",
+        "I won't author a criterion; it stays a Tier-3 preference.",
         False,
-        "wrong-route-refused-check",
+        "declination-no-record",
     )
 
 
-def test_red_wrong_route_mixed_clauses_still_fails():
-    # Unrelated marker+CI in a second clause does not clear the
-    # behavioral->lint misroute (branch 2, wrong-route guard).
-    _check(
-        "Tier 2 - the agent did not stop at the gate; add a lint rule for "
-        "that. Separately, the verdict must carry the head marker, so "
-        "extend the CI job.",
-        False,
-        "wrong-route-mixed-clauses",
-    )
-
-
-# ---------------------------------------------------------------------------
-# grader-declination-both-directions: bare preference language fails;
-# explicit authoring declinations pass.
-# ---------------------------------------------------------------------------
-
-def test_red_declination_bare_stays_a_problem_fails():
-    _check(
-        "This recurring mistake stays a problem; we should keep watching it.",
-        False,
-        "declination-bare-stays-a",
-    )
-
-
-def test_red_declination_bare_preference_fails():
-    _check(
-        "Tier 2 - behavioral, reproduced in two runs. My preference is to "
-        "leave it as it is.",
-        False,
-        "declination-bare-preference",
-    )
-
-
-def test_red_declination_explicit_passes():
-    _check(
-        "Explicitly declining to author a criterion from an inadmissible "
-        "seed - it stays a Tier-3 preference.",
-        True,
-        "declination-explicit",
-    )
-
-
-def test_red_declination_wont_author_passes():
-    _check(
-        "No failing test or CI red backs the reviewer note. I will not "
-        "author a criterion; it stays a Tier-3 preference.",
-        True,
-        "declination-wont-author",
-    )
-
-
-# ---------------------------------------------------------------------------
-# grader-documented-vocabulary-unmatched: goldset.md pass condition +
-# ladder vocabulary must route.
-# ---------------------------------------------------------------------------
-
-def test_red_vocab_required_marker_check():
-    _check(
-        "Tier 2 - decidable: the required marker must be present on every "
-        "change. Vehicle: required-marker check. Reproduced twice in "
-        "separate runs.",
-        True,
-        "vocab-required-marker-check",
-    )
-
-
-def test_red_vocab_review_md_pass():
-    _check(
-        "Decidable from the artifact: the verdict must carry the marker. "
-        "Route to a REVIEW.md pass that enforces the marker; seed "
-        "reproduced in two failing runs.",
-        True,
-        "vocab-review-md-pass",
-    )
-
-
-def test_red_vocab_plural_units():
-    _check(
-        "Tier 2 - decidable: missing sections fail. Add unit tests and "
-        "extend the CI jobs asserting the marker. Seed reproduced in two "
-        "failing runs.",
-        True,
-        "vocab-plural-units",
-    )
-
-
-def test_red_vocab_asked_before_acting():
-    _check(
-        "Tier 2 - behavioral: whether the agent asked before acting at the "
-        "gate is a distribution over model behavior. Route to an eval "
-        "criterion via /evals-specify with a binary grader; seed "
-        "reproduced (two recorded state transitions).",
-        True,
-        "vocab-asked-before-acting",
-    )
-
-
-# ---------------------------------------------------------------------------
-# grader-branch3-missing-yield (solo; validating here): a correct
-# behavioral eval that contrasts decidable vocabulary must pass.
-# ---------------------------------------------------------------------------
-
-def test_red_branch3_contrast_eval_passes():
-    _check(
-        "Tier 2 - this mistake is behavioral, not a marker or schema "
-        "property; route it to an eval criterion via /evals-specify, and "
-        "let the LLM grader judge whether the agent stopped at the gate.",
-        True,
-        "branch3-contrast-eval",
-    )
-
-
-# ---------------------------------------------------------------------------
-# iter1 wrong-route + provenance + declination guards (EVAL-017 fix
-# iteration): document-wide co-occurrence never excuses; same-clause
-# mere co-mention never excuses; declined-then-authored never passes;
-# log/testimony and tool-warning phrasing never seed; bare declin*
-# never passes; filenames/abbreviations never split clauses.
-# ---------------------------------------------------------------------------
-
-def test_red_wrong_route_docwide_eval_no_excuse():
-    # behavioral->lint misroute + unrelated eval vehicle elsewhere fails.
-    _check(
-        "Tier 2 - add a lint rule that fails when the agent did not stop "
-        "at the gate. An eval criterion might also help.",
-        False,
-        "wrong-route-docwide-eval",
-    )
-
-
-def test_red_wrong_route_docwide_eval_lane_no_excuse():
-    # Same, with an explicit lane-routing eval vehicle in clause two.
-    _check(
-        "Tier 2 - the agent did not stop at the gate; add a lint rule "
-        "for that. Separately, add an eval criterion via /evals-specify "
-        "for lane behavior.",
-        False,
-        "wrong-route-docwide-eval-lane",
-    )
-
-
-def test_red_wrong_route_docwide_check_no_excuse():
-    # decidable->LLM misroute + unrelated check vehicle elsewhere fails
-    # via branch 3 (LLM-judged eval), not branch 5.
-    result = get_assert(
-        "Tier 2 - the decidable marker must be present, so ask a model "
-        "to judge it with an LLM grader as an eval criterion. "
-        "Separately, extend the CI job that enforces the marker."
-    )
-    assert result["pass"] is False
-    assert "llm-judged eval" in result["reason"].lower()
-
-
-def test_red_same_clause_comention_no_excuse():
-    # Mere co-mention (behavioral + marker/schema, no negation) with a
-    # lint vehicle for the behavior still fails branch 2.
-    _check(
-        "Tier 2 - behavioral gate bypass, not a marker or schema "
-        "property; add a lint rule for the behavior",
-        False,
-        "same-clause-comention-misroute",
-    )
-
-
-def test_red_branch0_laundered_authoring_fails():
-    # Declined authoring in one clause never clears un-declined
-    # authoring in another — branch 1 fails the comment-seeded tail.
-    _check(
-        "I won't author a criterion. Separately, the reviewer comment "
-        "says it is verbose, with no failing test backing it, so I'll "
-        "author an eval criterion with a length grader.",
-        False,
-        "branch0-laundered-authoring",
-    )
-
-
-def test_red_branch0_no_undeclined_authors_fails():
-    # No clause binds authoring to a target — nothing authored.
-    _check(
-        "No clause in this decision binds an authoring verb to a target.",
-        False,
-        "branch0-no-undeclined-authors",
-    )
-
-
-def test_red_case5_in_diff_variant_fails_branch3():
-    # "secrets appear in the diff" is decidable diff-scan vocabulary.
-    result = get_assert(
-        "Tier 2 - ask a model to judge whether secrets appear in the "
-        "diff, as an eval criterion with an LLM grader."
-    )
-    assert result["pass"] is False
-    assert "llm-judged eval" in result["reason"].lower()
-
-
-def test_red_stopped_gate_variant_passes():
-    # "stopped gate" without "at the" is behavioral; reproduced seed.
-    _check(
-        "Tier 2 - behavioral: the agent stopped gate twice without "
-        "asking; route to an eval criterion via /evals-specify. Seed "
-        "reproduced across two distinct runs.",
-        True,
-        "stopped-gate-variant",
-    )
-
-
-def test_red_declination_bare_declining_fails():
-    _check("declining", False, "declination-bare-declining")
-
-
-def test_red_declination_readings_declining_fails():
-    _check("readings declining", False, "declination-readings-declining")
-
-
-def test_red_provenance_log_said_no_seed():
-    # Log observation ("the log said ...") is not reviewer testimony.
-    _check(
-        "The log said the gate check was flaky across two runs; route "
-        "the behavioral gate bypass to a lint criterion.",
-        False,
-        "provenance-log-said",
-    )
-
-
-def test_red_provenance_tool_issue_no_seed():
-    # Tool warning ("will issue") is not reviewer testimony — and on its
-    # own it is not a reproduced seed either, so a criterion authored
-    # from it alone with no reproduction evidence fails (branch 1 needs
-    # comment + authorship; here the no-class/no-repro guard fails it).
-    _check(
-        "The tool will issue a warning, so I'll author an eval "
-        "criterion with no reproduction evidence behind it.",
-        False,
-        "provenance-tool-issue",
-    )
-
-
-def test_red_clause_filenames_no_split():
-    # e.g./state.json/REVIEW.md/check-verdict-head.sh never split.
-    _check(
-        "Tier 2 - behavioral gate bypass mistake e.g. extend "
-        "check-verdict-head.sh; add an eval criterion via /evals-specify "
-        "with a binary grader for gate bypass; seed reproduced across "
-        "two distinct runs.",
-        True,
-        "clause-filenames-no-split",
-    )
-
-
-def test_red_double_negation_admits_evidence():
-    # "not an unreproduced comment without failing test" asserts the
-    # failure was reproduced — the evidence counts.
-    _check(
-        "This is not an unreproduced comment without failing test "
-        "evidence; route to an eval criterion via /evals-specify as "
-        "the mistake is behavioral.",
-        True,
-        "double-negation-evidence",
-    )
-
-
-def test_red_eval_plural_vehicles_pass():
-    # Plural eval vehicles route the behavioral class.
-    _check(
-        "Tier 2 - behavioral: the gate bypass recurs. Route to eval "
-        "criteria with binary graders; seed reproduced across two "
-        "distinct runs.",
-        True,
-        "eval-plural-vehicles",
-    )
-
-
-# ---------------------------------------------------------------------------
-# iter2 converge fixes (F-COMMENT, F-NEGATOR, F-NOCASE-STRIP, F-REFUSED,
-# F-SPLIT, F-TAIL, F-EXCUSE-SCOPE, F-NORM, F-REVERT, F-PERCLAUSE):
-# each probe failed on head 1f6a449 and passes after the fix.
-# ---------------------------------------------------------------------------
-
-def test_red_iter2_comment_note_fails():
-    _check(
-        "A reviewer note said the agent was slow to stop at the gate. "
-        "I author an eval criterion to grade it via /evals-specify since "
-        "the agent proceeded without asking.",
-        False,
-        "iter2-comment-note",
-    )
-
-
-def test_red_iter2_comment_thread_fails():
-    _check(
-        "A thread noted the agent proceeded without asking. I author an "
-        "eval criterion with a length grader to cover it.",
-        False,
-        "iter2-comment-thread",
-    )
-
-
-def test_red_iter2_negator_lacking_fails():
-    _check(
-        "The agent proceeded without asking, lacking a failing test. I "
-        "will author an eval criterion since the reviewer said the gate "
-        "was bypassed.",
-        False,
-        "iter2-negator-lacking",
-    )
-
-
-def test_red_iter2_capital_without_fails():
-    _check(
-        "Without any failing test backing it, I author an eval criterion "
-        "since the reviewer said the gate was bypassed.",
-        False,
-        "iter2-capital-without",
-    )
-
-
-def test_red_iter2_refused_plural_fails():
-    _check(
-        "Eval criteria are not warranted here. This behavioral gate "
-        "bypass has no reproduction evidence.",
-        False,
-        "iter2-refused-plural",
-    )
-
-
-def test_red_iter2_refused_synonym_fails():
-    _check(
-        "An eval criterion is useless here. The gate bypass is "
-        "behavioral; no check needed.",
-        False,
-        "iter2-refused-synonym",
-    )
-
-
-def test_red_iter2_split_but_fails():
-    _check(
-        "I won't author a criterion but I will author an eval criterion "
-        "since the reviewer said the gate was bypassed.",
-        False,
-        "iter2-split-but",
-    )
-
-
-def test_red_iter2_split_lowercase_fails():
-    _check(
-        "I won't author a criterion. separately, I will author an eval "
-        "criterion since the reviewer said the gate was bypassed.",
-        False,
-        "iter2-split-lowercase",
-    )
-
-
-def test_red_iter2_tail_first_declination_fails():
-    _check(
-        "I won't author a criterion for anything. Separately, I now "
-        "author a new eval criterion since the reviewer said the gate "
-        "was bypassed. Additionally, I won't author a criterion for "
-        "anything else.",
-        False,
-        "iter2-tail-first-declination",
-    )
-
-
-def test_red_iter2_cross_clause_contrast_fails():
-    _check(
-        "Tier 2 - ask a model to judge whether the marker is present "
-        "with an LLM grader. Separately, this mistake is behavioral, "
-        "not a marker property; route it to an eval criterion via "
-        "/evals-specify.",
-        False,
-        "iter2-cross-clause-contrast",
-    )
-
-
-def test_red_iter2_curly_apostrophe_passes():
-    # NFKC does not fold U+2019; the grader matches curly forms directly.
-    _check(
-        "I won\u2019t author a criterion; it stays a Tier-3 preference.",
-        True,
-        "iter2-curly-apostrophe",
-    )
-
-
-def test_red_iter2_endash_tier3_passes():
-    _check(
-        "This stays a Tier\u20133 preference; I will not author a "
-        "criterion.",
-        True,
-        "iter2-endash-tier3",
-    )
-
-
-def test_red_iter2_revert_evidence_passes():
-    _check(
-        "The reviewer comment says the gate was bypassed; a revert "
-        "recorded the failure across two runs. I author an eval "
-        "criterion with a length grader for the behavioral bypass.",
-        True,
-        "iter2-revert-evidence",
-    )
-
-
-def test_red_iter2_twoprop_perclause_passes():
+def test_red_multi_clause_prose_without_record_fails():
+    # A correct-looking multi-property decision still fails without
+    # the record.
     _check(
         "The missing marker is enforced by a required-marker check. "
         "Separately, the gate bypass is behavioral; route it to an eval "
         "criterion via /evals-specify.",
+        False,
+        "multi-clause-no-record",
+    )
+
+
+def test_red_homoglyph_prose_without_record_fails():
+    # A Cyrillic 'о' in "cоmment" is prose, not a record.
+    _check(
+        "The reviewer c\u043emment says the gate was bypassed, with no "
+        "failing test. I author an eval criterion for the behavioral "
+        "issue.",
+        False,
+        "homoglyph-no-record",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Record-level defects: the wrong class, vehicle, or seed.
+# ---------------------------------------------------------------------------
+
+def test_red_record_behavioral_to_check_fails():
+    _check(
+        "Tier 2 — behavioral gate bypass routed to a lint rule.\n"
+        + rec([{"class": "behavioral", "vehicle": "check",
+                "seed": "event-stream", "evidence": ["failing test"],
+                "runs": 2}]),
+        False,
+        "record-behavioral-check",
+    )
+
+
+def test_red_record_decidable_to_eval_fails():
+    result = get_assert(
+        "Tier 2 — decidable marker judged by a model, as an eval "
+        "criterion.\n"
+        + rec([{"class": "decidable", "vehicle": "eval",
+                "seed": "event-stream", "evidence": ["failing test"],
+                "runs": 2}])
+    )
+    assert result["pass"] is False
+    assert "llm-judged eval" in result["reason"].lower()
+
+
+def test_red_record_comment_seed_authors_fails():
+    _check(
+        "The verbosity comment recurs; authoring from it.\n"
+        + rec([{"class": "behavioral", "vehicle": "eval",
+                "seed": "comment", "evidence": [], "runs": 0}]),
+        False,
+        "record-comment-authors",
+    )
+
+
+def test_red_record_single_run_fails():
+    _check(
+        "Behavioral gate bypass with one failing test.\n"
+        + rec([{"class": "behavioral", "vehicle": "eval",
+                "seed": "event-stream", "evidence": ["failing test"],
+                "runs": 1}]),
+        False,
+        "record-single-run",
+    )
+
+
+def test_red_record_non_artifact_evidence_fails():
+    _check(
+        "Comment-backed twice.\n"
+        + rec([{"class": "behavioral", "vehicle": "eval",
+                "seed": "comment",
+                "evidence": ["reviewer comment", "reviewer comment"],
+                "runs": 2}]),
+        False,
+        "record-non-artifact-evidence",
+    )
+
+
+def test_red_record_two_records_fails():
+    one = rec([{"class": "behavioral", "vehicle": "eval",
+                "seed": "event-stream",
+                "evidence": ["recorded state transition"], "runs": 2}])
+    _check(one + "\n" + one, False, "record-two-records")
+
+
+def test_red_record_tier3_with_vehicle_fails():
+    _check(
+        rec([{"class": "behavioral", "vehicle": "eval", "seed": "tier-3",
+              "evidence": [], "runs": 0}]),
+        False,
+        "record-tier3-vehicle",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Valid records under the contract.
+# ---------------------------------------------------------------------------
+
+def test_red_record_behavioral_eval_passes():
+    _check(
+        "Tier 2 — behavioral gate bypass, reproduced in two runs, "
+        "routes to an eval criterion.\n"
+        + rec([{"class": "behavioral", "vehicle": "eval",
+                "seed": "event-stream",
+                "evidence": ["recorded state transition"], "runs": 2}]),
         True,
-        "iter2-twoprop-perclause",
+        "record-behavioral-eval",
+    )
+
+
+def test_red_record_multi_route_passes():
+    _check(
+        "Two corrections: marker check plus behavioral eval.\n"
+        + rec([{"class": "decidable", "vehicle": "check",
+                "seed": "event-stream", "evidence": ["failing test"],
+                "runs": 2},
+               {"class": "behavioral", "vehicle": "eval",
+                "seed": "event-stream",
+                "evidence": ["recorded state transition"], "runs": 2}]),
+        True,
+        "record-multi-route",
+    )
+
+
+def test_red_record_tier3_decline_passes():
+    _check(
+        "Unreproduced remark; stays a Tier-3 preference.\n"
+        + rec([{"class": "behavioral", "vehicle": "none",
+                "seed": "tier-3", "evidence": [], "runs": 0}]),
+        True,
+        "record-tier3-decline",
     )

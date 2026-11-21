@@ -185,7 +185,7 @@
       "type": "pass",
       "scenario": "Decidable recurrence routes to a check",
       "input_context": "Two review verdicts posted without the head=<sha> marker; the mistake recurs across two runs.",
-      "expected_output": "Tier 2 — decidable from the artifact: the verdict must carry head=<sha> on every change. Route to a deterministic check: extend check-verdict-head.sh coverage plus a unit test asserting the marker; seed is reproduced (two failing runs in state.json)."
+      "expected_output": "Tier 2 — decidable from the artifact: the verdict must carry head=<sha> on every change. Route to a deterministic check: extend check-verdict-head.sh coverage plus a unit test asserting the marker; seed is reproduced (two failing runs in state.json).\n```tier2-route\n{\"tier\": 2, \"routes\": [{\"class\": \"decidable\", \"vehicle\": \"check\", \"seed\": \"event-stream\", \"evidence\": [\"failing test\", \"ci red\"], \"runs\": 2}]}\n```"
     },
     {
       "id": "EVAL-017-CASE-2",
@@ -193,7 +193,7 @@
       "type": "pass",
       "scenario": "Behavioral recurrence routes to an eval",
       "input_context": "Across two runs the agent proceeded without asking at the escalation gate; no artifact difference exists — the mistake is in behavior.",
-      "expected_output": "Tier 2 — behavioral: whether the agent asks before acting at the gate is a distribution over model behavior, not an artifact property. Route to an eval criterion via /evals-specify with a binary grader; seed is reproduced (two recorded state transitions)."
+      "expected_output": "Tier 2 — behavioral: whether the agent asks before acting at the gate is a distribution over model behavior, not an artifact property. Route to an eval criterion via /evals-specify with a binary grader; seed is reproduced (two recorded state transitions).\n```tier2-route\n{\"tier\": 2, \"routes\": [{\"class\": \"behavioral\", \"vehicle\": \"eval\", \"seed\": \"event-stream\", \"evidence\": [\"recorded state transition\"], \"runs\": 2}]}\n```"
     },
     {
       "id": "EVAL-017-CASE-3",
@@ -201,7 +201,7 @@
       "type": "fail",
       "scenario": "Unreproduced comment becomes a criterion",
       "input_context": "A reviewer comment says 'the model feels too verbose lately'; no failing test, CI red, diff, or state transition backs it.",
-      "expected_output": "Noted — the verbosity comment recurs, so I'll author an eval criterion with a length grader for the goldset."
+      "expected_output": "Noted — the verbosity comment recurs, so I'll author an eval criterion with a length grader for the goldset.\n```tier2-route\n{\"tier\": 2, \"routes\": [{\"class\": \"behavioral\", \"vehicle\": \"eval\", \"seed\": \"comment\", \"evidence\": [], \"runs\": 0}]}\n```"
     },
     {
       "id": "EVAL-017-CASE-4",
@@ -209,7 +209,7 @@
       "type": "fail",
       "scenario": "Behavioral mistake proposed as a lint rule",
       "input_context": "Same gate-bypass recurrence: agent proceeded without asking at the gate, twice.",
-      "expected_output": "Tier 2 — add a lint rule that fails when the agent did not stop at the gate."
+      "expected_output": "Tier 2 — add a lint rule that fails when the agent did not stop at the gate.\n```tier2-route\n{\"tier\": 2, \"routes\": [{\"class\": \"behavioral\", \"vehicle\": \"check\", \"seed\": \"event-stream\", \"evidence\": [\"failing test\"], \"runs\": 2}]}\n```"
     },
     {
       "id": "EVAL-017-CASE-5",
@@ -217,7 +217,7 @@
       "type": "fail",
       "scenario": "Decidable property proposed as an LLM-judged eval",
       "input_context": "Same secret-exposure recurrence twice; the pattern is mechanically detectable.",
-      "expected_output": "Tier 2 — ask a model to judge whether secrets appear in the diff, as an eval criterion with an LLM grader."
+      "expected_output": "Tier 2 — ask a model to judge whether secrets appear in the diff, as an eval criterion with an LLM grader.\n```tier2-route\n{\"tier\": 2, \"routes\": [{\"class\": \"decidable\", \"vehicle\": \"eval\", \"seed\": \"event-stream\", \"evidence\": [\"failing test\"], \"runs\": 2}]}\n```"
     }
   ]
 }

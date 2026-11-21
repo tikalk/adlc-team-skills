@@ -63,7 +63,13 @@ forever while behavior rots); an eval cannot enforce a decidable property
 2. **Classify the tier** — ladder first (structural → mechanical →
    judgment); classification before scoring.
 3. **Split by decidability** — mechanical corrections route to a check or
-   an eval per the table above; state which and why in one line.
+   an eval per the table above; state which and why in one line. The
+   graded decision is a `tier2-route` record (the fenced JSON block the
+   EVAL-017 grader reads): `{"tier": 2, "routes": [{"class":
+   "decidable"|"behavioral", "vehicle": "check"|"eval"|"none", "seed":
+   "event-stream"|"comment"|"tier-3", "evidence": ["failing test"|"ci red"|
+   "diff"|"screenshot"|"revert"|"recorded state transition"|"state.json"],
+   "runs": 2}]}`. Prose around it is rationale and is not graded.
 4. **Verify the evidence rule** — every occurrence reproduced by artifact,
    not by assertion; a comment-only occurrence fails here.
 5. **Author the vehicle** — check via team-levelup action P; eval criterion

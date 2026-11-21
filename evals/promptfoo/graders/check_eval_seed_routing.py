@@ -71,7 +71,7 @@ _WEAK_REPRO = re.compile(
 _ABSENCE = re.compile(
     r"unreproduced|never reproduced|not reproduced|no reproduction|"
     r"without reproduction|no evidence|without evidence|nothing backs|"
-    r"not backed|without backing|no failing test|no ci red|no diff|"
+    r"not backed|without backing|no failing test|no ci red|no diff\b|"
     r"no screenshot|no revert|no recorded state transition|"
     r"no state\.json|"
     r"no test\b.{0,30}backs|\bsans\b.{0,30}"

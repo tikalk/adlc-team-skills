@@ -401,15 +401,16 @@ def test_fail_tier3_decline_of_reproduced_recurrence():
 
 def test_fail_tier3_decline_of_state_json_recurrence():
     # Dotted artifact terms survive the clause splitter: a state.json
-    # backed recurrence must fail the decline.
+    # backed recurrence must fail the decline. No weak recurrence
+    # wording here, so the pin isolates the splitter fix (the old
+    # dot-splitting grader passed this decline).
     _assert_fail(
         "Declined to Tier-3.\n"
         + rec([route("behavioral", "none", "tier-3")]),
         "reproduced recurrence",
         context={"vars": {
-            "scenario": "recurrence",
-            "input_context": "state.json recorded the transition across "
-            "two runs.",
+            "scenario": "run notes",
+            "input_context": "state.json recorded the transition.",
         }},
     )
 

@@ -17,13 +17,17 @@ two halves:
 
 1. **Publish procedure** (below) — the deterministic branch → commit → push →
    draft-MR/PR sequence every factory run ends with. Factory orchestrators
-   invoke this skill for their publish step; it is also directly usable to
-   post a run's changes.
+   read the procedure and run the helpers in `scripts/` directly for their
+   publish step; the skill itself is never invoked.
 2. **Run contracts** (`references/`) — the executor loop, tracker
    integration, lanes, brief/provider templates, and run-context rules that
    factory skills borrow by path instead of copying.
 
 It never approves or merges. The engine's gate after the step is the approval.
+
+**Reference-only rule:** this skill is reference-only (ADR-507) — never
+invoke it via the Skill tool. Orchestrators read the procedure below and run
+the helpers in `scripts/` directly.
 
 **Direct-invocation guard:** publishing needs a run context — `ADLC_RUN_ID`
 (and usually `ADLC_ISSUE_REF` plus `ADLC_STEP_OUTPUT`) from a workflow run, the
@@ -81,8 +85,8 @@ Outside a factory run the helpers do nothing unless the user opted in
 forwarded to `commit-step.sh`); `run-branch.sh` and `open-mr.sh` never act
 without a run context (`scripts/bash/run-context.sh` prints `factory_run=no`).
 
-Only an orchestrator-invoked runbook commits, pushes and opens the MR, and
-only through these helpers; lifecycle skills never do.
+Only a factory orchestrator following this procedure commits, pushes and
+opens the MR, and only through these helpers; lifecycle skills never do.
 
 **Lifecycle labels:** `bash scripts/bash/set-lifecycle.sh --issue <ref> --to
 <state>` is the Set Lifecycle step of `references/tracker-integration.md`

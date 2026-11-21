@@ -238,7 +238,7 @@ Also flag any changes that make current directives outdated.
 ## Safety & Operating Constraints
 
 1. **Strictly Non-Approving**: Under no circumstances does the review agent approve its own code or bypass branch protection.
-2. **Advisory Auto-Merge**: Triage confidence scores and validation outputs advise on auto-merge eligibility; the actual merge is executed by code-owners or strict GitHub Actions branch rules.
+2. **Advisory Auto-Merge**: Triage confidence scores, validation outputs, and the `**Merge risk: <low|medium|high>**` band advise on merge-readiness; they never authorize a merge. The merge executes only via the `factory-release` gated exact-head executor after both gates are green on the same SHA with a code-owner approval recorded on the exact head. A human push, the `factory-release` merge step, or a branch-rule merge after recorded approval performs the mutation — never the authorization.
 3. **Dry-Run Gating (local sessions only)**: In a local session (a person in the chat), review comments are previewed before being written to the remote PR thread (`--preview`, §6). In a factory run the verdict is posted at once (§2 step 5) — there is no one to confirm a preview, and withholding the verdict "for confirmation" is a failure, not caution.
 4. **Only operates on PR branches**: Never on main/protected branches. Force-push only with `--force-with-lease` for the exact observed remote SHA.
 5. **Authorship preservation**: Fixes are committed by the Fix Agent's own validated identity, never the original PR author's. A rebase or amend over someone else's commit preserves the original author.

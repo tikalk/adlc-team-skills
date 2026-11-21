@@ -56,7 +56,10 @@ The 12 steps run in order; gates halt, never warn.
 3. **merge** — Gated exact-head merge executor. Execute the merge when both
    gates are green on the **exact reviewed head SHA**. `--no-merge` path:
    when the head is already merged, skip the mutation but still verify
-   exact-head identity.
+   exact-head identity. The verdict's `**Merge risk: <low|medium|high>**`
+   band routes effort downstream of the gates (low → fast-lane
+   single-approval queue + batch-review grouping; medium → standard;
+   high → full) — never in place of a gate (see `references/gated-merge.md`).
 4. **stage** — Staging rollout. Dry-run preview first, then roll to staging.
 5. **gate-canary-expand** — Deploy Gate checkpoint 1 (human): staging green,
    rollback plan exists, baseline frozen (or a waiver granted with a recorded
@@ -139,7 +142,7 @@ A run of this skill is done when:
 
 ## References
 
-- `references/gated-merge.md` — both-gates-green same-SHA check, execution-time re-read, halt-on-identity-mismatch, head-moved restart, `--no-merge` path.
+- `references/gated-merge.md` — both-gates-green same-SHA check, execution-time re-read, halt-on-identity-mismatch, head-moved restart, `--no-merge` path, risk-band routing (fast-lane downstream of gates, no auto-approve tier).
 - `references/threshold-verdicts.md` — green/yellow/red bands, armed evaluator, frozen baselines, scheduled wake-ups, outage-as-hold.
 - `references/release-cut.md` — merge → tag → changelog order, SemVer decision tree, tag-as-truth, dry-run preview, handoff packet, idempotency keys.
 - `references/release-chdr.md` — non-obvious-rationale trigger list, one-per-run via tag key, change-clarify governance, routine-green mints none.

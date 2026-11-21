@@ -27,6 +27,18 @@ head exactly as much as a large one.
 3. Collect both gates green again on the new same SHA.
 4. Only then merge.
 
+## Risk-band routing (downstream of both gates, never instead)
+
+After both gates are green on the same SHA with a recorded human, the
+verdict's `**Merge risk: <low|medium|high>**` band (factory-review) routes
+review effort — it never authorizes anything on its own:
+
+- **low** → fast-lane single-approval queue (ADR-360 Tier 3) + batch-review grouping.
+- **medium** → standard review.
+- **high** → full review.
+
+No auto-approve tier exists: a low-risk label with no recorded human halts — the band routes review effort, never approval. A single gate is never enough, and CI-green is not a gate.
+
 ## --no-merge path
 
 When the head is already merged (pre-merged), skip the mutation but keep the

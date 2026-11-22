@@ -4,10 +4,10 @@
 # Scans ADR files for markdown links of the form ](ADR-*.md) and reports
 # targets that do not resolve on disk next to the linking file. Catches the
 # two failure shapes seen on adlc-workspace MR !158 (ChDR-007):
-#   1. non-resolving relative prefix  [x](../memory/adr/ADR-123.md)
+#   1. non-resolving relative prefix  [x](../memory/adr/ADR-000.md)
 #      (resolves to memory/memory/adr/ from docs/adlc/memory/adr/)
-#   2. short filename with no target  [x](ADR-457.md)
-#      (real file is ADR-457-issue-conformance-pass-mechanism.md)
+#   2. short filename with no target  [x](ADR-000.md)
+#      (real file carries a suffixed stem)
 #
 # Read-only by contract: this script never writes, moves or reformats an
 # artifact. Remediation stays with implement/human (fix the link, keep

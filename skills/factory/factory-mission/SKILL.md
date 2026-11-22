@@ -13,9 +13,17 @@ description: Use when executing a spec-gated mission from the queue — inner lo
 When `ADLC_RUN_ID` is set, the workflow engine runs this skill unattended as its `execute` step, and the completion gate follows it. Do exactly this:
 
 1. **The mission is the run's issue.** Take it from `--issue <ref>` in the arguments; when that is missing or empty, use `ADLC_ISSUE_REF`. With neither, do not ask: write `{"conclusion":"blocked: factory run without an issue"}` into `ADLC_STEP_OUTPUT` and return.
-2. Run the mission for that issue end to end (Phases 0–6 below): brief, specify, clarify, plan, test (RED), code (GREEN), verify, converge, then Invoke the `factory-runbook` skill to open or reuse the draft code MR/PR in the repository the change belongs to.
-3. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
-4. **Never ask a question or wait for an answer.** The completion gate after this step is the approval; a question here ends the step with nothing implemented.
+2. **Read the answers first.** On every start — both lane phases, `plan` (`factory-mission --plan`) and `execute` — check `ADLC_STEP_ANSWERS` first: when it exists, its `answer_plan` / `answer_execute` content is the human's answer to this step's earlier question payload, and the run continues from it. Never re-ask what the answers already settle.
+3. Run the mission for that issue end to end (Phases 0–6 below): brief, specify, clarify, plan, test (RED), code (GREEN), verify, converge, then Invoke the `factory-runbook` skill to open or reuse the draft code MR/PR in the repository the change belongs to.
+4. **Before you return, always:** write `mr_url` (the code MR/PR you opened or reused) and a one-line `conclusion` into `ADLC_STEP_OUTPUT` — one flat JSON object of string values; keep any keys already in the file. The engine links `mr_url` at the completion gate. Do this whatever the outcome; with no MR, write only the `conclusion`.
+5. **Never ask a question in prose or wait for an answer.** The skill never asks in prose — the only ask is the structured `ADLC_STEP_QUESTION` payload (rule 6). Lifecycle skills (`mission-brief` steps, clarify gates) never write a payload; only this orchestrator does.
+
+6. **When you cannot proceed, pause through the question payload.** Before asking, check the issue, the PDR/ADR records, the comment bus and the code — the payload's questions list what was checked.
+    a. Publish the work so far first (pause publish, ADR-531 D6) through `factory-runbook --kind code`: commit the mission code paths directly as `wip(<run_id>): paused at <phase> for a question` (the resolved run id from the run context — never an invented one; skill sources sit outside the ADR-433 lifecycle allowlist that `commit-step.sh` enforces, so the orchestrator stages the mission paths itself), push only `factory/mission/*` with `open-mr.sh --kind code`, and open-or-reuse the run's single draft MR (reusing the one opened after `plan`). The issue stays `executing`.
+    b. With no diff yet, open no MR and say "no MR yet" in the payload summary.
+    c. If the commit, push or MR open fails, write no payload and fail with `blocked: pause publish failed (<reason>)`.
+    d. Then write the `ADLC_STEP_QUESTION` payload (`summary` + 1–3 `questions[]`, optional `options`; at most 3 questions — never write an invalid payload) with `mr_url`, and return. Under ADR-531-amendment-1 the lane runs `factory-lane` (no in-run completion gate; the MR review is the final approval).
+7. **Lifecycle skills never write a payload.** Only this orchestrator writes `ADLC_STEP_QUESTION`; `mission-brief` steps and clarify gates route their questions through it.
 
 **Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`
 
@@ -106,7 +114,7 @@ A `SPEC_CORRECTION_NEEDED` verdict routes to the owning clarify gate (`mission-b
 
 Knobs specific to a mission run, read from `mission.yml` (the policy home for execution and supervision):
 
-1. **Supervision**: the run's supervision mode — unattended runs never ask a question.
+1. **Supervision**: the run's supervision mode — under the payload rule (rules 5–6 above) unattended runs never ask in prose: autonomous runs decide through the hierarchy, gated/hybrid runs pause through the payload.
 2. **Quality threshold**: `quality_threshold` travels in as a converge input owned by `mission-brief`; the orchestrator carries it, never applies it.
 3. **Test/code split**: selected per run — whether the build dispatches separate test and code steps.
 

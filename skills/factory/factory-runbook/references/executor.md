@@ -255,7 +255,7 @@ After dispatching a subagent, check for observable progress when nothing has adv
 **Decision**:
 - Evidence of work → extend by one window (max 2 extensions per step)
 - Alive but nothing to show across 2 consecutive windows → kill the subagent, respawn the step (counts as one abnormal end; second consecutive abnormal end halts the run)
-- Subagent published a question/blocker → it is blocked on the user, not stuck. Relay the question and pause. Stop applying the window.
+- Subagent published a question/blocker → it is blocked on the user, not stuck. The orchestrator pause-publishes the work so far, writes the `ADLC_STEP_QUESTION` payload, and returns. Stop applying the window.
 - Neither evidence nor process → treat as dead, respawn once
 
 A window is not a deadline on the work. It only asks whether the work is still happening. The run has no time budget.
@@ -270,7 +270,7 @@ When supervision is `autonomous` and a step would have asked the user a question
 4. Decisions are numbered across the run (`k` increments).
 5. If the same non-convergence condition trips again after an autonomous decision, stop the run with the state and reasoning posted. Further unattended cycles would be thrashing.
 
-Under `gated` or `hybrid` supervision, this section does not apply — questions are relayed to the human and the run pauses.
+Under `gated` or `hybrid` supervision, this section does not apply — questions pause through the `ADLC_STEP_QUESTION` payload (the orchestrator publishes the work so far first and returns; the human's answer arrives as `answer_<step_id>` through `ADLC_STEP_ANSWERS`), never in prose.
 
 ### Correction loop
 

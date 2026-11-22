@@ -194,6 +194,38 @@ for _pass in $PASS_ORDER; do
     fi
 done
 
+# Merge-risk draft (advisory, never a verdict): the reviewer passes one
+# `risk: <row> | <class> | <evidence>` line per Holmes row via the same
+# evidence interface; an optional `merge-risk: <low|medium|high>` line names
+# the caller-scored band. The twins generate no scores — they only render.
+# Without risk evidence every row reports unverified (honest, same pattern
+# as the six passes above). The draft band carries "(draft)"; the twins
+# emit no head marker, outcome= or important= (sanitized above).
+if [ -n "${EVIDENCE_RAW:-}" ] && printf '%s\n' "$EVIDENCE_RAW" | grep -qi "^merge-risk:[[:space:]]*\\(low\\|medium\\|high\\)"; then
+    RISK_BAND=$(printf '%s\n' "$EVIDENCE_RAW" | grep -i "^merge-risk:" | head -1 | grep -oi "\\(low\\|medium\\|high\\)" | head -1 | tr 'A-Z' 'a-z')
+else
+    RISK_BAND=""
+fi
+if [ -n "$RISK_BAND" ]; then
+    printf '**Merge risk: %s (draft)**\n' "$RISK_BAND"
+else
+    printf 'Merge risk: no caller-scored band (draft — reviewer did not supply merge-risk: <band>)\n'
+fi
+for _row in Verification Alignment Impact "Rollback cost" "Error detection"; do
+    case "$_row" in
+        Verification) _pat="verification" ;;
+        Alignment) _pat="alignment" ;;
+        Impact) _pat="impact" ;;
+        "Rollback cost") _pat="rollback cost" ;;
+        "Error detection") _pat="error detection" ;;
+    esac
+    if [ -n "${EVIDENCE_RAW:-}" ] && printf '%s\n' "$EVIDENCE_RAW" | grep -qi "^risk:[[:space:]]*$_pat\\b"; then
+        printf '  risk: %s — evidence rendered above (reviewer-attested, see evidence lines)\n' "$_row"
+    else
+        printf '  risk: %s — unverified: reviewer procedure not invoked in this shell-only run\n' "$_row"
+    fi
+done
+
 cat <<EOF
 
 Provenance:

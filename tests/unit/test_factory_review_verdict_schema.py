@@ -63,7 +63,7 @@ def body(m, imp_items, nit_items, before="", between="", status="completed"):
     imp = "\n".join(f"### I{i} — x\nwhy\n" for i in range(imp_items)) or "None."
     nit = "\n".join(f"### N{i} — y\nwhy\n" for i in range(nit_items)) or "None."
     oc = "merge-ready" if imp_items == 0 and status == "completed" else "not-merge-ready"
-    return (f"{m}\n\n{before}## Verdict\n**Outcome:** {oc}\n\nTwo-line summary.\n\n{between}"
+    return (f"{m}\n\n{before}## Verdict\n**Outcome:** {oc}\n\nTwo-line summary.\n\n**Merge risk: low**\n\n{between}"
             f"## Important findings\n{imp}\n\n## Nits\n{nit}\n")
 
 

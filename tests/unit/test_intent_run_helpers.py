@@ -700,7 +700,10 @@ def test_factory_mission_checklist_takes_the_issue_and_reports_the_mr():
     assert head in text
     assert text.index(head) < text.index("## What this skill does")
     block = text[text.index(head):text.index("## What this skill does")]
-    for needle in ("--issue <ref>", "ADLC_ISSUE_REF", "ADLC_STEP_OUTPUT", "mr_url", "conclusion", "Never ask a question"):
+    # adlc-workspace#151: the checklist asks only through the question
+    # payload, never in prose ("Never ask a question" was the old rule).
+    for needle in ("--issue <ref>", "ADLC_ISSUE_REF", "ADLC_STEP_OUTPUT", "mr_url", "conclusion",
+                   "Never ask in prose", "ADLC_STEP_QUESTION"):
         assert needle in block, needle
 
 

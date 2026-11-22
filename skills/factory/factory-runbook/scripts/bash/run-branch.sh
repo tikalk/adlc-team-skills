@@ -16,6 +16,15 @@
 # (never a rebase or --force; a conflict halts naming the branch). The branch is shared by both intent lanes and by re-dispatches of the
 # same issue. Without a run context this is a no-op (interactive sessions never
 # switch branches). Prints the branch name on stdout.
+#
+# Target branch (SF-FIX-23): when the run was dispatched against a branch
+# other than the default one (ADLC_TARGET_BRANCH, else
+# WORKFLOW_INPUTS.target_branch; resolved by target-branch.sh), that branch
+# takes the default branch's place here: a new run branch (code or intent)
+# starts from origin/<target>, and an existing intent branch is caught up with
+# origin/<target>. A target that is invalid or missing on origin stops the
+# helper (exit 2): it never falls back to the default branch. Without a
+# target nothing changes.
 set -euo pipefail
 
 die() { echo "run-branch: $*" >&2; exit 2; }
@@ -59,6 +68,13 @@ if [ "$ADLC_RUN_CONTEXT_SOURCE" = lane ] && [ -z "${ADLC_ISSUE_REF:-}" ]; then
 fi
 [[ "$ADLC_RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "invalid ADLC_RUN_ID"
 
+# The branch this run works against, when it is not the default branch
+# (SF-FIX-23). Empty = the default branch, as always.
+ADLC_TARGET_BRANCH_ERROR=""
+. "$(dirname "$0")/target-branch.sh"
+[ -z "$ADLC_TARGET_BRANCH_ERROR" ] || die "$ADLC_TARGET_BRANCH_ERROR"
+target="${ADLC_TARGET_BRANCH:-}"
+
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"
 cd "$root"
 
@@ -80,6 +96,15 @@ else
   fi
 fi
 git check-ref-format "refs/heads/$branch" || die "invalid branch name: $branch"
+
+# A target branch must be on origin before anything is switched or created:
+# the run is cut from it and its merge request goes into it.
+if [ -n "$target" ]; then
+  git ls-remote --exit-code --heads origin "refs/heads/$target" >/dev/null 2>&1 \
+    || die "target branch '$target' was not found on origin (it does not exist, or origin did not answer) — refusing to fall back to the default branch"
+  git fetch -q origin "+refs/heads/$target:refs/remotes/origin/$target" \
+    || die "fetch of target branch origin/$target failed — refusing to fall back to the default branch"
+fi
 
 on_origin=0
 if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
@@ -113,8 +138,16 @@ elif [ "$kind" = code ]; then
   # intent MR. Files the mission wrote but has not committed are untracked and
   # move along with the switch.
   start=""
-  default="$(origin_default)"
-  if [ -n "$default" ] && git check-ref-format "refs/heads/$default" \
+  default=""
+  if [ -n "$target" ]; then
+    # Target-branch run: origin/<target> (fetched above) is the only start.
+    start="refs/remotes/origin/$target"
+  else
+    default="$(origin_default)"
+  fi
+  if [ -n "$start" ]; then
+    :
+  elif [ -n "$default" ] && git check-ref-format "refs/heads/$default" \
     && git fetch -q origin "+refs/heads/$default:refs/remotes/origin/$default" 2>/dev/null; then
     start="refs/remotes/origin/$default"
   else
@@ -130,6 +163,10 @@ elif [ "$kind" = code ]; then
     echo "run-branch: no origin default branch found — $branch starts from HEAD" >&2
     git switch -q -c "$branch"
   fi
+elif [ -n "$target" ]; then
+  # Target-branch run: a new intent branch starts from origin/<target> too
+  # (in the runner pod that is what HEAD already is).
+  git switch -q -c "$branch" "refs/remotes/origin/$target"
 else
   git switch -q -c "$branch"
 fi
@@ -138,10 +175,16 @@ fi
 # behind the default branch: catch it up with one merge commit — never a
 # rebase, never --force (merge-commit rule). Code branches are left alone.
 if [ "$existed" = 1 ] && [ "$kind" = intent ]; then
-  default="$(origin_default)"
-  default="${default:-main}"
-  git check-ref-format "refs/heads/$default" || die "invalid default branch name: $default"
-  git fetch -q origin "+refs/heads/$default:refs/remotes/origin/$default" || die "fetch of origin/$default failed"
+  if [ -n "$target" ]; then
+    # Target-branch run: catch up with origin/<target> (fetched above), never
+    # with the default branch — that would pull it into the test branch's run.
+    default="$target"
+  else
+    default="$(origin_default)"
+    default="${default:-main}"
+    git check-ref-format "refs/heads/$default" || die "invalid default branch name: $default"
+    git fetch -q origin "+refs/heads/$default:refs/remotes/origin/$default" || die "fetch of origin/$default failed"
+  fi
   if ! git merge-base --is-ancestor "refs/remotes/origin/$default" HEAD; then
     if ! git merge -q --no-edit "refs/remotes/origin/$default" >/dev/null 2>&1; then
       git merge --abort >/dev/null 2>&1 || true

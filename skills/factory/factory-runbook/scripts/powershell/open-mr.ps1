@@ -20,6 +20,15 @@
 # scopes are checked before anything is pushed or created (ADR-432); a missing
 # scope or a tracker refusal blocks: non-zero exit, nothing written. Without
 # a run context this is a no-op. Prints the MR URL.
+#
+# Target branch (SF-FIX-23): when the run was dispatched against a branch
+# other than the default one (ADLC_TARGET_BRANCH, else
+# WORKFLOW_INPUTS.target_branch; resolved by target-branch.ps1), the MR/PR is
+# opened INTO that branch, the empty-run check counts commits beyond
+# origin/<target>, and an already open MR/PR for the run branch is reused only
+# if it targets the same branch. A target that is invalid or missing on origin
+# stops the helper before anything is pushed (exit 2): it never falls back to
+# the default branch. Without a target nothing changes.
 
 $ErrorActionPreference = 'Stop'
 $script:ErrorView = 'ConciseView'
@@ -56,6 +65,12 @@ if (-not $env:ADLC_RUN_ID) {
     [Console]::Error.WriteLine('open-mr: no run context (ADLC_RUN_ID unset, no run_id in WORKFLOW_INPUTS) — skipped')
     exit 0
 }
+# The branch this run works against, when it is not the default branch
+# (SF-FIX-23). Empty = the default branch, as always.
+$AdlcTargetBranchError = ''
+. (Join-Path $PSScriptRoot 'target-branch.ps1')
+if ($AdlcTargetBranchError) { Die $AdlcTargetBranchError }
+$runTarget = if ($env:ADLC_TARGET_BRANCH) { $env:ADLC_TARGET_BRANCH } else { '' }
 $root = git rev-parse --show-toplevel 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $root) { Die 'not inside a git work tree' }
 Set-Location $root.Trim()
@@ -137,16 +152,29 @@ if ($iid -and $provider -ne $issueProvider) {
     }
     $description = "$description Issue: $issueUrl"
 }
+if ($runTarget) {
+    $description = "$description Target branch: ``$runTarget`` (this run was dispatched against it; it is not the default branch)."
+}
 
 # An empty run opens nothing: with no commits on the run branch beyond the
 # base there is nothing to review, so no push, no MR and no mr_url (the gate
 # then shows no link). A re-dispatch continuing a pushed branch is not empty.
 $base = ''
-foreach ($b in @((git symbolic-ref -q --short refs/remotes/origin/HEAD 2>$null), 'origin/main', 'origin/master')) {
-    $b = if ($b) { $b.Trim() } else { '' }
-    if ($b) {
-        git rev-parse -q --verify "$b^{commit}" *> $null
-        if ($LASTEXITCODE -eq 0) { $base = $b; break }
+if ($runTarget) {
+    # Target-branch run: the base is origin/<target>, and it must be there —
+    # before anything is pushed or created.
+    git ls-remote --exit-code --heads origin "refs/heads/$runTarget" *> $null
+    if ($LASTEXITCODE -ne 0) { Die "target branch '$runTarget' was not found on origin (it does not exist, or origin did not answer) — refusing to fall back to the default branch; nothing was pushed" }
+    git fetch -q origin "+refs/heads/${runTarget}:refs/remotes/origin/${runTarget}" *> $null
+    if ($LASTEXITCODE -ne 0) { Die "fetch of target branch origin/$runTarget failed — refusing to fall back to the default branch; nothing was pushed" }
+    $base = "origin/$runTarget"
+} else {
+    foreach ($b in @((git symbolic-ref -q --short refs/remotes/origin/HEAD 2>$null), 'origin/main', 'origin/master')) {
+        $b = if ($b) { $b.Trim() } else { '' }
+        if ($b) {
+            git rev-parse -q --verify "$b^{commit}" *> $null
+            if ($LASTEXITCODE -eq 0) { $base = $b; break }
+        }
     }
 }
 if ($base) {
@@ -241,6 +269,17 @@ function Assert-OwnershipNotBlocked([string]$OwnershipJson) {
 # Push-Reuse — the reuse path pushes too, so commits from a run that reuses a
 # capture-time (or earlier) MR reach it. Fast-forward only: never --force; a
 # rejected push means the branch moved on the remote.
+# Assert-ReuseTargetsRunTarget <branch the open MR/PR targets> — a
+# target-branch run never pushes into an MR/PR that goes somewhere else (an
+# earlier run of the same issue against the default branch, say).
+function Assert-ReuseTargetsRunTarget([string]$Actual) {
+    if (-not $runTarget) { return }
+    if ($Actual -cne $runTarget) {
+        $shown = if ($Actual) { $Actual } else { 'unknown' }
+        Die "the open MR/PR for $branch ($url) targets '$shown', not this run's target branch '$runTarget' — close it or change its target branch; nothing was pushed"
+    }
+}
+
 function Push-Reuse {
     git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
     if ($LASTEXITCODE -ne 0) { Die "push of $branch was rejected: the branch moved on the remote; re-run run-branch to catch up, then open-mr again" }
@@ -258,6 +297,9 @@ if ($provider -eq 'gitlab') {
     if ($url) {
         # Reuse path: push the run's commits (fast-forward only), then return
         # the open MR untouched — no issue read, no resolve-mr-ownership call.
+        if ($runTarget) {
+            Assert-ReuseTargetsRunTarget (json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && typeof m.target_branch === "string" ? m.target_branch : "")' @($existing))
+        }
         Push-Reuse
     } else {
         # Create path: push first.
@@ -289,8 +331,14 @@ if ($provider -eq 'gitlab') {
         # One JSON body via --input: current glab refuses bracketed field names
         # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and
         # the milestone as strings.
-        $projJson = (Api @("projects/$p")) -join "`n"
-        $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
+        # The MR goes into the run's target branch when it has one
+        # (SF-FIX-23), else into the project's default branch.
+        if ($runTarget) {
+            $target = $runTarget
+        } else {
+            $projJson = (Api @("projects/$p")) -join "`n"
+            $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
+        }
         $createBody = json '
       const [source_branch, target_branch, title, description, ownership] = process.argv.slice(1);
       const o = JSON.parse(ownership || "{}");
@@ -322,13 +370,22 @@ if ($provider -eq 'gitlab') {
     if ($url) {
         # Reuse path: push the run's commits (fast-forward only), then return
         # the open PR untouched — no issue read, no resolve-mr-ownership call.
+        if ($runTarget) {
+            Assert-ReuseTargetsRunTarget (json 'const a = JSON.parse(process.argv[1] || "[]"); const b = Array.isArray(a) && a[0] && a[0].base; console.log(b && typeof b.ref === "string" ? b.ref : "")' @($existing))
+        }
         Push-Reuse
     } else {
         # Create path: push first.
         git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
         if ($LASTEXITCODE -ne 0) { Die "push of $branch failed" }
-        $projJson = (Api @("repos/$project")) -join "`n"
-        $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
+        # The PR goes into the run's target branch when it has one
+        # (SF-FIX-23), else into the repository's default branch.
+        if ($runTarget) {
+            $target = $runTarget
+        } else {
+            $projJson = (Api @("repos/$project")) -join "`n"
+            $target = json 'console.log(JSON.parse(process.argv[1]).default_branch||"main")' @($projJson)
+        }
         $ghTitle = $title -replace '^Draft: ', ''
         $created = Api @('-X', 'POST', "repos/$project/pulls",
             '-f', "head=$branch", '-f', "base=$target", '-f', "title=$ghTitle", '-f', "body=$description", '-F', 'draft=true')

@@ -53,7 +53,14 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
    with `--kind code` for mission code runs) in the project root, reusing it
    or continuing from `origin`. A new code branch starts from origin's default
    branch, never from the checked-out intent branch, so the intent step's
-   drafts stay out of the code MR. Shared by both intent lanes and with
+   drafts stay out of the code MR. **Target branch:** when the run was
+   dispatched against another branch (`ADLC_TARGET_BRANCH`, else
+   `WORKFLOW_INPUTS.target_branch`; `bash scripts/bash/target-branch.sh`
+   prints it), that branch takes the default branch's place — a new run
+   branch starts from `origin/<target>`, and step 3 opens the MR into it. A
+   target that is invalid or missing on `origin` stops the helper (exit 2):
+   it never falls back to the default branch, and neither do you
+   (`references/run-context.md`). Shared by both intent lanes and with
    re-dispatches. Without a run context (`ADLC_RUN_ID`, or the lane's
    `WORKFLOW_INPUTS.run_id` adopted through `scripts/bash/run-context.sh`)
    this is a no-op.
@@ -64,7 +71,8 @@ reverse: `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.)
    allowlisted paths; prints `sha: <sha>` or `sha: none` for the
    step's bus marker.
 3. **Before returning, always:** `bash scripts/bash/open-mr.sh [--kind <intent|code>]` —
-   pushes the run branch only, finds or opens one draft MR (merge commit, no
+   pushes the run branch only, finds or opens one draft MR — into the run's
+   target branch when it has one, else the default branch — (merge commit, no
    squash; Issue milestone applied inline, Issue assignees else the
    runner's own account, per `tracker-integration.md` Operation 11; the
    deterministic resolver `scripts/bash/resolve-mr-ownership.sh`

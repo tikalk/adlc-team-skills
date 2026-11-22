@@ -15,6 +15,15 @@
 # scopes are checked before anything is pushed or created (ADR-432); a missing
 # scope or a tracker refusal blocks: non-zero exit, nothing written. Without
 # a run context this is a no-op. Prints the MR URL.
+#
+# Target branch (SF-FIX-23): when the run was dispatched against a branch
+# other than the default one (ADLC_TARGET_BRANCH, else
+# WORKFLOW_INPUTS.target_branch; resolved by target-branch.sh), the MR/PR is
+# opened INTO that branch, the empty-run check counts commits beyond
+# origin/<target>, and an already open MR/PR for the run branch is reused only
+# if it targets the same branch. A target that is invalid or missing on origin
+# stops the helper before anything is pushed (exit 2): it never falls back to
+# the default branch. Without a target nothing changes.
 set -euo pipefail
 
 die() { echo "open-mr: $*" >&2; exit 2; }
@@ -51,6 +60,12 @@ if [ "$ADLC_RUN_CONTEXT_SOURCE" = lane ] && [ -z "${ADLC_ISSUE_REF:-}" ]; then
   echo "open-mr: review run (a lane run id and no issue) — skipped" >&2
   exit 0
 fi
+# The branch this run works against, when it is not the default branch
+# (SF-FIX-23). Empty = the default branch, as always.
+ADLC_TARGET_BRANCH_ERROR=""
+. "$(dirname "$0")/target-branch.sh"
+[ -z "$ADLC_TARGET_BRANCH_ERROR" ] || die "$ADLC_TARGET_BRANCH_ERROR"
+run_target="${ADLC_TARGET_BRANCH:-}"
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git work tree"
 cd "$root"
 branch="$(git branch --show-current)"
@@ -132,14 +147,27 @@ if [ -n "$iid" ] && [ "$provider" != "$issue_provider" ]; then
   fi
   description="${description} Issue: ${issue_url}"
 fi
+if [ -n "$run_target" ]; then
+  description="${description} Target branch: \`${run_target}\` (this run was dispatched against it; it is not the default branch)."
+fi
 
 # An empty run opens nothing: with no commits on the run branch beyond the
 # base there is nothing to review, so no push, no MR and no mr_url (the gate
 # then shows no link). A re-dispatch continuing a pushed branch is not empty.
 base=""
-for b in "$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)" origin/main origin/master; do
-  if [ -n "$b" ] && git rev-parse -q --verify "$b^{commit}" >/dev/null; then base="$b"; break; fi
-done
+if [ -n "$run_target" ]; then
+  # Target-branch run: the base is origin/<target>, and it must be there —
+  # before anything is pushed or created.
+  git ls-remote --exit-code --heads origin "refs/heads/$run_target" >/dev/null 2>&1 \
+    || die "target branch '$run_target' was not found on origin (it does not exist, or origin did not answer) — refusing to fall back to the default branch; nothing was pushed"
+  git fetch -q origin "+refs/heads/$run_target:refs/remotes/origin/$run_target" \
+    || die "fetch of target branch origin/$run_target failed — refusing to fall back to the default branch; nothing was pushed"
+  base="origin/$run_target"
+else
+  for b in "$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)" origin/main origin/master; do
+    if [ -n "$b" ] && git rev-parse -q --verify "$b^{commit}" >/dev/null; then base="$b"; break; fi
+  done
+fi
 if [ -n "$base" ] && [ "$(git rev-list --count "$base..HEAD")" = 0 ]; then
   echo "open-mr: no commits on $branch beyond $base — nothing to review, no MR opened" >&2
   exit 0
@@ -204,6 +232,15 @@ ownership_block_or_empty() {
 # push_reuse — the reuse path pushes too, so commits from a run that reuses a
 # capture-time (or earlier) MR reach it. Fast-forward only: never --force; a
 # rejected push means the branch moved on the remote.
+# reuse_targets_the_run_target <branch the open MR/PR targets> — a
+# target-branch run never pushes into an MR/PR that goes somewhere else (an
+# earlier run of the same issue against the default branch, say).
+reuse_targets_the_run_target() {
+  [ -n "$run_target" ] || return 0
+  [ "$1" = "$run_target" ] \
+    || die "the open MR/PR for $branch ($url) targets '${1:-unknown}', not this run's target branch '$run_target' — close it or change its target branch; nothing was pushed"
+}
+
 push_reuse() {
   git push -q -u origin "refs/heads/$branch:refs/heads/$branch" \
     || die "push of $branch was rejected: the branch moved on the remote; re-run run-branch to catch up, then open-mr again"
@@ -221,6 +258,9 @@ if [ "$provider" = gitlab ]; then
     # Reuse path: push the run's commits (fast-forward only), then return the
     # open MR untouched — no issue read, no resolve-mr-ownership call
     # (preserve-only = touch nothing).
+    if [ -n "$run_target" ]; then
+      reuse_targets_the_run_target "$(json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && typeof m.target_branch === "string" ? m.target_branch : "")' "$existing")"
+    fi
     push_reuse
   else
     git push -q -u origin "refs/heads/$branch:refs/heads/$branch" || die "push of $branch failed"
@@ -249,6 +289,13 @@ if [ "$provider" = gitlab ]; then
     # One JSON body via --input: current glab refuses bracketed field names
     # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and the
     # milestone as strings.
+    # The MR goes into the run's target branch when it has one (SF-FIX-23),
+    # else into the project's default branch.
+    if [ -n "$run_target" ]; then
+      mr_target="$run_target"
+    else
+      mr_target="$(api "projects/$p" | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).default_branch||"main"))')"
+    fi
     body="$(json '
       const [source_branch, target_branch, title, description, ownership] = process.argv.slice(1);
       const o = JSON.parse(ownership || "{}");
@@ -260,7 +307,7 @@ if [ "$provider" = gitlab ]; then
         if (nums.length) b.assignee_ids = nums;
       }
       console.log(JSON.stringify(b));
-    ' "$branch" "$(api "projects/$p" | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).default_branch||"main"))')" "$title" "$description" "$ownership")"
+    ' "$branch" "$mr_target" "$title" "$description" "$ownership")"
     created="$(printf '%s' "$body" | api -X POST "projects/$p/merge_requests" -H 'Content-Type: application/json' --input -)" || die "the tracker refused to create the merge request (missing scope?)"
     url="$(json 'console.log(JSON.parse(process.argv[1]).web_url || "")' "$created")"
   fi
@@ -272,10 +319,19 @@ else
     # Reuse path: push the run's commits (fast-forward only), then return the
     # open PR untouched — no issue read, no resolve-mr-ownership call
     # (preserve-only = touch nothing).
+    if [ -n "$run_target" ]; then
+      reuse_targets_the_run_target "$(json 'const a = JSON.parse(process.argv[1] || "[]"); const b = Array.isArray(a) && a[0] && a[0].base; console.log(b && typeof b.ref === "string" ? b.ref : "")' "$existing")"
+    fi
     push_reuse
   else
     git push -q -u origin "refs/heads/$branch:refs/heads/$branch" || die "push of $branch failed"
-    target="$(api "repos/$project" | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).default_branch||"main"))')"
+    # The PR goes into the run's target branch when it has one (SF-FIX-23),
+    # else into the repository's default branch.
+    if [ -n "$run_target" ]; then
+      target="$run_target"
+    else
+      target="$(api "repos/$project" | json 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).default_branch||"main"))')"
+    fi
     created="$(api -X POST "repos/$project/pulls" -f "head=$branch" -f "base=$target" -f "title=${title#Draft: }" -f "body=$description" -F draft=true)" || die "the tracker refused to create the pull request (missing scope?)"
     url="$(json 'console.log(JSON.parse(process.argv[1]).html_url || "")' "$created")"
     number="$(json 'console.log(JSON.parse(process.argv[1]).number || "")' "$created")"

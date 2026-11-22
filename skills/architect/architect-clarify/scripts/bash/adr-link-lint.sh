@@ -60,13 +60,26 @@ for file in "$@"; do
                 case "$check" in
                     ../*|./*|/*) shape="non-resolving-prefix" ;;
                 esac
-                # suggest suffixed sibling if exactly one matches the stem
+                # Suggest a suffixed sibling only on an exactly-one match: escape
+                # glob metacharacters in the stem and count nullglob array
+                # elements (no ls/wc parsing); on zero full-stem matches retry
+                # with the numeric prefix (ADR-<digits>*.md) for wrong-suffix
+                # targets. Zero or 2+ matches -> generic fallback.
                 stem="${check##*/}"
                 stem="${stem%.md}"
                 suggestion=""
-                match="$(ls -1 "$dir/${stem}"*.md 2>/dev/null | head -2)"
-                if [[ -n "$match" && "$(printf '%s' "$match" | wc -l)" == "0" ]]; then
-                    suggestion="$(basename "$match")"
+                esc_stem="$(printf '%s' "$stem" | sed 's/[][\\*?]/\\&/g')"
+                shopt -s nullglob
+                # shellcheck disable=SC2086,SC2206
+                matches=("$dir"/${esc_stem}*.md)
+                if [[ "${#matches[@]}" -eq 0 && "$stem" =~ ^(ADR-[0-9]+) ]]; then
+                    prefix="${BASH_REMATCH[1]}"
+                    # shellcheck disable=SC2086,SC2206
+                    matches=("$dir"/${prefix}*.md)
+                fi
+                shopt -u nullglob
+                if [[ "${#matches[@]}" -eq 1 ]]; then
+                    suggestion="$(basename "${matches[0]}")"
                 fi
                 if [[ "$TSV" == "1" ]]; then
                     printf '%s\t%s\t%s\t%s\n' "$file" "$lineno" "$target" "$shape"

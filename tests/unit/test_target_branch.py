@@ -218,6 +218,34 @@ def test_a_lane_target_that_is_not_a_string_is_an_error(shell, tmp_path, value):
     assert "not a string" in r.stderr and "refusing to fall back" in r.stderr
 
 
+@pytest.mark.parametrize("raw", ['{"run_id": "u", "target_branch": "factory-test/x"',   # truncated
+                                 '{"target_branch": "factory-test/x",}',                  # trailing comma
+                                 '{"target_branch": factory-test/x}',                     # unquoted value
+                                 'x "target_branch" y'])
+def test_unparseable_lane_inputs_that_name_the_target_are_an_error(shell, tmp_path, raw):
+    """Corrupt WORKFLOW_INPUTS that still names the key: the run was probably
+    dispatched against a branch, so "no target" would re-open the fallback."""
+    for env in ({"WORKFLOW_INPUTS": raw}, {"WORKFLOW_INPUTS": raw, "ADLC_TARGET_BRANCH": ""},
+                {"WORKFLOW_INPUTS": raw, "ADLC_TARGET_BRANCH": TARGET}):
+        r, lines = resolve(shell, tmp_path, env)
+        assert r.returncode == 2, (env, r.stdout)
+        assert "not valid JSON" in r.stderr and "refusing to fall back to the default branch" in r.stderr
+        assert r.stdout.strip() == "", "nothing a caller could mistake for an answer"
+        assert "factory-test/x" not in r.stderr, "the unreadable text is not echoed"
+
+
+@pytest.mark.parametrize("raw", ["not json", "{", '{"run_id": "u", "dispatch":', "target_branch", "{'target_branch': 'x'}"])
+def test_unparseable_lane_inputs_without_the_target_key_stay_no_target(shell, tmp_path, raw):
+    """Pure garbage that does not name "target_branch" (with its JSON quotes)
+    is "no target", exactly as before."""
+    r, lines = resolve(shell, tmp_path, {"WORKFLOW_INPUTS": raw})
+    assert r.returncode == 0, r.stderr
+    assert lines == {"target_branch": "", "source": "none"}
+    r, lines = resolve(shell, tmp_path, {"WORKFLOW_INPUTS": raw, "ADLC_TARGET_BRANCH": TARGET})
+    assert r.returncode == 0, r.stderr
+    assert lines == {"target_branch": TARGET, "source": "env"}
+
+
 def test_resolver_takes_no_arguments(shell, tmp_path):
     r = helper(shell, "target-branch", tmp_path, "--x")
     assert r.returncode == 2 and "usage" in r.stderr
@@ -228,7 +256,8 @@ def test_resolver_parity_between_the_twins(tmp_path):
         pytest.skip("needs pwsh (CI runs it)")
     cases = [{}, {"ADLC_TARGET_BRANCH": TARGET}, {"ADLC_TARGET_BRANCH": "a..b"},
              {"WORKFLOW_INPUTS": json.dumps({"target_branch": TARGET})},
-             {"WORKFLOW_INPUTS": json.dumps({"target_branch": 7})}]
+             {"WORKFLOW_INPUTS": json.dumps({"target_branch": 7})},
+             {"WORKFLOW_INPUTS": '{"target_branch": "factory-test/x"'}, {"WORKFLOW_INPUTS": "{"}]
     for env in cases:
         a = helper("bash", "target-branch", tmp_path, env=env)
         b = helper("pwsh", "target-branch", tmp_path, env=env)

@@ -23,7 +23,8 @@
 # Anything else is an ERROR, never "no target": a run that was dispatched
 # against a branch must not quietly fall back to the default branch. The same
 # holds when the two sources name different branches, and when
-# WORKFLOW_INPUTS carries a target that cannot be read (no node, not a string).
+# WORKFLOW_INPUTS carries a target that cannot be read (no node, not a string,
+# or not valid JSON while its text names "target_branch").
 # Whether the branch exists on origin is checked by the helper that uses it.
 #
 # Usage:
@@ -47,7 +48,9 @@ $__adlcTb = & {
     $plain = '^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}\z'
 
     # "<state> <value>" for WORKFLOW_INPUTS.target_branch: none | str <value> |
-    # bad (present, not a string) | nonode (cannot tell without node).
+    # bad (present, not a string) | nonode (cannot tell without node) |
+    # corrupt (not valid JSON and the text names the key; unparseable text
+    # that does not name the key stays "none").
     function Get-LaneTarget {
         if (-not $env:WORKFLOW_INPUTS) { return 'none' }
         if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -56,7 +59,10 @@ $__adlcTb = & {
         }
         $js = @'
 let o;
-try { o = JSON.parse(process.env.WORKFLOW_INPUTS); } catch (e) { o = null; }
+try { o = JSON.parse(process.env.WORKFLOW_INPUTS); } catch (e) {
+  if (process.env.WORKFLOW_INPUTS.includes('"target_branch"')) { process.stdout.write("corrupt"); process.exit(0); }
+  o = null;
+}
 if (!o || typeof o !== "object" || Array.isArray(o) || !Object.prototype.hasOwnProperty.call(o, "target_branch")) {
   process.stdout.write("none");
 } else if (typeof o.target_branch === "string") {
@@ -75,6 +81,8 @@ if (!o || typeof o !== "object" || Array.isArray(o) || !Object.prototype.hasOwnP
     if ($lane -ceq 'none') {
     } elseif ($lane.StartsWith('str ', [System.StringComparison]::Ordinal)) {
         $laneBranch = $lane.Substring(4)
+    } elseif ($lane -ceq 'corrupt') {
+        $err = 'WORKFLOW_INPUTS names target_branch but is not valid JSON — refusing to fall back to the default branch'
     } elseif ($lane -ceq 'bad') {
         $err = 'WORKFLOW_INPUTS.target_branch is not a string — refusing to fall back to the default branch'
     } else {

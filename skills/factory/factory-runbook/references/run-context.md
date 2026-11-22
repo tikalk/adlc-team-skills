@@ -64,8 +64,9 @@ commit and carries its own `.adlc/` files. On every other pod
   `origin/<target>`. Never switch to, merge from, rebase onto, or open an
   MR/PR into the default branch in a target-branch run.
 - **Never fall back.** A target that is invalid, that the two sources
-  disagree on, or that is not on `origin` makes the helper exit 2 with the
-  reason. That stops the run — report it; do not retry without the variable,
+  disagree on, that cannot be read (`WORKFLOW_INPUTS` is not valid JSON while
+  its text names `"target_branch"`, or the field is not a string), or that is
+  not on `origin` makes the helper exit 2 with the reason. That stops the run — report it; do not retry without the variable,
   do not unset it, and do not open the MR by hand.
 - **The label is not yours.** Never add, remove or change a
   `target-branch::` label, and never read the label to pick a branch: the

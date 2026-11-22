@@ -22,7 +22,8 @@
 # Anything else is an ERROR, never "no target": a run that was dispatched
 # against a branch must not quietly fall back to the default branch. The same
 # holds when the two sources name different branches, and when
-# WORKFLOW_INPUTS carries a target that cannot be read (no node, not a string).
+# WORKFLOW_INPUTS carries a target that cannot be read (no node, not a string,
+# or not valid JSON while its text names "target_branch").
 # Whether the branch exists on origin is checked by the helper that uses it.
 #
 # Usage:
@@ -39,6 +40,8 @@
 
 # "<state> <value>" for WORKFLOW_INPUTS.target_branch:
 #   none          absent, or WORKFLOW_INPUTS is unset / not a JSON object
+#                 (unparseable text that does not name the key is "none" too)
+#   corrupt       WORKFLOW_INPUTS is not valid JSON and the text names the key
 #   str <value>   a string (may be empty)
 #   bad           present but not a string
 #   nonode        cannot tell: node is missing and the text names the key
@@ -50,7 +53,10 @@ _adlc_tb_lane() {
   fi
   node -e '
     let o;
-    try { o = JSON.parse(process.env.WORKFLOW_INPUTS); } catch (e) { o = null; }
+    try { o = JSON.parse(process.env.WORKFLOW_INPUTS); } catch (e) {
+      if (process.env.WORKFLOW_INPUTS.includes("\"target_branch\"")) { process.stdout.write("corrupt"); process.exit(0); }
+      o = null;
+    }
     if (!o || typeof o !== "object" || Array.isArray(o) || !Object.prototype.hasOwnProperty.call(o, "target_branch")) {
       process.stdout.write("none");
     } else if (typeof o.target_branch === "string") {
@@ -71,6 +77,7 @@ _adlc_tb_resolve() {
   case "$lane" in
     none) ;;
     "str "*) lane_branch="${lane#str }" ;;
+    corrupt) _adlc_tb_error="WORKFLOW_INPUTS names target_branch but is not valid JSON — refusing to fall back to the default branch"; return 0 ;;
     bad) _adlc_tb_error="WORKFLOW_INPUTS.target_branch is not a string — refusing to fall back to the default branch"; return 0 ;;
     *) _adlc_tb_error="cannot read WORKFLOW_INPUTS.target_branch (node is needed) — refusing to fall back to the default branch"; return 0 ;;
   esac

@@ -1,7 +1,7 @@
 """Verdict lint requires the merge-risk band line (Task 3 of the merge-risk plan).
 
 The `**Merge risk: <low|medium|high>**` line is the grep-able hook for
-dashboard / ADR-360 routing. Lint fails closed on a missing or duplicated
+dashboard / tier routing. Lint fails closed on a missing or duplicated
 line; it NEVER derives `outcome=` from risk — the marker counts plus
 `check-verdict-head.sh --require-outcome` stay the sole merge gate.
 

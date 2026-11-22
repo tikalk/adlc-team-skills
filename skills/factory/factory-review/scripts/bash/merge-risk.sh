@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# merge-risk.sh — deterministic merge-risk scorer (ADR-458).
+# merge-risk.sh — deterministic merge-risk scorer (scoring weights).
 # Category verdicts come from the review agents; the math lives here so the
 # policy (weights) is reviewable code while the judgment stays with evidence.
 #
@@ -9,7 +9,7 @@
 # Prints the per-category echo plus `Merge risk: <low|medium|high>`.
 # The numeric score stays internal (deliberately unprinted).
 #
-# Weights (ADR-458): Impact 2x, Verification 2x, Rollback 1.5x,
+# Weights: Impact 2x, Verification 2x, Rollback 1.5x,
 # Error detection 1x, Alignment 1x. Mapping: poor=1, decent=2, good=3.
 # Bands (lower score = higher risk): high score<1.5 / medium 1.5-<2.25 / low score>=2.25.
 set -uo pipefail

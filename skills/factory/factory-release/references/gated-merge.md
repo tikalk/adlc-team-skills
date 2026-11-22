@@ -33,7 +33,7 @@ After both gates are green on the same SHA with a recorded human, the
 verdict's `**Merge risk: <low|medium|high>**` band (factory-review) routes
 review effort — it never authorizes anything on its own:
 
-- **low** → fast-lane single-review queue (ADR-360 Tier 3 depth) + batch-review grouping.
+- **low** → fast-lane single-review queue (Tier 3 depth) + batch-review grouping.
 - **medium** → standard review.
 - **high** → full review.
 

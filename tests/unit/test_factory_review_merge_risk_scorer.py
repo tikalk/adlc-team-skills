@@ -1,6 +1,6 @@
 """Deterministic merge-risk scorer twins (Task 2 of the merge-risk plan).
 
-Goldens per ADR-458: Score = sum(score*weight)/sum(weights), weights
+Goldens for the weighted scorer: Score = sum(score*weight)/sum(weights), weights
 Impact 2x, Verification 2x, Rollback 1.5x, Error detection 1x, Alignment 1x;
 mapping poor=1/decent=2/good=3; bands high score<1.5 / medium 1.5-<2.25 /
 low score>=2.25 (lower score = higher risk; integer cutoffs num<=22 /

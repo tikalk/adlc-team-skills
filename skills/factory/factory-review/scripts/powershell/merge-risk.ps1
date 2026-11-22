@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 # merge-risk.ps1 — deterministic merge-risk scorer (PowerShell twin of
-# merge-risk.sh; ADR-458). Same arg interface, same band math, no LLM, no network.
+# merge-risk.sh). Same arg interface, same band math, no LLM, no network.
 #
 # Usage:
 #   merge-risk.ps1 --verification <poor|decent|good> --alignment <...> `

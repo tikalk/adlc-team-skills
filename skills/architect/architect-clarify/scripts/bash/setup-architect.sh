@@ -885,6 +885,25 @@ generate_adr_index() {
     done
 
     echo -e "${index_content}\n${quick_links}" > "$index_file"
+
+    # ChDR-007 (adlc-workspace MR !158 F1): warn on dangling Related-ADRs
+    # targets while the full file list is in hand. Advisory only — the index
+    # is still written; remediation stays with implement/human.
+    local _script_dir
+    _script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -x "$_script_dir/adr-link-lint.sh" ]]; then
+        local _link_files=()
+        local _d2
+        for _d2 in "${scan_dirs[@]}"; do
+            [[ -d "$_d2" ]] || continue
+            while IFS= read -r _lf; do
+                _link_files+=("$_lf")
+            done < <(ls -1 "$_d2"/ADR-*.md 2>/dev/null)
+        done
+        if [[ "${#_link_files[@]}" -gt 0 ]]; then
+            "$_script_dir/adr-link-lint.sh" "${_link_files[@]}" >&2 || true
+        fi
+    fi
 }
 
 

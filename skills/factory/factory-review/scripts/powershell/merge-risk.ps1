@@ -25,15 +25,20 @@ function ScoreOf([string]$value, [string]$flag) {
 $verification = ''; $alignment = ''; $impact = ''; $rollback = ''; $errorDetection = ''
 $i = 0
 while ($i -lt $args.Count) {
-    switch ($args[$i]) {
-        '--verification' { $verification = $args[$i + 1]; $i += 2 }
-        '--alignment' { $alignment = $args[$i + 1]; $i += 2 }
-        '--impact' { $impact = $args[$i + 1]; $i += 2 }
-        '--rollback' { $rollback = $args[$i + 1]; $i += 2 }
-        '--error-detection' { $errorDetection = $args[$i + 1]; $i += 2 }
-        '--help' { Fail 'usage: merge-risk.ps1 --verification <poor|decent|good> --alignment <...> --impact <...> --rollback <...> --error-detection <...>' }
-        '-h' { Fail 'usage: merge-risk.ps1 --verification <poor|decent|good> --alignment <...> --impact <...> --rollback <...> --error-detection <...>' }
-        default { Fail "unknown argument '$($args[$i])'" }
+    $flag = [string]$args[$i]
+    if ($flag -eq '--help' -or $flag -eq '-h') {
+        Write-Output 'usage: merge-risk.ps1 --verification <poor|decent|good> --alignment <...> --impact <...> --rollback <...> --error-detection <...>'
+        exit 0
+    }
+    $val = if ($i + 1 -lt $args.Count) { [string]$args[$i + 1] } else { '' }
+    if ($val -eq '' -or $val.StartsWith('--')) { Fail "$flag requires a value" }
+    switch ($flag) {
+        '--verification' { $verification = $val; $i += 2 }
+        '--alignment' { $alignment = $val; $i += 2 }
+        '--impact' { $impact = $val; $i += 2 }
+        '--rollback' { $rollback = $val; $i += 2 }
+        '--error-detection' { $errorDetection = $val; $i += 2 }
+        default { Fail "unknown argument '$flag'" }
     }
 }
 

@@ -2,7 +2,9 @@
 
 Goldens per ADR-458: Score = sum(score*weight)/sum(weights), weights
 Impact 2x, Verification 2x, Rollback 1.5x, Error detection 1x, Alignment 1x;
-mapping poor=1/decent=2/good=3; bands low <1.5 / medium 1.5-<2.25 / high >=2.25.
+mapping poor=1/decent=2/good=3; bands high score<1.5 / medium 1.5-<2.25 /
+low score>=2.25 (lower score = higher risk; integer cutoffs num<=22 /
+23..33 / num>=34 on num=(4sv+2sa+4si+3sr+2se), score=num/15).
 Numeric score stays internal — only the band is printed.
 
 TDD RED step: scripts do not exist yet, so every case FAILS here.
@@ -33,6 +35,13 @@ CASES = [
     # num = 4+6+4+3+6 = 23 -> 23/15 = 1.5333 -> medium (just above the 1.5 floor)
     ("three-poor-one-decent", ["poor", "decent", "poor", "poor", "good"], "high"),
     # num = 4+4+4+3+6 = 21 -> 21/15 = 1.4 -> high (below the 1.5 floor)
+    # Boundary goldens: 22.5/33.75 are unattainable integers, so these pin
+    # both sides of each cutoff (high<=22 / 23..33 medium / low>=34).
+    ("cutoff-22-high", ["poor", "poor", "poor", "decent", "good"], "high"),
+    # num = 4+2+2+6+6 = 20 -> verified by runner
+    ("cutoff-23-medium", ["poor", "poor", "poor", "good", "decent"], "medium"),
+    ("cutoff-33-medium", ["poor", "poor", "good", "good", "good"], "medium"),
+    ("cutoff-34-low", ["poor", "good", "good", "decent", "good"], "low"),
 ]
 
 FLAGS = ["--verification", "--alignment", "--impact", "--rollback", "--error-detection"]
@@ -85,4 +94,26 @@ def test_bash_scorer_rejects_bad_class():
                         "--alignment", "good", "--impact", "good",
                         "--rollback", "good", "--error-detection", "good"],
                        capture_output=True, text=True)
+    assert r.returncode == 2
+
+
+@needs_bash
+def test_bash_scorer_rejects_missing_value():
+    # Regression: `${2:-}` + `shift 2` on a missing value never advanced the
+    # loop (exit 124 under timeout). `req` fails closed instead.
+    r = subprocess.run(["bash", str(BASH), "--verification"],
+                       capture_output=True, text=True, timeout=10)
+    assert r.returncode == 2
+
+
+@needs_pwsh
+def test_pwsh_scorer_rejects_bad_class():
+    r = run_ps(["excellent", "good", "good", "good", "good"])
+    assert r.returncode == 2
+
+
+@needs_pwsh
+def test_pwsh_scorer_rejects_missing_value():
+    r = subprocess.run(["pwsh", "-NoProfile", "-File", str(PS), "--verification"],
+                       capture_output=True, text=True, timeout=30)
     assert r.returncode == 2

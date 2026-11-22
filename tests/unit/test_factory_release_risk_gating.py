@@ -22,7 +22,7 @@ GATED = RELEASE / "references/gated-merge.md"
 def test_gated_merge_states_risk_routing_is_downstream_of_both_gates():
     text = GATED.read_text(encoding="utf-8")
     assert "fast-lane" in text, "gated-merge: no fast-lane routing"
-    low_i = text.index("low")
+    low_i = text.index("**low**")
     assert "both" in text[:low_i].lower() and "same sha" in text[:low_i].lower(), \
         "gated-merge: risk routing must sit downstream of both-gates-green-same-SHA"
 

@@ -202,7 +202,7 @@ done
 # as the six passes above). The draft band carries "(draft)"; the twins
 # emit no head marker, outcome= or important= (sanitized above).
 if [ -n "${EVIDENCE_RAW:-}" ] && printf '%s\n' "$EVIDENCE_RAW" | grep -qi "^merge-risk:[[:space:]]*\\(low\\|medium\\|high\\)"; then
-    RISK_BAND=$(printf '%s\n' "$EVIDENCE_RAW" | grep -i "^merge-risk:" | head -1 | sed 's/.*:[[:space:]]*//;s/[^a-z].*//')
+    RISK_BAND=$(printf '%s\n' "$EVIDENCE_RAW" | grep -i "^merge-risk:" | head -1 | grep -oi "\\(low\\|medium\\|high\\)" | head -1 | tr 'A-Z' 'a-z')
 else
     RISK_BAND=""
 fi

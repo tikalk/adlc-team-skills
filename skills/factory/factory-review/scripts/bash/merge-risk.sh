@@ -11,19 +11,21 @@
 #
 # Weights (ADR-458): Impact 2x, Verification 2x, Rollback 1.5x,
 # Error detection 1x, Alignment 1x. Mapping: poor=1, decent=2, good=3.
-# Bands: low <1.5 / medium 1.5-<2.25 / high >=2.25.
+# Bands (lower score = higher risk): high score<1.5 / medium 1.5-<2.25 / low score>=2.25.
 set -uo pipefail
 
 die() { echo "merge-risk: $*" >&2; exit 2; }
 
+req() { [ "$#" -ge 2 ] || die "$1 requires a value"; }
+
 verification=""; alignment=""; impact=""; rollback=""; error_detection=""
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --verification) verification="${2:-}"; shift 2 ;;
-        --alignment) alignment="${2:-}"; shift 2 ;;
-        --impact) impact="${2:-}"; shift 2 ;;
-        --rollback) rollback="${2:-}"; shift 2 ;;
-        --error-detection) error_detection="${2:-}"; shift 2 ;;
+        --verification) req "$@"; verification="$2"; shift 2 ;;
+        --alignment) req "$@"; alignment="$2"; shift 2 ;;
+        --impact) req "$@"; impact="$2"; shift 2 ;;
+        --rollback) req "$@"; rollback="$2"; shift 2 ;;
+        --error-detection) req "$@"; error_detection="$2"; shift 2 ;;
         --help|-h) sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
         *) die "unknown argument '$1'" ;;
     esac

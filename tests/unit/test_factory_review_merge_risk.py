@@ -10,6 +10,7 @@ TDD RED step: the `**Merge risk:**` band line is not yet required anywhere
 (not in verdict-schema lint, not in SKILL.md body schema), so the
 band-line assertions below FAIL until the contract lands.
 """
+import re
 from pathlib import Path
 
 REVIEW = Path(__file__).parent.parent.parent / "skills/factory/factory-review"
@@ -56,8 +57,18 @@ def test_informs_never_overrides_is_stated():
 
 
 def test_risk_table_shape_is_complete():
-    """A complete five-row table + band line satisfies the contract shape."""
+    """The lint fixture shape (band line + five rows) is the contract shape.
+
+    The real pin is the schema: SKILL.md names the band line (§2) and
+    verdict-schema.sh lint rejects any body missing it. This test guards the
+    shared fixture builder against drift (row or band-line loss), not the
+    contract itself.
+    """
     text = body_with_risk(marker_line(), "**Merge risk: low**", good_rows())
+    assert text.count("## Verdict") == 1 and text.count("**Merge risk:") == 1, \
+        "fixture builder lost the band line or Verdict section"
     for row in ROWS:
-        assert row in text
-    assert text.count("**Merge risk:") == 1
+        assert re.search(rf"(?m)^\| {re.escape(row)} \|", text), \
+            f"fixture builder lost row {row}"
+    # And the contract itself: the skill names the band line the lint enforces.
+    assert "**Merge risk:" in SKILL.read_text(encoding="utf-8")

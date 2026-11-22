@@ -8,6 +8,7 @@ line; it NEVER derives `outcome=` from risk — the marker counts plus
 TDD RED step: the band line is not linted yet, so the missing/duplicated
 cases below PASS lint until the rule lands — these tests FAIL here.
 """
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -80,8 +81,12 @@ def test_risk_band_does_not_rescue_open_important(interpreter):
             f"## Important findings\n### I0 — x\nwhy\n\n## Nits\nNone.\n")
     r = lint(text, interpreter)
     assert r.returncode == 0, r.stdout + r.stderr  # well-formed body lints clean...
-    # ...but the merge gate still blocks: outcome=not-merge-ready + important=1.
-    assert "not-merge-ready" in text and "important=1" in text
+    # ...and the gate inputs still show the block: parse the marker fields
+    # (field order: outcome= ... findings= ... important= — not adjacent).
+    mo = re.search(r"outcome=(\S+)", text)
+    mi = re.search(r"important=(\d+)", text)
+    assert mo and mi and (mo.group(1), mi.group(1)) == ("not-merge-ready", "1"), \
+        "gate inputs must show outcome=not-merge-ready with important=1 (risk never rescues it)"
 
 
 @pytest.mark.parametrize("interpreter", ["bash", "pwsh"])

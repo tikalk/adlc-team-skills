@@ -53,7 +53,7 @@ An issue carries exactly one lifecycle label. `done` and `cancelled` are termina
 | # | Edge | Trigger | Owner | Dispatch difference |
 |--|--|--|--|--|
 | 1 | (none) → `intent` | candidate brief created | `factory-queue` (brief/milestone generation) | none |
-| 2 | `intent` → `spec-gated` | human approves at the Intent Gate | `factory-queue` (triage) | the dispatch label is stamped on this edge |
+| 2 | `intent` → `spec-gated` | human approves at the Intent Gate | `factory-queue` (triage) | the dispatch label is stamped on this edge, replacing any other dispatch label (Operation 9, "Other label writes") |
 | 3 | `intent` → `cancelled` | human rejects at the Intent Gate | `factory-queue` (triage) | none |
 | 4 | `spec-gated` → `executing` | run dispatched and lease acquired (Operation 10) | lane dispatch gate (lane runs) · `factory-mission` (local runs) | none |
 | 5 | `executing` → `spec-gated` | dependency gate refuses (Operation 12) | `factory-mission` | none |
@@ -68,7 +68,7 @@ An issue carries exactly one lifecycle label. `done` and `cancelled` are termina
 `validation` has no edge back to `executing`: review findings and CI fixes on the open MR/PR keep the issue in `validation`. A run that ends badly leaves `executing` through edge 11 or 12 and posts one `<!-- factory-run:ended reason=<gate-rejected|step-failed> run=<run_id> step=<step_id> -->` note. A crashed run, which runs no cleanup, is re-admitted by the lane gate once its lease is released or stale. Every edge swaps labels through the Set Lifecycle step of Operation 9, which also removes any other lifecycle label it finds.
 
 ### 3. Write-Back & Comments
-Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored`.
+Post status updates, iteration logs, and findings directly onto the ticket thread. When opening PRs, stamp `agent-authored` with an add-only call (Operation 9, "Other label writes") — never a call that lists the PR's labels.
 
 ---
 
@@ -317,12 +317,21 @@ the transition based on provider type:
    **Set Lifecycle** (the shared step; inputs: the issue and the target state). In a runner pod (and in a workflow `shell` step) run it as one command — `bash scripts/bash/set-lifecycle.sh --issue <group>/<project>#<iid> --to <state>` (PowerShell twin `scripts/powershell/set-lifecycle.ps1`; GitLab through `glab api`, GitHub through `gh api`). It performs steps 1–5 below for the canonical label names and exits 0 only when exactly the target remains, 1 when another lifecycle label is left beside it, 2 on a usage or tracker error (and when the repo maps custom label names — then follow the steps below by hand):
    1. Resolve the effective names of all seven lifecycle states through the `labels:` mapping (§2 name resolution).
    2. Read the issue's current labels. `<others>` = every current label that is a lifecycle state other than the target. This is **any other lifecycle label**, not only the expected previous one: a stray pair such as `intent` + `parked` is cleaned by the next transition.
-   3. Add the target and remove `<others>` in the **same call** (omit the remove flag when `<others>` is empty):
+   3. Add the target and remove `<others>` in the **same call** (omit the remove part when `<others>` is empty). Name only the label you add and the labels you remove; the call must not state the issue's whole label set (Safety Constraint 11):
+      - GitLab API (the form that works in runner pods): `glab api --hostname <host> -X PUT "projects/<url-encoded-path>/issues/<iid>" -f add_labels="<target>" -f remove_labels="<others>"`
       - GitLab CLI: `glab issue update <iid> --label "<target>" --unlabel "<others>"`
       - GitHub CLI: `gh issue edit <number> --add-label "<target>" --remove-label "<others>"`
-      - GitHub MCP: `github` server `update_issue` with the full `labels` array: current labels minus `<others>`, plus the target.
+      - GitHub MCP: do not use the `github` server's `update_issue` with a `labels` array for this — it replaces the whole set. Use the GitHub CLI form above.
    4. Re-read the labels and verify exactly one lifecycle label remains. If not, report the coexisting labels in the step output and on the issue. Never report the transition as done.
    5. Never add or remove the `resume` trigger: the gate runtime owns it.
+
+   **Other label writes (stamping).** The labels §2 assigns to an owner — `agent-authored` on an opened PR/MR, the PR/MR's `validation` label (factory-review §2 step 6), the automation-gating and dispatch labels on edge 2 — are written one at a time, with a call that names only the label it adds (and, for a label that is one of a set, the labels of that set it removes):
+      - GitLab MR: `glab api --hostname <host> -X PUT "projects/<url-encoded-path>/merge_requests/<iid>" -f add_labels="<label>"`
+      - GitLab issue: `glab api --hostname <host> -X PUT "projects/<url-encoded-path>/issues/<iid>" -f add_labels="<label>"`
+      - GitHub: `gh pr edit <number> --add-label "<label>"` (issue: `gh issue edit <number> --add-label "<label>"`)
+      - To take one label off, the same call with `remove_labels="<label>"` (GitHub: `--remove-label "<label>"`).
+      - **A label that is one of a set replaces the others of its set, in the same call.** An issue carries exactly one dispatch label (`autonomous` | `supervised` | `interactive`) and one automation-gating label (`agent-can-execute` | `human-required`), §2. An issue that is triaged again (a spec correction sent it back to `intent`) still carries the labels of the earlier approval, and the Set Lifecycle step removes lifecycle labels only. So add the chosen label and remove the other members of its set together — GitLab: `glab api --hostname <host> -X PUT "projects/<url-encoded-path>/issues/<iid>" -f add_labels="autonomous" -f remove_labels="supervised,interactive"`; GitHub: `gh issue edit <number> --add-label "autonomous" --remove-label "supervised" --remove-label "interactive"`; the gating label the same way (`add_labels="agent-can-execute"` with `remove_labels="human-required"`, or the reverse). Resolve the names through the `labels:` mapping first (§2 name resolution). Two dispatch labels on one issue make the policy ambiguous: the close, resume and triage triggers filter on `supervised` / `autonomous`, and both would match. The call still names only what it adds and what it removes, never the whole set (Safety Constraint 11). Read the labels back: exactly one label of each set remains.
+      - With any other HTTP tool the parameters are the same two — `add_labels` and `remove_labels` — and nothing else (Safety Constraint 11). Read the labels back afterwards: the labels that were there before must all still be there.
 
 2. **State-Based (Jira/Linear/ClickUp)**:
    - Statuses mapped to native workflow states/columns (e.g. `executing` to `In Progress`, `validation` to `In Review`).
@@ -476,5 +485,6 @@ knows which was used.
 8. **Idempotency for all tracker writes**: Before posting any comment, the system must search the thread for the unique combination of the current `run_id` + step/marker identifier. If a matching comment exists, skip to avoid duplicates.
 9. **Commit authorship preservation**: A rebase, cherry-pick, or amend over someone else's commit must keep that commit's original author; never `--reset-author` or `--amend --author="..."` across it. Pushing is restricted to the PR's own head branch, and force-push requires `--force-with-lease` for the exact previously observed remote SHA.
 10. **Multi-machine distributed locking**: In distributed or multi-agent environments, no code execution, worktree creation, or LLM prompting may begin without a verified, acquired remote lease marker on the issue tracker. An active unexpired lease from another host requires an immediate halt.
+11. **Labels are added and removed by name — never replaced**: Never send `labels=<list>` (GitLab `PUT …/issues/<iid>` or `…/merge_requests/<iid>`), never send a whole `labels` array (GitHub `update_issue`, `PATCH …/issues/<n>`), and never make any other call that states the complete label set. Such a call deletes every label it does not list: labels a person added after you read them, and the dispatch label (`supervised` / `autonomous`) that the close, resume and triage triggers filter on — an issue that loses it is no longer settled when it closes and cannot be resumed. Use `add_labels` / `remove_labels` (GitLab) or the add-label / remove-label forms (GitHub), naming only what you add or remove (Operation 9); lifecycle labels move only through `scripts/bash/set-lifecycle.sh`. This holds with every tool, hand-written HTTP calls included. (Evidence: adlc-workspace#101, 2026-11-16 — the one write that added `validation` also removed `InProgress`, `agent-can-execute`, `epic` and `supervised`; agentic-container!55, 2026-10-31, lost `supervised` the same way.)
 
 

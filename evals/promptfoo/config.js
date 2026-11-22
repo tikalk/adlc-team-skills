@@ -152,7 +152,7 @@ module.exports = {
       "vars": {
         "scenario": "tier2-split: Decidable recurrence routes to a check, behavioral to an eval",
         "input_context": "Across two runs the agent proceeded without asking at the escalation gate; no artifact difference exists — the mistake is in behavior.",
-        "instruction": "Route the recurring mistake's Tier-2 correction by decidability: a property decidable from the artifact alone (marker, schema, forbidden path, missing section, exit code) gets a deterministic check (lint rule, CI job, unit test, pre-commit hook, schema validation); a behavioral property (a distribution over model behavior) gets an eval criterion via /evals-specify. Neither stands in for the other, and an unreproduced comment never becomes a criterion — it stays a Tier-3 preference."
+        "instruction": "Route the recurring mistake's Tier-2 correction by decidability: a property decidable from the artifact alone (marker, schema, forbidden path, missing section, exit code) gets a deterministic check (lint rule, CI job, unit test, pre-commit hook, schema validation); a behavioral property (a distribution over model behavior) gets an eval criterion via /evals-specify. Neither stands in for the other, and an unreproduced comment never becomes a criterion — it stays a Tier-3 preference. State the decision as a ````tier2-route` fenced JSON block: {\"tier\": 2, \"routes\": [{\"class\": \"decidable\"|\"behavioral\", \"vehicle\": \"check\"|\"eval\"|\"none\", \"seed\": \"event-stream\"|\"comment\"|\"tier-3\", \"evidence\": [<artifact terms: \"failing test\", \"ci red\", \"diff\", \"screenshot\", \"revert\", \"recorded state transition\", \"state.json\">], \"runs\": <n>}]}. Prose outside the block is rationale and is not graded; without the block the answer fails."
       },
       "assert": [
         {
@@ -361,6 +361,32 @@ module.exports = {
 "scenario": "ci-failure-followup: factory-orchestrator routes a CI failure on a delivered PR",
         "input_context": "CI turned red on PR #142, which a factory-mission run opened and factory-review already reviewed (verdict on head b1221aa).",
         "instruction": "Route the CI failure. State where the fix work goes, and what must happen to the standing review verdict before the PR can be called merge-ready again."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+"scenario": "orchestrator-brief-packing: factory-orchestrator packs a minimal stage hand-off brief",
+        "input_context": "Approved brief spec-gated + agent-can-execute for issue #88 (CSV export); triage added findings F1-F3, spec PR #91 resolved the delimiter question. Ready to hand off to factory-mission.",
+        "instruction": "Pack the factory-mission hand-off brief. Carry the request verbatim with current refs, and only the findings relevant to implementation."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+"scenario": "orchestrator-liveness-heartbeat: factory-orchestrator sends a liveness note during a long stage",
+        "input_context": "factory-mission run for issue #88 has been implementing for 12 minutes with no user-visible output yet.",
+        "instruction": "Send the user a liveness update. Say what the factory is doing now without exposing dispatches, subagents, or hand-offs."
       },
       "assert": [
         {

@@ -6,6 +6,38 @@ This reference defines the converge loop controller for `factory-review --self-h
 
 ---
 
+## Triage: small-change cost gate
+
+Before entering the loop, the controller triages the change. Triage selects
+**review depth only** — it never changes how `outcome=` is determined
+(an open Important finding is `not-merge-ready` at any depth).
+
+A change is **small** when ALL of these hold:
+
+1. **Docs-only or config-only** — every changed file is documentation
+   (e.g. `*.md`, `docs/`) or configuration (e.g. `*.yml`, `*.yaml`,
+   `*.json`, `*.toml`) with no behavior change.
+2. **≤3 files** — at most 3 files changed (threshold N=3).
+3. **No sensitive paths** — no changed file touches a `sensitive-paths:` entry from REVIEW.md (`references/review-policy.md`: `auth/`, `billing/`, `migrations/` by default, plus repo additions).
+
+| Triage result | `review-depth:` disclosure | What runs |
+|---------------|---------------------------|-----------|
+| Small | `review-depth: single (small change)` | One inline review (§2 pipeline); the three-sub-agent loop does not run |
+| Anything else | `review-depth: full` | Full review → fix → converge loop below |
+
+**Overrides (disclosed):** `--self-heal=full` forces the full loop on a small
+change; `--depth=single` forces a single inline review on a larger change.
+Either override is disclosed on the verdict's `review-depth:` line, e.g.
+`review-depth: full (override --self-heal=full on small change)`. Like every
+lane degradation, the disclosure names what was lost (cross-agent
+independence for `single`; cost saving for forced `full`) and the run
+continues — triage never blocks the run.
+
+The verdict marker grammar is unchanged: one HTML comment, `head=` with the
+full 40-character SHA, `outcome=` from the open-Important rule.
+
+---
+
 ## Loop Controller Responsibilities
 
 The loop controller (factory-review, inline) is responsible for:

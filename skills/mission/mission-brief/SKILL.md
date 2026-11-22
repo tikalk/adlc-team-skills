@@ -8,7 +8,7 @@ description: Use when a mission brief must become verified work end to end — b
 
 > **Scope rule**: scripts stay skill-local — never source a script from another skill. For another skill's operations, invoke that skill (e.g. `architect-clarify`, `product-clarify`, `team-boot`) via the Skill tool; for its documents, follow the `Requires` line. `scripts/` and `references/` below are relative to this skill. `{REPO_ROOT}` denotes the project root (where `.adlc/` lives).
 
-**Requires:** the `factory-runbook` skill (provides the publish procedure and run contracts): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook`.
+**Requires:** the `factory-runbook` and `factory-learn` skills (provides the publish procedure and run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`.
 
 ## In a local session — you answer the gates
 
@@ -119,6 +119,37 @@ This section translates the shared lifecycle DAG into the addyosmani/agent-skill
 - The `converge` step maps to `github.com/addyosmani/agent-skills/skills/shipping-and-launch` verification gates, evaluating acceptance criteria and constraints against `brief.md` and returning the loop verdict (`DONE`, `CONTINUE`, or `SPEC_CORRECTION_NEEDED`). Shared contract: `output_type` `decision` with `reads_from` `brief.md`.
 
 Canonical home: addy framework integration.
+
+## Browser verify lane
+
+Computer-use `browser` verify lane: when the brief's Success Criteria name
+user-visible behavior (a page renders, a button acts, a flow completes
+through the UI), the `verify` step dispatches a `browser` lane run
+(`factory-runbook/references/lanes.md`: lane kind `browser`, degradation
+`browser → agent → inline`) instead of verifying from the diff alone.
+
+1. **Detect** — a criterion needs the browser lane when it can only be
+   answered yes/no by looking at the running app. Docs/config-only work,
+   pure API/library changes, and criteria answerable from suite output stay
+   on the `agent` lane; the skip is disclosed in the verify findings, never
+   silent.
+2. **Stage** — stage the app under test via runbook Context Parameters
+   (`{{params.*}}`: app URL, credentials, seed data). A criterion whose
+   staging inputs are missing is marked `unverified: <name>`, never faked.
+3. **Run** — drive the staged app through the computer-use `browser` tool,
+   one chapter per Success Criterion. Capture screenshots plus a recording;
+   trim dead zones with `scripts/bash/trim-evidence.sh` (PowerShell twin:
+   `scripts/powershell/trim-evidence.ps1`) so the published recording stays
+   ≤60s with per-criterion `@M:SS` timestamps (Task 1 artifact contract).
+4. **Publish** — screenshots + trimmed recording are published as the
+   `verify` artifact-ref on the comment bus, for `converge` (and Task 1's
+   `visual-evidence` pass) to read.
+5. **Fallback** — no browser tooling, the staged app fails to launch, or the
+   change touches `sensitive-paths:` (Task 3 policy: `auth/`, `billing/`,
+   `migrations/` — scripted UI driving there is unsafe) → degrade to the
+   `agent` lane: suite-only verification, behavioral criteria marked
+   `unverified`, never faked. Risk informs, never overrides: lane evidence
+   never changes `outcome=` — only an open Important finding does.
 
 ## Step contract
 

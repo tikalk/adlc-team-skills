@@ -168,6 +168,38 @@ def check_ci_failure_followup(output: str) -> dict:
         return { "pass": True, "score": 1.0, "reason": "Passed the CI-failure follow-up check: Routed back to the implementing context with the standing review verdict invalidated (fresh verdict on the new head)." }
     return { "pass": False, "score": 0.0, "reason": f"Failed the CI-failure follow-up check: Expected routing back to the implementing context AND verdict invalidation/re-review on the new head, but got: {output}" }
 
+def check_orchestrator_brief_packing(output: str) -> dict:
+    """Brief packing: a stage hand-off carries verbatim request, current refs, and relevant-only findings — never a full-context forward."""
+    verbatim_request = re.search(
+        r"exact words|verbatim|without paraphras|do not paraphrase",
+        output, re.IGNORECASE,
+    )
+    current_refs = re.search(
+        r"current|latest.{0,20}(?:status|ref)|issue.{0,30}(?:current|latest|up-?to-?date)|spec.{0,20}(?:pr|ref)|thread|conversation.{0,20}link",
+        output, re.IGNORECASE,
+    )
+    minimal_relevant = re.search(
+        r"only.{0,30}(?:relevant|needed)|relevant.{0,20}(?:only|part)|minimal|no more|never forward.{0,20}everything|accumulates downstream",
+        output, re.IGNORECASE,
+    )
+    if verbatim_request and current_refs and minimal_relevant:
+        return { "pass": True, "score": 1.0, "reason": "Passed the brief-packing check: Verbatim request, current refs, and relevant-only context accumulation all present." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the brief-packing check: Expected verbatim request AND current refs AND relevant-only accumulation, but got: {output}" }
+
+def check_orchestrator_liveness_heartbeat(output: str) -> dict:
+    """Liveness heartbeat: long-running stages get a short user-facing liveness note without leaking stage internals."""
+    liveness_note = re.search(
+        r"liveness|heartbeat|still (?:working|running|on it)|progress update|what.{0,30}(?:doing|working on) now|status update",
+        output, re.IGNORECASE,
+    )
+    no_internals = not re.search(
+        r"dispatch\w+ (?:factory-\w+|subagent)|dispatched|subagent|hand-?off|internal",
+        output, re.IGNORECASE,
+    )
+    if liveness_note and no_internals:
+        return { "pass": True, "score": 1.0, "reason": "Passed the liveness-heartbeat check: Short liveness note present with no stage-internals leak." }
+    return { "pass": False, "score": 0.0, "reason": f"Failed the liveness-heartbeat check: Expected a short liveness note AND no stage-internals leak, but got: {output}" }
+
 def check_provisioning_confirmed(output: str) -> dict:
     """Label provisioning: label provisioning requires explicit confirmation, never silent creation."""
     if re.search(r"declin|refus|skipp|did not create|not created|awaiting confirmation", output, re.IGNORECASE):
@@ -251,6 +283,10 @@ def get_assert(output: str, context: dict = None) -> dict:
         return check_orchestrator_intake_routing(output)
     if scenario.startswith("ci-failure-followup:"):
         return check_ci_failure_followup(output)
+    if scenario.startswith("orchestrator-brief-packing:"):
+        return check_orchestrator_brief_packing(output)
+    if scenario.startswith("orchestrator-liveness-heartbeat:"):
+        return check_orchestrator_liveness_heartbeat(output)
     if scenario.startswith("dependency-hard-gate:"):
         return check_dependency_hard_gate(output)
     if scenario.startswith("dependency-auto-notify:"):

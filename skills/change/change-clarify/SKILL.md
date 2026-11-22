@@ -179,7 +179,7 @@ Gap types:
 
 Write every clarification in Simplified Technical English (short sentences, one idea each, active voice, imperative asks, named referents, plain words). Read the contract at `skills/authoring/references/ste-rules.md` before drafting questions.
 
-Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap: **0–1 boundaries** use the plain STE format below, however severe the gap; **2 or more boundaries** draw the full ASCII decision map from the reference (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED). Render unknown gaps as `?` slots, never prose complaints. Do NOT:
+Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap: **0–1 boundaries** invoke `skills/authoring/scripts/bash/render-decision-map.sh` (`render_status_box`, or `render-decision-map.ps1` → `Render-StatusBox` on Windows) rather than hand-draw — STATUS BOX first, then the plain STE format below, however severe the gap; **2 or more boundaries** invoke the same generator (`render_decision_map` / `Render-DecisionMap`) rather than hand-draw — full ASCII decision map first (WHAT/WHY, crossed boundaries, reach fan-out, candidates × discriminating axes, IF-UNDECIDED), then prose beneath. Render unknown gaps as `?` slots, never prose complaints. A map that would exceed gate payload size caps falls back to prose plus `payload_status: map-omitted (size cap)`. Do NOT:
 
 - Present multiple ChDRs together
 - Auto-select actions

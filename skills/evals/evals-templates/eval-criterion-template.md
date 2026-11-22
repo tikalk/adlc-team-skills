@@ -25,6 +25,10 @@ error_analysis:
 test_data:
   adversarial_included: {{ADVERSARIAL_STATUS}} # true | false
   holdout_ratio: {{HOLDOUT_RATIO}}
+  # Seed provenance for factory-seeded criteria: 2+ distinct run IDs whose
+  # event stream backs the seed. Applies to factory-seeded criteria only;
+  # temporal holdout still applies (holdout runs excluded from training).
+  seed_window_run_ids: {{SEED_WINDOW_RUN_IDS}} # e.g. [run-2026-11-01-a, run-2026-11-02-b]
 
 # RAG decomposition (EDD Principle VI, optional)
 {{#if_rag_system}}

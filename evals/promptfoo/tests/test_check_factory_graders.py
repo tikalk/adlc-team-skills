@@ -397,3 +397,49 @@ def test_check_lifecycle_single_label_resume_is_not_a_state():
     )
     result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
     assert result["pass"] is True
+
+
+BRIEF_SCENARIO = "orchestrator-brief-packing: factory-orchestrator packs a minimal stage hand-off brief"
+HEARTBEAT_SCENARIO = "orchestrator-liveness-heartbeat: factory-orchestrator sends a liveness note during a long stage"
+
+
+def test_check_orchestrator_brief_packing_pass():
+    output = "Handing off to factory-mission with the request in its exact words plus logs/links (do not paraphrase), current issue #88 ref with spec PR #91, thread link, requester identity, and only F1/F3 (relevant to implementation) — context accumulates downstream, never forwarding everything to everyone."
+    result = get_assert_invariants(output, {"vars": {"scenario": BRIEF_SCENARIO}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_orchestrator_brief_packing_fail_forward_everything():
+    output = "Forwarding the full conversation history, all triage notes F1-F3, the spec thread, and every prior dispatch to factory-mission so it has everything."
+    result = get_assert_invariants(output, {"vars": {"scenario": BRIEF_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_orchestrator_brief_packing_fail_no_refs():
+    output = "Verbatim request preserved. Only relevant findings included, the rest left behind."
+    result = get_assert_invariants(output, {"vars": {"scenario": BRIEF_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_orchestrator_liveness_heartbeat_pass():
+    output = "Still on it — the factory is working through the implementation for #88 now; I'll report back with the PR link when it's ready."
+    result = get_assert_invariants(output, {"vars": {"scenario": HEARTBEAT_SCENARIO}})
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_orchestrator_liveness_heartbeat_fail_internals():
+    output = "I dispatched the factory-mission subagent 12 minutes ago and handed off to the implementer agent; waiting on the subagent hand-off to complete."
+    result = get_assert_invariants(output, {"vars": {"scenario": HEARTBEAT_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_orchestrator_liveness_heartbeat_fail_silent_noise():
+    output = "Dispatch notices: factory-queue done, factory-mission started, progress noise from the run."
+    result = get_assert_invariants(output, {"vars": {"scenario": HEARTBEAT_SCENARIO}})
+    assert result["pass"] is False
+    assert result["score"] == 0.0

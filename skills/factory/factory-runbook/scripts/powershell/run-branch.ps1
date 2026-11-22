@@ -17,6 +17,15 @@
 # The branch is shared by both intent lanes and by re-dispatches
 # of the same issue. Without a run context: no-op (interactive sessions never
 # switch branches). Prints the branch name on stdout.
+#
+# Target branch (SF-FIX-23): when the run was dispatched against a branch
+# other than the default one (ADLC_TARGET_BRANCH, else
+# WORKFLOW_INPUTS.target_branch; resolved by target-branch.ps1), that branch
+# takes the default branch's place here: a new run branch (code or intent)
+# starts from origin/<target>, and an existing intent branch is caught up with
+# origin/<target>. A target that is invalid or missing on origin stops the
+# helper (exit 2): it never falls back to the default branch. Without a
+# target nothing changes.
 
 $ErrorActionPreference = 'Stop'
 $script:ErrorView = 'ConciseView'
@@ -59,6 +68,13 @@ if (-not $env:ADLC_RUN_ID) {
 }
 if ($env:ADLC_RUN_ID -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { Die "invalid ADLC_RUN_ID" }
 
+# The branch this run works against, when it is not the default branch
+# (SF-FIX-23). Empty = the default branch, as always.
+$AdlcTargetBranchError = ''
+. (Join-Path $PSScriptRoot 'target-branch.ps1')
+if ($AdlcTargetBranchError) { Die $AdlcTargetBranchError }
+$target = if ($env:ADLC_TARGET_BRANCH) { $env:ADLC_TARGET_BRANCH } else { '' }
+
 $root = git rev-parse --show-toplevel 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $root) { Die "not inside a git work tree" }
 Set-Location $root.Trim()
@@ -78,6 +94,15 @@ if ($env:ADLC_ISSUE_REF) {
 
 git check-ref-format "refs/heads/$branch" 2>$null
 if ($LASTEXITCODE -ne 0) { Die "invalid ref name: $branch" }
+
+# A target branch must be on origin before anything is switched or created:
+# the run is cut from it and its merge request goes into it.
+if ($target) {
+    git ls-remote --exit-code --heads origin "refs/heads/$target" *> $null
+    if ($LASTEXITCODE -ne 0) { Die "target branch '$target' was not found on origin (it does not exist, or origin did not answer) — refusing to fall back to the default branch" }
+    git fetch -q origin "+refs/heads/${target}:refs/remotes/origin/${target}" *> $null
+    if ($LASTEXITCODE -ne 0) { Die "fetch of target branch origin/$target failed — refusing to fall back to the default branch" }
+}
 
 $onOrigin = $false
 git ls-remote --exit-code --heads origin $branch *> $null
@@ -121,7 +146,13 @@ if ($localExists) {
     # intent MR. Files the mission wrote but has not committed are untracked and
     # move along with the switch.
     $start = ''
-    $default = Get-OriginDefault
+    $default = ''
+    if ($target) {
+        # Target-branch run: origin/<target> (fetched above) is the only start.
+        $start = "refs/remotes/origin/$target"
+    } else {
+        $default = Get-OriginDefault
+    }
     if ($default) {
         git check-ref-format "refs/heads/$default" 2>$null
         if ($LASTEXITCODE -eq 0) {
@@ -148,6 +179,11 @@ if ($localExists) {
         git switch -q -c $branch
         if ($LASTEXITCODE -ne 0) { Die "git switch -c failed" }
     }
+} elseif ($target) {
+    # Target-branch run: a new intent branch starts from origin/<target> too
+    # (in the runner pod that is what HEAD already is).
+    git switch -q -c $branch "refs/remotes/origin/$target"
+    if ($LASTEXITCODE -ne 0) { Die "git switch -c from origin/$target failed" }
 } else {
     git switch -q -c $branch
     if ($LASTEXITCODE -ne 0) { Die "git switch -c failed" }
@@ -157,12 +193,19 @@ if ($localExists) {
 # behind the default branch: catch it up with one merge commit — never a
 # rebase, never --force (merge-commit rule). Code branches are left alone.
 if (($localExists -or $onOrigin) -and $kind -eq 'intent') {
-    $default = Get-OriginDefault
-    if (-not $default) { $default = 'main' }
-    git check-ref-format "refs/heads/$default" 2>$null
-    if ($LASTEXITCODE -ne 0) { Die "invalid default branch name: $default" }
-    git fetch -q origin "+refs/heads/${default}:refs/remotes/origin/${default}"
-    if ($LASTEXITCODE -ne 0) { Die "fetch of origin/$default failed" }
+    if ($target) {
+        # Target-branch run: catch up with origin/<target> (fetched above),
+        # never with the default branch — that would pull it into the test
+        # branch's run.
+        $default = $target
+    } else {
+        $default = Get-OriginDefault
+        if (-not $default) { $default = 'main' }
+        git check-ref-format "refs/heads/$default" 2>$null
+        if ($LASTEXITCODE -ne 0) { Die "invalid default branch name: $default" }
+        git fetch -q origin "+refs/heads/${default}:refs/remotes/origin/${default}"
+        if ($LASTEXITCODE -ne 0) { Die "fetch of origin/$default failed" }
+    }
     git merge-base --is-ancestor "refs/remotes/origin/$default" HEAD *> $null
     if ($LASTEXITCODE -ne 0) {
         git merge -q --no-edit "refs/remotes/origin/$default" *> $null

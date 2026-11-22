@@ -42,6 +42,8 @@ Every ticket carries three label dimensions:
 
 **Name resolution**: the names above are canonical defaults, bare (no prefix). When stamping or reading labels, first consult the target repo's `.adlc/issues-provider.yml` `labels:` mapping; an absent entry resolves to the canonical name. Repos without the block behave exactly as before. Custom names require updating lane sensor/template filters, which match literal names.
 
+**Target branch label**: `target-branch::<branch>` is a **run-scope label, not a state and not a gate**. A person puts it on a test issue to make the mission work against `<branch>` instead of the default branch; the lane's gate validates it (one label, a plain branch name, an allowed pattern, the branch exists) and passes the branch to the runner pod as `ADLC_TARGET_BRANCH`. Skills never add, remove or change it and never derive a branch from it: the publish helpers read the environment (`references/run-context.md`, "Target branch"). Its prefix is set on the lane side.
+
 #### Lifecycle state machine (`autonomous` and `supervised`)
 
 An issue carries exactly one lifecycle label. `done` and `cancelled` are terminal. A missing lifecycle label reads as `intent`. The `interactive` lifecycle is out of scope here.

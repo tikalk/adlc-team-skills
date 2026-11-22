@@ -38,10 +38,13 @@ CASES = [
     # Boundary goldens: 22.5/33.75 are unattainable integers, so these pin
     # both sides of each cutoff (high<=22 / 23..33 medium / low>=34).
     ("cutoff-22-high", ["poor", "poor", "poor", "decent", "good"], "high"),
-    # num = 4+2+2+6+6 = 20 -> verified by runner
+    # num: sv=1,sa=1,si=1,sr=2,se=3 -> 4+2+4+6+6 = 22 -> 1.4667 -> high (cutoff floor).
     ("cutoff-23-medium", ["poor", "poor", "poor", "good", "decent"], "medium"),
+    # num: sv=1,sa=1,si=1,sr=3,se=2 -> 4+2+4+9+4 = 23 -> 1.5333 -> medium (just above the 1.5 floor).
     ("cutoff-33-medium", ["poor", "poor", "good", "good", "good"], "medium"),
+    # num = 4+2+12+9+6 = 33 -> 33/15 = 2.2 -> medium (just below the 2.25 ceiling).
     ("cutoff-34-low", ["poor", "good", "good", "decent", "good"], "low"),
+    # num = 4+6+12+6+6 = 34 -> 34/15 = 2.2667 -> low (cutoff ceiling).
 ]
 
 FLAGS = ["--verification", "--alignment", "--impact", "--rollback", "--error-detection"]

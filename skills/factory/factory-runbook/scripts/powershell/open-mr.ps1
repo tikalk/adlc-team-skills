@@ -12,7 +12,9 @@
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
 # description states the merge-commit rule, ADR-431 §5), with the issue's
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
-# own account), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
+# own account) plus the issue's gate label (ADR-547: in the create body on
+# GitLab, same-step add on GitHub; only the missing gate label is ever added
+# on reuse), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
 # with no commits beyond the base opens nothing (empty run). Titles are
 # built from repo, iid and run id only — never issue text. --kind code
 # opens the mission code MR instead (branch factory/mission/* or
@@ -239,7 +241,7 @@ if ($provider -eq 'gitlab') {
 # Invoke-ResolveMrOwnership <provider> <issueJson> <mrJson> <initiator> <runnerJson> <deniedJson>
 # builds the {provider,issue,mr,initiator,runner,denied_scope} payload and
 # invokes resolve-mr-ownership.ps1; prints the resolver's JSON answer.
-# (Operation 11: the resolver owns the milestone/assignee decision.)
+# (Operation 11: the resolver owns the milestone/assignee/gate-label decision.)
 function Invoke-ResolveMrOwnership([string]$Provider_, [string]$IssueJson, [string]$MrJson, [string]$Initiator_, [string]$RunnerJson, [string]$DeniedJson) {
     $payload = json '
     const [provider, issue_raw, mr_raw, initiator, runner_raw, denied_raw] = process.argv.slice(1);
@@ -264,6 +266,73 @@ function Assert-OwnershipNotBlocked([string]$OwnershipJson) {
         $why = json 'console.log(JSON.parse(process.argv[1] || "{}").reason || "blocked by resolve-mr-ownership")' @($OwnershipJson)
         Die $why
     }
+}
+
+# ConvertTo-NormalizedIssueGitLab <issueJson> — the connector GET into resolver
+# verbatim form {milestone_id, assignees:[ids], labels:[names]} (provider
+# mapping table, Operation 11).
+function ConvertTo-NormalizedIssueGitLab([string]$IssueRaw) {
+    return json '
+        const i = JSON.parse(process.argv[1] || "{}");
+        const mid = (i.milestone_id !== undefined && i.milestone_id !== null && i.milestone_id !== "")
+          ? i.milestone_id : (i.milestone && i.milestone.id || null);
+        const ids = (i.assignees || []).map(a => (a && typeof a === "object" ? a.id : a)).filter(v => v !== undefined && v !== null);
+        const num = mid === null || mid === "" ? null : Number(mid);
+        const labels = (i.labels || []).map(l => (l && typeof l === "object" ? (l.title || l.name) : l)).filter(v => typeof v === "string");
+        console.log(JSON.stringify({ milestone_id: (mid === null || mid === "") ? null : num, assignees: ids.map(Number).filter(n => !Number.isNaN(n)), labels: labels }));
+      ' @($IssueRaw)
+}
+
+# Get-GateLabelToSet <ownershipJson> — the resolver's gate_label or ''.
+function Get-GateLabelToSet([string]$OwnershipJson) {
+    return json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(typeof o.gate_label === "string" ? o.gate_label : "")' @($OwnershipJson)
+}
+
+# Add-GateLabelReuseGitLab <existingJson> — ADR-547: a reused MR still needs
+# the Issue's gate label for the review lane's Sensor. Resolve it (Issue labels
+# vs the MR's current labels) and add ONLY the missing gate label via
+# add_labels — human labels are never touched. A silent no-op when the Issue
+# carries no gate label or the MR already has it.
+function Add-GateLabelReuseGitLab([string]$ExistingJson) {
+    if (-not $iid -or $crossHost) { return }
+    $matchScript = 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(JSON.stringify(m || null));'
+    $match = json $matchScript @($ExistingJson)
+    if (-not $match -or $match -eq 'null') { return }
+    $mrIid = json 'console.log(JSON.parse(process.argv[1] || "{}").iid || "")' @($match)
+    if (-not $mrIid) { return }
+    $mrLabels = json 'const m = JSON.parse(process.argv[1] || "{}"); console.log(JSON.stringify({ labels: m.labels || [] }))' @($match)
+    $issueRaw = Api @("projects/$(Enc $issueProject)/issues/$iid")
+    if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
+    $issueNorm = ConvertTo-NormalizedIssueGitLab ($issueRaw -join "`n")
+    $ownership = Invoke-ResolveMrOwnership 'gitlab' $issueNorm $mrLabels '' 'null' 'null'
+    $gate = Get-GateLabelToSet ($ownership -join "`n")
+    if (-not $gate) { return }
+    Api @('-X', 'PUT', "projects/$p/merge_requests/$mrIid", '-f', "add_labels=$gate") *> $null
+    if ($LASTEXITCODE -ne 0) { Die "cannot add gate label '$gate' to the merge request" }
+}
+
+# Add-GateLabelReuseGitHub <existingJson> — same as the GitLab twin, through
+# the issue-labels add endpoint (additive by construction).
+function Add-GateLabelReuseGitHub([string]$ExistingJson) {
+    if (-not $iid -or $crossHost) { return }
+    $number = json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].number || "")' @($ExistingJson)
+    if (-not $number) { return }
+    $mrLabels = json 'const a = JSON.parse(process.argv[1] || "[]"); const m = (Array.isArray(a) && a[0]) || {}; console.log(JSON.stringify({ labels: m.labels || [] }))' @($ExistingJson)
+    $issueJson = Api @("repos/$issueProject/issues/$iid")
+    if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
+    $ownership = Invoke-ResolveMrOwnership 'github' ($issueJson -join "`n") $mrLabels '' 'null' 'null'
+    $gate = Get-GateLabelToSet ($ownership -join "`n")
+    if (-not $gate) { return }
+    $labelBody = json 'console.log(JSON.stringify({ labels: [process.argv[1]] }))' @($gate)
+    $labelFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($labelFile, $labelBody)
+        Api @('-X', 'POST', "repos/$project/issues/$number/labels", '-H', 'Content-Type: application/json', '--input', $labelFile) *> $null
+        $labelExit = $LASTEXITCODE
+    } finally {
+        Remove-Item -Force $labelFile -ErrorAction SilentlyContinue
+    }
+    if ($labelExit -ne 0) { Die "cannot add gate label '$gate' to the pull request" }
 }
 
 # Push-Reuse — the reuse path pushes too, so commits from a run that reuses a
@@ -295,12 +364,14 @@ if ($provider -eq 'gitlab') {
     if ($LASTEXITCODE -ne 0) { Die 'cannot list merge requests' }
     $url = json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && m.web_url || "")' @($existing)
     if ($url) {
-        # Reuse path: push the run's commits (fast-forward only), then return
-        # the open MR untouched — no issue read, no resolve-mr-ownership call.
+        # Reuse path: push the run's commits (fast-forward only). Milestone
+        # and assignee stay untouched; only a missing gate label is added
+        # (ADR-547).
         if ($runTarget) {
             Assert-ReuseTargetsRunTarget (json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && typeof m.target_branch === "string" ? m.target_branch : "")' @($existing))
         }
         Push-Reuse
+        Add-GateLabelReuseGitLab ($existing -join "`n")
     } else {
         # Create path: push first.
         git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
@@ -308,16 +379,7 @@ if ($provider -eq 'gitlab') {
         if ($iid -and -not $crossHost) {
             $issueRaw = Api @("projects/$(Enc $issueProject)/issues/$iid")
             if ($LASTEXITCODE -ne 0) { Die "cannot read issue $issueProject#$iid" }
-            # Normalize the connector GET into resolver verbatim form
-            # {milestone_id, assignees:[ids]}.
-            $issueJson = json '
-        const i = JSON.parse(process.argv[1] || "{}");
-        const mid = (i.milestone_id !== undefined && i.milestone_id !== null && i.milestone_id !== "")
-          ? i.milestone_id : (i.milestone && i.milestone.id || null);
-        const ids = (i.assignees || []).map(a => (a && typeof a === "object" ? a.id : a)).filter(v => v !== undefined && v !== null);
-        const num = mid === null || mid === "" ? null : Number(mid);
-        console.log(JSON.stringify({ milestone_id: (mid === null || mid === "") ? null : num, assignees: ids.map(Number).filter(n => !Number.isNaN(n)) }));
-      ' @($issueRaw)
+            $issueJson = ConvertTo-NormalizedIssueGitLab ($issueRaw -join "`n")
         } else {
             $issueJson = '{}'
         }
@@ -330,7 +392,8 @@ if ($provider -eq 'gitlab') {
         # Create body = fixed keys + ONLY resolver-returned non-null fields.
         # One JSON body via --input: current glab refuses bracketed field names
         # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and
-        # the milestone as strings.
+        # the milestone as strings. The gate label rides `labels` (ADR-547) so
+        # the review lane's Sensor fires on open.
         # The MR goes into the run's target branch when it has one
         # (SF-FIX-23), else into the project's default branch.
         if ($runTarget) {
@@ -349,6 +412,7 @@ if ($provider -eq 'gitlab') {
         const nums = ids.map(Number).filter(n => !Number.isNaN(n));
         if (nums.length) b.assignee_ids = nums;
       }
+      if (typeof o.gate_label === "string" && o.gate_label) b.labels = o.gate_label;
       console.log(JSON.stringify(b));
     ' @($branch, $target, $title, $description, $ownership)
         $bodyFile = [System.IO.Path]::GetTempFileName()
@@ -368,12 +432,14 @@ if ($provider -eq 'gitlab') {
     if ($LASTEXITCODE -ne 0) { Die 'cannot list pull requests' }
     $url = json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].html_url || "")' @($existing)
     if ($url) {
-        # Reuse path: push the run's commits (fast-forward only), then return
-        # the open PR untouched — no issue read, no resolve-mr-ownership call.
+        # Reuse path: push the run's commits (fast-forward only). Milestone
+        # and assignee stay untouched; only a missing gate label is added
+        # (ADR-547).
         if ($runTarget) {
             Assert-ReuseTargetsRunTarget (json 'const a = JSON.parse(process.argv[1] || "[]"); const b = Array.isArray(a) && a[0] && a[0].base; console.log(b && typeof b.ref === "string" ? b.ref : "")' @($existing))
         }
         Push-Reuse
+        Add-GateLabelReuseGitHub ($existing -join "`n")
     } else {
         # Create path: push first.
         git push -q -u origin "refs/heads/${branch}:refs/heads/${branch}"
@@ -418,6 +484,7 @@ if ($provider -eq 'gitlab') {
         const o = {};
         if (m.milestone !== undefined) o.milestone = m.milestone;
         if (m.assignees !== undefined) o.assignees = m.assignees;
+        if (m.labels !== undefined) o.labels = m.labels;
         console.log(JSON.stringify(o));
       ' @($mrIssueRaw)
             $ownership = Invoke-ResolveMrOwnership 'github' $issueJson $mrJson $initiator $runnerJson $deniedJson
@@ -429,6 +496,7 @@ if ($provider -eq 'gitlab') {
         const a = Array.isArray(o.assignee) ? o.assignee : [o.assignee];
         console.log(a.map(v => (v && typeof v === "object" ? (v.login || "") : String(v))).filter(Boolean).join(" ")); }
       ' @($ownership)
+            $gateLabelToSet = Get-GateLabelToSet ($ownership -join "`n")
             if ($milestoneToSet) {
                 Api @('-X', 'PATCH', "repos/$project/issues/$number", '-F', "milestone=$milestoneToSet") *> $null
                 if ($LASTEXITCODE -ne 0) { Die 'cannot set milestone' }
@@ -438,6 +506,21 @@ if ($provider -eq 'gitlab') {
                     Api @('-X', 'POST', "repos/$project/issues/$number/assignees", '-f', "assignees[]=$l") *> $null
                     if ($LASTEXITCODE -ne 0) { Die 'cannot set assignee' }
                 }
+            }
+            # ADR-547: the gate label lands in the same step as the create
+            # (the Sensor fires on open) through the additive labels endpoint —
+            # human labels are never replaced.
+            if ($gateLabelToSet) {
+                $gateBody = json 'console.log(JSON.stringify({ labels: [process.argv[1]] }))' @($gateLabelToSet)
+                $gateFile = [System.IO.Path]::GetTempFileName()
+                try {
+                    [System.IO.File]::WriteAllText($gateFile, $gateBody)
+                    Api @('-X', 'POST', "repos/$project/issues/$number/labels", '-H', 'Content-Type: application/json', '--input', $gateFile) *> $null
+                    $gateExit = $LASTEXITCODE
+                } finally {
+                    Remove-Item -Force $gateFile -ErrorAction SilentlyContinue
+                }
+                if ($gateExit -ne 0) { Die "cannot set gate label '$gateLabelToSet' on the pull request" }
             }
         }
     }

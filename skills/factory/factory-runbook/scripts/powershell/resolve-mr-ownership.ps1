@@ -1,9 +1,9 @@
 #!/usr/bin/env pwsh
-# resolve-mr-ownership.ps1 — resolve MR/PR milestone + assignee propagation
+# resolve-mr-ownership.ps1 — resolve MR/PR milestone + assignee + gate-label propagation
 # (PowerShell twin of bash/resolve-mr-ownership.sh; the MR-ownership
-# decision; ADR-432 chain). One behavior, two platform scripts; keep in
-# lockstep. The contract is pinned by tests/unit/test_resolve_mr_ownership.py,
-# which runs both twins.
+# decision; ADR-432 chain, ADR-547 gate label). One behavior, two platform
+# scripts; keep in lockstep. The contract is pinned by
+# tests/unit/test_resolve_mr_ownership.py, which runs both twins.
 #
 # Usage:
 #   resolve-mr-ownership.ps1 <payload.json>
@@ -33,7 +33,7 @@ Usage:
 
 Input (JSON): provider, issue, mr, initiator, runner, denied_scope.
 Output (JSON): action (set|skip|block), milestone, milestone_field,
-assignee, assignee_field, reason.
+assignee, assignee_field, gate_label, reason.
 '@
     exit 0
 }
@@ -94,13 +94,46 @@ function Get-FirstCandidate($Initiator, $IssueAssignees, $Runner) {
     return $null
 }
 
+# One label entry (string, or a {title} or {name} object) -> its name.
+function Get-LabelName($Entry) {
+    if ($Entry -is [psobject] -and $Entry -isnot [array]) {
+        if ($null -ne $Entry.title) { return [string]$Entry.title }
+        if ($null -ne $Entry.name) { return [string]$Entry.name }
+        return $null
+    }
+    if ($Entry -is [string]) { return $Entry }
+    return $null
+}
+
+# The Issue's gate label (ADR-547: supervised wins; absent -> $null).
+function Read-GateLabel($Issue) {
+    $raw = $Issue.labels
+    if ($raw -isnot [array]) { return $null }
+    $names = @()
+    foreach ($l in $raw) { $n = Get-LabelName $l; if ($null -ne $n) { $names += $n } }
+    if ($names -contains 'supervised') { return 'supervised' }
+    if ($names -contains 'autonomous') { return 'autonomous' }
+    return $null
+}
+
+# True when the MR already carries a gate label — the preserve-only guard.
+function Test-MrHasGateLabel($Mr) {
+    $raw = $Mr.labels
+    if ($raw -isnot [array]) { return $false }
+    foreach ($l in $raw) {
+        $name = Get-LabelName $l
+        if ($name -eq 'supervised' -or $name -eq 'autonomous') { return $true }
+    }
+    return $false
+}
+
 function Resolve-Ownership($Payload) {
     $provider = String-Coalesce $Payload.provider
     $provider = $provider.ToLowerInvariant()
     if (-not $PROVIDERS.ContainsKey($provider)) {
         return [ordered]@{
             action = 'block'; milestone = $null; milestone_field = $null
-            assignee = $null; assignee_field = $null
+            assignee = $null; assignee_field = $null; gate_label = $null
             reason  = "unknown provider '$provider' — expected one of $($($PROVIDERS.Keys | Sort-Object) -join ', ')"
         }
     }
@@ -112,7 +145,7 @@ function Resolve-Ownership($Payload) {
     if ($Payload.denied_scope) {
         return [ordered]@{
             action = 'block'; milestone = $null; milestone_field = $null
-            assignee = $null; assignee_field = $null
+            assignee = $null; assignee_field = $null; gate_label = $null
             reason  = "missing $($Payload.denied_scope) scope for $provider — the run cannot read the Issue or " +
                 "write the MR's ownership fields. Grant the scope and re-run; the factory never guesses a " +
                 "milestone or an assignee it could not verify."
@@ -152,11 +185,27 @@ function Resolve-Ownership($Payload) {
         }
     }
 
-    $action = if ($null -ne $milestone -or $null -ne $assignee) { 'set' } else { 'skip' }
-    $reason = if ($notes.Count -gt 0) { $notes -join '; ' } else { 'milestone and assignee propagated' }
+    # (ADR-547) the Issue's gate label rides the MR at open time; only
+    # providers with an MR-label concept apply it (gitlab, github).
+    $gateLabel = $null
+    if ($provider -eq 'gitlab' -or $provider -eq 'github') {
+        $wanted = Read-GateLabel $issue
+        if ($null -eq $wanted) {
+            $notes.Add('Issue has no gate label — skipped')
+        } elseif (Test-MrHasGateLabel $mr) {
+            $notes.Add('MR already has a gate label — preserved')
+        } else {
+            $gateLabel = $wanted
+        }
+    } else {
+        $notes.Add("$provider has no MR-label concept — gate label is a permanent no-op")
+    }
+
+    $action = if ($null -ne $milestone -or $null -ne $assignee -or $null -ne $gateLabel) { 'set' } else { 'skip' }
+    $reason = if ($notes.Count -gt 0) { $notes -join '; ' } else { 'milestone, assignee and gate label propagated' }
     return [ordered]@{
         action = $action; milestone = $milestone; milestone_field = $milestoneField
-        assignee = $assignee; assignee_field = $assigneeField; reason = $reason
+        assignee = $assignee; assignee_field = $assigneeField; gate_label = $gateLabel; reason = $reason
     }
 }
 

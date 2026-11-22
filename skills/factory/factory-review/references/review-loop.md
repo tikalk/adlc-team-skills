@@ -239,7 +239,7 @@ their own; they are held for converge adjudication.
 |--------|-----------|-------|
 | `DONE` | All Important findings resolved, no new issues | Post "🟢 PASS — Ready for human review" comment → exit loop |
 | `CONTINUE` | Findings remain or new issues introduced | Increment `consecutive_tasks_appended` → check circuit breaker → check score-regression → if under limits: loop to Step 1 → if tripped: mark `needs-human-review` → exit |
-| `SPEC_CORRECTION_NEEDED` | Governing ticket/spec is wrong/ambiguous — no code fix will help | Post "spec correction needed" on comment bus → stamp `lifecycle=intent` on tracker → route to factory-queue for re-triage → exit |
+| `SPEC_CORRECTION_NEEDED` | Governing ticket/spec is wrong/ambiguous — no code fix will help | Post "spec correction needed" on comment bus → move the issue to `intent` through `set-lifecycle.sh --to intent` → route to factory-queue for re-triage → exit |
 
 ---
 

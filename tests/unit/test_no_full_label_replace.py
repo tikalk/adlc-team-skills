@@ -80,6 +80,32 @@ def test_the_lint_catches_the_forms_seen_in_the_logs(tmp_path):
         ROOT = saved
 
 
+def test_the_prohibition_exemption_is_per_line_and_does_not_spill(tmp_path):
+    """The lint skips a line that forbids the form. That is a per-line
+    heuristic, so a line that mixes a prohibition word with a forbidden form
+    is skipped too — a known limit, pinned here so it is a choice and not an
+    accident. What must hold: the exemption never reaches another line, and a
+    prohibition word inside a longer word does not exempt anything."""
+    global ROOT
+    saved, ROOT = ROOT, tmp_path
+    try:
+        mixed = tmp_path / "mixed.md"
+        # One line: a prohibition about something else, and the forbidden form.
+        mixed.write_text('Never edit the ticket body; then send -d "labels=validation,supervised".\n', encoding="utf-8")
+        assert offenders(tmp_path) == [], "known limit: a mixed line is exempt as a whole"
+        # The same instruction split over two lines: the second line is caught.
+        mixed.write_text('Never edit the ticket body.\nThen send -d "labels=validation,supervised".\n', encoding="utf-8")
+        assert [o.split(": ")[0] for o in offenders(tmp_path)] == ["mixed.md:2"]
+        # A prohibition line between two bad lines exempts only itself.
+        mixed.write_text('-d "labels=a"\nDo not send `labels=<list>`.\n-d "labels=b"\n', encoding="utf-8")
+        assert [o.split(": ")[0] for o in offenders(tmp_path)] == ["mixed.md:1", "mixed.md:3"]
+        # "nevertheless" / "donut" are not prohibitions.
+        mixed.write_text('Nevertheless send -d "labels=a,b" here.\n', encoding="utf-8")
+        assert len(offenders(tmp_path)) == 1
+    finally:
+        ROOT = saved
+
+
 def between(text, start, end):
     i = text.index(start)
     return text[i:text.index(end, i)]
@@ -110,6 +136,30 @@ def test_operation_9_gives_the_raw_api_form_next_to_every_cli_form():
     assert 'issues/<iid>" -f add_labels=' in stamping
     assert "--add-label" in stamping
     assert "add_labels" in stamping and "remove_labels" in stamping
+
+
+def test_a_one_of_a_set_label_replaces_the_others_of_its_set_in_the_same_call():
+    """Add-only stamping left two dispatch labels after a re-triage: a spec
+    correction sends the issue back to `intent` (set-lifecycle removes
+    lifecycle labels only), and the next approval added the newly chosen
+    dispatch label next to the old one. The close, resume and triage triggers
+    filter on `supervised` / `autonomous`, so both matched."""
+    op9 = between(TRACKER.read_text(encoding="utf-8"), "### Operation 9", "### Operation 10")
+    stamping = between(op9, "**Other label writes", "2. **State-Based")
+    rule = next(l for l in stamping.splitlines() if "one of a set" in l and "same call" in l)
+    assert '-f add_labels="autonomous" -f remove_labels="supervised,interactive"' in rule
+    assert '--add-label "autonomous" --remove-label "supervised" --remove-label "interactive"' in rule
+    assert "`agent-can-execute`" in rule and "`human-required`" in rule
+    assert "exactly one label of each set remains" in rule
+    assert "Safety Constraint 11" in rule and not any(p.search(rule) for p, _ in FULL_SET)
+
+    queue = (FACTORY / "factory-queue/SKILL.md").read_text(encoding="utf-8")
+    line = next(l for l in queue.splitlines() if "Stamp automation-gating" in l)
+    assert "each with an add-only call" not in line
+    assert "--add-label autonomous --remove-label supervised --remove-label interactive" in line
+    assert "add_labels=autonomous" in line and "remove_labels=supervised,interactive" in line
+    assert "`agent-can-execute` in, `human-required` out" in line
+    assert "Other label writes" in line and "one of each set remains" in line
 
 
 def test_skills_that_stamp_a_label_point_to_the_add_only_form():

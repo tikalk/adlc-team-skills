@@ -51,7 +51,7 @@ An issue carries exactly one lifecycle label. `done` and `cancelled` are termina
 | # | Edge | Trigger | Owner | Dispatch difference |
 |--|--|--|--|--|
 | 1 | (none) → `intent` | candidate brief created | `factory-queue` (brief/milestone generation) | none |
-| 2 | `intent` → `spec-gated` | human approves at the Intent Gate | `factory-queue` (triage) | the dispatch label is stamped on this edge |
+| 2 | `intent` → `spec-gated` | human approves at the Intent Gate | `factory-queue` (triage) | the dispatch label is stamped on this edge, replacing any other dispatch label (Operation 9, "Other label writes") |
 | 3 | `intent` → `cancelled` | human rejects at the Intent Gate | `factory-queue` (triage) | none |
 | 4 | `spec-gated` → `executing` | run dispatched and lease acquired (Operation 10) | lane dispatch gate (lane runs) · `factory-mission` (local runs) | none |
 | 5 | `executing` → `spec-gated` | dependency gate refuses (Operation 12) | `factory-mission` | none |
@@ -323,11 +323,12 @@ the transition based on provider type:
    4. Re-read the labels and verify exactly one lifecycle label remains. If not, report the coexisting labels in the step output and on the issue. Never report the transition as done.
    5. Never add or remove the `resume` trigger: the gate runtime owns it.
 
-   **Other label writes (stamping).** The labels §2 assigns to an owner — `agent-authored` on an opened PR/MR, the PR/MR's `validation` label (factory-review §2 step 6), the automation-gating and dispatch labels on edge 2 — are added one at a time, with a call that names only the label it adds:
+   **Other label writes (stamping).** The labels §2 assigns to an owner — `agent-authored` on an opened PR/MR, the PR/MR's `validation` label (factory-review §2 step 6), the automation-gating and dispatch labels on edge 2 — are written one at a time, with a call that names only the label it adds (and, for a label that is one of a set, the labels of that set it removes):
       - GitLab MR: `glab api --hostname <host> -X PUT "projects/<url-encoded-path>/merge_requests/<iid>" -f add_labels="<label>"`
       - GitLab issue: `glab api --hostname <host> -X PUT "projects/<url-encoded-path>/issues/<iid>" -f add_labels="<label>"`
       - GitHub: `gh pr edit <number> --add-label "<label>"` (issue: `gh issue edit <number> --add-label "<label>"`)
       - To take one label off, the same call with `remove_labels="<label>"` (GitHub: `--remove-label "<label>"`).
+      - **A label that is one of a set replaces the others of its set, in the same call.** An issue carries exactly one dispatch label (`autonomous` | `supervised` | `interactive`) and one automation-gating label (`agent-can-execute` | `human-required`), §2. An issue that is triaged again (a spec correction sent it back to `intent`) still carries the labels of the earlier approval, and the Set Lifecycle step removes lifecycle labels only. So add the chosen label and remove the other members of its set together — GitLab: `glab api --hostname <host> -X PUT "projects/<url-encoded-path>/issues/<iid>" -f add_labels="autonomous" -f remove_labels="supervised,interactive"`; GitHub: `gh issue edit <number> --add-label "autonomous" --remove-label "supervised" --remove-label "interactive"`; the gating label the same way (`add_labels="agent-can-execute"` with `remove_labels="human-required"`, or the reverse). Resolve the names through the `labels:` mapping first (§2 name resolution). Two dispatch labels on one issue make the policy ambiguous: the close, resume and triage triggers filter on `supervised` / `autonomous`, and both would match. The call still names only what it adds and what it removes, never the whole set (Safety Constraint 11). Read the labels back: exactly one label of each set remains.
       - With any other HTTP tool the parameters are the same two — `add_labels` and `remove_labels` — and nothing else (Safety Constraint 11). Read the labels back afterwards: the labels that were there before must all still be there.
 
 2. **State-Based (Jira/Linear/ClickUp)**:

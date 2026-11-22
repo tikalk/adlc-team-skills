@@ -39,6 +39,7 @@ def test_plan_writes_the_gate_spec_payload():
     for token in ("ADLC_GATE_PAYLOADS", "ADLC_UPCOMING_GATES", "gate-spec.json", "`gate-spec`"):
         assert token in block, f"--plan payload contract must name {token}"
     assert "with or without an MR" in block, "the payload is written even when no MR was opened"
+    assert "If `plan` fails, write no payload" in block, "the failure path writes nothing and never reaches the gate"
 
 
 def test_payload_carries_summary_plan_and_mr():

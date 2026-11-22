@@ -371,6 +371,32 @@ module.exports = {
     },
     {
       "vars": {
+"scenario": "orchestrator-brief-packing: factory-orchestrator packs a minimal stage hand-off brief",
+        "input_context": "Approved brief spec-gated + agent-can-execute for issue #88 (CSV export); triage added findings F1-F3, spec PR #91 resolved the delimiter question. Ready to hand off to factory-mission.",
+        "instruction": "Pack the factory-mission hand-off brief. Carry the request verbatim with current refs, and only the findings relevant to implementation."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
+"scenario": "orchestrator-liveness-heartbeat: factory-orchestrator sends a liveness note during a long stage",
+        "input_context": "factory-mission run for issue #88 has been implementing for 12 minutes with no user-visible output yet.",
+        "instruction": "Send the user a liveness update. Say what the factory is doing now without exposing dispatches, subagents, or hand-offs."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_invariants.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "dependency-auto-notify: closing a dependency machine-notifies still-open dependents",
         "input_context": "#55 speckit lane just merged and closed; dependent #57 matt lane is still open and was parked on the dependency gate.",
         "instruction": "Handle the #55 close event for its dependents."

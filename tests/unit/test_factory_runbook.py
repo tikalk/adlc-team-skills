@@ -3,7 +3,8 @@
 Nine factory skills borrow run behavior that used to live inside
 factory-mission: the publish scripts and the run contracts. The runbook owns
 both — scripts are canonical here, contracts are canonical here. Publish
-users invoke it; contract borrowers reference it by installed path.
+users read its procedure and run `scripts/` directly (never via the Skill
+tool); contract borrowers reference it by installed path.
 """
 
 import json
@@ -47,6 +48,7 @@ REF_BORROWERS = [
 ]
 
 INVOKE_NEEDLE = "Invoke the `factory-runbook` skill"
+READ_AND_RUN_NEEDLE = "factory-runbook/scripts/bash/<name>.sh"
 
 
 def _frontmatter(skill_file: Path) -> dict:
@@ -55,13 +57,16 @@ def _frontmatter(skill_file: Path) -> dict:
     return yaml.safe_load(parts[1]) or {}
 
 
-def test_runbook_skill_is_present_and_invocable():
+def test_runbook_skill_is_reference_only():
     meta = _frontmatter(SKILL / "SKILL.md")
     assert meta.get("name") == "factory-runbook", "skill name must match its directory"
     description = meta.get("description")
     assert isinstance(description, str) and description.strip(), "runbook needs a trigger description"
-    assert not meta.get("disable-model-invocation"), (
-        "the runbook is invoked by orchestrators — it must stay model-invocable"
+    assert meta.get("reference-only") is True, (
+        "ADR-507: the runbook is reference-only — frontmatter must carry reference-only: true"
+    )
+    assert meta.get("disable-model-invocation") is True, (
+        "ADR-507: the runbook is never invoked — frontmatter must carry disable-model-invocation: true"
     )
 
 
@@ -100,7 +105,8 @@ def test_no_stale_contract_refs_in_mission():
 def test_publish_users_invoke_the_runbook():
     for doc in PUBLISH_USERS:
         content = doc.read_text(encoding="utf-8")
-        assert INVOKE_NEEDLE in content, f"{doc.parent.name}: must delegate publish ({INVOKE_NEEDLE})"
+        assert READ_AND_RUN_NEEDLE in content, f"{doc.parent.name}: must point at the runbook helpers ({READ_AND_RUN_NEEDLE})"
+        assert INVOKE_NEEDLE not in content, f"{doc.parent.name}: must not invoke the runbook via the Skill tool ({INVOKE_NEEDLE})"
         assert "factory-mission/scripts/" not in content, (
             f"{doc.parent.name}: raw helper path bypasses the runbook"
         )

@@ -8,11 +8,11 @@ disable-model-invocation: true
 
 ## In a factory run — read this first
 
-When `ADLC_RUN_ID` is set, the workflow engine runs this step unattended and a gate follows it. A run without `ADLC_RUN_ID` is a factory run too when the `factory-runbook` skill's run-context resolver prints `factory_run=yes` (a raw lane run; `factory-runbook/references/run-context.md` is the one definition every factory skill uses): nobody answers there either, and no gate follows. Invoke the `factory-runbook` skill for the publish sequence (run branch → step commits → draft MR, plus the run-context rules); run the lifecycle steps the DAG resolves for the issue in between.
+When `ADLC_RUN_ID` is set, the workflow engine runs this step unattended and a gate follows it. A run without `ADLC_RUN_ID` is a factory run too when the `factory-runbook` skill's run-context resolver prints `factory_run=yes` (a raw lane run; `factory-runbook/references/run-context.md` is the one definition every factory skill uses): nobody answers there either, and no gate follows. Read the `factory-runbook` publish procedure and run `<skills dir>/factory-runbook/scripts/bash/<name>.sh` directly for the publish sequence (run branch → step commits → draft MR, plus the run-context rules) — never invoke the runbook via the Skill tool; run the lifecycle steps the DAG resolves for the issue in between.
 
 **Never ask for approval** or wait for an answer. The engine's gate after this step is the approval. **Before you return, always:** write `mr_url` and a one-line `conclusion` into `ADLC_STEP_OUTPUT`, whatever the outcome.
 
-Only this orchestrator invokes the publish sequence, and only through the runbook; lifecycle skills never do. Details: [Run Branch, Step Commits and Draft MR](#run-branch-step-commits-and-draft-mr).
+Only this orchestrator runs the publish sequence, and only by reading the runbook procedure; lifecycle skills never do. Details: [Run Branch, Step Commits and Draft MR](#run-branch-step-commits-and-draft-mr).
 
 ---
 
@@ -132,7 +132,7 @@ enforced at dispatch, not by a gate in that file).
 
 **Requires:** the `factory-runbook` and `factory-learn` skills (provides the publish procedure and run contracts via `factory-runbook`; eval-seed taxonomy in `factory-learn`): `adlc-cli skills add tikalk/adlc-team-skills --skill factory-runbook,factory-learn`
 
-In a factory run (`ADLC_RUN_ID` set by the workflow engine, or `factory_run=yes` from the run-context resolver — `factory-runbook/references/run-context.md`) this orchestrator — and only it, never the lane lifecycle skills — commits, pushes the run branch and opens the draft MR. Invoke the `factory-runbook` skill for the publish sequence with:
+In a factory run (`ADLC_RUN_ID` set by the workflow engine, or `factory_run=yes` from the run-context resolver — `factory-runbook/references/run-context.md`) this orchestrator — and only it, never the lane lifecycle skills — commits, pushes the run branch and opens the draft MR. Follow the `factory-runbook` publish procedure directly — read it and run `<skills dir>/factory-runbook/scripts/bash/<name>.sh`, never via the Skill tool — with:
 
 **Tail merge + reindex (`tail-merge-reindex`, before publish):** fetch merge head → merge into run
 branch → regenerate all four indexes from files on disk (`generate_adr_index`

@@ -220,9 +220,10 @@ def test_skills_deps_manifest_valid():
             assert home in skill_dirs, f"unknown canonical home: {home} (required by {borrower})"
 
 
-# The publish procedure lives in factory-runbook: its SKILL.md names every
-# helper by a skill-local relative path; orchestrators invoke the runbook
-# instead of the raw paths (ADR-431-amendment §4, as amended).
+# The publish procedure lives in factory-runbook: its SKILL.md states the
+# reference-only rule up front and names every helper by a skill-local
+# relative path; orchestrators read the procedure and run scripts/ directly
+# (ADR-507: never via the Skill tool).
 INTENT_ORCHESTRATORS = [
     SKILLS / "factory/factory-intent/SKILL.md",
     SKILLS / "factory/factory-mission/SKILL.md",
@@ -240,11 +241,33 @@ def test_runbook_names_the_helpers_by_skill_local_path():
         )
 
 
-def test_intent_orchestrators_invoke_the_runbook():
+def test_runbook_body_is_read_and_run():
+    """ADR-507: the runbook is reference-only — its body states the
+    reference-only rule up front and never instructs the model to invoke
+    the runbook via the Skill tool. Orchestrators read the procedure and
+    run scripts/ directly."""
+    raw = (SKILLS / "factory/factory-runbook/SKILL.md").read_text(encoding="utf-8")
+    # Body only: the frontmatter marker (Task 1) does not satisfy the body rule.
+    body = raw.split("---", 2)[2]
+    assert "reference-only" in body, (
+        "factory-runbook/SKILL.md: body must state the reference-only rule up front"
+    )
+    for needle in ("Invoke the `factory-runbook` skill",
+                   "invoke this skill",
+                   "orchestrator-invoked runbook"):
+        assert needle not in body, (
+            f"factory-runbook/SKILL.md: must not instruct the model to invoke the runbook ({needle!r})"
+        )
+
+
+def test_intent_orchestrators_read_and_run_the_runbook():
     for doc in INTENT_ORCHESTRATORS:
         content = doc.read_text(encoding="utf-8")
-        assert "Invoke the `factory-runbook` skill" in content, (
-            f"{doc.parent.name}/SKILL.md: must delegate publish to the runbook"
+        assert "factory-runbook/scripts/bash/<name>.sh" in content, (
+            f"{doc.parent.name}/SKILL.md: must point at the runbook helpers"
+        )
+        assert "Invoke the `factory-runbook` skill" not in content, (
+            f"{doc.parent.name}/SKILL.md: must not invoke the runbook via the Skill tool"
         )
         assert "Requires" in content and "--skill factory-runbook" in content, (
             f"{doc.parent.name}/SKILL.md: no Requires line for factory-runbook"

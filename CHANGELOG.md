@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`factory-mission --plan` writes the spec gate's payload** (adlc-workspace#164, ADR-515). In a factory run, whenever `ADLC_UPCOMING_GATES` names `gate-spec`, supervised Phase 1 writes `$ADLC_GATE_PAYLOADS/gate-spec.json`: a one-line `summary`, the outcome, acceptance criteria and files as `sections`, and the draft MR as an artifact only when one was opened. The approver then sees the plan at `gate-spec` even with no commits and no MR (adlc-cli renders it, tikalk/adlc-cli#113). Pinned by `tests/unit/test_factory_mission_gate_payload.py`.
+
 ## [0.34.0] - 2026-11-21
 
 ### Added

@@ -92,8 +92,6 @@ def test_executor_states_the_never_guess_rule():
 
 # ── gate-label wiring (ADR-548: AC7/AC8/AC10) ──────────────────────────────
 
-GATE_FIXTURES = ("supervised", "autonomous")
-
 
 def test_connector_documents_the_gate_label():
     content = TRACKER.read_text(encoding="utf-8")
@@ -108,11 +106,20 @@ def test_executor_hooks_the_gate_label():
     assert "ADR-548" in content
 
 
-@pytest.mark.parametrize("gate", GATE_FIXTURES)
-def test_open_mr_carries_the_gate_label_on_create(gate):
-    for script in (OPEN_MR_BASH, OPEN_MR_PWSH):
-        content = script.read_text(encoding="utf-8")
-        assert "gate_label" in content, f"{script.name} must consume the resolver's gate label"
+def _create_path_tail(script, marker):
+    """Source after the create-path's gate-label assignment (the reuse helper is defined earlier)."""
+    content = script.read_text(encoding="utf-8")
+    assert marker in content, f"{script.name} must read the resolver's gate label on the create path"
+    return content.split(marker, 1)[1]
+
+
+def test_open_mr_github_create_path_applies_the_gate_label():
+    bash_tail = _create_path_tail(OPEN_MR_BASH, 'gate_label_to_set="$(')
+    assert "issues/$number/labels" in bash_tail, "bash create path must POST the gate label to the labels endpoint"
+    assert "cannot set gate label" in bash_tail, "bash create path must fail loudly when the label write fails"
+    pwsh_tail = _create_path_tail(OPEN_MR_PWSH, "$gateLabelToSet = Get-GateLabelToSet")
+    assert "issues/$number/labels" in pwsh_tail, "pwsh create path must POST the gate label to the labels endpoint"
+    assert "cannot set gate label" in pwsh_tail, "pwsh create path must fail loudly when the label write fails"
 
 
 def test_open_mr_gitlab_create_body_names_labels():
@@ -125,11 +132,10 @@ def test_open_mr_gitlab_reuse_adds_without_replacing():
     assert "add_labels=" in content, "GitLab reuse must add (never replace) the gate label"
 
 
-def test_open_mr_github_labels_in_the_same_step():
+def test_open_mr_github_reuse_adds_through_the_additive_endpoint():
     content = OPEN_MR_BASH.read_text(encoding="utf-8")
-    assert "issues/$number/labels" in content or "issues/\"$number\"/labels" in content or "/labels" in content, (
-        "GitHub must apply the gate label through the additive labels endpoint in the same step"
-    )
+    helper = content.split("gate_label_reuse_github()", 1)[1].split("\n}\n", 1)[0]
+    assert "issues/$number/labels" in helper, "GitHub reuse must add through the additive labels endpoint"
 
 
 def test_open_mr_preserves_human_labels_on_reuse():

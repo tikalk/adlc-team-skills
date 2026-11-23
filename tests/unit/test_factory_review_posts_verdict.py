@@ -37,6 +37,9 @@ PR = "tikalk/adlc-team-skills#166"
 MARKER = (f"<!-- factory-review:step=review run={RUN} iter=0 status=completed "
           f"outcome=merge-ready findings=2 important=0 nits=2 head={HEAD} -->")
 BODY = MARKER + "\n\n## Verdict\n**Outcome:** merge-ready\n\n**Merge risk: low**\n\n## Important findings\nNone.\n\n## Nits\n### N1 — a\n\n### N2 — b\n"
+# The line post-verdict appends when the head has no pipeline / no check runs.
+NO_PIPELINE = f"\n**Pipeline at posting (generated):** no pipeline for head {HEAD[:8]}\n"
+NO_CHECKS = f"\n**Pipeline at posting (generated):** check runs on {HEAD[:8]} — no jobs\n"
 
 # A fake `glab api` / `gh api`. State in $FAKE_TRACKER_DIR: notes.json (the
 # thread), comments.json (GitHub issue comments), calls.log, posted.jsonl.
@@ -46,6 +49,10 @@ BODY = MARKER + "\n\n## Verdict\n**Outcome:** merge-ready\n\n**Merge risk: low**
 # --paginate GET as two concatenated arrays; FAKE_PAGE_SIZE=<n> answer a GET
 # of the thread with its first n comments only, unless --paginate is passed.
 # A refusal prints the HTTP status on stderr the way the real CLIs do.
+# CI state (SF-RT-05): pipelines.json (GitLab pipeline list), jobs.json (its
+# jobs), checks.json (GitHub check runs); absent = no pipeline / no checks.
+# FAKE_PIPELINE_FAIL=1 fails every CI read; jobs-after.json replaces jobs.json
+# from the FAKE_JOBS_SWITCH_AFTER-th jobs read on (a job that finishes).
 FAKE = r'''#!/usr/bin/env bash
 set -u
 d="${FAKE_TRACKER_DIR:?}"
@@ -68,6 +75,15 @@ if [ "$method" = GET ]; then
   [ "${FAKE_READ_FAIL:-0}" = 1 ] && { echo "fake: 500 Internal Server Error (HTTP 500)" >&2; exit 1; }
   [ "${FAKE_READ_GARBAGE:-0}" = 1 ] && { echo "<html>busy</html>"; exit 0; }
   case "$path" in
+    */pipelines/*/jobs*|*/pipelines\?*|*/check-runs*)
+      [ "${FAKE_PIPELINE_FAIL:-0}" = 1 ] && { echo "fake: 503 Service Unavailable (HTTP 503)" >&2; exit 1; }
+      case "$path" in
+        */jobs*) n=$(grep -c '/jobs' "$d/calls.log")
+                 if [ -f "$d/jobs-after.json" ] && [ "$n" -ge "${FAKE_JOBS_SWITCH_AFTER:-999}" ]; then cat "$d/jobs-after.json"
+                 else cat "$d/jobs.json" 2>/dev/null || echo '[]'; fi ;;
+        */check-runs*) cat "$d/checks.json" 2>/dev/null || echo '{"total_count":0,"check_runs":[]}' ;;
+        *) cat "$d/pipelines.json" 2>/dev/null || echo '[]' ;;
+      esac ;;
     */issues/*/comments*) cat "$d/comments.json" 2>/dev/null || echo '[]' ;;
     *) if [ "$paginate" = 1 ] && [ "${FAKE_PAGES:-0}" = 1 ]; then printf '[{"id":1,"body":"x"}]'; fi
        if [ -n "${FAKE_PAGE_SIZE:-}" ] && [ "$paginate" = 0 ]; then
@@ -193,7 +209,8 @@ def test_posts_to_gitlab_and_confirms(tracker, interpreter):
     assert r.returncode == 0, r.stderr
     assert "posted and confirmed" in r.stdout
     assert posts(tracker) == ["POST projects/tikalk%2Fengineering%2Foctopus-next/merge_requests/1298/discussions"]
-    assert posted_payloads(tracker) == [{"body": BODY}]
+    # The body as written, plus the generated CI line (SF-RT-05).
+    assert posted_payloads(tracker) == [{"body": BODY + NO_PIPELINE}]
     assert set((tracker["state"] / "hosts.log").read_text().split()) == {"gitlab.example.test"}
 
 
@@ -202,7 +219,7 @@ def test_posts_to_github_as_a_comment_review_bound_to_the_head(tracker, interpre
     r = run(tracker, interpreter, "--mr", PR, "--head", HEAD, "--body-file", body_file(tracker, BODY))
     assert r.returncode == 0, r.stderr
     assert posts(tracker) == ["POST repos/tikalk/adlc-team-skills/pulls/166/reviews"]
-    assert posted_payloads(tracker) == [{"body": BODY, "event": "COMMENT", "commit_id": HEAD}]
+    assert posted_payloads(tracker) == [{"body": BODY + NO_CHECKS, "event": "COMMENT", "commit_id": HEAD}]
     assert set((tracker["state"] / "hosts.log").read_text().split()) == {"github.com"}
 
 
@@ -359,7 +376,7 @@ def test_both_twins_run_the_same_node_scripts():
     twins, so the twins cannot disagree on what counts as a verdict."""
     sh = SCRIPT.read_text(encoding="utf-8")
     ps = PS_SCRIPT.read_text(encoding="utf-8")
-    for bash_var, ps_var in (("MARKER_JS", "$markerJs"), ("FIND_JS", "$findJs")):
+    for bash_var, ps_var in (("MARKER_JS", "$markerJs"), ("FIND_JS", "$findJs"), ("PIPELINE_JS", "$pipelineJs")):
         js_sh = sh.split(f"{bash_var}='\n", 1)[1].split("\n'\n", 1)[0]
         js_ps = ps.split(f"{ps_var} = @'\n", 1)[1].split("\n'@", 1)[0]
         assert js_sh == js_ps, f"{bash_var} differs between the twins"
@@ -389,3 +406,179 @@ def test_post_verdict_lints_before_it_posts():
         assert needle in text, script.name
         assert text.index(needle) < text.index("-X"), f"{script.name}: lint must run before the POST"
 
+
+
+# ── SF-RT-05: the pipeline as it is at posting time ─────────────────────────
+#
+# octopus-next!1352, review run adlc-review-push-octopus-next-l2glq: the
+# verdict posted at 23:18:29 said "unit-tests green"; in pipeline 37624 for
+# that head the unit-tests job ran 23:07:50 → 23:20:50 and failed. The
+# pipeline line was the agent's prose and nothing checked it. post-verdict now
+# reads the head's CI when it posts, appends a generated line, and refuses a
+# body the CI contradicts.
+
+NMR_MARKER = (f"<!-- factory-review:step=review run={RUN} iter=0 status=completed "
+              f"outcome=not-merge-ready findings=2 important=1 nits=1 head={HEAD} -->")
+# The !1352 wording, in a body that passes the verdict schema.
+BODY_1352 = (NMR_MARKER + "\n\n**pipeline:** ❌ failed (lint red, e2e skipped exit 77, unit-tests green)\n\n"
+             "## Verdict\n**Outcome:** not-merge-ready\n\n- **Works?** yes; `unit-tests` green.\n\n"
+             "**Merge risk: low**\n\n## Important findings\n### C1 — lint is red\n\n## Nits\n### N1 — a\n")
+# The same verdict without a claim about unit-tests.
+BODY_HONEST = BODY_1352.replace(", unit-tests green)", ", unit-tests running)").replace("; `unit-tests` green.", ".")
+
+
+def job(i, name, status, allow=False):
+    return {"id": i, "name": name, "status": status, "allow_failure": allow, "user": {"name": "nested"}}
+
+
+# Pipeline 37624 as it was at 23:18:29 (the API lists jobs newest first).
+JOBS_AT_POSTING = [job(6, "build", "created"), job(5, "e2e-tests", "failed", True), job(4, "unit-tests", "running"),
+                   job(3, "secret-scan", "success"), job(2, "lint", "failed")]
+JOBS_ALL_GREEN = [job(6, "build", "success"), job(5, "e2e-tests", "failed", True), job(4, "unit-tests", "success"),
+                  job(3, "secret-scan", "success"), job(2, "lint", "success")]
+
+
+def ci(tracker, jobs, status="running", pid=37624, after=None):
+    st = tracker["state"]
+    (st / "pipelines.json").write_text(json.dumps([{"id": pid, "status": status, "sha": HEAD}]))
+    (st / "jobs.json").write_text(json.dumps(jobs))
+    if after is not None:
+        (st / "jobs-after.json").write_text(json.dumps(after))
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_the_1352_verdict_is_refused_while_unit_tests_run(tracker, interpreter):
+    ci(tracker, JOBS_AT_POSTING)
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY_1352))
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert 'the verdict calls "unit-tests" green, but at posting its status is running' in r.stderr
+    assert "nothing was posted" in r.stderr and "--pipeline-wait" in r.stderr
+    assert posts(tracker) == []
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_the_1352_verdict_is_refused_once_unit_tests_failed(tracker, interpreter):
+    ci(tracker, [dict(j, status="failed") if j["name"] == "unit-tests" else j for j in JOBS_ALL_GREEN], status="failed")
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY_1352))
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert 'calls "unit-tests" green, but at posting its status is failed' in r.stderr
+    assert "contradicts the pipeline" in r.stderr
+    assert posts(tracker) == []
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_an_honest_verdict_is_posted_with_the_generated_line(tracker, interpreter):
+    ci(tracker, JOBS_AT_POSTING)
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY_HONEST))
+    assert r.returncode == 0, r.stdout + r.stderr
+    line = ("**Pipeline at posting (generated):** #37624 running — lint failed · secret-scan success · "
+            "unit-tests running · e2e-tests failed (allowed to fail) · build created")
+    assert posted_payloads(tracker) == [{"body": BODY_HONEST + "\n" + line + "\n"}]
+    assert posts(tracker) == ["POST projects/tikalk%2Fengineering%2Foctopus-next/merge_requests/1298/discussions"]
+    calls = (tracker["state"] / "calls.log").read_text()
+    assert f"GET projects/tikalk%2Fengineering%2Foctopus-next/pipelines?sha={HEAD}&order_by=id&sort=desc&per_page=1" in calls
+    assert "GET projects/tikalk%2Fengineering%2Foctopus-next/pipelines/37624/jobs?per_page=100" in calls
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+@pytest.mark.parametrize("jobs, why", [
+    (JOBS_AT_POSTING, '"unit-tests" is running (a job that is not allowed to fail)'),
+    ([dict(j, status="failed") if j["name"] == "build" else j for j in JOBS_ALL_GREEN],
+     '"build" is failed (a job that is not allowed to fail)'),
+], ids=["job-running", "job-failed"])
+def test_merge_ready_is_refused_while_a_required_job_is_unfinished_or_red(tracker, interpreter, jobs, why):
+    ci(tracker, jobs)
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY))
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "outcome=merge-ready, but at posting " + why in r.stderr
+    assert posts(tracker) == []
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_merge_ready_is_posted_when_only_an_allowed_job_failed(tracker, interpreter):
+    ci(tracker, JOBS_ALL_GREEN, status="success")
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY))
+    assert r.returncode == 0, r.stdout + r.stderr
+    body = posted_payloads(tracker)[0]["body"]
+    assert body.endswith("#37624 success — lint success · secret-scan success · unit-tests success · "
+                         "e2e-tests failed (allowed to fail) · build success\n")
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_pipeline_wait_posts_once_the_job_has_finished(tracker, interpreter):
+    lint_green = [dict(j, status="success") if j["name"] == "lint" else j for j in JOBS_AT_POSTING]
+    ci(tracker, lint_green, after=JOBS_ALL_GREEN, status="running")
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY_1352.replace(
+        "lint red", "lint green").replace("### C1 — lint is red", "### C1 — a finding")), "--pipeline-wait", "60",
+        POST_VERDICT_PIPELINE_POLL="0", FAKE_JOBS_SWITCH_AFTER="3")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert r.stderr.count("the pipeline has not finished") == 2
+    assert "unit-tests success" in posted_payloads(tracker)[0]["body"]
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_pipeline_wait_does_not_wait_for_a_failed_job(tracker, interpreter):
+    ci(tracker, [dict(j, status="failed") if j["name"] == "unit-tests" else j for j in JOBS_ALL_GREEN])
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY_1352),
+            "--pipeline-wait", "60", POST_VERDICT_PIPELINE_POLL="0")
+    assert r.returncode == 2 and "the pipeline has not finished" not in r.stderr, r.stderr
+    assert (tracker["state"] / "calls.log").read_text().count("/jobs") == 1
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_an_unreadable_pipeline_is_stated_and_posting_goes_on(tracker, interpreter):
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY_1352),
+            FAKE_PIPELINE_FAIL="1")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert posted_payloads(tracker)[0]["body"] == (
+        BODY_1352 + "\n**Pipeline at posting (generated):** unavailable — fake: 503 Service Unavailable (HTTP 503)\n")
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_quoted_claims_are_not_the_reviewers_words(tracker, interpreter):
+    ci(tracker, JOBS_AT_POSTING)
+    quoted = BODY_HONEST + "\n```\nunit-tests green\n```\n> the author wrote: unit-tests passed\n"
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, quoted))
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+def test_github_check_runs_are_read_and_the_verdict_check_is_ignored(tracker, interpreter):
+    checks = {"total_count": 3, "check_runs": [
+        {"name": "Run Pytest (Scripts & E2E)", "status": "in_progress", "conclusion": None},
+        {"name": "Verdict names the current head", "status": "completed", "conclusion": "failure"},
+        {"name": "Run PromptFoo (Skill Evals)", "status": "completed", "conclusion": "success"}]}
+    (tracker["state"] / "checks.json").write_text(json.dumps(checks))
+    r = run(tracker, interpreter, "--mr", PR, "--head", HEAD, "--body-file", body_file(tracker, BODY))
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert '"Run Pytest (Scripts & E2E)" is running' in r.stderr
+    assert "Verdict names the current head" not in r.stderr
+    assert posts(tracker) == []
+    checks["check_runs"][0].update(status="completed", conclusion="success")
+    (tracker["state"] / "checks.json").write_text(json.dumps(checks))
+    r = run(tracker, interpreter, "--mr", PR, "--head", HEAD, "--body-file", body_file(tracker, BODY))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert posted_payloads(tracker)[0]["body"].endswith(
+        f"check runs on {HEAD[:8]} — Run Pytest (Scripts & E2E) success · Run PromptFoo (Skill Evals) success\n")
+    assert f"GET repos/tikalk/adlc-team-skills/commits/{HEAD}/check-runs?per_page=100" in (
+        tracker["state"] / "calls.log").read_text()
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS)
+@pytest.mark.parametrize("value", ["3601", "-1", "x"])
+def test_pipeline_wait_is_validated(tracker, interpreter, value):
+    r = run(tracker, interpreter, "--mr", MR, "--head", HEAD, "--body-file", body_file(tracker, BODY),
+            "--pipeline-wait", value)
+    assert r.returncode == 2 and "--pipeline-wait takes 0-3600" in r.stderr, r.stderr
+    assert posts(tracker) == []
+
+
+def test_the_pipeline_check_runs_before_the_post():
+    for script, needle in ((SCRIPT, 'eval "$provider"'), (PS_SCRIPT, "eval $provider")):
+        text = script.read_text(encoding="utf-8")
+        assert text.index(needle) < text.rindex("-X POST" if script == SCRIPT else "'-X', 'POST'"), script.name
+
+
+def test_skill_step5_names_the_pipeline_at_posting():
+    body = step5()
+    assert "Pipeline at posting (generated)" in body and "--pipeline-wait" in body

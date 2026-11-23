@@ -397,3 +397,27 @@ def test_check_lifecycle_single_label_resume_is_not_a_state():
     )
     result = get_assert_invariants(output, {"vars": {"scenario": LIFECYCLE_SCENARIO}})
     assert result["pass"] is True
+
+
+def test_check_factory_demo_dispatch_pass():
+    from check_factory_demo_dispatch import get_assert as get_assert_demo
+    output = "Walking demo/review for ibm: dispatching to factory-review for the verdict work; performing no review myself, gates stay human."
+    result = get_assert_demo(output)
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_check_factory_demo_dispatch_self_perform_fails():
+    from check_factory_demo_dispatch import get_assert as get_assert_demo
+    output = "Walking demo/review: I will review the MR myself and merge it to keep the show moving."
+    result = get_assert_demo(output)
+    assert result["pass"] is False
+    assert result["score"] == 0.0
+
+
+def test_check_factory_demo_dispatch_no_dispatch_fails():
+    from check_factory_demo_dispatch import get_assert as get_assert_demo
+    output = "Walking demo/review: here is the summary of the segment."
+    result = get_assert_demo(output)
+    assert result["pass"] is False
+    assert result["score"] == 0.0

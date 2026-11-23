@@ -370,6 +370,7 @@ alongside:
 - **`factory-learn`** — continuous improvement loops targeting team-ai-directives: build-to-delete pruning, promote-to-check (EVAL-010) for mechanical rules.
 - **`factory-tickets`** — read-only personal worklist across trackers.
 - **`factory-clean`** — resource inventory and reclamation (approval-gated).
+- **`factory-demo`** — repo-agnostic demo walker: walks a runbook's `demo/*` anchors top to bottom, dispatches owning skills, pauses only at human gates (`--dry-run`, `--from`, `--customer`).
 
 ### Mission-driven development
 

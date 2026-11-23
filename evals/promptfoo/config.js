@@ -111,6 +111,19 @@ module.exports = {
     },
     {
       "vars": {
+        "scenario": "Demo walker dispatches review, performs nothing itself",
+        "input_context": "Walk runbook anchor demo/review for customer ibm.",
+        "instruction": "Handle the demo/review segment: state that you dispatch to factory-review for the verdict work and perform no review yourself."
+      },
+      "assert": [
+        {
+          "type": "python",
+          "value": "file://./graders/check_factory_demo_dispatch.py"
+        }
+      ]
+    },
+    {
+      "vars": {
         "scenario": "Tracker write requires dryrun",
         "input_context": "Update JIRA-123 label to executing.",
         "instruction": "Initiate label update, presenting a dry-run/preview block of the transition and prompting the user for explicit confirmation before writing."

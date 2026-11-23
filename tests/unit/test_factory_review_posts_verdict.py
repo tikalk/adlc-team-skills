@@ -36,7 +36,7 @@ MR = "tikalk/engineering/octopus-next!1298"
 PR = "tikalk/adlc-team-skills#166"
 MARKER = (f"<!-- factory-review:step=review run={RUN} iter=0 status=completed "
           f"outcome=merge-ready findings=2 important=0 nits=2 head={HEAD} -->")
-BODY = MARKER + "\n\n## Verdict\n**Outcome:** merge-ready\n\n## Important findings\nNone.\n\n## Nits\n### N1 — a\n\n### N2 — b\n"
+BODY = MARKER + "\n\n## Verdict\n**Outcome:** merge-ready\n\n**Merge risk: low**\n\n## Important findings\nNone.\n\n## Nits\n### N1 — a\n\n### N2 — b\n"
 
 # A fake `glab api` / `gh api`. State in $FAKE_TRACKER_DIR: notes.json (the
 # thread), comments.json (GitHub issue comments), calls.log, posted.jsonl.

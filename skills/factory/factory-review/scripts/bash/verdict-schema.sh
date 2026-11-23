@@ -171,6 +171,8 @@ if (cmd === "run-id") {
     if (quoted || t.startsWith(">")) return "";
     return l.replace(/(`+).*?\1/g, "");
   }).join("\n");
+  const risks = [...prose.matchAll(/\*\*Merge risk:\s*(low|medium|high)\*\*/gi)];
+  if (risks.length !== 1) errs.push(`risk: expected exactly one "**Merge risk: <low|medium|high>**" band line, found ${risks.length}`);
   for (const p of [/nothing posted yet/i, /not yet posted/i, /needs your confirm/i, /post all (critical |the )?comments/i, /proposed comments/i]) {
     const hit = prose.match(p);
     if (hit) errs.push(`phrasing: interactive hand-off text "${hit[0]}" (in a factory run nobody answers; the verdict is posted now; to cite such a line from a file, put it in a code span, a fenced block or a block quote)`);

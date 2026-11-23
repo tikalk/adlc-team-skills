@@ -188,9 +188,17 @@ if ($replaces) {
     $lines.Add(('**Replaces:** this run''s earlier record (`{0}`) — the same run was retried or resumed and ended differently; this record is the current one.' -f $replaces))
     $lines.Add('')
 }
+# Name only what the workflow really has next (adlc-workspace#168): only the
+# `factory` workflow ends with gate-completion (ADLC_UPCOMING_GATES).
 if ($env:ADLC_STEP_OUTPUT) {
-    $lines.Add('**Next:** the completion gate — a person approves or rejects the result in Slack; the gate records its own answer on this issue.')
-    $lines.Add('')
+    $upcoming = @(("$env:ADLC_UPCOMING_GATES").Split(',') | ForEach-Object { $_.Trim() })
+    if ($upcoming -contains 'gate-completion') {
+        $lines.Add('**Next:** the completion gate — a person approves or rejects the result in Slack; the gate records its own answer on this issue.')
+        $lines.Add('')
+    } elseif ($mrUrl) {
+        $lines.Add('**Next:** a person reviews the code MR/PR and merges it.')
+        $lines.Add('')
+    }
 }
 if ($details) {
     $lines.Add(([System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $details).Path)).TrimEnd("`n"))

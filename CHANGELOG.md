@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A workspace mission whose change belongs to a child repository publishes in that repository** (adlc-workspace#168). #151 run `1b997ae3` targeted this repository: the lane checked out the mission branch only in the workspace root, the agent edited the submodule at the workspace's stale pin (241 commits behind `main`) and pushed that, and the only MR was a workspace pointer bump to a commit not on `main` — no PR here, so no CI. `factory-mission` now says: in a workspace, a change under a submodule path (or in a repository the issue names) is published from inside the child checkout — the runbook's Start step before any edit (the branch comes from the child's origin default branch, never the pin), the code commits, then the open-MR/PR step, so the PR opens in the child repository and is the run's `mr_url`. No workspace pointer MR; a helper that stops in the child blocks the run (step 4). The runbook helpers already act on the repository they run in; `tests/unit/test_child_repo_publish.py` pins that with a stale-pin fixture workspace (0 behind, PR in the child, no workspace MR for a pointer change).
+- **The completion record names only the step that really comes next** (adlc-workspace#168). `post-completion` said "Next: the completion gate" in every workflow run, but the Argo lane and `factory-supervised` have no gate after `execute`. It now says so only when `ADLC_UPCOMING_GATES` names `gate-completion` (the `factory` workflow); otherwise a run with an MR says a person reviews the code MR/PR. Both twins; pinned in `tests/unit/test_post_completion.py`.
+
 ## [0.35.0] - 2026-11-22
 
 ### Added

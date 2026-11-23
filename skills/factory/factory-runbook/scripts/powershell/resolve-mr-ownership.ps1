@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 # resolve-mr-ownership.ps1 — resolve MR/PR milestone + assignee + gate-label propagation
 # (PowerShell twin of bash/resolve-mr-ownership.sh; the MR-ownership
-# decision; ADR-432 chain, ADR-547 gate label). One behavior, two platform
+# decision; ADR-432 chain, ADR-548 gate label). One behavior, two platform
 # scripts; keep in lockstep. The contract is pinned by
 # tests/unit/test_resolve_mr_ownership.py, which runs both twins.
 #
@@ -105,7 +105,7 @@ function Get-LabelName($Entry) {
     return $null
 }
 
-# The Issue's gate label (ADR-547: supervised wins; absent -> $null).
+# The Issue's gate label (ADR-548: supervised wins; absent -> $null).
 function Read-GateLabel($Issue) {
     $raw = $Issue.labels
     if ($raw -isnot [array]) { return $null }
@@ -185,7 +185,7 @@ function Resolve-Ownership($Payload) {
         }
     }
 
-    # (ADR-547) the Issue's gate label rides the MR at open time; only
+    # (ADR-548) the Issue's gate label rides the MR at open time; only
     # providers with an MR-label concept apply it (gitlab, github).
     $gateLabel = $null
     if ($provider -eq 'gitlab' -or $provider -eq 'github') {

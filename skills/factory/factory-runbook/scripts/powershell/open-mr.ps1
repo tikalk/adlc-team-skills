@@ -12,7 +12,7 @@
 # (factory/*), finds an open MR/PR for it or creates one draft (squash off; the
 # description states the merge-commit rule, ADR-431 §5), with the issue's
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
-# own account) plus the issue's gate label (ADR-547: in the create body on
+# own account) plus the issue's gate label (ADR-548: in the create body on
 # GitLab, same-step add on GitHub; only the missing gate label is ever added
 # on reuse), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
 # with no commits beyond the base opens nothing (empty run). Titles are
@@ -288,7 +288,7 @@ function Get-GateLabelToSet([string]$OwnershipJson) {
     return json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(typeof o.gate_label === "string" ? o.gate_label : "")' @($OwnershipJson)
 }
 
-# Add-GateLabelReuseGitLab <existingJson> — ADR-547: a reused MR still needs
+# Add-GateLabelReuseGitLab <existingJson> — ADR-548: a reused MR still needs
 # the Issue's gate label for the review lane's Sensor. Resolve it (Issue labels
 # vs the MR's current labels) and add ONLY the missing gate label via
 # add_labels — human labels are never touched. A silent no-op when the Issue
@@ -366,7 +366,7 @@ if ($provider -eq 'gitlab') {
     if ($url) {
         # Reuse path: push the run's commits (fast-forward only). Milestone
         # and assignee stay untouched; only a missing gate label is added
-        # (ADR-547).
+        # (ADR-548).
         if ($runTarget) {
             Assert-ReuseTargetsRunTarget (json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && typeof m.target_branch === "string" ? m.target_branch : "")' @($existing))
         }
@@ -392,7 +392,7 @@ if ($provider -eq 'gitlab') {
         # Create body = fixed keys + ONLY resolver-returned non-null fields.
         # One JSON body via --input: current glab refuses bracketed field names
         # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and
-        # the milestone as strings. The gate label rides `labels` (ADR-547) so
+        # the milestone as strings. The gate label rides `labels` (ADR-548) so
         # the review lane's Sensor fires on open.
         # The MR goes into the run's target branch when it has one
         # (SF-FIX-23), else into the project's default branch.
@@ -434,7 +434,7 @@ if ($provider -eq 'gitlab') {
     if ($url) {
         # Reuse path: push the run's commits (fast-forward only). Milestone
         # and assignee stay untouched; only a missing gate label is added
-        # (ADR-547).
+        # (ADR-548).
         if ($runTarget) {
             Assert-ReuseTargetsRunTarget (json 'const a = JSON.parse(process.argv[1] || "[]"); const b = Array.isArray(a) && a[0] && a[0].base; console.log(b && typeof b.ref === "string" ? b.ref : "")' @($existing))
         }
@@ -507,7 +507,7 @@ if ($provider -eq 'gitlab') {
                     if ($LASTEXITCODE -ne 0) { Die 'cannot set assignee' }
                 }
             }
-            # ADR-547: the gate label lands in the same step as the create
+            # ADR-548: the gate label lands in the same step as the create
             # (the Sensor fires on open) through the additive labels endpoint —
             # human labels are never replaced.
             if ($gateLabelToSet) {

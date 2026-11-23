@@ -385,7 +385,7 @@ issue matching `factory-<orchestrator>:lease`:
 **When**: the orchestrator opens (or reuses) a draft MR/PR for a run
 (the git-changeset review). The MR must arrive owned and tracked: it carries the Issue's
 milestone, a named assignee, and the Issue's gate label (`supervised` |
-`autonomous`, ADR-547) so the review lane's MR Sensor dispatches a review
+`autonomous`, ADR-548) so the review lane's MR Sensor dispatches a review
 without manual labeling.
 
 **Inputs**: the Issue payload already fetched for the brief (cached — do
@@ -403,7 +403,7 @@ bash scripts/bash/resolve-mr-ownership.sh <payload.json>
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and
 the field it belongs in, the assignee and its field, the gate label
-(`gate_label`, ADR-547), and a human-readable reason. **The resolver owns the
+(`gate_label`, ADR-548), and a human-readable reason. **The resolver owns the
 decision** — the connector only performs the calls.
 
 #### The five rulings (the MR-ownership decision — all encoded in the resolver)
@@ -416,7 +416,7 @@ decision** — the connector only performs the calls.
 | Preserve-only | Set a field **only** when the MR's field is empty — human triage is never overwritten; on reuse only a missing gate label is added, never a replacement |
 | Block on error | A missing read/write scope blocks the run with an actionable error naming the scope |
 
-#### Gate-label propagation (ADR-547)
+#### Gate-label propagation (ADR-548)
 
 The gate vocabulary is closed: `supervised` | `autonomous` (the
 automation-gating label pair). No other Issue label is ever copied. An Issue

@@ -4,7 +4,7 @@ The resolver is the deterministic half of the MR-ownership decision: it answers 
 connector should set, what it should skip, and what it should block on. All
 five locked rulings are pinned here — all providers, silent skip, fallback
 chain, preserve-only, block-on-error — plus the per-provider mapping and the
-gate-label propagation (ADR-547: supervised wins, absent skips silently).
+gate-label propagation (ADR-548: supervised wins, absent skips silently).
 """
 
 import json
@@ -242,7 +242,7 @@ def test_denied_scope_blocks_before_any_propagation():
     assert out["assignee"] is None
 
 
-# ── gate-label propagation (ADR-547) ────────────────────────────────────────
+# ── gate-label propagation (ADR-548) ────────────────────────────────────────
 #
 # The Issue's gate label (supervised | autonomous, the automation-gating pair)
 # rides the draft MR at open time so the review lane's -mr Sensor dispatches a

@@ -10,7 +10,7 @@
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
 # own account; a cross-host run — issue and code on different hosts — sets no
 # milestone, assigns the runner and links the issue URL) plus the issue's gate
-# label (ADR-547: in the create body on GitLab, same-step add on GitHub; only
+# label (ADR-548: in the create body on GitLab, same-step add on GitHub; only
 # the missing gate label is ever added on reuse), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
 # with no commits beyond the base opens nothing (empty run). Titles are
 # built from repo, iid and run id only — never issue text. The tracker token's
@@ -231,7 +231,7 @@ ownership_block_or_empty() {
   ' "$1" || die "$(json 'console.log(JSON.parse(process.argv[1] || "{}").reason || "blocked by resolve-mr-ownership")' "$1")"
 }
 
-# gate_label_reuse_gitlab <existing_json> — ADR-547: a reused MR still needs the
+# gate_label_reuse_gitlab <existing_json> — ADR-548: a reused MR still needs the
 # Issue's gate label for the review lane's Sensor. Resolve it (Issue labels vs
 # the MR's current labels) and add ONLY the missing gate label via add_labels —
 # human labels are never touched. A silent no-op when the Issue carries no gate
@@ -313,7 +313,7 @@ if [ "$provider" = gitlab ]; then
   if [ -n "$url" ]; then
     # Reuse path: push the run's commits (fast-forward only). Milestone and
     # assignee stay untouched (preserve-only = touch nothing).
-    # Only a missing gate label is added (ADR-547).
+    # Only a missing gate label is added (ADR-548).
     if [ -n "$run_target" ]; then
       reuse_targets_the_run_target "$(json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && typeof m.target_branch === "string" ? m.target_branch : "")' "$existing")"
     fi
@@ -336,7 +336,7 @@ if [ "$provider" = gitlab ]; then
     # Create body = fixed keys + ONLY resolver-returned non-null fields.
     # One JSON body via --input: current glab refuses bracketed field names
     # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and the
-    # milestone as strings. The gate label rides `labels` (ADR-547) so the
+    # milestone as strings. The gate label rides `labels` (ADR-548) so the
     # review lane's Sensor fires on open.
     # The MR goes into the run's target branch when it has one (SF-FIX-23),
     # else into the project's default branch.
@@ -368,7 +368,7 @@ else
   if [ -n "$url" ]; then
     # Reuse path: push the run's commits (fast-forward only). Milestone and
     # assignee stay untouched (preserve-only = touch nothing).
-    # Only a missing gate label is added (ADR-547).
+    # Only a missing gate label is added (ADR-548).
     if [ -n "$run_target" ]; then
       reuse_targets_the_run_target "$(json 'const a = JSON.parse(process.argv[1] || "[]"); const b = Array.isArray(a) && a[0] && a[0].base; console.log(b && typeof b.ref === "string" ? b.ref : "")' "$existing")"
     fi
@@ -424,7 +424,7 @@ else
       gate_label_to_set="$(json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(typeof o.gate_label === "string" ? o.gate_label : "")' "$ownership")"
       [ -z "$milestone_to_set" ] || api -X PATCH "repos/$project/issues/$number" -F "milestone=$milestone_to_set" >/dev/null || die "cannot set milestone"
       for l in $assignee_to_set; do api -X POST "repos/$project/issues/$number/assignees" -f "assignees[]=$l" >/dev/null || die "cannot set assignee"; done
-      # ADR-547: the gate label lands in the same step as the create (the
+      # ADR-548: the gate label lands in the same step as the create (the
       # Sensor fires on open) through the additive labels endpoint — human
       # labels are never replaced.
       if [ -n "$gate_label_to_set" ]; then

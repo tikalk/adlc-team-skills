@@ -90,7 +90,7 @@ def test_executor_states_the_never_guess_rule():
     assert "Never guess a milestone, an assignee, or a gate label" in content
 
 
-# ── gate-label wiring (ADR-547: AC7/AC8/AC10) ──────────────────────────────
+# ── gate-label wiring (ADR-548: AC7/AC8/AC10) ──────────────────────────────
 
 GATE_FIXTURES = ("supervised", "autonomous")
 
@@ -98,14 +98,14 @@ GATE_FIXTURES = ("supervised", "autonomous")
 def test_connector_documents_the_gate_label():
     content = TRACKER.read_text(encoding="utf-8")
     assert "gate_label" in content, "the connector must name the resolver's gate-label field"
-    assert "ADR-547" in content, "the connector must cite the governing record"
+    assert "ADR-548" in content, "the connector must cite the governing record"
     assert "supervised" in content and "autonomous" in content
 
 
 def test_executor_hooks_the_gate_label():
     content = EXECUTOR.read_text(encoding="utf-8")
     assert "gate label" in content, "the executor hook must name the gate label"
-    assert "ADR-547" in content
+    assert "ADR-548" in content
 
 
 @pytest.mark.parametrize("gate", GATE_FIXTURES)

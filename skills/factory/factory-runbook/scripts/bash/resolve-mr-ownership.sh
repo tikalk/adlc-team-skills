@@ -16,7 +16,7 @@
 # Input (JSON), output (JSON on stdout) and the five locked rulings —
 # all providers, silent skip, fallback chain, preserve-only, block on
 # error — are pinned by tests/unit/test_resolve_mr_ownership.py, which
-# runs both twins. The gate label (ADR-547) rides the same payload:
+# runs both twins. The gate label (ADR-548) rides the same payload:
 # issue.labels → gate_label (supervised wins; absent → skip).
 set -euo pipefail
 

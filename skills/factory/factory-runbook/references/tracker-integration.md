@@ -380,14 +380,16 @@ issue matching `factory-<orchestrator>:lease`:
   `<!-- factory-<orchestrator>:lease status=released run=<run_id> host=<hostname> -->`
 - Immediately unblocks other machines without waiting for TTL expiration.
 
-### Operation 11 — Create MR/PR with Milestone + Assignee Propagation (the MR-ownership decision)
+### Operation 11 — Create MR/PR with Milestone + Assignee + Gate-Label Propagation (the MR-ownership decision)
 
 **When**: the orchestrator opens (or reuses) a draft MR/PR for a run
 (the git-changeset review). The MR must arrive owned and tracked: it carries the Issue's
-milestone and a named assignee.
+milestone, a named assignee, and the Issue's gate label (`supervised` |
+`autonomous`) so the review lane's MR Sensor dispatches a review
+without manual labeling.
 
 **Inputs**: the Issue payload already fetched for the brief (cached — do
-not re-read it), the MR's current milestone/assignee state, the initiator
+not re-read it), the MR's current milestone/assignee/label state, the initiator
 identity, the runner's validated committer identity, and the connector's
 pre-flight scope check.
 
@@ -400,43 +402,56 @@ bash scripts/bash/resolve-mr-ownership.sh <payload.json>
 ```
 
 The resolver returns `action` = `set` | `skip` | `block`, the milestone and
-the field it belongs in, the assignee and its field, and a human-readable
-reason. **The resolver owns the decision** — the connector only performs the
-calls.
+the field it belongs in, the assignee and its field, the gate label
+(`gate_label`), and a human-readable reason. **The resolver owns the
+decision** — the connector only performs the calls.
 
 #### The five rulings (the MR-ownership decision — all encoded in the resolver)
 
 | Ruling | Behaviour |
 |--------|-----------|
 | All providers | One connector path; the provider mapping is an adapter table, never a per-provider skill fork |
-| Silent skip | An Issue with no milestone → no milestone work, no error |
+| Silent skip | An Issue with no milestone → no milestone work, no error; an Issue with no gate label → no label work, no error |
 | Fallback chain | Assignee = initiator → Issue assignees → runner identity (hierarchical context parameters order) |
-| Preserve-only | Set a field **only** when the MR's field is empty — human triage is never overwritten |
+| Preserve-only | Set a field **only** when the MR's field is empty — human triage is never overwritten; on reuse only a missing gate label is added, never a replacement |
 | Block on error | A missing read/write scope blocks the run with an actionable error naming the scope |
+
+#### Gate-label propagation
+
+The gate vocabulary is closed: `supervised` | `autonomous` (the
+automation-gating label pair). No other Issue label is ever copied. An Issue
+carrying both → `supervised` wins (workflow-template precedence). The label
+must be present on the MR **at open time, in the create call** — the review
+lane's MR Sensor fires only on `open`, so a label added afterwards never
+dispatches a review: GitLab carries it in the create body (`labels`); GitHub
+applies it immediately after create in the same step (the pulls-create API
+takes no labels). A missing label-write scope blocks the run, the same as
+milestone/assignee.
 
 #### Provider mapping
 
-| Provider | Milestone field | Value from the Issue | Assignee field |
-|----------|-----------------|----------------------|----------------|
-| GitLab | `milestone_id` | `issue.milestone_id` | `assignee_ids` |
-| GitHub | `milestone` | `issue.milestone.number` | `assignees` |
-| Jira | — (permanent no-op) | — | `assignee` |
-| Linear | — (permanent no-op) | — | `assigneeId` |
+| Provider | Milestone field | Value from the Issue | Assignee field | Gate label |
+|----------|-----------------|----------------------|----------------|------------|
+| GitLab | `milestone_id` | `issue.milestone_id` | `assignee_ids` | `labels` on create; `add_labels` on reuse |
+| GitHub | `milestone` | `issue.milestone.number` | `assignees` | same-step labels add after create; same on reuse |
+| Jira | — (permanent no-op) | — | `assignee` | — (permanent no-op: no MR-label concept) |
+| Linear | — (permanent no-op) | — | `assigneeId` | — (permanent no-op: no MR-label concept) |
 
 A provider without a milestone concept is a permanent no-op for that field —
-never an error, never a guess.
+never an error, never a guess. The same holds for the gate label where the
+provider has no MR-label concept consumed by the Sensor.
 
 #### Order of operations
 
 1. **Pre-flight scopes** before any mutation. A missing scope → `block`
    (the run stops with the scope named; the factory never invents a
-   milestone or an assignee it could not verify).
-2. **Read** the Issue's `milestone`/`milestone_id` and `assignees` via the
-   connector (use the cached payload when the brief already carries it).
+   milestone, an assignee, or a gate label it could not verify).
+2. **Read** the Issue's `milestone`/`milestone_id`, `assignees`, and `labels`
+   via the connector (use the cached payload when the brief already carries it).
 3. **Resolve** with the resolver twins — `scripts/bash/resolve-mr-ownership.sh` (bash) or `scripts/powershell/resolve-mr-ownership.ps1` (PowerShell); one behavior, two platform scripts.
-4. **Create or reuse** the draft MR, passing the resolved milestone and
-   assignee. On reuse, read the MR's current fields first — the preserve-only
-   guard depends on them.
+4. **Create or reuse** the draft MR, passing the resolved milestone,
+   assignee, and gate label. On reuse, read the MR's current fields first —
+   the preserve-only guard depends on them.
 5. **Set the merge method** to *merge commit* where the provider allows it
    (the git-changeset review); state it in the MR description where it does not.
 

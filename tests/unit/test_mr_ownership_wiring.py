@@ -23,10 +23,14 @@ RESOLVERS_REL = [
 ]
 
 
+OPEN_MR_BASH = SKILLS / "factory/factory-runbook/scripts/bash/open-mr.sh"
+OPEN_MR_PWSH = SKILLS / "factory/factory-runbook/scripts/powershell/open-mr.ps1"
+
+
 def test_connector_documents_the_operation():
     content = TRACKER.read_text(encoding="utf-8")
     assert "Operation 11" in content, "the connector must document the MR-ownership operation"
-    assert "Create MR/PR with Milestone + Assignee Propagation" in content, (
+    assert "Create MR/PR with Milestone + Assignee + Gate-Label Propagation" in content, (
         "the operation must name what it does"
     )
 
@@ -83,7 +87,63 @@ def test_executor_hooks_the_publish_step():
 
 def test_executor_states_the_never_guess_rule():
     content = EXECUTOR.read_text(encoding="utf-8")
-    assert "Never guess a milestone or an assignee" in content
+    assert "Never guess a milestone, an assignee, or a gate label" in content
+
+
+# ── gate-label wiring (ADR-548: AC7/AC8/AC10) ──────────────────────────────
+
+
+def test_connector_documents_the_gate_label():
+    content = TRACKER.read_text(encoding="utf-8")
+    assert "gate_label" in content, "the connector must name the resolver's gate-label field"
+    assert "Gate-label propagation" in content, "the connector must document the gate-label propagation rule"
+    assert "supervised" in content and "autonomous" in content
+
+
+def test_executor_hooks_the_gate_label():
+    content = EXECUTOR.read_text(encoding="utf-8")
+    assert "gate label" in content, "the executor hook must name the gate label"
+    assert "gate-label propagation decision" in content
+
+
+def _create_path_tail(script, marker):
+    """Source after the create-path's gate-label assignment (the reuse helper is defined earlier)."""
+    content = script.read_text(encoding="utf-8")
+    assert marker in content, f"{script.name} must read the resolver's gate label on the create path"
+    return content.split(marker, 1)[1]
+
+
+def test_open_mr_github_create_path_applies_the_gate_label():
+    bash_tail = _create_path_tail(OPEN_MR_BASH, 'gate_label_to_set="$(')
+    assert "issues/$number/labels" in bash_tail, "bash create path must POST the gate label to the labels endpoint"
+    assert "cannot set gate label" in bash_tail, "bash create path must fail loudly when the label write fails"
+    pwsh_tail = _create_path_tail(OPEN_MR_PWSH, "$gateLabelToSet = Get-GateLabelToSet")
+    assert "issues/$number/labels" in pwsh_tail, "pwsh create path must POST the gate label to the labels endpoint"
+    assert "cannot set gate label" in pwsh_tail, "pwsh create path must fail loudly when the label write fails"
+
+
+def test_open_mr_gitlab_create_body_names_labels():
+    content = OPEN_MR_BASH.read_text(encoding="utf-8")
+    assert "b.labels = o.gate_label" in content, "GitLab create body must carry the gate label in `labels`"
+
+
+def test_open_mr_gitlab_reuse_adds_without_replacing():
+    content = OPEN_MR_BASH.read_text(encoding="utf-8")
+    assert "add_labels=" in content, "GitLab reuse must add (never replace) the gate label"
+
+
+def test_open_mr_github_reuse_adds_through_the_additive_endpoint():
+    content = OPEN_MR_BASH.read_text(encoding="utf-8")
+    helper = content.split("gate_label_reuse_github()", 1)[1].split("\n}\n", 1)[0]
+    assert "issues/$number/labels" in helper, "GitHub reuse must add through the additive labels endpoint"
+
+
+def test_open_mr_preserves_human_labels_on_reuse():
+    for script in (OPEN_MR_BASH, OPEN_MR_PWSH):
+        content = " ".join(script.read_text(encoding="utf-8").split())
+        assert "only a missing gate label is added" in content.lower(), (
+            f"{script.name} must state the preserve-only reuse rule"
+        )
 
 
 def test_provider_template_documents_the_mapping_per_provider():

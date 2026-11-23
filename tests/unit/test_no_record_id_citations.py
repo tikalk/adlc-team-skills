@@ -66,6 +66,7 @@ LOCAL_EXAMPLE_IDS = {
 #   ADR-473            shared factory run mechanics live in factory-runbook
 #   ADR-507            factory-runbook is reference-only (runbook ADR)
 #   ADR-507-amendment-1 runbook scripts stay skill-local
+#   ADR-548            factory MR carries the Issue's gate label
 #   ADR-462            oracle-independence detection algorithm
 #   ADR-524            eval seeding, Tier-2 check-vs-eval split, temporal holdout
 #   ADR-514            per-skill resolve_memory_root / memory store location
@@ -74,7 +75,7 @@ LOCAL_EXAMPLE_IDS = {
 GOVERNING_RECORDS = {
     "ADR-339", "ADR-391-amendment-2", "ADR-393", "ADR-431",
     "ADR-431-amendment", "ADR-432", "ADR-433", "ADR-444", "ADR-457",
-    "ADR-462", "ADR-473", "ADR-507", "ADR-507-amendment-1", "ADR-514", "ADR-524", "PDR-131", "PDR-145",
+    "ADR-462", "ADR-473", "ADR-507", "ADR-507-amendment-1", "ADR-514", "ADR-524", "ADR-548", "PDR-131", "PDR-145",
 }
 
 # The surfaces the rule covers.

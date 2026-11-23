@@ -96,14 +96,14 @@ def test_executor_states_the_never_guess_rule():
 def test_connector_documents_the_gate_label():
     content = TRACKER.read_text(encoding="utf-8")
     assert "gate_label" in content, "the connector must name the resolver's gate-label field"
-    assert "ADR-548" in content, "the connector must cite the governing record"
+    assert "Gate-label propagation" in content, "the connector must document the gate-label propagation rule"
     assert "supervised" in content and "autonomous" in content
 
 
 def test_executor_hooks_the_gate_label():
     content = EXECUTOR.read_text(encoding="utf-8")
     assert "gate label" in content, "the executor hook must name the gate label"
-    assert "ADR-548" in content
+    assert "gate-label propagation decision" in content
 
 
 def _create_path_tail(script, marker):

@@ -83,9 +83,11 @@ $AgentsFile = if ($env:AGENTS_FILE) { $env:AGENTS_FILE } else { "AGENTS.md" }
 $ContractSentinel = "<!-- team-boot-contract: lean-v1 -->"
 $ContractInAgents = $false
 if (Test-Path $AgentsFile) {
-    # [string] cast: -Raw returns $null for an empty file; .IndexOf on $null
-    # would throw under ErrorActionPreference=Stop and lose the whole injection.
-    $agentsText = [string](Get-Content $AgentsFile -Raw)
+    # -Raw yields no output for an empty file (a [string] cast does not turn
+    # that into ""); .IndexOf on $null would throw under
+    # ErrorActionPreference=Stop and lose the whole injection.
+    $agentsText = Get-Content $AgentsFile -Raw
+    if ($null -eq $agentsText) { $agentsText = "" }
     $sIdx = $agentsText.IndexOf("<!-- TEAM_AI_DIRECTIVES START -->")
     $eIdx = if ($sIdx -ge 0) { $agentsText.IndexOf("<!-- TEAM_AI_DIRECTIVES END -->", $sIdx) } else { -1 }
     if ($sIdx -ge 0 -and $eIdx -gt $sIdx) {

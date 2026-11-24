@@ -4,8 +4,10 @@ The always-on team-boot block carries counts, fetch pointers and skill
 trigger phrases; full CDR rows load only when a task matches one.
 
 Shape contract (spec gate, issue #36 note_92297):
-- CDR rows are never injected — the CDR count plus a fetch pointer
-  (grep CDR.md / /team-discover) replaces them on every path.
+- CDR rows are never injected — the CDR count, a topic map (every CDR's
+  module path grouped by directory, so tasks match by meaning, not by a
+  guessed keyword — kanfil review on PR #203) and a fetch pointer
+  (grep CDR.md / /team-discover) replace them on every path.
 - When the project's AGENTS.md carries the TEAM_AI_DIRECTIVES section with
   the lean-contract sentinel, the static contract blocks — Class Boots
   catalog, Team Context & Decisions template, Decision Capture rules,
@@ -64,9 +66,11 @@ def _setup(tmp_path: Path, *, agents_md: str | None, cdr_md: bool = True) -> Pat
     )
     if cdr_md:
         (directives / "CDR.md").write_text(
-            "# CDR\n\n| ID | Title | Type | Descriptor |\n|---|---|---|---|\n"
-            f"| CDR-2026-001 | {CDR_ROW_TITLE} | rule | small MRs |\n"
-            "| CDR-2026-002 | Other | rule | other descriptor |\n"
+            "# CDR\n\n| ID | Path | Type | Description | Generated |\n|---|---|---|---|---|\n"
+            "| CDR-2026-001 | context_modules/rules/devops/helm_wrapper_charts.md"
+            f" | Rule | {CDR_ROW_TITLE} small MRs | 2026-08-12 |\n"
+            "| CDR-2026-002 | context_modules/personas/devops_engineer.md"
+            " | Persona | other descriptor | 2026-08-12 |\n"
         )
     (directives / ".skills.json").write_text(json.dumps(SKILLS))
     (directives / ".mcp.json").write_text(json.dumps({"mcpServers": {"context7": {}}}))
@@ -280,3 +284,100 @@ def test_lean_added_lines_are_tight(tmp_path):
              if "TEAM_AI_DIRECTIVES" in l or "never an empty record set" in l
              or l.startswith("_Total: 2 CDRs")]
     assert added and all(len(l) <= 160 for l in added), [len(l) for l in added]
+
+
+TOPIC_LINES = ("- personas: devops_engineer", "- rules/devops: helm_wrapper_charts")
+
+
+@pytest.mark.parametrize("agents_md", [AGENTS_SECTION, None], ids=["lean", "fallback"])
+@pytest.mark.parametrize("run", RUNNERS)
+def test_cdr_topic_map_keeps_semantic_matching(tmp_path, run, agents_md):
+    """kanfil, PR #203: without rows the model must guess a grep keyword.
+    The topic map names every CDR by module path, so matching stays semantic."""
+    out = run(_setup(tmp_path, agents_md=agents_md))
+    lines = out.splitlines()
+    for t in TOPIC_LINES:
+        assert t in lines, t
+    assert lines.index(TOPIC_LINES[0]) < lines.index(TOPIC_LINES[1])  # sorted
+    assert "context_modules/<topic>/<name>.md" in out
+    assert "other descriptor" not in out  # still no row content
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_cdr_topic_map_from_per_dir_index(tmp_path, run):
+    project = _setup(tmp_path, agents_md=AGENTS_SECTION, cdr_md=False)
+    idx = tmp_path / "directives" / "context_modules" / "rules" / "index.md"
+    idx.parent.mkdir(parents=True)
+    idx.write_text(
+        "# Rules\n\n"
+        "* [Helm Wrapper](devops/helm_wrapper_charts.md) - Wrapper charts\n"
+        "* [ArgoCD](devops/argocd_applications.md) - GitOps apps\n"
+    )
+    out = run(project)
+    assert "_Total: 2 CDRs available._" in out
+    assert "- rules/devops: helm_wrapper_charts, argocd_applications" in out.splitlines()
+    assert "CDR index unavailable" not in out
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_cdr_grep_pointer_quotes_the_path(tmp_path, run):
+    out = run(_setup(tmp_path, agents_md=AGENTS_SECTION))
+    assert f"grep -i '<kw>' \"{tmp_path / 'directives' / 'CDR.md'}\"" in out
+
+
+def _assert_full_text(out: str):
+    assert "| Boot | Injects | Invoke When | Capture Via |" in out
+    assert "### Trust Model" in out
+    assert "## Team Contract" not in out
+    _assert_dynamic_layer(out)
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_agents_md_directory_falls_back_to_full_text(tmp_path, run):
+    project = _setup(tmp_path, agents_md=None)
+    (project / "AGENTS.md").mkdir()
+    _assert_full_text(run(project))
+
+
+@pytest.mark.skipif(os.name == "nt" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+                    reason="chmod 000 is not enforced on Windows or for root")
+@pytest.mark.parametrize("run", RUNNERS)
+def test_unreadable_agents_md_falls_back_to_full_text(tmp_path, run):
+    project = _setup(tmp_path, agents_md=AGENTS_SECTION)
+    agents = project / "AGENTS.md"
+    agents.chmod(0)
+    try:
+        _assert_full_text(run(project))
+    finally:
+        agents.chmod(0o644)
+
+
+@pytest.mark.parametrize(
+    "agents_md",
+    ["<!-- TEAM_AI_DIRECTIVES START --> <!-- team-boot-contract: lean-v1 -->\nx\n"
+     "<!-- TEAM_AI_DIRECTIVES END -->\n",
+     "<!-- TEAM_AI_DIRECTIVES START --> <!-- team-boot-contract: lean-v1 --> "
+     "<!-- TEAM_AI_DIRECTIVES END -->\n"],
+    ids=["sentinel-on-start-line", "single-line-section"],
+)
+@pytest.mark.parametrize("run", RUNNERS)
+def test_sentinel_detection_same_on_both_twins(tmp_path, run, agents_md):
+    """kanfil nit 1: bash (per-line awk) and ps1 must agree on edge layouts."""
+    _assert_full_text(run(_setup(tmp_path, agents_md=agents_md)))
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_skill_count_ignores_absent_keys(tmp_path, run):
+    project = _setup(tmp_path, agents_md=AGENTS_SECTION)
+    (tmp_path / "directives" / ".skills.json").write_text('{"default": ["a", "b"]}')
+    assert "_Total: 2 skills available._" in run(project)
+
+
+@pytest.mark.parametrize("bad", [".skills.json", ".mcp.json"])
+@pytest.mark.parametrize("run", RUNNERS)
+def test_malformed_registry_never_loses_injection(tmp_path, run, bad):
+    project = _setup(tmp_path, agents_md=AGENTS_SECTION)
+    (tmp_path / "directives" / bad).write_text("{not json")
+    out = run(project)  # runner asserts rc == 0
+    assert "## Team Contract" in out
+    assert "never an empty record set" in out

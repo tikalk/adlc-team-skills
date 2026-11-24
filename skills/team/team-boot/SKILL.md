@@ -11,12 +11,14 @@ scripts:
 ## Overview
 
 Assembles team AI directives context and injects it into the system prompt
-at session start. The injection carries the CDR **count and a fetch pointer**,
-never CDR rows — when a task matches, grep `CDR.md` (or run `/team-discover`)
-and read the matched module file on demand.
+at session start. The injection carries the CDR **count and a topic map** —
+every CDR's module path grouped by directory (`- rules/devops: helm_wrapper_charts, …`) —
+never CDR rows. The model matches the task to a topic by meaning, then reads
+`context_modules/<topic>/<name>.md`; row details load via grep `CDR.md` or
+`/team-discover`.
 
 team-boot injects only the **always-relevant, dynamic** layer: constitution
-titles, scope counts, the CDR fetch pointer, the skills registry (every skill
+titles, scope counts, the CDR topic map, the skills registry (every skill
 with its trigger), MCP servers, and pending decisions.
 
 **Lean shape (issue #36).** The static contract — Class Boots catalog, Team
@@ -70,7 +72,7 @@ its section heading + the searched line only — no table.
 The `session_start` and `session_compact` event hooks (declared in
 `.events.json`, wired by adlc-cli) run `scripts/bash/boot.sh` (POSIX) or
 `scripts/powershell/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
-assembles the context block (constitution, CDR count + fetch pointer,
+assembles the context block (constitution, CDR count + topic map,
 `.skills.json`, and — only without the AGENTS.md lean-contract sentinel —
 the static contract blocks), and outputs it to stdout. The plugin caches the result
 and pushes it into the system prompt on every step (idempotent — same

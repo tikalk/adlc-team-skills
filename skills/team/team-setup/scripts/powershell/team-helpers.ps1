@@ -446,7 +446,7 @@ $MarkerStart
 
 This project is bound by the team AI directives repository at ``$TeamDirective``.
 
-team-boot runs automatically at session start via the event hook (for agents with event support), injecting a lean orientation into the first user message with the team constitution, scope counts, CDR fetch pointer, skills registry, MCP servers, and pending decisions. The static contract below (Class Boots, Team Context & Decisions, Decision Capture) is not repeated in that injection — this section is its one home.
+team-boot runs automatically at session start via the event hook (for agents with event support), injecting a lean orientation into the first user message with the team constitution, scope counts, CDR topic map, skills registry, MCP servers, and pending decisions. The static contract below (Class Boots, Team Context & Decisions, Decision Capture) is not repeated in that injection — this section is its one home.
 
 If the team AI directives context is NOT in your system prompt or first user message (agent without event support), invoke the ``team-boot`` skill before responding to any task or question.
 Never treat a missing injection as an empty record set. Recovery: run ``/team-diagnose``.

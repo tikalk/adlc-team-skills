@@ -158,9 +158,10 @@ def test_agents_section_present_skips_static_contract(tmp_path, run):
     [None, "# Project\n\nno team section here\n",
      "<!-- TEAM_AI_DIRECTIVES START -->\n<!-- team-boot-contract: lean-v1 -->\nunterminated\n",
      AGENTS_SECTION.replace("<!-- team-boot-contract: lean-v1 -->\n", ""),
-     "<!-- TEAM_AI_DIRECTIVES START -->\nx\n<!-- TEAM_AI_DIRECTIVES END -->\n<!-- team-boot-contract: lean-v1 -->\n"],
+     "<!-- TEAM_AI_DIRECTIVES START -->\nx\n<!-- TEAM_AI_DIRECTIVES END -->\n<!-- team-boot-contract: lean-v1 -->\n",
+     ""],
     ids=["no-agents-md", "no-section", "no-end-marker", "pre-sentinel-section",
-         "sentinel-outside-section"],
+         "sentinel-outside-section", "empty-agents-md"],
 )
 @pytest.mark.parametrize("run", RUNNERS)
 def test_agents_section_absent_emits_full_static_sections(tmp_path, run, agents_md):

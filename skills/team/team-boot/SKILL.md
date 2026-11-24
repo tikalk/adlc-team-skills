@@ -11,12 +11,25 @@ scripts:
 ## Overview
 
 Assembles team AI directives context and injects it into the system prompt
-at session start. The CDR index lists all available team context modules
-with descriptors — read full module files on demand when a task matches.
+at session start. The injection carries the CDR **count and a fetch pointer**,
+never CDR rows — when a task matches, grep `CDR.md` (or run `/team-discover`)
+and read the matched module file on demand.
 
-team-boot injects only the **always-relevant** layer: constitution titles,
-the compact CDR index, the Class Boots catalog, the skills registry, and
-MCP servers. The four **record classes** (ADR/PDR/ChDR/CDR deep-dive) plus
+team-boot injects only the **always-relevant, dynamic** layer: constitution
+titles, scope counts, the CDR fetch pointer, the skills registry (every skill
+with its trigger), MCP servers, and pending decisions.
+
+**Lean shape (issue #36).** The static contract — Class Boots catalog, Team
+Context & Decisions format, Decision Capture rules, Proportionality Gate,
+Trust Model — has one home: the `AGENTS.md` TEAM_AI_DIRECTIVES section that
+`team-setup` writes (loaded every session). When that section carries the
+`<!-- team-boot-contract: lean-v1 -->` sentinel, the boot emits a one-line
+pointer to it instead of repeating those blocks. Without the sentinel (no
+`AGENTS.md`, no section, or a section from an older `team-setup`), the boot
+emits the static blocks in full, so no rail is ever silently dropped; re-run
+`team-setup` to upgrade the section. A missing CDR index prints
+`CDR index unavailable — run /team-diagnose` — never an empty record set.
+`session_start` and `session_compact` emit the same shape. The four **record classes** (ADR/PDR/ChDR/CDR deep-dive) plus
 technology selection load on demand through the class boots below — each
 pairs its index injection with decision capture.
 
@@ -57,8 +70,9 @@ its section heading + the searched line only — no table.
 The `session_start` and `session_compact` event hooks (declared in
 `.events.json`, wired by adlc-cli) run `scripts/bash/boot.sh` (POSIX) or
 `scripts/powershell/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
-assembles the context block (constitution, CDR.md index table,
-`.skills.json`), and outputs it to stdout. The plugin caches the result
+assembles the context block (constitution, CDR count + fetch pointer,
+`.skills.json`, and — only without the AGENTS.md lean-contract sentinel —
+the static contract blocks), and outputs it to stdout. The plugin caches the result
 and pushes it into the system prompt on every step (idempotent — same
 cached content, no accumulation). The `session_compact` declaration makes
 post-compaction re-injection part of the contract: when a harness

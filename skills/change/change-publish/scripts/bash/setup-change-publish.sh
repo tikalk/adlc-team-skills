@@ -41,8 +41,8 @@ CHDR_DRAFTS_DIR="${PROJECT_ROOT}/${ADLC_DRAFTS:-.adlc/drafts}/chdr"
 # published ChDRs live under docs/adlc/memory at the resolved store root
 # (ADR-514); legacy .adlc/memory/chdr stays read-compatible — dual-read).
 MEMORY_ROOT=$(resolve_memory_root)
-MEMORY_DIR="${MEMORY_ROOT}/docs/adlc/memory/chdr"
-MEMORY_INDEX="${MEMORY_ROOT}/docs/adlc/memory/chdr/chdr.md"
+MEMORY_DIR="${MEMORY_ROOT}/${DOCS_ADLC_MEMORY}/chdr"
+MEMORY_INDEX="${MEMORY_ROOT}/${DOCS_ADLC_MEMORY}/chdr/chdr.md"
 LEGACY_MEMORY_DIR="${MEMORY_ROOT}/.adlc/memory/chdr"
 
 # ID allocation: slugify(title) + collision check.

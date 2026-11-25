@@ -34,7 +34,7 @@ $ChdrDraftsDir = Join-Path $projectRoot ".adlc/drafts/chdr"
 # stays read-compatible (dual-read).
 $MemoryRoot = Resolve-MemoryRoot
 $MemoryDir = Join-Path $MemoryRoot "$DOCS_ADLC_MEMORY/chdr"
-$MemoryIndex = Join-Path $MemoryRoot "docs/adlc/memory/chdr/chdr.md"
+$MemoryIndex = Join-Path $MemoryRoot "$DOCS_ADLC_MEMORY/chdr/chdr.md"
 $LegacyMemoryDir = Join-Path $MemoryRoot ".adlc/memory/chdr"
 
 # ID allocation: slugify(title) + collision check.

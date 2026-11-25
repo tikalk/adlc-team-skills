@@ -57,6 +57,7 @@ $output = @{
     REPO_ROOT = $projectRoot
     CHDR_DRAFTS_DIR = $ChdrDraftsDir
     MEMORY_DIR = $MemoryDir
+    id_allocation = "slug"
     ACCEPTED_CHDRS = $AcceptedChdrs
     PENDING_CHDRS = $PendingChdrs
     EXISTING_CHDRS = $ExistingChdrs

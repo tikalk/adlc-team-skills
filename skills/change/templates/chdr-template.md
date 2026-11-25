@@ -1,6 +1,6 @@
 ---
 # ChDR template — full format for /change-init mining and /change-clarify enrichment.
-# Written to .adlc/drafts/chdr/ChDR-{NNN}.md, promoted to docs/adlc/memory/chdr/ by /change-publish.
+# Written to .adlc/drafts/chdr/ChDR-{slug}.md, promoted to docs/adlc/memory/chdr/ by /change-publish.
 status: discovered  # discovered | proposed | accepted | rejected | superseded
 date: YYYY-MM-DD
 type: incident  # incident | workaround | abandoned
@@ -11,7 +11,7 @@ commits: ""  # sha list, abbreviated
 revisit-when: ""  # concrete trigger or "N/A"
 ---
 
-# ChDR-NNN: {Title — from issue title or commit subject}
+# ChDR-{slug}: {Title — from issue title or commit subject}
 
 ## Status
 

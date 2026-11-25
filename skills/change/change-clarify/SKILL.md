@@ -16,7 +16,7 @@ This is the quality gate for Change Decision Records — the human checkpoint be
 - Check inferred-rationale confidence and flag low-confidence or unsupported claims
 - Confirm issue-link validity and that fetched issue summaries are accurate (not pasted verbatim)
 - Ensure Consequences (reverts/fix chains) are recorded where observed
-- Update ChDR statuses in `{REPO_ROOT}/.adlc/drafts/chdr/ChDR-{NNN}.md`
+- Update ChDR statuses in `{REPO_ROOT}/.adlc/drafts/chdr/ChDR-{slug}.md`
 - Regenerate `{REPO_ROOT}/.adlc/drafts/chdr/chdr.md` index
 
 **This is an interactive command.** Present exactly one ChDR per interaction and wait for user input.
@@ -44,7 +44,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 **Examples of User Input**:
 
-- `"ChDR-001 ChDR-003"` — focus on specific ChDRs
+- `"why-payments-retries-capped-at-3"` — focus on specific ChDRs
 - `"all"` — clarify all pending ChDRs
 - Empty input: clarify all ChDRs with status "Discovered" or "Proposed"
 
@@ -149,7 +149,7 @@ Skip invalid ChDRs and report:
 
 | ChDR | Issue | Action |
 |---|---|---|
-| ChDR-XXX | Decision claims lack SHA/URL provenance | Re-run /change-init or add evidence manually |
+| {slug} | Decision claims lack SHA/URL provenance | Re-run /change-init or add evidence manually |
 ```
 
 #### Phase 3: Gap Identification
@@ -161,8 +161,8 @@ Generate a gap report:
 
 | ChDR | Title | Gap Type | Severity |
 |---|---|---|---|
-| ChDR-001 | [Title] | Low-confidence decision | MEDIUM |
-| ChDR-002 | [Title] | Issue summary too verbose | LOW |
+| why-payments-retries-capped-at-3 | [Title] | Low-confidence decision | MEDIUM |
+| adlc-cli-41-merged-stale-verdict | [Title] | Issue summary too verbose | LOW |
 ```
 
 Gap types:
@@ -191,7 +191,7 @@ Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap: **0–1
 For each ChDR:
 
 ```markdown
-## ChDR-{ID}: {Title}
+## ChDR-{slug}: {Title}
 
 **Status**: {status}
 **Issue Links**: {links or "none"}
@@ -294,19 +294,19 @@ Regenerate `{REPO_ROOT}/.adlc/drafts/chdr/chdr.md` by listing all `ChDR-*.md` fi
 
 | ChDR | Title |
 |---|---|
-| ChDR-001 | [Title] |
+| why-payments-retries-capped-at-3 | [Title] |
 
 ### Rejected
 
 | ChDR | Reason |
 |---|---|
-| ChDR-003 | Decision was reversed (later reverted) |
+| fix-broken-build-reverted | Decision was reversed (later reverted) |
 
 ### Deferred
 
 | ChDR | Title |
 |---|---|
-| ChDR-004 | [Title] |
+| flaky-scheduler-workaround | [Title] |
 
 ### Next Steps
 
@@ -347,9 +347,9 @@ If any ChDRs were **Accepted**, handoff to `/change-publish`:
 ```json
 {
   "command": "clarify",
-  "accepted": ["ChDR-001", "ChDR-002"],
-  "rejected": ["ChDR-003"],
-  "deferred": ["ChDR-004"]
+  "accepted": ["why-payments-retries-capped-at-3", "adlc-cli-41-merged-stale-verdict"],
+  "rejected": ["fix-broken-build-reverted"],
+  "deferred": ["flaky-scheduler-workaround"]
 }
 ```
 

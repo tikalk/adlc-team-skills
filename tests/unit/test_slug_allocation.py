@@ -6,14 +6,17 @@ import pytest
 ROOT = Path(__file__).parent.parent.parent
 ARCH_SETUP = ROOT / "skills/architect/architect-clarify/scripts/bash/setup-architect.sh"
 PDR_LIB = ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh"
+CHDR_LIB = ROOT / "skills/change/change-clarify/scripts/bash/chdr-lib.sh"
 
-def _run_bash(command, cwd=None, env_extra=None, source_pdr=False):
+def _run_bash(command, cwd=None, env_extra=None, source_pdr=False, source_chdr=False):
     env = {**os.environ}
     if env_extra:
         env.update(env_extra)
     # Ensure we use the function from the script, not a system command
     if source_pdr:
         full_command = f"source {PDR_LIB}; {command}"
+    elif source_chdr:
+        full_command = f"source {CHDR_LIB}; {command}"
     else:
         full_command = f"source {ARCH_SETUP}; {command}"
     return subprocess.run(["bash", "-e", "-c", full_command], cwd=cwd, capture_output=True, text=True, env=env)
@@ -110,3 +113,26 @@ def test_product_setup_no_local_numbering(tree):
     # Looking at setup-architect.sh, it doesn't call mint_adr_slug directly in the setup, 
     # but the task says "call new helper".
     assert "mint_pdr_slug" in content
+
+def test_mint_chdr_slug_collision_suffix(tree):
+    # Case: drafts holds 'fix-broken-build.md', memory holds 'fix-broken-build.md' (both with prefix ChDR-)
+    drafts_chdr = tree / ".adlc/drafts/chdr"
+    memory_chdr = tree / "docs/adlc/memory/chdr"
+    
+    _write_fm(drafts_chdr / "ChDR-fix-broken-build.md", "Fix broken build")
+    _write_fm(memory_chdr / "ChDR-fix-broken-build-2.md", "Fix broken build")
+    
+    # Next should be fix-broken-build-3
+    res = _run_bash('mint_chdr_slug "Fix broken build"', cwd=tree, source_chdr=True)
+    assert res.returncode == 0
+    assert res.stdout.strip() == "fix-broken-build-3"
+
+def test_chdr_no_numeric_fallback(tree):
+    # Verify no numeric fallback for ChDR
+    memory_chdr = tree / "docs/adlc/memory/chdr"
+    _write_fm(memory_chdr / "ChDR-007.md", "Old record")
+    
+    # Lookup by '7' should FAIL under slug-only mode (hard cut)
+    # Old behavior would have padded '7' -> '007'
+    res = _run_bash("get_chdr_by_id 7 memory", cwd=tree, source_chdr=True)
+    assert res.returncode != 0

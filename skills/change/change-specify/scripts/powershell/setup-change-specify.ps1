@@ -10,6 +10,10 @@ $DOCS_ADLC_PRODUCT = if ($env:DOCS_ADLC_PRODUCT) { $env:DOCS_ADLC_PRODUCT } else
 $DOCS_ADLC_ARCHITECT = if ($env:DOCS_ADLC_ARCHITECT) { $env:DOCS_ADLC_ARCHITECT } else { "docs/adlc/architect" }
 $ADLC_DRAFTS = if ($env:ADLC_DRAFTS) { $env:ADLC_DRAFTS } else { ".adlc/drafts" }
 
+# Sibling library — chdr-lib.ps1 sits next to this script (each skill vendors
+# its own copy).
+. (Join-Path $PSScriptRoot "chdr-lib.ps1")
+
 ###############################################################################
 # Inline path resolution (no external helper dependency)
 ###############################################################################
@@ -63,19 +67,6 @@ function Get-DefaultBranch {
     return "unknown"
 }
 
-function Get-NextChdrNumber {
-    param([string]$Dir)
-    if (-not (Test-Path $Dir)) { New-Item -ItemType Directory -Path $Dir -Force | Out-Null }
-    $max = 0
-    Get-ChildItem -Path $Dir -Filter "ChDR-*.md" -ErrorAction SilentlyContinue | ForEach-Object {
-        if ($_.BaseName -match 'ChDR-(\d+)') {
-            $num = [int]$Matches[1]
-            if ($num -gt $max) { $max = $num }
-        }
-    }
-    return ('{0:D3}' -f ($max + 1))
-}
-
 ###############################################################################
 # Main
 ###############################################################################
@@ -89,7 +80,8 @@ $ChdrDraftsDir = Join-Path $projectRoot ".adlc/drafts/chdr"
 
 if (-not (Test-Path $ChdrDraftsDir)) { New-Item -ItemType Directory -Path $ChdrDraftsDir -Force | Out-Null }
 
-$NextChdr = Get-NextChdrNumber $ChdrDraftsDir
+# ID allocation: slugify(title) + collision check.
+$IdAllocation = "slug"
 $ExistingChdrs = @(Get-ChildItem -Path $ChdrDraftsDir -Filter "ChDR-*.md" -ErrorAction SilentlyContinue).Count
 $TdConfigured = if (Test-Path $TeamAiDirectives) { "true" } else { "false" }
 
@@ -98,7 +90,7 @@ $output = @{
     CHDR_DRAFTS_DIR = $ChdrDraftsDir
     TEAM_AI_DIRECTIVES = $TeamAiDirectives
     BRANCH = $Branch
-    NEXT_CHDR = $NextChdr
+    id_allocation = $IdAllocation
     EXISTING_CHDRS = $ExistingChdrs
     TD_CONFIGURED = ($TdConfigured -eq "true")
     GIT_AVAILABLE = ($GitAvailable -eq "true")

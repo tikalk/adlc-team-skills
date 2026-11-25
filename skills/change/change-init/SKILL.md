@@ -16,7 +16,7 @@ A ChDR captures a decision that was *made in the past* and survives only in comm
 - Cluster commits sharing one issue key into a single **change story**
 - Best-effort fetch the issue title/body (GitLab via MCP, GitHub via `gh`, else link-only) for requirement-level context
 - Infer the **Decision** from the diff summary; record **Consequences** (reverts, follow-up fix chains — the negative knowledge almost never documented elsewhere)
-- Write `ChDR-{NNN}.md` to `{REPO_ROOT}/.adlc/drafts/chdr/` with status **Discovered**
+- Write `ChDR-{slug}.md` to `{REPO_ROOT}/.adlc/drafts/chdr/` with status **Discovered**
 - Regenerate `{REPO_ROOT}/.adlc/drafts/chdr/chdr.md` index
 
 **Key differences from the team-levelup family**:
@@ -90,7 +90,7 @@ You are a **Context Archaeologist** recovering *why* the code is the way it is. 
 
 ### Outline
 
-1. **Validate Environment** (Phase 1): git repo, resolve paths, next ChDR number
+1. **Validate Environment** (Phase 1): git repo, resolve paths, id allocation (slug)
 2. **Scan Window** (Phase 2): `git log` with windowing
 3. **Detect Issue Links** (Phase 3): regex over commit messages
 4. **Cluster into Change Stories** (Phase 4): group commits by issue key
@@ -110,13 +110,13 @@ Run the setup script from the skill's base directory:
 scripts/bash/setup-change-init.sh
 ```
 
-Parse the JSON output for `REPO_ROOT`, `CHDR_DRAFTS_DIR`, `NEXT_CHDR`, `GIT_AVAILABLE`, `DEFAULT_BRANCH`, `TD_CONFIGURED`, `EXISTING_CHDRS`.
+Parse the JSON output for `REPO_ROOT`, `CHDR_DRAFTS_DIR`, `id_allocation`, `GIT_AVAILABLE`, `DEFAULT_BRANCH`, `TD_CONFIGURED`, `EXISTING_CHDRS`.
 
 **If the setup script is unavailable or fails**, resolve manually:
 
 1. `REPO_ROOT` — walk up from cwd to find `.adlc/`, or `git rev-parse --show-toplevel`, or `pwd`.
 2. `CHDR_DRAFTS_DIR` — `REPO_ROOT/.adlc/drafts/chdr`
-3. `NEXT_CHDR` — list `CHDR_DRAFTS_DIR/ChDR-*.md`, find highest number, increment, zero-pad to 3 digits.
+3. `id_allocation` — report "slug" to enable title-based ID generation.
 4. `GIT_AVAILABLE` — `git rev-parse --is-inside-work-tree` (exit 0 = true).
 5. `TD_CONFIGURED` — true if `TEAM_AI_DIRECTIVES` resolves (used only to skip duplicate decisions already captured as CDRs).
 
@@ -193,10 +193,10 @@ Sort descending; take top `--limit` (default 20). Skip candidates with score bel
 
 #### Phase 8: Generate ChDRs
 
-For each selected change story, write `{CHDR_DRAFTS_DIR}/ChDR-{NNN}.md`:
+For each selected change story, write `{CHDR_DRAFTS_DIR}/ChDR-{slug}.md`:
 
 ```markdown
-## ChDR-NNN: [Title — from issue title or commit subject]
+## ChDR-{slug}: [Title — from issue title or commit subject]
 
 ### Status: **Discovered**
 
@@ -242,7 +242,7 @@ Then regenerate `{CHDR_DRAFTS_DIR}/chdr.md` index by listing all `ChDR-*.md` fil
 
 | ID | Status | Date | Issues | Commits | Descriptor |
 |----|--------|------|--------|---------|------------|
-| ChDR-001 | Discovered | 2026-08-16 | PROJ-123 | abc1234 | Why payments retries are capped at 3 |
+| why-payments-retries-capped-at-3 | Discovered | 2026-08-16 | PROJ-123 | abc1234 | Why payments retries are capped at 3 |
 
 **Stats**: N entries | Last Updated: YYYY-MM-DD
 ```
@@ -300,7 +300,7 @@ Then regenerate `{CHDR_DRAFTS_DIR}/chdr.md` index by listing all `ChDR-*.md` fil
     ↓
 [Mine git history] → Detect issue links, cluster, infer decisions
     ↓
-[Generate ChDRs] → Write to .adlc/drafts/chdr/ChDR-{NNN}.md (Discovered)
+[Generate ChDRs] → Write to .adlc/drafts/chdr/ChDR-{slug}.md (Discovered)
     ↓
 [Run /change-clarify] → Validate and accept/reject ChDRs
     ↓
@@ -315,7 +315,7 @@ After `init` completes, run `/change-clarify` to refine and validate the discove
 
 ## Verification
 
-- ChDRs written to `{REPO_ROOT}/.adlc/drafts/chdr/ChDR-{NNN}.md` with status **Discovered**.
+- ChDRs written to `{REPO_ROOT}/.adlc/drafts/chdr/ChDR-{slug}.md` with status **Discovered**.
 - Auto-generated `chdr.md` index exists in `{REPO_ROOT}/.adlc/drafts/chdr/`.
 - Every ChDR's `### Decision` claims cite at least one SHA or issue URL (provenance).
 - Revert/fix chains detected in the window appear in `### Consequences` (or "None observed").

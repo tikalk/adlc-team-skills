@@ -27,14 +27,14 @@ date: 2026-10-20
 type: incident
 ---
 
-# ChDR-900: a draft written from the canonical template
+# ChDR-auth-service-migration: a draft written from the canonical template
 
 ## Context
 Something happened.
 """
 
 HEADING_DRAFT = """\
-# ChDR-901: a full record with a status heading
+# ChDR-retry-cap-reverted: a full record with a status heading
 
 ### Status: **Proposed**
 
@@ -48,7 +48,7 @@ status: accepted
 date: 2026-10-19
 ---
 
-# ChDR-902: an accepted draft
+# ChDR-payment-failure-handling: an accepted draft
 """
 
 
@@ -72,7 +72,7 @@ def run_bash(project):
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_frontmatter_status_drafts_are_pending(project):
-    write(project, "ChDR-900-frontmatter.md", FRONTMATTER_DRAFT)
+    write(project, "ChDR-auth-service-migration.md", FRONTMATTER_DRAFT)
     out = run_bash(project)
     assert out["PENDING_CHDRS"] == 1, out
     assert out["ACCEPTED_CHDRS"] == 0, out
@@ -81,14 +81,14 @@ def test_frontmatter_status_drafts_are_pending(project):
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_heading_status_drafts_are_pending(project):
-    write(project, "ChDR-901-heading.md", HEADING_DRAFT)
+    write(project, "ChDR-retry-cap-reverted.md", HEADING_DRAFT)
     out = run_bash(project)
     assert out["PENDING_CHDRS"] == 1, out
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_accepted_drafts_are_not_pending(project):
-    write(project, "ChDR-902-accepted.md", ACCEPTED_DRAFT)
+    write(project, "ChDR-payment-failure-handling.md", ACCEPTED_DRAFT)
     out = run_bash(project)
     assert out["ACCEPTED_CHDRS"] == 1, out
     assert out["PENDING_CHDRS"] == 0, out
@@ -96,9 +96,9 @@ def test_accepted_drafts_are_not_pending(project):
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_both_status_forms_count(project):
-    write(project, "ChDR-900-frontmatter.md", FRONTMATTER_DRAFT)
-    write(project, "ChDR-901-heading.md", HEADING_DRAFT)
-    write(project, "ChDR-902-accepted.md", ACCEPTED_DRAFT)
+    write(project, "ChDR-auth-service-migration.md", FRONTMATTER_DRAFT)
+    write(project, "ChDR-retry-cap-reverted.md", HEADING_DRAFT)
+    write(project, "ChDR-payment-failure-handling.md", ACCEPTED_DRAFT)
     out = run_bash(project)
     assert out["PENDING_CHDRS"] == 2, out
     assert out["ACCEPTED_CHDRS"] == 1, out
@@ -112,7 +112,7 @@ date: 2026-10-20
 type: incident
 ---
 
-# ChDR-903: a draft annotated in the template's own style
+# ChDR-api-version-bump: a draft annotated in the template's own style
 
 The draft template teaches inline comments on sibling fields
 (`type: incident  # incident | workaround | abandoned`), so `status:` may
@@ -125,7 +125,7 @@ status: Proposed
 date: 2026-10-20
 ---
 
-# ChDR-904: a draft whose status was typed in title case
+# ChDR-ui-theme-overhaul: a draft whose status was typed in title case
 """
 
 MIXED_CASE_ACCEPTED_DRAFT = """\
@@ -134,11 +134,11 @@ status: Accepted  # settled in review
 date: 2026-10-19
 ---
 
-# ChDR-905: an accepted draft, annotated
+# ChDR-cache-invalidation-fix: an accepted draft, annotated
 """
 
 NO_STATUS_DRAFT = """\
-# ChDR-906: a record with no status at all
+# ChDR-statusless-draft: a record with no status at all
 
 Neither frontmatter nor a heading.
 """
@@ -147,7 +147,7 @@ Neither frontmatter nor a heading.
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_frontmatter_status_with_inline_comment_is_pending(project):
     """`status: proposed  # why` is YAML frontmatter, not a different status."""
-    write(project, "ChDR-903-commented.md", COMMENTED_DRAFT)
+    write(project, "ChDR-api-version-bump.md", COMMENTED_DRAFT)
     out = run_bash(project)
     assert out["PENDING_CHDRS"] == 1, out
     assert out["EXISTING_CHDRS"] == 1, out
@@ -156,7 +156,7 @@ def test_frontmatter_status_with_inline_comment_is_pending(project):
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_frontmatter_status_is_case_insensitive(project):
     """`status: Proposed` names the same status as `status: proposed`."""
-    write(project, "ChDR-904-mixed-case.md", MIXED_CASE_DRAFT)
+    write(project, "ChDR-ui-theme-overhaul.md", MIXED_CASE_DRAFT)
     out = run_bash(project)
     assert out["PENDING_CHDRS"] == 1, out
 
@@ -164,7 +164,7 @@ def test_frontmatter_status_is_case_insensitive(project):
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_mixed_case_accepted_frontmatter_is_not_pending(project):
     """Normalising case must not turn an accepted draft into a pending one."""
-    write(project, "ChDR-905-accepted.md", MIXED_CASE_ACCEPTED_DRAFT)
+    write(project, "ChDR-cache-invalidation-fix.md", MIXED_CASE_ACCEPTED_DRAFT)
     out = run_bash(project)
     assert out["ACCEPTED_CHDRS"] == 1, out
     assert out["PENDING_CHDRS"] == 0, out
@@ -177,7 +177,7 @@ date: 2026-10-01
 reviewer: someone
 ---
 
-# ChDR-907: a record published from the full template, then accepted
+# ChDR-full-record-accepted: a record published from the full template, then accepted
 
 ### Status: **Accepted**
 
@@ -191,7 +191,7 @@ the accept flow updates only the heading. The heading is the decision.
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_heading_outranks_stale_frontmatter_on_a_full_record(project):
     """A published record accepted via its heading must not read as pending."""
-    write(project, "ChDR-907-full-record.md", FULL_RECORD_ACCEPTED)
+    write(project, "ChDR-full-record-accepted.md", FULL_RECORD_ACCEPTED)
     out = run_bash(project)
     assert out["ACCEPTED_CHDRS"] == 1, out
     assert out["PENDING_CHDRS"] == 0, out
@@ -200,7 +200,7 @@ def test_heading_outranks_stale_frontmatter_on_a_full_record(project):
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_draft_without_any_status_does_not_abort_the_loader(project):
     """A statusless draft is counted as existing, not as a fatal grep miss."""
-    write(project, "ChDR-906-statusless.md", NO_STATUS_DRAFT)
+    write(project, "ChDR-statusless-draft.md", NO_STATUS_DRAFT)
     out = run_bash(project)
     assert out["PENDING_CHDRS"] == 0, out
     assert out["ACCEPTED_CHDRS"] == 0, out

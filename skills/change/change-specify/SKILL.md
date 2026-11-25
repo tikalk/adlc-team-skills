@@ -103,11 +103,11 @@ job is to recover the *why* while it is still in working memory:
 
 ### Outline
 
-1. **Validate Environment** (Phase 1): resolve paths, next ChDR number
+1. **Validate Environment** (Phase 1): resolve paths, id_allocation (slug)
 2. **Establish the Change Story** (Phase 2): what changed + provenance
 3. **Facilitate** (Phase 3): questions → trade-off, alternatives, constraints
 4. **Proportionality Gate** (Phase 4): skip routine ops
-5. **Write the Draft** (Phase 5): `ChDR-{NNN}.md`, status **Proposed**
+5. **Write the Draft** (Phase 5): `ChDR-{slug}.md`, status **Proposed**
 6. **Regenerate the Draft Index** (Phase 6): `.adlc/drafts/chdr/chdr.md`
 7. **Summary** (Phase 7): report + suggest `/change-clarify`
 
@@ -121,7 +121,7 @@ Run the setup script from the skill's base directory:
 scripts/bash/setup-change-specify.sh
 ```
 
-Parse the JSON output for `REPO_ROOT`, `CHDR_DRAFTS_DIR`, `NEXT_CHDR`,
+Parse the JSON output for `REPO_ROOT`, `CHDR_DRAFTS_DIR`, `id_allocation`,
 `EXISTING_CHDRS`, `GIT_AVAILABLE`, `TD_CONFIGURED`.
 
 **If the setup script is unavailable or fails**, resolve manually:
@@ -129,8 +129,7 @@ Parse the JSON output for `REPO_ROOT`, `CHDR_DRAFTS_DIR`, `NEXT_CHDR`,
 1. `REPO_ROOT` — walk up from cwd to find `.adlc/`, or
    `git rev-parse --show-toplevel`, or `pwd`.
 2. `CHDR_DRAFTS_DIR` — `REPO_ROOT/.adlc/drafts/chdr`
-3. `NEXT_CHDR` — list `CHDR_DRAFTS_DIR/ChDR-*.md`, find highest number,
-   increment, zero-pad to 3 digits.
+3. `id_allocation` — report "slug" to enable title-based ID generation.
 4. `GIT_AVAILABLE` — `git rev-parse --is-inside-work-tree` (exit 0 = true).
 5. `EXISTING_CHDRS` — count of `ChDR-*.md` in `CHDR_DRAFTS_DIR`.
 6. `TD_CONFIGURED` — true if `TEAM_AI_DIRECTIVES` resolves (used only to skip
@@ -174,13 +173,13 @@ worse than none.
 
 #### Phase 5: Write the Draft
 
-For each captured decision write `{CHDR_DRAFTS_DIR}/ChDR-{NNN}.md` from the
+For each captured decision write `{CHDR_DRAFTS_DIR}/ChDR-{slug}.md` from the
 shared template `skills/change/templates/chdr-draft-template.md`:
 
 - Frontmatter `status: proposed` (maps to ledger Status `captured` in Team
   Context & Decisions), `type: incident | workaround | abandoned`, `evidence:
   confirmed | inferred | unknown`, `source`, `revisit-when`
-- Heading `# ChDR-{NNN}: {short title}`
+- Heading `# ChDR-{slug}: {short title}`
 - Every non-trivial sentence in **Decision** references its SHA or URL
 
 One draft per decision. Do not batch unrelated decisions into one record.
@@ -200,7 +199,7 @@ filter `team-boot` uses on the published index.
 
 | ChDR | Title | Type | Provenance |
 |---|---|---|---|
-| ChDR-{NNN} | … | workaround | abc1234 |
+| {slug} | … | workaround | abc1234 |
 
 ### Next Steps
 
@@ -240,7 +239,7 @@ promote it to docs/adlc/memory/chdr/.
 
 ## Verification
 
-- [ ] `ChDR-{NNN}.md` written to `.adlc/drafts/chdr/` with `status: proposed`
+- [ ] `ChDR-{slug}.md` written to `.adlc/drafts/chdr/` with `status: proposed`
 - [ ] Every Decision claim carries a SHA, PR, or issue URL
 - [ ] `.adlc/drafts/chdr/chdr.md` draft index regenerated (rows start
       `| ChDR-`)

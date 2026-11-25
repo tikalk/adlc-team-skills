@@ -643,31 +643,5 @@ def test_setup_architect_preview_flag_exists(tmp_path):
     assert "PREVIEW" in src, "implement must gate writes behind PREVIEW"
 
 
-# ── ADR-514: numbering takes the max across drafts AND both store roots ──────
-
-CHDR_LIB = ROOT / "skills/change/change-clarify/scripts/bash/chdr-lib.sh"
-SETUP_CHANGE_SPECIFY = ROOT / "skills/change/change-specify/scripts/bash/setup-change-specify.sh"
-
-
-def test_next_chdr_number_spans_drafts_docs_and_legacy(tmp_path):
-    """The ChDR slot takes the max across the drafts root and both stores."""
-    _write_fm(tmp_path / ".adlc/drafts/chdr/ChDR-002.md")
-    _write_fm(tmp_path / "docs/adlc/memory/chdr/ChDR-010.md")
-    _write_fm(tmp_path / ".adlc/memory/chdr/ChDR-007.md")
-    r = _run(f'source "{CHDR_LIB}"; next_chdr_number '
-             f'"{tmp_path}/.adlc/drafts/chdr" '
-             f'"{tmp_path}/docs/adlc/memory/chdr" '
-             f'"{tmp_path}/.adlc/memory/chdr"', tmp_path)
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "011"
-
-
-def test_change_specify_next_chdr_spans_the_store_roots(tmp_path):
-    """setup-change-specify.sh NEXT_CHDR: drafts + docs + legacy max, driven
-    by the resolved memory root — not drafts alone."""
-    import json as _json
-    _write_fm(tmp_path / ".adlc/drafts/chdr/ChDR-002.md")
-    _write_fm(tmp_path / "docs/adlc/memory/chdr/ChDR-010.md")
-    r = _run(f'bash "{SETUP_CHANGE_SPECIFY}"', tmp_path)
-    assert r.returncode == 0, r.stderr
-    assert _json.loads(r.stdout)["NEXT_CHDR"] == "011"
+# ADR-514: numbering takes the max across drafts AND both store roots
+# (PDR/ADR migrated to slug-only; ChDR migrated in Task 4).

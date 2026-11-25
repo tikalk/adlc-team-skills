@@ -110,9 +110,12 @@ function Format-CdrTopicMap {
     $map = @{}
     foreach ($p in $Paths) {
         if ([string]::IsNullOrWhiteSpace($p)) { continue }
-        $rel = ($p.Trim() -replace '^context_modules/', '') -replace '\.md$', ''
+        $pf = $p -split "`t", 2
+        $rel = ($pf[0].Trim() -replace '^context_modules/', '') -replace '\.md$', ''
         $parts = $rel -split '/'
         $name = $parts[-1]
+        # Real CDR-YYYY-NNN IDs stay as lookup handles; slug IDs restate the path.
+        if ($pf.Count -gt 1 -and $pf[1].Trim() -match '^CDR-[0-9]+-[0-9]+$') { $name = "$name ($($pf[1].Trim()))" }
         $dir = if ($parts.Count -gt 1) { ($parts[0..($parts.Count - 2)]) -join '/' } else { "" }
         if (-not $map.ContainsKey($dir)) { $order.Add($dir); $map[$dir] = New-Object System.Collections.Generic.List[string] }
         $map[$dir].Add($name)
@@ -132,7 +135,7 @@ if (Test-Path $cdrPath -PathType Leaf) {
     $cdrLines = @(Get-Content $cdrPath | Where-Object { $_ -match '^\|' -and $_ -notmatch '^\|\s*ID\s*\|' -and $_ -notmatch '^\|\s*-' })
     $CdrCount = $cdrLines.Count
     $CdrSource = "`"$cdrPath`""
-    $cdrTopicPaths = @($cdrLines | ForEach-Object { $cols = $_ -split '\|'; if ($cols.Count -ge 3) { $cols[2].Trim() } })
+    $cdrTopicPaths = @($cdrLines | ForEach-Object { $cols = $_ -split '\|'; if ($cols.Count -ge 3) { $cols[2].Trim() + "`t" + $cols[1].Trim() } })
 } else {
     # Fallback: per-dir index.md files (OKF §8), items "* [Title](rel/path.md) - desc"
     $CdrSources = @()

@@ -12,7 +12,7 @@ scripts:
 
 Assembles team AI directives context and injects it into the system prompt
 at session start. The injection carries the CDR **count and a topic map** —
-every CDR's module path grouped by directory (`- rules/devops: helm_wrapper_charts, …`) —
+every CDR's module path grouped by directory, with its `CDR-YYYY-NNN` ID when it has one (`- rules/devops: helm_wrapper_charts (CDR-2026-001), …`) —
 never CDR rows. The model matches the task to a topic by meaning, then reads
 `context_modules/<topic>/<name>.md`; row details load via grep `CDR.md` or
 `/team-discover`.

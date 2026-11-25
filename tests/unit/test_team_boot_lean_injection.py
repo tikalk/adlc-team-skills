@@ -286,7 +286,10 @@ def test_lean_added_lines_are_tight(tmp_path):
     assert added and all(len(l) <= 160 for l in added), [len(l) for l in added]
 
 
-TOPIC_LINES = ("- personas: devops_engineer", "- rules/devops: helm_wrapper_charts")
+TOPIC_LINES = (
+    "- personas: devops_engineer (CDR-2026-002)",
+    "- rules/devops: helm_wrapper_charts (CDR-2026-001)",
+)
 
 
 @pytest.mark.parametrize("agents_md", [AGENTS_SECTION, None], ids=["lean", "fallback"])
@@ -301,6 +304,21 @@ def test_cdr_topic_map_keeps_semantic_matching(tmp_path, run, agents_md):
     assert lines.index(TOPIC_LINES[0]) < lines.index(TOPIC_LINES[1])  # sorted
     assert "context_modules/<topic>/<name>.md" in out
     assert "other descriptor" not in out  # still no row content
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_cdr_topic_map_drops_slug_ids(tmp_path, run):
+    """Slug IDs (rule-rules-…) restate the path; only CDR-YYYY-NNN is shown."""
+    project = _setup(tmp_path, agents_md=AGENTS_SECTION)
+    cdr = tmp_path / "directives" / "CDR.md"
+    cdr.write_text(
+        cdr.read_text()
+        + "| rule-rules-security-sqli | context_modules/rules/security/sqli.md"
+        " | Rule | x | 2026-08-12 |\n"
+    )
+    out = run(project)
+    assert "- rules/security: sqli" in out.splitlines()
+    assert "rule-rules-security-sqli" not in out
 
 
 @pytest.mark.parametrize("run", RUNNERS)

@@ -1153,9 +1153,9 @@ For each violation, record:
 
 | Severity | File | Line | Issue |
 |----------|------|------|-------|
-| Error | .adlc/drafts/adr/ADR-001.md | 3 | Missing required field: evidence |
-| Error | .adlc/drafts/adr/ADR-001.md | 0 | Missing required body section: Reason |
-| Error | .adlc/drafts/pdr/PDR-005.md | 7 | Invalid status value: 'draft' — expected one of: proposed, accepted, rejected, deferred, superseded, discovered |
+| Error | .adlc/drafts/adr/ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap.md | 3 | Missing required field: evidence |
+| Error | .adlc/drafts/adr/ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap.md | 0 | Missing required body section: Reason |
+| Error | .adlc/drafts/pdr/PDR-knowledge-plane-architecture-central-gateway-governance.md | 7 | Invalid status value: 'draft' — expected one of: proposed, accepted, rejected, deferred, superseded, discovered |
 | Warning | adlc branch drafts/cdr/rule-my-rule.md | 15 | Rejected Alternatives section is empty for decision type — must list at least one rejected alternative |
 
 {If no findings:}

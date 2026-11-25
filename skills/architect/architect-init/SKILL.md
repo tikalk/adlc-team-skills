@@ -446,12 +446,12 @@ Chosen option: "{Discovered choice}", because {inferred rationale from implement
    - Docker for containerization → Conventional choice
 
    **Document as ADRs**:
-   - **ADR-001**: System Architecture Style (monolith vs microservices)
-   - **ADR-002**: Database Choice (only if non-obvious for context)
-   - **ADR-003**: API Style (REST vs GraphQL vs gRPC)
-   - **ADR-004**: Frontend Framework (only if unconventional)
-   - **ADR-005**: Deployment Platform (serverless vs traditional)
-   - **ADR-006**: CI/CD Approach (GitHub Actions vs Jenkins)
+   - **ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap**: System Architecture Style (monolith vs microservices)
+   - **ADR-agent-registry-and-multi-agent-image-support**: Database Choice (only if non-obvious for context)
+   - **ADR-environment-driven-configuration-replaces-config-yaml**: API Style (REST vs GraphQL vs gRPC)
+   - **ADR-baked-in-container-setup-skill-as-the-agent-init-path**: Frontend Framework (only if unconventional)
+   - **ADR-host-side-lifecycle-cli-package**: Deployment Platform (serverless vs traditional)
+   - **ADR-provider-fallback-resolution-no-generated-opencode-json-auth**: CI/CD Approach (GitHub Actions vs Jenkins)
    - **Additional**: Any custom/in-house solutions, unusual patterns, risky choices
 
 #### Phase 5: Quality Requirements Detection
@@ -506,29 +506,29 @@ Store selected perspectives in state for `/architect-implement`.
 
    | ID | Sub-System | Decision | Status | Date | Confidence |
    |----|------------|----------|--------|------|------------|
-   | ADR-001 | System | Monolithic Architecture | Discovered | 2026-02-26 | HIGH |
-   | ADR-002 | Auth | JWT Authentication | Discovered | 2026-02-26 | HIGH |
-   | ADR-003 | Payments | Stripe Integration | Discovered | 2026-02-26 | MEDIUM |
+   | ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | System | Monolithic Architecture | Discovered | 2026-02-26 | HIGH |
+   | ADR-agent-registry-and-multi-agent-image-support | Auth | JWT Authentication | Discovered | 2026-02-26 | HIGH |
+   | ADR-environment-driven-configuration-replaces-config-yaml | Payments | Stripe Integration | Discovered | 2026-02-26 | MEDIUM |
 
    ---
 
    ## System-Level ADRs
 
-   ### ADR-001: Monolithic Architecture
+   ### ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap: Monolithic Architecture
    [Full ADR content...]
 
    ---
 
    ## Auth Sub-System ADRs
 
-   ### ADR-002: JWT Authentication
+   ### ADR-agent-registry-and-multi-agent-image-support: JWT Authentication
    [Full ADR content...]
 
    ---
 
    ## Payments Sub-System ADRs
 
-   ### ADR-003: Stripe Integration
+   ### ADR-environment-driven-configuration-replaces-config-yaml: Stripe Integration
    [Full ADR content...]
    ```
 
@@ -562,9 +562,9 @@ After scanning, report:
 ### ADRs Generated (Surprising/Risky decisions only)
 | ID | Decision | Confidence | Why Documented |
 |----|----------|------------|----------------|
-| ADR-001 | Monolithic Django architecture | HIGH | Architecture style choice |
-| ADR-002 | Custom JWT authentication | MEDIUM | Security risk, non-standard |
-| ADR-003 | Microservices for small team | HIGH | Scale mismatch, surprising |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | Monolithic Django architecture | HIGH | Architecture style choice |
+| ADR-agent-registry-and-multi-agent-image-support | Custom JWT authentication | MEDIUM | Security risk, non-standard |
+| ADR-environment-driven-configuration-replaces-config-yaml | Microservices for small team | HIGH | Scale mismatch, surprising |
 
 ### Skipped (Covered by existing docs or obvious)
 | Decision | Reason |

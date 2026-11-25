@@ -539,7 +539,7 @@ Chosen option: "{title option 1}", because {justification}.
 {Additional evidence, links, when/how to re-visit}
 ```
 
-3. **Number ADRs sequentially**: Start from ADR-001 for new projects, or continue from the **next free slot** the setup script computes (`next_adr` in its JSON/status output) — never from "the highest existing number" guessed by inspection: a stemmed record (e.g. an amendment) is easy to miss, and its slot is still taken
+3. **Number ADRs sequentially**: Start from ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap for new projects, or continue from the **next free slot** the setup script computes (`next_adr` in its JSON/status output) — never from "the highest existing number" guessed by inspection: a stemmed record (e.g. an amendment) is easy to miss, and its slot is still taken
 
 #### Phase 4: ADR Output
 
@@ -574,12 +574,12 @@ Chosen option: "{title option 1}", because {justification}.
 
 | # | Sub-System | ADRs Created |
 |---|------------|--------------|
-| 1 | System-Level | ADR-001: Architecture Style |
-| 2 | Auth | ADR-002: JWT Authentication, ADR-003: OAuth2 Integration |
-| 3 | Payments | ADR-004: Stripe Integration, ADR-005: Payment Webhooks |
+| 1 | System-Level | ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap: Architecture Style |
+| 2 | Auth | ADR-agent-registry-and-multi-agent-image-support: JWT Authentication, ADR-environment-driven-configuration-replaces-config-yaml: OAuth2 Integration |
+| 3 | Payments | ADR-baked-in-container-setup-skill-as-the-agent-init-path: Stripe Integration, ADR-host-side-lifecycle-cli-package: Payment Webhooks |
 
 ### Cross-Cutting Decisions
-- ADR-001 affects all sub-systems
+- ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap affects all sub-systems
 
 ### Next Steps
 1. Review ADRs with /architect-clarify

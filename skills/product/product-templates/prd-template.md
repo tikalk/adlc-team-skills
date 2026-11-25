@@ -840,8 +840,8 @@ Detailed Product Decision Records are summarized below. Full PDR documents are m
 
 | ID | Category | Decision | Status | Impact |
 |----|----------|----------|--------|--------|
-| PDR-001 | [Category] | [Title] | Accepted | High/Med/Low |
-| PDR-002 | [Category] | [Title] | Accepted | High/Med/Low |
+| PDR-lit-factory-operating-model-outer-inner-loop-governance | [Category] | [Title] | Accepted | High/Med/Low |
+| PDR-control-plane-issue-tracker-integration-mission-brief-enforc | [Category] | [Title] | Accepted | High/Med/Low |
 
 ### 12.2 Constitution Alignment
 

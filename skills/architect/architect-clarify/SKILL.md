@@ -45,7 +45,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 - `"Focus on data architecture decisions - we're reconsidering database choice"`
 - `"Security ADRs need more detail for compliance review"`
-- `"ADR-003 consequences seem incomplete"`
+- `"ADR-environment-driven-configuration-replaces-config-yaml consequences seem incomplete"`
 - Empty input: Review all ADRs for completeness
 
 ### Goal
@@ -200,9 +200,9 @@ If already full format, proceed with normal review.
 
 | Issue Type | ADR | Constitution Principle | Action Required |
 |------------|-----|----------------------|-----------------|
-| Duplicate | ADR-002 | §DataStorage mandates PostgreSQL | Remove or convert to reference |
-| Violation | ADR-003 | §Security requires JWT | Add override justification or change |
-| Unclear | ADR-004 | Silent on caching | Clarify relationship |
+| Duplicate | ADR-agent-registry-and-multi-agent-image-support | §DataStorage mandates PostgreSQL | Remove or convert to reference |
+| Violation | ADR-environment-driven-configuration-replaces-config-yaml | §Security requires JWT | Add override justification or change |
+| Unclear | ADR-baked-in-container-setup-skill-as-the-agent-init-path | Silent on caching | Clarify relationship |
 
 #### Phase 3: Gap Identification
 
@@ -222,14 +222,14 @@ Generate a gap report:
 
 | ADR | Title | Gap Type | Severity | Priority |
 |-----|-------|----------|----------|----------|
-| ADR-001 | [Title] | Missing alternatives | HIGH | 1 |
-| ADR-002 | [Title] | Incomplete consequences | MEDIUM | 2 |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | [Title] | Missing alternatives | HIGH | 1 |
+| ADR-agent-registry-and-multi-agent-image-support | [Title] | Incomplete consequences | MEDIUM | 2 |
 
 ### Cross-ADR Issues
 
 | Issue | ADRs Affected | Description |
 |-------|---------------|-------------|
-| [Conflict] | ADR-001, ADR-003 | [Description of conflict] |
+| [Conflict] | ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap, ADR-environment-driven-configuration-replaces-config-yaml | [Description of conflict] |
 ```
 
 ##### Gap Prioritization
@@ -408,8 +408,8 @@ Change [N] ADRs from Proposed/Discovered → Accepted?
 
 | ADR | Current Status | New Status |
 |-----|----------------|-------------|
-| ADR-001 | Proposed | Accepted |
-| ADR-002 | Discovered | Accepted |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | Proposed | Accepted |
+| ADR-agent-registry-and-multi-agent-image-support | Discovered | Accepted |
 
 Reply with "yes" to confirm or "no" to cancel.
 ```
@@ -443,9 +443,9 @@ After approval (or if user chooses C to defer):
 ## ADRs Approved
 
 **Status Changes Applied**:
-- ADR-001: Proposed → Accepted
-- ADR-002: Discovered → Accepted
-- ADR-007: Kept as Proposed
+- ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap: Proposed → Accepted
+- ADR-agent-registry-and-multi-agent-image-support: Discovered → Accepted
+- ADR-opencode-cli-pin-single-location-and-bump-policy: Kept as Proposed
 
 **Ready for Implementation**:
 - Accepted ADRs: [N]
@@ -515,9 +515,9 @@ After clarification ends (all gaps addressed or user signals "done"):
 ## ADR Clarification Complete
 
 **Changes Made**:
-- ADR-001: Updated consequences section
-- ADR-002: Added Common Alternatives (neutral trade-offs)
-- ADR-003: Resolved conflict with ADR-001
+- ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap: Updated consequences section
+- ADR-agent-registry-and-multi-agent-image-support: Added Common Alternatives (neutral trade-offs)
+- ADR-environment-driven-configuration-replaces-config-yaml: Resolved conflict with ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap
 - Constitution: Amended §DataStorage to allow NoSQL for document flexibility
 
 **Risks & Gaps Status**:

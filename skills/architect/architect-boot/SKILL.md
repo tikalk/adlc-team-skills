@@ -79,7 +79,7 @@ Emit before the task answer:
 
 | ID | Sub-System | Decision | Status |
 |--|--|--|--|
-| ADR-001 | lanes | Workflow lanes over flat queue | Accepted |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | lanes | Workflow lanes over flat queue | Accepted |
 
 _Searched N ADRs, K matched._
 

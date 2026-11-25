@@ -58,6 +58,7 @@ You are in a factory run when `ADLC_RUN_ID` is set (a **workflow run**: the engi
      }
      ```
    - **Only this orchestrator writes the payload.** Lifecycle skills (`mission-brief` steps, clarify gates) never write it: their questions come back to you, and you ask them.
+   - **The runtime owns the markers.** In a factory run the runtime records the question and answer markers on the issue, with its own request id. You write the payload and post no question note: never a `type=question` comment, and never an invented request id. A second marker leaves a question on the issue with no matching answer.
    - **No payload path, no question.** Without `ADLC_STEP_QUESTION` (a raw lane run), take step 4 with `blocked: needs an answer: <question>`.
 
 **Project instructions in a factory run.** `AGENTS.md`, `CLAUDE.md`, the issue's Definition of Done and project skills tell you *what* to build and check — follow them, and when one item cannot be done in this pod, say exactly which item and why in the conclusion and the completion note (never "pending", never "left for the user"). Their *interaction* rules ("ask the user", "wait for approval", "show the plan first", "post only when asked") do not apply: nobody answers here. Safety rules that ask for a dry-run or an explicit confirmation (tracker-integration Safety Constraint 1) are local-session rules; the tracker writes this checklist names execute at once and are confirmed by reading them back. See `factory-runbook/references/project-contract.md`.

@@ -82,6 +82,13 @@ def test_only_the_orchestrator_writes_the_payload():
     assert "Lifecycle skills" in rule and "never write it" in rule
 
 
+def test_runtime_owns_question_markers():
+    rule = _rule8(_text())
+    assert "type=question" in rule, "step 8 must name the question marker it never posts"
+    assert "the runtime records the question and answer markers" in rule
+    assert "post no question note" in rule, "the skill writes the payload and posts no note"
+
+
 def test_raw_lane_without_payload_path_blocks():
     assert "blocked: needs an answer: <question>" in _rule8(_text())
 

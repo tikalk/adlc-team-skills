@@ -2,6 +2,9 @@
 # helpers.sh — Shared utilities for team-levelup skill
 set -euo pipefail
 
+ADLC_BRANCH="${ADLC_BRANCH:-adlc}"
+TEAM_AI_DIRECTIVES="${TEAM_AI_DIRECTIVES:-}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ###############################################################################
@@ -79,24 +82,74 @@ ensure_adlc_branch() {
 # 3. CDR NUMBERING
 ###############################################################################
 
-next_cdr_number() {
-  local td="${1:-$TEAM_AI_DIRECTIVES}"
-  local max=0
-  for f in $(git -C "$td" ls-tree --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null | sort); do
-    local base num
-    # A record's number is the LEADING DIGITS of its filename stem:
-    # CDR-010-amendment-2.md is record 010. Suffixes are preserved and
-    # never arithmetically parsed -- the same rule next_record_number in
-    # product-clarify's pdr-lib.sh implements on the filesystem. The old
-    # "CDR-<digits>.md" match silently skipped stemmed records and handed
-    # out a slot that was already taken.
-    base=$(basename "$f")
-    [[ "$base" == *.md ]] || continue
-    num=$(printf '%s' "${base%.md}" | sed -n 's/^CDR-\([0-9]\{1,\}\).*/\1/p')
-    [[ -n "$num" ]] || continue
-    ((10#$num > max)) && max=$((10#$num))
+# 3. CDR SLUG MINTING
+###############################################################################
+
+slugify() {
+  local title="$1"
+  local slug
+  # 1. Lowercase
+  slug=$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]')
+  # 2. ASCII-fold (ignore errors)
+  if command -v iconv >/dev/null 2>&1; then
+    slug=$(printf '%s' "$slug" | iconv -t ascii//TRANSLIT 2>/dev/null || printf '%s' "$slug")
+  fi
+  # 3-6. Sanitize, Collapse, Trim, Truncate
+  slug=$(printf '%s' "$slug" | sed 's/[^a-z0-9]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-//; s/-$//' | cut -c 1-60)
+  
+  if [[ -z "$slug" ]]; then
+    return 1
+  fi
+  printf '%s' "$slug"
+}
+
+mint_cdr_slug() {
+  local title="$1"
+  local namespace="${2:-rule}"
+  local td="${3:-$TEAM_AI_DIRECTIVES}"
+  
+  local slug
+  slug=$(slugify "$title") || return 1
+  
+  local candidate="${namespace}-${slug}"
+  if [[ "$namespace" == "constitution" && "$slug" == "constitution" ]]; then
+    candidate="constitution"
+  fi
+
+  local count=1
+  local final_slug="$candidate"
+  
+  # Pre-fetch lists to avoid repeated git calls in loop
+  local drafts_list
+  drafts_list=$(git -C "$td" ls-tree -r --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null || true)
+  local published_list
+  published_list=$(git -C "$td" ls-tree -r --name-only main "context_modules/" 2>/dev/null || true)
+
+  while true; do
+    local exists=false
+    if echo "$drafts_list" | grep -q "^drafts/cdr/${final_slug}.md$"; then
+      exists=true
+    fi
+    
+    if [[ "$exists" == "false" ]]; then
+      local slug_part="${final_slug#${namespace}-}"
+      if [[ "$final_slug" == "constitution" ]]; then slug_part="constitution"; fi
+      
+      # Match against published files (underscores -> hyphens)
+      if echo "$published_list" | sed 's#.*/##; s/\.md$//; s/_/-/g' | grep -qx "$slug_part"; then
+        exists=true
+      fi
+    fi
+
+    if [[ "$exists" == "false" ]]; then
+      printf '%s' "$final_slug"
+      return 0
+    fi
+    
+    ((count++))
+    final_slug="${candidate}-${count}"
+    if [[ $count -gt 100 ]]; then break; fi
   done
-  printf '%03d' $((max + 1))
 }
 
 ###############################################################################
@@ -137,7 +190,7 @@ regenerate_cdr_index() {
   local count=0
 
   for f in $(git -C "$td" ls-tree --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null | sort); do
-    [[ "$f" =~ CDR-[0-9]+\.md$ ]] || continue
+    [[ "$f" == *.md ]] || continue
     local id target type status created verified age descriptor
     id=$(basename "$f" .md)
     local content
@@ -214,11 +267,10 @@ signal_gate() {
 
 if [[ "${1:-}" == "--json" ]]; then
   output_json
-elif [[ "${1:-}" == "--next-cdr" ]]; then
-  # resolve first: the bare form reads $TEAM_AI_DIRECTIVES/$ADLC_BRANCH globals
-  # (they were unbound here — set -u aborted the bare call)
+elif [[ "${1:-}" == "--mint-cdr" ]]; then
+  # usage: --mint-cdr "Title" "namespace" [DIR]
   resolve_team_levelup_paths >/dev/null
-  next_cdr_number "${2:-}"
+  mint_cdr_slug "$2" "${3:-rule}" "${4:-}"
 elif [[ "${1:-}" == "--index" ]]; then
   resolve_team_levelup_paths >/dev/null
   regenerate_cdr_index "${2:-}"

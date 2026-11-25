@@ -106,29 +106,90 @@ function Ensure-AdlcBranch {
 }
 
 ###############################################################################
-# 3. CDR NUMBERING
+# 3. CDR SLUG MINTING
 ###############################################################################
 
-function Get-NextCdrNumber {
-    param([string]$Td)
-    if (-not $Td) { $Td = $script:TEAM_AI_DIRECTIVES }
-    $max = 0
-    $files = @(git -C $Td ls-tree --name-only $script:ADLC_BRANCH 'drafts/cdr/' 2>$null)
-    foreach ($f in ($files | Sort-Object)) {
-        # A record's number is the LEADING DIGITS of its filename stem:
-        # CDR-010-amendment-2.md is record 010. Suffixes are preserved and
-        # never arithmetically parsed -- the same rule Get-NextRecordNumber in
-        # product-clarify's pdr-lib.ps1 implements on the filesystem. The old
-        # '.*CDR-(\d+)\.md$' match silently skipped stemmed records and handed
-        # out a slot that was already taken.
-        $name = [System.IO.Path]::GetFileName($f)
-        if ($name -cnotlike '*.md') { continue }
-        if ($name.Substring(0, $name.Length - 3) -cmatch '^CDR-(\d+)') {
-            $num = [int]$Matches[1]
-            if ($num -gt $max) { $max = $num }
-        }
+function Slugify {
+    param([string]$Title)
+    if ([string]::IsNullOrWhiteSpace($Title)) {
+        Write-Error "ERROR: Title is empty"
+        return $null
     }
-    return ('{0:d3}' -f ($max + 1))
+    
+    # 1. Lowercase
+    $slug = $Title.ToLower()
+    
+    # 2. ASCII-fold (approximate in PS without complex mapping)
+    $slug = [System.Text.Encoding]::ASCII.GetString([System.Text.Encoding]::GetEncoding("Cyrillic").GetBytes($slug))
+    
+    # 3. Sanitize (non-alnum -> -)
+    $slug = $slug -replace '[^a-z0-9]', '-'
+    
+    # 4. Collapse (multiple - -> single -)
+    $slug = $slug -replace '-+', '-'
+    
+    # 5. Trim
+    $slug = $slug.Trim('-')
+    
+    # 6. Truncate (max 60 chars)
+    if ($slug.Length -gt 60) { $slug = $slug.Substring(0, 60).Trim('-') }
+    
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        Write-Error "ERROR: slugify result for '$Title' is empty"
+        return $null
+    }
+    
+    return $slug
+}
+
+function Mint-CdrSlug {
+    param([string]$Title, [string]$Namespace = "rule", [string]$Td = "")
+    if (-not $Td) { $Td = $script:TEAM_AI_DIRECTIVES }
+    if (-not $Td) { return $null }
+    
+    $slug = Slugify $Title
+    if (-not $slug) { return $null }
+    
+    $candidate = "$Namespace-$slug"
+    if ($Namespace -eq "constitution" -and $slug -eq "constitution") {
+        $candidate = "constitution"
+    }
+    
+    $count = 1
+    $finalSlug = $candidate
+    
+    # Pre-fetch lists
+    $draftsList = @(git -C $Td ls-tree -r --name-only $script:ADLC_BRANCH "drafts/cdr/" 2>$null)
+    $publishedList = @(git -C $Td ls-tree -r --name-only main "context_modules/" 2>$null)
+    
+    while ($true) {
+        $exists = $false
+        if ($draftsList -contains "drafts/cdr/$finalSlug.md") {
+            $exists = $true
+        }
+        
+        if (-not $exists) {
+            $slugPart = $finalSlug -replace "^$Namespace-", ""
+            if ($finalSlug -eq "constitution") { $slugPart = "constitution" }
+            
+            # Check published files (underscores as hyphens)
+            foreach ($p in $publishedList) {
+                $name = [System.IO.Path]::GetFileNameWithoutExtension($p).Replace('_', '-')
+                if ($name -eq $slugPart) {
+                    $exists = $true
+                    break
+                }
+            }
+        }
+        
+        if (-not $exists) {
+            return $finalSlug
+        }
+        
+        $count++
+        $finalSlug = "$candidate-$count"
+        if ($count -gt 100) { break }
+    }
 }
 
 ###############################################################################
@@ -175,7 +236,7 @@ function Regenerate-CdrIndex {
 
     $files = @(git -C $Td ls-tree --name-only $script:ADLC_BRANCH 'drafts/cdr/' 2>$null)
     foreach ($f in ($files | Sort-Object)) {
-        if ($f -cnotmatch 'CDR-\d+\.md$') { continue }
+        if ($f -cnotmatch '\.md$') { continue }
         $id = [IO.Path]::GetFileNameWithoutExtension($f)
         $content = Read-AdlcFile $Td $f
 
@@ -266,10 +327,9 @@ switch ($args.Count) {
     default {
         switch ([string]$args[0]) {
             '--json' { Output-Json }
-            '--next-cdr' {
-                # resolve first: the bare form reads the path globals
+            '--mint-cdr' {
                 $null = Resolve-TeamLevelupPaths
-                Get-NextCdrNumber $(if ($args.Count -ge 2) { [string]$args[1] } else { '' })
+                Mint-CdrSlug ([string]$args[1]) ([string]$args[2]) ([string]$args[3])
             }
             '--index' {
                 $null = Resolve-TeamLevelupPaths

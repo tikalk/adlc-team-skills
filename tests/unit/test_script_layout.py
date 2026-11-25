@@ -144,7 +144,7 @@ def test_score_confidence_missing_entry_uses_default(tmp_path):
         encoding="utf-8",
     )
     scores = tmp_path / "scores.json"
-    scores.write_text('{"CDR-001": { "success_rate": 0.75 }}\n', encoding="utf-8")
+    scores.write_text('{"rule-my-rule": { "success_rate": 0.75 }}\n', encoding="utf-8")
     result = subprocess.run(
         ["bash", str(LEVELUP / "bash/score-confidence.sh"), "--calculate", str(cdr), str(scores)],
         capture_output=True, text=True,
@@ -155,7 +155,7 @@ def test_score_confidence_missing_entry_uses_default(tmp_path):
 
 
 def test_score_confidence_matched_entry(tmp_path):
-    cdr = tmp_path / "CDR-001.md"
+    cdr = tmp_path / "rule-my-rule.md"
     cdr.write_text(
         "### Target Module: `src/x.py`\n"
         "### Context Type: Rule\n"
@@ -163,7 +163,7 @@ def test_score_confidence_matched_entry(tmp_path):
         encoding="utf-8",
     )
     scores = tmp_path / "scores.json"
-    scores.write_text('{"CDR-001": { "success_rate": 0.75 }}\n', encoding="utf-8")
+    scores.write_text('{"rule-my-rule": { "success_rate": 0.75 }}\n', encoding="utf-8")
     result = subprocess.run(
         ["bash", str(LEVELUP / "bash/score-confidence.sh"), "--calculate", str(cdr), str(scores)],
         capture_output=True, text=True,
@@ -173,12 +173,11 @@ def test_score_confidence_matched_entry(tmp_path):
     assert result.stdout.strip() == "0.70 MEDIUM"
 
 
-# ── levelup sandbox: bare --next-cdr + twin parity ──────────────────────────
+# ── levelup sandbox: bare --mint-cdr + twin parity ──────────────────────────
 
 @pytest.fixture()
 def levelup_sandbox(tmp_path):
-    """Project repo + directives repo with an adlc orphan branch (CDR-007 is
-    the highest number, so the next CDR is 008)."""
+    """Project repo + directives repo with an adlc orphan branch."""
     project = tmp_path / "project"
     project.mkdir()
     directives = tmp_path / "directives"
@@ -207,49 +206,36 @@ def levelup_sandbox(tmp_path):
     git(directives, "checkout", "-q", "--orphan", "adlc")
     git(directives, "rm", "-qrf", ".")
     (directives / "drafts/cdr").mkdir(parents=True)
-    (directives / "drafts/cdr/CDR-007.md").write_text(
-        "### Target Module: `src/b.py`\n### Context Type: Example\n", encoding="utf-8"
+    (directives / "drafts/cdr/rule-existing-rule.md").write_text(
+        "### Target Module: `src/b.py`\n### Context Type: Rule\n", encoding="utf-8"
     )
     git(directives, "add", "-A")
     git(directives, "commit", "-qm", "cdrs")
     return project, directives
 
 
-def test_helpers_bare_next_cdr_resolves_paths(levelup_sandbox):
-    """Bare --next-cdr used to abort: the CLI entry read $TEAM_AI_DIRECTIVES
+def test_helpers_bare_mint_cdr_resolves_paths(levelup_sandbox):
+    """Bare --mint-cdr used to abort: the CLI entry read $TEAM_AI_DIRECTIVES
     before any resolve call and set -u killed the script."""
     project, _ = levelup_sandbox
     result = subprocess.run(
-        ["bash", str(LEVELUP / "bash/helpers.sh"), "--next-cdr"],
+        ["bash", str(LEVELUP / "bash/helpers.sh"), "--mint-cdr", "My Rule", "rule"],
         cwd=project, capture_output=True, text=True,
     )
     assert result.returncode == 0, f"aborted: {result.stderr}"
-    assert result.stdout.strip() == "008"
+    assert result.stdout.strip() == "rule-my-rule"
 
 
-def test_helpers_next_cdr_counts_stemmed_records(levelup_sandbox):
-    """A CDR named with a prose stem must not be skipped.
-
-    Regression guard for the silent-skip class: both twins matched
-    `CDR-<digits>.md`, which requires the number to be immediately followed by
-    `.md`, so `CDR-012-some-long-title.md` never matched and slot 012 was
-    handed out again. The fix landed on main without a test; this pins it the
-    way test_ledger_slot_numbering.py pins the PDR/ADR siblings. Verified to
-    fail against the pre-fix helper (returned 008, expected 013).
-    """
+def test_helpers_mint_cdr_detects_collision(levelup_sandbox):
+    """A CDR named with the same slug must collide and append -2."""
     project, directives = levelup_sandbox
-    (directives / "drafts/cdr/CDR-012-some-long-title.md").write_text(
-        "### Target Module: `src/c.py`\n### Context Type: Example\n", encoding="utf-8"
-    )
-    subprocess.run(["git", "add", "-A"], cwd=directives, capture_output=True, check=True)
-    subprocess.run(["git", "commit", "-qm", "more"], cwd=directives,
-                   capture_output=True, check=True)
+    # rule-existing-rule already exists in directives/drafts/cdr/
     result = subprocess.run(
-        ["bash", str(LEVELUP / "bash/helpers.sh"), "--next-cdr"],
+        ["bash", str(LEVELUP / "bash/helpers.sh"), "--mint-cdr", "Existing Rule", "rule"],
         cwd=project, capture_output=True, text=True,
     )
     assert result.returncode == 0, f"aborted: {result.stderr}"
-    assert result.stdout.strip() == "013"
+    assert result.stdout.strip() == "rule-existing-rule-2"
 
 
 requires_pwsh = pytest.mark.skipif(
@@ -281,7 +267,7 @@ def test_helpers_signal_gate_twin_parity(tmp_path):
 
 
 @requires_pwsh
-def test_helpers_next_cdr_twin_parity(levelup_sandbox):
+def test_helpers_mint_cdr_twin_parity(levelup_sandbox):
     project, _ = levelup_sandbox
     outs = {}
     for name, script in [
@@ -290,28 +276,17 @@ def test_helpers_next_cdr_twin_parity(levelup_sandbox):
     ]:
         cmd = ["bash", str(script)] if name == "sh" else ["pwsh", "-NoProfile", "-File", str(script)]
         result = subprocess.run(
-            [*cmd, "--next-cdr"], cwd=project, capture_output=True, text=True,
+            [*cmd, "--mint-cdr", "New Rule", "rule"], cwd=project, capture_output=True, text=True,
         )
         outs[name] = (result.returncode, result.stdout.strip())
     assert outs["sh"] == outs["ps"], f"twins diverge: {outs}"
-    assert outs["sh"][1] == "008"
+    assert outs["sh"][1] == "rule-new-rule"
 
 
 @requires_pwsh
-def test_helpers_next_cdr_stemmed_twin_parity(levelup_sandbox):
-    """Both twins must count a stemmed CDR -- not merely agree with each other.
-
-    The base parity test above uses only a bare `CDR-007.md`, which the old
-    buggy match also handled, so it could pass while both twins skipped
-    stemmed records in lockstep. This asserts the value too.
-    """
+def test_helpers_mint_cdr_collision_twin_parity(levelup_sandbox):
+    """Both twins must detect collision and append -2."""
     project, directives = levelup_sandbox
-    (directives / "drafts/cdr/CDR-012-some-long-title.md").write_text(
-        "### Target Module: `src/c.py`\n### Context Type: Example\n", encoding="utf-8"
-    )
-    subprocess.run(["git", "add", "-A"], cwd=directives, capture_output=True, check=True)
-    subprocess.run(["git", "commit", "-qm", "more"], cwd=directives,
-                   capture_output=True, check=True)
     outs = {}
     for name, script in [
         ("sh", LEVELUP / "bash/helpers.sh"),
@@ -319,8 +294,8 @@ def test_helpers_next_cdr_stemmed_twin_parity(levelup_sandbox):
     ]:
         cmd = ["bash", str(script)] if name == "sh" else ["pwsh", "-NoProfile", "-File", str(script)]
         result = subprocess.run(
-            [*cmd, "--next-cdr"], cwd=project, capture_output=True, text=True,
+            [*cmd, "--mint-cdr", "Existing Rule", "rule"], cwd=project, capture_output=True, text=True,
         )
         outs[name] = (result.returncode, result.stdout.strip())
     assert outs["sh"] == outs["ps"], f"twins diverge: {outs}"
-    assert outs["sh"][1] == "013"
+    assert outs["sh"][1] == "rule-existing-rule-2"

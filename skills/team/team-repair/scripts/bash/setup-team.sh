@@ -136,7 +136,7 @@ JSONHEAD
     [[ -z "$project_name" ]] && project_name="unknown"
 
     local cdr_ids
-    cdr_ids=$(echo "$content" | grep -oP '"CDR-[0-9]+"' | tr -d '"' | sort -u)
+    cdr_ids=$(echo "$content" | grep -oP '"(CDR-[0-9-]+|(rule|persona|example|constitution)-[a-z0-9-]+)"' | tr -d '"' | sort -u)
 
     for cdr_id in $cdr_ids; do
       local matched applied last_used

@@ -7,8 +7,9 @@ ROOT = Path(__file__).parent.parent.parent
 ARCH_SETUP = ROOT / "skills/architect/architect-clarify/scripts/bash/setup-architect.sh"
 PDR_LIB = ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh"
 CHDR_LIB = ROOT / "skills/change/change-clarify/scripts/bash/chdr-lib.sh"
+CDR_LIB = ROOT / "skills/team/team-levelup/scripts/bash/helpers.sh"
 
-def _run_bash(command, cwd=None, env_extra=None, source_pdr=False, source_chdr=False):
+def _run_bash(command, cwd=None, env_extra=None, source_pdr=False, source_chdr=False, source_cdr=False):
     env = {**os.environ}
     if env_extra:
         env.update(env_extra)
@@ -17,6 +18,8 @@ def _run_bash(command, cwd=None, env_extra=None, source_pdr=False, source_chdr=F
         full_command = f"source {PDR_LIB}; {command}"
     elif source_chdr:
         full_command = f"source {CHDR_LIB}; {command}"
+    elif source_cdr:
+        full_command = f"source {CDR_LIB}; {command}"
     else:
         full_command = f"source {ARCH_SETUP}; {command}"
     return subprocess.run(["bash", "-e", "-c", full_command], cwd=cwd, capture_output=True, text=True, env=env)
@@ -136,3 +139,60 @@ def test_chdr_no_numeric_fallback(tree):
     # Old behavior would have padded '7' -> '007'
     res = _run_bash("get_chdr_by_id 7 memory", cwd=tree, source_chdr=True)
     assert res.returncode != 0
+
+def test_mint_cdr_slug_collision(tree):
+    """Test mint_cdr_slug handles collisions by appending -2."""
+    subprocess.run(["git", "init"], cwd=tree, check=True)
+    subprocess.run(["git", "config", "user.email", "you@example.com"], cwd=tree, check=True)
+    subprocess.run(["git", "config", "user.name", "Your Name"], cwd=tree, check=True)
+    subprocess.run(["git", "checkout", "-b", "main"], cwd=tree, check=True)
+    subprocess.run(["git", "commit", "--allow-empty", "-m", "initial"], cwd=tree, check=True)
+    subprocess.run(["git", "checkout", "--orphan", "adlc"], cwd=tree, check=True)
+    
+    cdr_path = tree / "drafts/cdr/rule-my-rule.md"
+    cdr_path.parent.mkdir(parents=True, exist_ok=True)
+    cdr_path.write_text("# My Rule")
+    subprocess.run(["git", "add", "drafts/cdr/rule-my-rule.md"], cwd=tree, check=True)
+    subprocess.run(["git", "commit", "-m", "add rule"], cwd=tree, check=True)
+
+    # Now run mint_cdr_slug. It should return rule-my-rule-2
+    res = _run_bash('mint_cdr_slug "My Rule" "rule"', cwd=tree, source_cdr=True, env_extra={"TEAM_AI_DIRECTIVES": str(tree)})
+    assert res.returncode == 0
+    assert res.stdout.strip() == "rule-my-rule-2"
+
+def test_cdr_no_numeric_fallback(tree):
+    """Test CDR lookup rejects legacy numeric format."""
+    subprocess.run(["git", "init"], cwd=tree, check=True)
+    subprocess.run(["git", "checkout", "-b", "adlc"], cwd=tree, check=True)
+    
+    cdr_path = tree / "drafts/cdr/CDR-2026-003.md"
+    cdr_path.parent.mkdir(parents=True, exist_ok=True)
+    cdr_path.write_text("# Legacy CDR")
+    subprocess.run(["git", "add", "drafts/cdr/CDR-2026-003.md"], cwd=tree, check=True)
+    subprocess.run(["git", "commit", "-m", "add legacy cdr"], cwd=tree, check=True)
+
+    # Calling next_cdr_number (which should be gone or changed) should not return 004
+    res = _run_bash('next_cdr_number', cwd=tree, source_cdr=True, env_extra={"TEAM_AI_DIRECTIVES": str(tree)})
+    # Expect error because next_cdr_number is replaced by mint_cdr_slug
+    assert res.returncode != 0
+
+def test_mint_cdr_slug_namespace(tree):
+    """Test mint_cdr_slug preserves namespaces rule-/persona-/example-/constitution."""
+    subprocess.run(["git", "init"], cwd=tree, check=True)
+    subprocess.run(["git", "checkout", "-b", "adlc"], cwd=tree, check=True)
+    
+    # rule
+    res = _run_bash('mint_cdr_slug "SQL Injection" "rule"', cwd=tree, source_cdr=True, env_extra={"TEAM_AI_DIRECTIVES": str(tree)})
+    assert res.stdout.strip() == "rule-sql-injection"
+    
+    # persona
+    res = _run_bash('mint_cdr_slug "Kubernetes Specialist" "persona"', cwd=tree, source_cdr=True, env_extra={"TEAM_AI_DIRECTIVES": str(tree)})
+    assert res.stdout.strip() == "persona-kubernetes-specialist"
+    
+    # example
+    res = _run_bash('mint_cdr_slug "JUnit 5 Patterns" "example"', cwd=tree, source_cdr=True, env_extra={"TEAM_AI_DIRECTIVES": str(tree)})
+    assert res.stdout.strip() == "example-junit-5-patterns"
+    
+    # constitution
+    res = _run_bash('mint_cdr_slug "Human Oversight" "constitution"', cwd=tree, source_cdr=True, env_extra={"TEAM_AI_DIRECTIVES": str(tree)})
+    assert res.stdout.strip() == "constitution-human-oversight"

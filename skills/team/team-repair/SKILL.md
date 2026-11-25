@@ -396,10 +396,13 @@ if [[ -f "{TEAM_AI_DIRECTIVES}/CDR.md" ]]; then
     while IFS='|' read -r _ id module _ _ _ _ _; do
         id="${id// /}"
         module="${module// /}"
-        if [[ -n "$id" && -n "$module" && "$id" =~ ^CDR- ]]; then
-            CDR_LOOKUP["$module"]="$id"
+        if [[ -n "$id" && -n "$module" ]]; then
+            # Match legacy CDR-2026-NNN and new slug IDs (rule-*, persona-*, etc.)
+            if [[ "$id" =~ ^CDR-[0-9-]+ || "$id" =~ ^(rule|persona|example|constitution)- ]]; then
+                CDR_LOOKUP["$module"]="$id"
+            fi
         fi
-    done < <(grep "| CDR-" "{TEAM_AI_DIRECTIVES}/CDR.md")
+    done < <(grep -E "\| (CDR-[0-9-]+|(rule|persona|example|constitution)-[a-z0-9-]+)" "{TEAM_AI_DIRECTIVES}/CDR.md")
 fi
 ```
 
@@ -791,10 +794,10 @@ Run the conflict scan over `{TEAM_AI_DIRECTIVES}/context_modules/rules` inline
 
 #### Step 3: Create Conflict CDRs
 
-For each conflict, create a CDR in `adlc branch drafts/cdr/CDR-{NNN}.md`:
+For each conflict, create a CDR in `adlc branch drafts/cdr/{slug}.md`:
 
 ```markdown
-## CDR-{NNN}: Resolve Rule Conflict: {title}
+## {ID}: Resolve Rule Conflict: {title}
 
 ### Status
 **Discovered**
@@ -963,7 +966,7 @@ For every **Keep** (and **Review candidate**) verdict, ask the complementary **p
 
 | Directive | Eval | Pass Rate | Recommendation |
 |---|---|---|---|
-| rules/security/sql_injection.md | evals/CDR-001/ | 100% (6/6) | Delete — model handles this natively now |
+| rules/security/sql_injection.md | evals/rule-prevent-sql-injection/ | 100% (6/6) | Delete — model handles this natively now |
 
 ### Review Candidates (80-99%)
 
@@ -986,10 +989,10 @@ For every **Keep** (and **Review candidate**) verdict, ask the complementary **p
 
 #### Step 6: Create Deletion CDRs (and Promotion CDRs)
 
-For each **Delete candidate** (100% pass rate), create a CDR in `adlc branch drafts/cdr/CDR-{NNN}.md`:
+For each **Delete candidate** (100% pass rate), create a CDR in `adlc branch drafts/cdr/{slug}.md`:
 
 ```markdown
-## CDR-{NNN}: Delete Directive: [Title]
+## {ID}: Delete Directive: [Title]
 
 ### Status: **Discovered**
 
@@ -1020,10 +1023,10 @@ Delete both the directive file and its paired eval goldenset.
 
 Regenerate the local CDR index. Handoff: suggest `/team-levelup` to review deletion candidates.
 
-For each **Promotion candidate**, create a CDR in `adlc branch drafts/cdr/CDR-{NNN}.md`:
+For each **Promotion candidate**, create a CDR in `adlc branch drafts/cdr/{slug}.md`:
 
 ```markdown
-## CDR-{NNN}: Promote Directive to Deterministic Check: [Title]
+## {ID}: Promote Directive to Deterministic Check: [Title]
 
 ### Status: **Discovered**
 
@@ -1153,7 +1156,7 @@ For each violation, record:
 | Error | .adlc/drafts/adr/ADR-001.md | 3 | Missing required field: evidence |
 | Error | .adlc/drafts/adr/ADR-001.md | 0 | Missing required body section: Reason |
 | Error | .adlc/drafts/pdr/PDR-005.md | 7 | Invalid status value: 'draft' — expected one of: proposed, accepted, rejected, deferred, superseded, discovered |
-| Warning | adlc branch drafts/cdr/CDR-010.md | 15 | Rejected Alternatives section is empty for decision type — must list at least one rejected alternative |
+| Warning | adlc branch drafts/cdr/rule-my-rule.md | 15 | Rejected Alternatives section is empty for decision type — must list at least one rejected alternative |
 
 {If no findings:}
 > **All draft files passed validation — no issues found.**

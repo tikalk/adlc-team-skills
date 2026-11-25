@@ -1,0 +1,24 @@
+## CDR Index
+_Total: 67 CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md. Descriptors: CDR.md or /team-discover.
+- constitution
+- examples/airflow: kubernetes-pod-operator-taskgroup
+- examples/prompts: leveling_up, mission_brief, plan, risk_based_test
+- examples/terraform: airbyte-source-modules
+- examples/testing: junit5_class_based, mockito_service_test, pytest_class_based, spring_boot_integration_test
+- personas: cloud_native_platform_architect (CDR-2026-003), data_analyst (CDR-2026-004), devops_engineer (CDR-2026-005), senior_java_developer (CDR-2026-006), senior_python_developer (CDR-2026-007), analytics_engineer (CDR-2026-034), senior_frontend_developer, senior_fullstack_developer
+- rules/architecture: dependency_injection (CDR-2026-008)
+- rules/data: spring_boot_patterns (CDR-2026-009), dbt-pii-anonymization, dbt-unit-testing
+- rules/devops: crossplane_compositions (CDR-2026-010), github_actions (CDR-2026-011), gke_workload_identity (CDR-2026-012), helm_chart_library (CDR-2026-013), helm_packaging (CDR-2026-014), helm_template_helpers (CDR-2026-015), helm_wrapper_charts (CDR-2026-016), secrets_management (CDR-2026-017), argocd_applications, aws_multi_account, ci-ephemeral-resource-cleanup, gitlab-branch-promotion, gitlab_ci_templates, secrets_management_dry, terragrunt_organization
+- rules/frontend/framework: accessibility_seo_performance, frontend_form_management, frontend_internationalization, frontend_rendering_strategies, frontend_routing, frontend_state_management, micro_frontends, responsive_design
+- rules/frontend/style-guides: frontend_component_architecture, frontend_design_systems
+- rules/frontend/testing: frontend_testing_strategies
+- rules/fullstack/framework: fullstack_api_communication, fullstack_auth_patterns, fullstack_bff_pattern, fullstack_observability_error_management, fullstack_repository_strategy
+- rules/fullstack/testing: fullstack_testing_strategies
+- rules/orchestration: airbyte_integration (CDR-2026-018), airflow_dag_patterns (CDR-2026-019)
+- rules/security: prevent_sql_injection, pre_commit_checklist (CDR-2026-020), sql_injection_prevention (CDR-2026-021), frontend_security
+- rules/style-guides/java: google_style_guide (CDR-2026-023), null_safety_and_optional (CDR-2026-024)
+- rules/style-guides/python: pep8_and_docstrings (CDR-2026-025)
+- rules/style-guides: file_organization (CDR-2026-022)
+- rules/testing/java: junit5_best_practices (CDR-2026-026)
+- rules/testing/python: pytest_patterns (CDR-2026-027)
+

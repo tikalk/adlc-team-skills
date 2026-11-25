@@ -34,6 +34,20 @@ jobs:
         if: ${{ env.OPENAI_API_KEY != '' }}
         run: |
           promptfoo eval --config evals/promptfoo/config.js --no-cache
+      - name: CDR routing recall, all shapes (EVAL-018)
+        # Default shapes: shipped + pre-#36 full table + proposed triggers
+        # (30 cases x 3 = 90 calls). --gate fails when the proposed shape
+        # recalls less than the pre-#36 table; the floor matches test.yml's.
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        env:
+          PROMPTFOO_FAILED_TEST_EXIT_CODE: '0'
+          CDR_RECALL_MIN_RECALL: ''
+          CDR_RECALL_MAX_FALSE_POS: ''
+        run: |
+          promptfoo eval --config evals/promptfoo/cdr-recall/config.js --no-cache -o cdr-recall.json
+          python3 evals/promptfoo/cdr-recall/summarize.py cdr-recall.json --gate --shape shipped \
+            ${CDR_RECALL_MIN_RECALL:+--min-recall "$CDR_RECALL_MIN_RECALL"} \
+            ${CDR_RECALL_MAX_FALSE_POS:+--max-false-pos "$CDR_RECALL_MAX_FALSE_POS"}
       - name: Missing key guard
         # The secret disappearing should be a loud failure, not a silent
         # green run that evaluates nothing.

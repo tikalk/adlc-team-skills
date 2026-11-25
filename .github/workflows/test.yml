@@ -78,6 +78,25 @@ jobs:
         if: ${{ env.OPENAI_API_KEY != '' }}
         run: |
           promptfoo eval --config evals/promptfoo/config.js --no-cache
+      - name: CDR routing recall (EVAL-018)
+        # The CDR index boot.sh really ships (rendered live from
+        # evals/promptfoo/cdr-recall/fixture) must keep routing tasks to the
+        # right team rules. Per-case misses don't fail promptfoo
+        # (PROMPTFOO_FAILED_TEST_EXIT_CODE=0); summarize.py's floor is the
+        # gate. CDR_RECALL_MIN_RECALL / CDR_RECALL_MAX_FALSE_POS unset =
+        # BASELINE mode (reports, never fails): set them from the first
+        # CI baseline. Skipped without the key, like Tier 1: a skip is not a pass.
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        env:
+          CDR_RECALL_SHAPES: shipped
+          PROMPTFOO_FAILED_TEST_EXIT_CODE: '0'
+          CDR_RECALL_MIN_RECALL: ''
+          CDR_RECALL_MAX_FALSE_POS: ''
+        run: |
+          promptfoo eval --config evals/promptfoo/cdr-recall/config.js --no-cache -o cdr-recall.json
+          python3 evals/promptfoo/cdr-recall/summarize.py cdr-recall.json --shape shipped \
+            ${CDR_RECALL_MIN_RECALL:+--min-recall "$CDR_RECALL_MIN_RECALL"} \
+            ${CDR_RECALL_MAX_FALSE_POS:+--max-false-pos "$CDR_RECALL_MAX_FALSE_POS"}
 
   ledger-integrity:
     name: Recurrence Ledger Integrity

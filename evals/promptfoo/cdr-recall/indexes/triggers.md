@@ -1,0 +1,90 @@
+## CDR Index
+_Total: 67 CDRs available._ Each line: module (ID): when to use it. Read context_modules/<dir>/<module>.md for a match.
+- examples/airflow:
+  - kubernetes-pod-operator-taskgroup: Use when running dbt or containers from Airflow on Kubernetes (pod operator)
+- examples/prompts:
+  - leveling_up: Use when turning a successful workflow into a reusable team rule
+  - mission_brief: Use when writing a mission brief: goal, success criteria, constraints
+  - plan: Use when turning a mission brief into a step-by-step implementation plan
+  - risk_based_test: Use when writing tests aimed at risks a developer has named
+- examples/terraform:
+  - airbyte-source-modules: Use when defining Airbyte source connectors in Terraform
+- examples/testing:
+  - junit5_class_based: Use when you need a sample JUnit 5 test class with Mockito
+  - mockito_service_test: Use when mocking service dependencies in Java tests (captors, nesting)
+  - pytest_class_based: Use when you need a sample class-based pytest suite for a service
+  - spring_boot_integration_test: Use when writing Spring Boot integration tests for the data layer
+- personas:
+  - analytics_engineer (CDR-2026-034): Use when acting as analytics engineer: dbt models, BigQuery, data transforms
+  - cloud_native_platform_architect (CDR-2026-003): Use when acting as platform architect: Kubernetes, GitOps, platform design
+  - data_analyst (CDR-2026-004): Use when acting as data analyst: SQL queries, dashboards, reports
+  - devops_engineer (CDR-2026-005): Use when acting as DevOps engineer: CI/CD, infra as code, GitOps
+  - senior_frontend_developer: Use when acting as frontend dev: components, state, rendering, UX
+  - senior_fullstack_developer: Use when acting as fullstack dev: UI, backend, API design end to end
+  - senior_java_developer (CDR-2026-006): Use when acting as Java dev: enterprise Java, Spring Boot, tests
+  - senior_python_developer (CDR-2026-007): Use when acting as Python dev: services, data/ML code, tests
+- rules/architecture:
+  - dependency_injection (CDR-2026-008): Use when making services loosely coupled or testable, or wiring dependencies
+- rules/data:
+  - dbt-pii-anonymization: Use when dbt models touch personal data that must be masked outside prod
+  - dbt-unit-testing: Use when writing unit tests for dbt models or mocking their inputs
+  - spring_boot_patterns (CDR-2026-009): Use when designing Spring Boot repositories, data layer config or its tests
+- rules/devops:
+  - argocd_applications: Use when deploying to Kubernetes via GitOps (ArgoCD apps, sync, multi-env)
+  - aws_multi_account: Use when setting up AWS accounts, cross-account roles or keyless CI access
+  - ci-ephemeral-resource-cleanup: Use when a CI job creates cloud resources that must be torn down
+  - crossplane_compositions (CDR-2026-010): Use when provisioning cloud infra from Kubernetes (Crossplane XRDs)
+  - github_actions (CDR-2026-011): Use when writing GitHub Actions workflows or reusable actions
+  - gitlab-branch-promotion: Use when promoting code from staging to production on GitLab
+  - gitlab_ci_templates: Use when writing GitLab CI pipelines or sharing CI steps across repos
+  - gke_workload_identity (CDR-2026-012): Use when a GKE workload needs GCP access without key files
+  - helm_chart_library (CDR-2026-013): Use when many Helm charts repeat the same resources (shared library)
+  - helm_packaging (CDR-2026-014): Use when creating a Helm chart, its values.yaml or ingress
+  - helm_template_helpers (CDR-2026-015): Use when naming or labelling k8s resources in Helm templates
+  - helm_wrapper_charts (CDR-2026-016): Use when customising a third-party Helm chart without forking it
+  - secrets_management (CDR-2026-017): Use when a k8s app needs passwords, API keys or certs (External Secrets)
+  - secrets_management_dry: Use when the same secrets repeat across charts or environments
+  - terragrunt_organization: Use when laying out Terraform/Terragrunt repos, state or per-account config
+- rules/frontend/framework:
+  - accessibility_seo_performance: Use when a web page must be accessible, rank in search or load fast
+  - frontend_form_management: Use when building forms: validation, field state, error messages
+  - frontend_internationalization: Use when a UI must support several languages, locales or translations
+  - frontend_rendering_strategies: Use when choosing SSR, SSG, CSR or ISR for a page or app
+  - frontend_routing: Use when adding pages or navigation: nested routes, guards, lazy loading
+  - frontend_state_management: Use when deciding where UI or server data lives (stores, caching, state)
+  - micro_frontends: Use when splitting a large frontend across teams or independent deploys
+  - responsive_design: Use when a UI must work on mobile and desktop (breakpoints, fluid layout)
+- rules/frontend/style-guides:
+  - frontend_component_architecture: Use when designing or splitting UI components, or making them reusable
+  - frontend_design_systems: Use when styling UI consistently: design tokens, theming, shared components
+- rules/frontend/testing:
+  - frontend_testing_strategies: Use when testing frontend code: unit, integration, e2e or visual tests
+- rules/fullstack/framework:
+  - fullstack_api_communication: Use when frontend calls the backend: REST, GraphQL, data fetching, errors
+  - fullstack_auth_patterns: Use when adding login, sessions, tokens or permissions across UI and API
+  - fullstack_bff_pattern: Use when each client type needs its own API or aggregated backend calls
+  - fullstack_observability_error_management: Use when adding logging, tracing, monitoring or error handling end to end
+  - fullstack_repository_strategy: Use when choosing monorepo vs polyrepo or laying out a fullstack repo
+- rules/fullstack/testing:
+  - fullstack_testing_strategies: Use when testing a feature across UI, API and integrations end to end
+- rules/orchestration:
+  - airbyte_integration (CDR-2026-018): Use when triggering Airbyte syncs or managing Airbyte connections in code
+  - airflow_dag_patterns (CDR-2026-019): Use when writing or structuring Airflow DAGs, tasks or schedules
+- rules/security:
+  - frontend_security: Use when frontend code handles user input, tokens or storage (XSS, CSP)
+  - pre_commit_checklist (CDR-2026-020): Use when about to commit or open a PR: security checks before submitting
+  - prevent_sql_injection: Use when code builds SQL from any input (parameterised queries)
+  - sql_injection_prevention (CDR-2026-021): Use when writing database queries in any language or ORM safely
+- rules/style-guides:
+  - file_organization (CDR-2026-022): Use when creating, splitting or moving any code file (all languages)
+- rules/style-guides/java:
+  - google_style_guide (CDR-2026-023): Use when writing or formatting Java code (Google Java style)
+  - null_safety_and_optional (CDR-2026-024): Use when Java code may return or receive null, or uses Optional
+- rules/style-guides/python:
+  - pep8_and_docstrings (CDR-2026-025): Use when writing or formatting Python code or its docstrings
+- rules/testing/java:
+  - junit5_best_practices (CDR-2026-026): Use when writing Java unit tests with JUnit 5
+- rules/testing/python:
+  - pytest_patterns (CDR-2026-027): Use when writing or organising Python tests with pytest
+- (root)
+  - constitution: Use when any task starts: core team principles for every agent action

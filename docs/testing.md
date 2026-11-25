@@ -56,6 +56,14 @@ that gap — every night, main's full suite runs on the canonical repo. If
 the nightly goes red, the regression came from something merged since the
 previous green night.
 
+The CDR routing recall eval (EVAL-018, `evals/promptfoo/cdr-recall/`) has its
+own config and runs as its own step in both workflows. Its prompts are index
+shapes, and promptfoo runs every test against every prompt, so its cases cannot
+join the main `config.js`. Each PR runs the index boot.sh really ships (30
+calls) against a fixed floor. Nightly also runs the pre-#36 table and the
+proposed triggers (90 calls) and fails if the triggers recall less than the
+table.
+
 ### Adding a criterion
 
 Follow the 5-step recipe in CONTRIBUTING ("Adding an eval criterion"):

@@ -417,3 +417,25 @@ A route names a behavioral class with a deterministic check vehicle (lint/CI/uni
 {"tier": 2, "routes": [{"class": "decidable", "vehicle": "eval", "seed": "event-stream", "evidence": ["failing test"], "runs": 2}]}
 ````
 - **Why it fails**: the property is decidable from the artifact alone; a check is the vehicle, an eval spends judgment where none is needed.
+
+## Criterion EVAL-018: CDR Routing Recall of the Injected Index
+
+**Status**: draft (floor unset — BASELINE mode until the first CI run sets it)
+**Scope**: team-boot injects a CDR index instead of the CDR rows (adlc-workspace#36). The criterion measures whether a model reading only that index, at session start, picks the team rules a task needs. The index under test is the one boot.sh really emits, rendered live by `cdr-recall/render_index.sh` from `cdr-recall/fixture/directives` (a snapshot of tikal-team-ai-directives' `CDR.md`) — never a hand-kept copy, so a change to boot.sh's index shape is measured. 30 tasks in `cdr-recall/cases.json` are phrased the way a user asks, never with the rule's own name; each lists the modules a correct routing must pick (`expect`), related modules that are fine to pick (`allow`), and personas/constitution are always allowed. The grader (`check_cdr_recall.py`) scores recall per case and reports picks outside expect/allow as false positives. It does not grade whether the agent then follows the rule.
+**Description**: Verifies the injected CDR index routes realistic tasks to the right team rules: mean recall at or above the floor, false positives at or below the cap.
+
+**Pass Condition**
+On every PR (`test.yml`, shape `shipped`, 30 calls): mean recall ≥ `CDR_RECALL_MIN_RECALL` and summed false positives ≤ `CDR_RECALL_MAX_FALSE_POS`. Nightly (`evals-nightly.yml`, shapes shipped + pre-#36 full table + proposed triggers, 90 calls) adds: the triggers shape recalls at least as much as the pre-#36 full table.
+
+**Fail Condition**
+Recall below the floor, false positives over the cap, the triggers shape below the full table (nightly), no result rows, or no rows for the gated shape. An errored call scores 0. A run skipped for a missing `OPENAI_API_KEY` is not a pass.
+
+### Pass Example 1
+- **Task**: "Make the names and labels of all Kubernetes resources in our payments chart consistent."
+- **Agent Output**: `helm_template_helpers` (optionally `helm_chart_library`)
+- **Why it passes**: the expected module is picked; the extra pick is in `allow`.
+
+### Fail Example 1
+- **Task**: "Our services are hard to unit test because they create their own collaborators. Make them loosely coupled."
+- **Agent Output**: `junit5_best_practices`
+- **Why it fails**: `dependency_injection` is missed — the rule's name never appears in the task, which is exactly the vague-name case the index must still route.

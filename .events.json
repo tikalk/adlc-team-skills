@@ -3,7 +3,7 @@
     "session_start": [
       {
         "skill": "team-boot",
-        "description": "Bootstrap session with team constitution, CDR index, Class Boots catalog, skills registry, and continuous decision capture guidance",
+        "description": "Bootstrap session with team constitution, CDR topic map, skills registry and pending decisions (static contract lives in AGENTS.md)",
         "timeout": 60
       }
     ],

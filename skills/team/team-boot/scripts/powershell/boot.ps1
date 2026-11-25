@@ -89,12 +89,18 @@ $ContractInAgents = $false
 if (Test-Path $AgentsFile -PathType Leaf) {
     $agentsLines = @()
     try { $agentsLines = @(Get-Content $AgentsFile -ErrorAction Stop) } catch { $agentsLines = @() }
-    $inside = $false; $seen = $false
+    # The sentinel alone is not enough: the section must still carry the
+    # Proportionality Gate and Trust Model headings (a hand-gutted section
+    # falls back to the full text), as in boot.sh.
+    $inside = $false; $seen = $false; $pg = $false; $tm = $false
+    $ord = [StringComparison]::Ordinal
     foreach ($line in $agentsLines) {
         if ($null -eq $line) { continue }
         if ($line.Contains("<!-- TEAM_AI_DIRECTIVES START -->")) { $inside = $true; continue }
-        if ($line.Contains("<!-- TEAM_AI_DIRECTIVES END -->")) { if ($inside -and $seen) { $ContractInAgents = $true }; $inside = $false }
+        if ($line.Contains("<!-- TEAM_AI_DIRECTIVES END -->")) { if ($inside -and $seen -and $pg -and $tm) { $ContractInAgents = $true }; $inside = $false }
         if ($inside -and $line.Contains($ContractSentinel)) { $seen = $true }
+        if ($inside -and $line.StartsWith("### Proportionality Gate", $ord)) { $pg = $true }
+        if ($inside -and $line.StartsWith("### Trust Model", $ord)) { $tm = $true }
     }
 }
 
@@ -107,15 +113,17 @@ if (Test-Path $AgentsFile -PathType Leaf) {
 function Format-CdrTopicMap {
     param([string[]]$Paths)
     $order = New-Object System.Collections.Generic.List[string]
-    $map = @{}
+    # Case-sensitive keys and matches (-c operators) = boot.sh's awk.
+    $map = New-Object 'System.Collections.Generic.Dictionary[string,System.Collections.Generic.List[string]]'
     foreach ($p in $Paths) {
         if ([string]::IsNullOrWhiteSpace($p)) { continue }
         $pf = $p -split "`t", 2
-        $rel = ($pf[0].Trim() -replace '^context_modules/', '') -replace '\.md$', ''
+        $rel = ($pf[0].Trim() -creplace '^context_modules/', '') -creplace '\.md$', ''
+        if (-not $rel) { continue }
         $parts = $rel -split '/'
         $name = $parts[-1]
         # Real CDR-YYYY-NNN IDs stay as lookup handles; slug IDs restate the path.
-        if ($pf.Count -gt 1 -and $pf[1].Trim() -match '^CDR-[0-9]+-[0-9]+$') { $name = "$name ($($pf[1].Trim()))" }
+        if ($pf.Count -gt 1 -and $pf[1].Trim() -cmatch '^CDR-[0-9]+-[0-9]+$') { $name = "$name ($($pf[1].Trim()))" }
         $dir = if ($parts.Count -gt 1) { ($parts[0..($parts.Count - 2)]) -join '/' } else { "" }
         if (-not $map.ContainsKey($dir)) { $order.Add($dir); $map[$dir] = New-Object System.Collections.Generic.List[string] }
         $map[$dir].Add($name)
@@ -134,8 +142,8 @@ $cdrTopicPaths = @()
 if (Test-Path $cdrPath -PathType Leaf) {
     $cdrLines = @(Get-Content $cdrPath | Where-Object { $_ -match '^\|' -and $_ -notmatch '^\|\s*ID\s*\|' -and $_ -notmatch '^\|\s*-' })
     $CdrCount = $cdrLines.Count
-    $CdrSource = "`"$cdrPath`""
-    $cdrTopicPaths = @($cdrLines | ForEach-Object { $cols = $_ -split '\|'; if ($cols.Count -ge 3) { $cols[2].Trim() + "`t" + $cols[1].Trim() } })
+    $CdrSource = "CDR.md"
+    $cdrTopicPaths = @($cdrLines | ForEach-Object { $cols = $_ -split '\|'; if ($cols.Count -ge 3 -and $cols[2].Trim()) { $cols[2].Trim() + "`t" + $cols[1].Trim() } })
 } else {
     # Fallback: per-dir index.md files (OKF §8), items "* [Title](rel/path.md) - desc"
     $CdrSources = @()
@@ -144,15 +152,16 @@ if (Test-Path $cdrPath -PathType Leaf) {
         if (Test-Path $idx -PathType Leaf) {
             $items = @(Get-Content $idx | Where-Object { $_ -match '^\* \[' })
             $CdrCount += $items.Count
-            $CdrSources += "`"$idx`""
+            $CdrSources += "index.md"
             foreach ($it in $items) { if ($it -match '^\* \[[^\]]*\]\(([^)]*)\)') { $cdrTopicPaths += "$dir/$($matches[1])" } }
         }
     }
-    $CdrSource = $CdrSources -join " "
+    $CdrSource = $CdrSources -join ","
 }
 if ($CdrSource) {
     $CdrScope = "$CdrCount"
-    Write-Output "_Total: $CdrCount CDRs available._ Match the task to a topic, read context_modules/<topic>/<name>.md; rows: ``grep -i '<kw>' $CdrSource`` or /team-discover."
+    # Plain text, no ready-to-run command (the path comes from project config).
+    Write-Output "_Total: $CdrCount CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md. Descriptors: CDR.md or /team-discover."
     foreach ($t in (Format-CdrTopicMap -Paths $cdrTopicPaths)) { if ($t) { Write-Output $t } }
 } else {
     # Loud degradation: a missing index is never an empty record set.
@@ -262,7 +271,8 @@ $mcpPath = Join-Path $TEAM_AI_DIRECTIVES ".mcp.json"
 if (Test-Path $mcpPath) {
     $mcp = $null
     try { $mcp = Get-Content $mcpPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop } catch { $mcp = $null }
-    if ($mcp -and $mcp.mcpServers) { foreach ($name in $mcp.mcpServers.PSObject.Properties.Name) { Write-Output "- $name" } }
+    # Malformed or key-less file → "(none)", as boot.sh's failed jq pipeline.
+    if ($mcp -and $mcp.mcpServers) { foreach ($name in $mcp.mcpServers.PSObject.Properties.Name) { Write-Output "- $name" } } else { Write-Output "(none)" }
 } else { Write-Output "(none)" }
 Write-Output ""
 

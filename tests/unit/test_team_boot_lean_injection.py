@@ -46,6 +46,8 @@ AGENTS_SECTION = (
     "<!-- team-boot-contract: lean-v1 -->\n"
     "# Team AI Directives\n\n"
     "## Class Boots\n\n(contract lives here)\n"
+    "### Proportionality Gate\n\n(gate)\n"
+    "### Trust Model\n\n(trust)\n"
     "<!-- TEAM_AI_DIRECTIVES END -->\n"
 )
 SKILLS = {
@@ -163,9 +165,12 @@ def test_agents_section_present_skips_static_contract(tmp_path, run):
      "<!-- TEAM_AI_DIRECTIVES START -->\n<!-- team-boot-contract: lean-v1 -->\nunterminated\n",
      AGENTS_SECTION.replace("<!-- team-boot-contract: lean-v1 -->\n", ""),
      "<!-- TEAM_AI_DIRECTIVES START -->\nx\n<!-- TEAM_AI_DIRECTIVES END -->\n<!-- team-boot-contract: lean-v1 -->\n",
-     ""],
+     "",
+     AGENTS_SECTION.replace("### Trust Model\n", ""),
+     AGENTS_SECTION.replace("### Proportionality Gate\n", "")],
     ids=["no-agents-md", "no-section", "no-end-marker", "pre-sentinel-section",
-         "sentinel-outside-section", "empty-agents-md"],
+         "sentinel-outside-section", "empty-agents-md",
+         "gutted-no-trust-model", "gutted-no-proportionality-gate"],
 )
 @pytest.mark.parametrize("run", RUNNERS)
 def test_agents_section_absent_emits_full_static_sections(tmp_path, run, agents_md):
@@ -235,6 +240,36 @@ def test_team_setup_section_carries_sentinel_and_moved_blocks_verbatim(tmp_path)
     # The generated section must switch the boot onto the lean path.
     lean = _run_sh(_setup(tmp_path / "lean", agents_md=agents))
     assert "## Team Contract" in lean
+
+
+def test_team_setup_ps1_section_switches_boot_to_lean(tmp_path):
+    """Run the real ps1 generator (not a source grep) and feed its AGENTS.md
+    to both twins: it must carry the sentinel, the rails and every trigger."""
+    if shutil.which("pwsh") is None:
+        pytest.skip("pwsh not installed")
+    project = _setup(tmp_path, agents_md=None)
+    r = subprocess.run(
+        ["pwsh", "-NoProfile", "-Command",
+         f". '{HELPERS_PS1}'; Invoke-ProjectAgentsInjection -ProjectRoot '{project}'"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert r.returncode == 0, r.stderr
+    agents = (project / "AGENTS.md").read_text()
+    for needle in ("<!-- team-boot-contract: lean-v1 -->", "### Proportionality Gate",
+                   "### Trust Model", "Workaround adopted", "Operational constraint"):
+        assert needle in agents, needle
+    assert "## Team Contract" in _run_ps1(project)
+
+
+@pytest.mark.parametrize("helpers", [HELPERS_SH, HELPERS_PS1], ids=["sh", "ps1"])
+def test_team_setup_section_keeps_every_detection_trigger(helpers):
+    """The lean path skips the Detection Triggers table, so the generated
+    section must still name every trigger the fallback table carries."""
+    src = helpers.read_text()
+    for trigger in ("Tech stack", "Feature scope", "Reusable team rule",
+                    "Revert/hotfix", "Workaround adopted", "Operational constraint",
+                    "change abandoned", "Eval criterion"):
+        assert trigger in src, trigger
 
 
 def test_team_setup_ps1_section_carries_sentinel_and_moved_blocks():
@@ -338,9 +373,15 @@ def test_cdr_topic_map_from_per_dir_index(tmp_path, run):
 
 
 @pytest.mark.parametrize("run", RUNNERS)
-def test_cdr_grep_pointer_quotes_the_path(tmp_path, run):
+def test_cdr_pointer_is_plain_text_not_a_shell_command(tmp_path, run):
+    """The directives path comes from project config: never embed it in a
+    ready-to-run command (a `$(...)` in the path would execute on paste)."""
+    directives = tmp_path / "directives"
     out = run(_setup(tmp_path, agents_md=AGENTS_SECTION))
-    assert f"grep -i '<kw>' \"{tmp_path / 'directives' / 'CDR.md'}\"" in out
+    total = next(l for l in out.splitlines() if l.startswith("_Total: 2 CDRs"))
+    assert "grep" not in total and "`" not in total
+    assert str(directives) not in total
+    assert "/team-discover" in total
 
 
 def _assert_full_text(out: str):
@@ -398,4 +439,6 @@ def test_malformed_registry_never_loses_injection(tmp_path, run, bad):
     (tmp_path / "directives" / bad).write_text("{not json")
     out = run(project)  # runner asserts rc == 0
     assert "## Team Contract" in out
+    if bad == ".mcp.json":  # both twins: unreadable registry → "(none)"
+        assert "## MCP Servers\n(none)\n" in out
     assert "never an empty record set" in out

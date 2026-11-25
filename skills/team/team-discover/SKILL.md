@@ -1,6 +1,6 @@
 ---
 name: team-discover
-description: Use when explicit manual re-discovery of team context modules is wanted beyond the injected CDR index (/team-discover) — produces a structured match table with relevance assessments.
+description: Use when explicit manual re-discovery of team context modules is wanted beyond the injected CDR topic map (/team-discover) — produces a structured match table with relevance assessments.
 ---
 
 # team-discover

@@ -478,7 +478,7 @@ instead (the dual-read order applies: \`docs/adlc/memory\` first, legacy
 | architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
 | product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
 | change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-specify (mining: /change-init) |
-| team-levelup | CDR module bodies (team-ai-directives) | CDR descriptor match; reusable team pattern | /team-levelup |
+| team-levelup | CDR module bodies (team-ai-directives) | CDR topic match; reusable team pattern | /team-levelup |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
 
 Each class boot emits its class context section and its own searched line (_Searched N records, K matched._). Pull rule bodies on demand.
@@ -504,6 +504,8 @@ Detect decisions as they emerge and suggest the matching capture skill — never
 - Feature scope / persona / monetization → PDR → /product-specify
 - Reusable team rule / pattern → CDR → /team-levelup
 - Revert/hotfix rationale / issue-linked commit → ChDR → /change-specify (mined history: /change-init)
+- Workaround adopted ("X for now because Y") / change abandoned ("simplifying X but Y blocks it") → ChDR → /change-specify
+- Operational constraint ("only works because Z") → ADR → /architect-specify
 - Eval criterion discovered → Eval → /evals-specify
 
 Maintain the decision rows in the same table above (Status pending/captured/clarified/handed off + Clarify skill); with no pending decisions, emit the heading + the counts line only — no table.

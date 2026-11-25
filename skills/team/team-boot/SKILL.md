@@ -12,10 +12,11 @@ scripts:
 
 Assembles team AI directives context and injects it into the system prompt
 at session start. The injection carries the CDR **count and a topic map** —
-every CDR's module path grouped by directory, with its `CDR-YYYY-NNN` ID when it has one (`- rules/devops: helm_wrapper_charts (CDR-2026-001), …`) —
+every CDR's module path grouped by directory, with its `CDR-YYYY-NNN` ID when it has one (`- rules/devops: helm_wrapper_charts (CDR-2026-016), …`) —
 never CDR rows. The model matches the task to a topic by meaning, then reads
-`context_modules/<topic>/<name>.md`; row details load via grep `CDR.md` or
-`/team-discover`.
+`context_modules/<topic>/<name>.md`; descriptors load on demand from
+`CDR.md` or `/team-discover`. The pointer names no path in a shell command:
+the directives path comes from project config.
 
 team-boot injects only the **always-relevant, dynamic** layer: constitution
 titles, scope counts, the CDR topic map, the skills registry (every skill
@@ -25,9 +26,13 @@ with its trigger), MCP servers, and pending decisions.
 Context & Decisions format, Decision Capture rules, Proportionality Gate,
 Trust Model — has one home: the `AGENTS.md` TEAM_AI_DIRECTIVES section that
 `team-setup` writes (loaded every session). When that section carries the
-`<!-- team-boot-contract: lean-v1 -->` sentinel, the boot emits a one-line
-pointer to it instead of repeating those blocks. Without the sentinel (no
-`AGENTS.md`, no section, or a section from an older `team-setup`), the boot
+`<!-- team-boot-contract: lean-v1 -->` sentinel and still carries the
+`### Proportionality Gate` and `### Trust Model` headings, the boot emits a
+one-line pointer to it instead of repeating those blocks. The section's
+Decision Capture list names every trigger of the fallback Detection
+Triggers table (incl. workaround, operational constraint, change abandoned).
+Without that (no `AGENTS.md`, no section, a section from an older
+`team-setup`, or a section whose rails were deleted), the boot
 emits the static blocks in full, so no rail is ever silently dropped; re-run
 `team-setup` to upgrade the section. A missing CDR index prints
 `CDR index unavailable — run /team-diagnose` — never an empty record set.

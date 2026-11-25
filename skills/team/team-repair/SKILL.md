@@ -167,8 +167,10 @@ Output: `[OK]` or `[FAIL]` with reason
    - A reference to team AI directives context (constitution, CDR index)
    - The Class Boots catalog (architect-boot / product-boot / change-boot / team-boot / tech-radar-boot)
    - The compact Decision Capture triggers + Team Context & Decisions contract (single merged table; Status carries the accepted-vs-pending distinction)
+   - The lean-contract sentinel `<!-- team-boot-contract: lean-v1 -->` plus the `### Proportionality Gate` and `### Trust Model` headings — without all three, team-boot emits the full static contract every session (safe, but ~7K chars larger)
 4. Output:
    - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
+   - `[WARN]` — Managed section predates the lean contract (no sentinel, or Proportionality Gate / Trust Model missing) — re-run team-setup to regenerate it
    - `[WARN]` — Project AGENTS.md exists but is missing the managed section (agents won't auto-invoke `team-boot`)
    - `[INFO]` — Project AGENTS.md doesn't exist yet (first-time setup)
 

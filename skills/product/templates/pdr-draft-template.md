@@ -13,7 +13,7 @@ source: ""  # where the rationale came from
 revisit-when: ""  # concrete trigger or "N/A"
 ---
 
-# PDR-NNN: {short title}
+# PDR-slug-id: {short title}
 
 ## Context
 

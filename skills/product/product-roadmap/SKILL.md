@@ -63,8 +63,8 @@ ps: scripts/powershell/setup-product-roadmap.ps1
 **Query issue states** — for each issue URL, use the matching MCP tool to get state (open/closed/in-progress):
 
 ```
-GitHub:   gh issue view NNN --json state,title,labels  (CLI fallback if MCP unavailable)
-GitLab:   glab issue view NNN                            (CLI fallback)
+GitHub:   gh issue view {number} --json state,title,labels  (CLI fallback if MCP unavailable)
+GitLab:   glab issue view {number}                            (CLI fallback)
 Jira:     jira issue view ISSUE-KEY                      (CLI fallback)
 Linear:   linear issue view ISSUE-ID                     (CLI fallback)
 ```

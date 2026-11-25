@@ -269,7 +269,7 @@ D) Cancel — Stop execution
 ### 6.4 User Journey [MERMAID journey]
 
 ## 7. Functional Requirements [CHECKPOINT]
-[User stories, REQ-XXX IDs, priority matrix]
+[User stories, REQ-slug-id IDs, priority matrix]
 ### 7.4 Requirement Dependencies [MERMAID flowchart LR]
 ### 7.5 Feature Dependencies [MERMAID flowchart LR]
 
@@ -390,7 +390,7 @@ bash scripts/bash/setup-product-implement.sh --json
 |---|---|---|
 | `id_allocation` | PDR ID scheme (`PDR-{slug}`) | `slug` |
 | `next_prd_section` | `## N.` delta heading in PRD.md | `27` |
-| `next_req_id` | `REQ-NNN` | `217` |
+| `next_req_id` | `REQ-slug-id` | `auth-flow` |
 | `next_feature_number` | `\| N \|` Feature row | `70` |
 
 The setup script vendors these scans (scripts stay skill-local), so the numbers

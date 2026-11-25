@@ -114,7 +114,7 @@ decision rows in the same 6-column table:
 
 | ID | Name | Type | Rel | Status | Clarify |
 |--|--|--|--|--|--|
-| CDR-YYYY-NNN | <name> | <type> | <relevance> | in use | — |
+| rule-naming-conventions | <name> | <type> | <relevance> | in use | — |
 | — | <decision> | <ADR/PDR/CDR/ChDR/Eval> | <trigger> | pending | <clarify skill> |
 
 _Scope: N CDRs · A ADRs · P PDRs · C ChDRs · E evals · M skills — J rows shown · Unrecorded: N pending · Unclarified: M captured drafts._

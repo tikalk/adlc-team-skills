@@ -84,7 +84,7 @@ Create PDRs for:
 ### PDR Format with Cross-Area Metadata
 
 ```markdown
-## PDR-{NNN}: {Pattern Name}
+## PDR-{slug}: {Pattern Name}
 
 ### Status
 **Discovered**
@@ -209,7 +209,7 @@ Update state.json:
 }
 ```
 
-Write PDRs to `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{NNN}.md` with:
+Write PDRs to `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{slug}.md` with:
 - All generated PDRs
 - Inconsistency flags embedded in relevant PDRs
 - Cross-feature-area analysis summary

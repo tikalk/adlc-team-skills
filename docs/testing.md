@@ -59,10 +59,10 @@ previous green night.
 The CDR routing recall eval (EVAL-018, `evals/promptfoo/cdr-recall/`) has its
 own config and runs as its own step in both workflows. Its prompts are index
 shapes, and promptfoo runs every test against every prompt, so its cases cannot
-join the main `config.js`. Each PR runs the index boot.sh really ships (30
-calls) against a fixed floor. Nightly also runs the pre-#36 table and the
-proposed triggers (90 calls) and fails if the triggers recall less than the
-table.
+join the main `config.js`. Each PR runs the index boot.sh really ships (one
+call per case) against a fixed floor. Nightly also runs the pre-#36 table and
+the names-only topic map (3 calls per case) and fails if the shipped index
+recalls less than the table.
 
 ### Adding a criterion
 

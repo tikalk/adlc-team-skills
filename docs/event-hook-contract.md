@@ -43,7 +43,7 @@ Two sides, two repos:
   (relative path) and resolves `team_ai_directives`.
 - **Output** (stdout): the lean directives index wrapped in
   `<EXTREMELY_IMPORTANT>` tags — constitution titles, scope counts, the CDR
-  count + topic map (no CDR rows), the skills registry, MCP servers and
+  count + topic map with one "Use when" trigger per record (no CDR rows), the skills registry, MCP servers and
   pending decisions. The static contract (Class Boots catalog, Team Context &
   Decisions, Decision Capture, Proportionality Gate, Trust Model) is emitted
   only when the project `AGENTS.md` lacks the lean-v1 contract section.

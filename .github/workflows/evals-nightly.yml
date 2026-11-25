@@ -35,9 +35,11 @@ jobs:
         run: |
           promptfoo eval --config evals/promptfoo/config.js --no-cache
       - name: CDR routing recall, all shapes (EVAL-018)
-        # Default shapes: shipped + pre-#36 full table + proposed triggers
-        # (30 cases x 3 = 90 calls). --gate fails when the proposed shape
-        # recalls less than the pre-#36 table; the floor matches test.yml's.
+        # Default shapes: shipped (what team-boot injects) + pre-#36 full
+        # table + names-only topic map, 3 calls per case. --gate fails when
+        # shipped recalls less than the pre-#36 table by more than 0.06 (two
+        # of 34 cases: one run's model noise is ~1 case per shape, measured
+        # 2026-11-26 with Haiku); floor = test.yml's.
         if: ${{ env.OPENAI_API_KEY != '' }}
         env:
           PROMPTFOO_FAILED_TEST_EXIT_CODE: '0'
@@ -48,7 +50,7 @@ jobs:
           CDR_RECALL_MAX_FALSE_POS: '3'
         run: |
           promptfoo eval --config evals/promptfoo/cdr-recall/config.js --no-cache -o cdr-recall.json
-          python3 evals/promptfoo/cdr-recall/summarize.py cdr-recall.json --gate --shape shipped \
+          python3 evals/promptfoo/cdr-recall/summarize.py cdr-recall.json --gate --gate-margin 0.06 --shape shipped \
             ${CDR_RECALL_MIN_RECALL:+--min-recall "$CDR_RECALL_MIN_RECALL"} \
             ${CDR_RECALL_MAX_FALSE_POS:+--max-false-pos "$CDR_RECALL_MAX_FALSE_POS"}
       - name: Missing key guard

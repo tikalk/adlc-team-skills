@@ -12,8 +12,14 @@ scripts:
 
 Assembles team AI directives context and injects it into the system prompt
 at session start. The injection carries the CDR **count and a topic map** —
-every CDR's module path grouped by directory, with its `CDR-YYYY-NNN` ID when it has one (`- rules/devops: helm_wrapper_charts (CDR-2026-016), …`) —
-never CDR rows. The model matches the task to a topic by meaning, then reads
+every CDR's module path grouped by directory, with its `CDR-YYYY-NNN` ID when it has one —
+never CDR rows. When `CDR.md` has a `Use When` column (team-repair writes it
+from each module's `use_when:`), each record gets its own line with that
+trigger (`  - helm_wrapper_charts (CDR-2026-016): Use when customising a
+third-party Helm chart without forking it`), so a vaguely named rule is still
+matched by task wording; without the column a directory stays one line of
+names (`- rules/devops: helm_wrapper_charts (CDR-2026-016), …`). Descriptions
+are never injected. Routing recall is gated in CI (EVAL-018). The model matches the task to a topic by meaning, then reads
 `context_modules/<topic>/<name>.md`; descriptors load on demand from
 `CDR.md` or `/team-discover`. The pointer names no path in a shell command:
 the directives path comes from project config.

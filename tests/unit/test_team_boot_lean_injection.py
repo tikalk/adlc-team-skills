@@ -442,3 +442,70 @@ def test_malformed_registry_never_loses_injection(tmp_path, run, bad):
     if bad == ".mcp.json":  # both twins: unreadable registry → "(none)"
         assert "## MCP Servers\n(none)\n" in out
     assert "never an empty record set" in out
+
+
+# --- "Use when" triggers (kanfil, #203: a name alone gives no words to match by)
+
+TRIGGER_CDR = (
+    "# CDR\n\n| ID | Path | Type | Description | Generated | Verified | Age | Status | Use When |\n"
+    "|---|---|---|---|---|---|---|---|---|\n"
+    "| CDR-2026-016 | context_modules/rules/devops/helm_wrapper_charts.md | Rule | wrapper descr | d | d | 0d | stable"
+    " | Use when customising a third-party Helm chart without forking it |\n"
+    "| CDR-2026-017 | context_modules/rules/devops/argocd_applications.md | Rule | argo descr | d | d | 0d | stable"
+    " | Use when deploying to Kubernetes via GitOps |\n"
+    "| rule-x | context_modules/rules/devops/no_trigger.md | Rule | bare descr | d | d | 0d | stable |  |\n"
+    "| CDR-2026-002 | context_modules/personas/devops_engineer.md | Persona | persona descr | d | d | 0d | stable"
+    " | Use when acting as DevOps engineer: CI/CD, IaC |\n"
+    "| constitution | context_modules/constitution.md | Constitution | const descr | d | d | 0d | stable"
+    " | Use when any task starts |\n"
+    "| rule-y | context_modules/rules/python/long.md | Rule | long descr | d | d | 0d | stable | Use when " + "x" * 130 + " |\n"
+)
+TRIGGER_LINES = [
+    "- constitution: Use when any task starts",
+    "- personas:",
+    "  - devops_engineer (CDR-2026-002): Use when acting as DevOps engineer: CI/CD, IaC",
+    "- rules/devops:",
+    "  - helm_wrapper_charts (CDR-2026-016): Use when customising a third-party Helm chart without forking it",
+    "  - argocd_applications (CDR-2026-017): Use when deploying to Kubernetes via GitOps",
+    "  - no_trigger",
+    "- rules/python:",
+    "  - long: Use when " + "x" * 108 + "...",
+]
+
+
+def _cdr_block(out: str) -> list:
+    lines = out.splitlines()
+    i = lines.index("## CDR Index")
+    j = next(k for k in range(i + 2, len(lines)) if lines[k].startswith("#") or not lines[k].strip())
+    return lines[i + 2:j]
+
+
+@pytest.mark.parametrize("agents_md", [AGENTS_SECTION, None], ids=["lean", "fallback"])
+@pytest.mark.parametrize("run", RUNNERS)
+def test_use_when_column_gives_one_trigger_line_per_record(tmp_path, run, agents_md):
+    project = _setup(tmp_path, agents_md=agents_md)
+    (tmp_path / "directives" / "CDR.md").write_text(TRIGGER_CDR)
+    out = run(project)
+    assert _cdr_block(out) == TRIGGER_LINES
+    assert "_Total: 6 CDRs available._" in out
+    for d in ("wrapper descr", "argo descr", "bare descr", "persona descr", "const descr"):
+        assert d not in out  # descriptions are never injected
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_use_when_column_found_by_header_name_not_position(tmp_path, run):
+    project = _setup(tmp_path, agents_md=AGENTS_SECTION)
+    (tmp_path / "directives" / "CDR.md").write_text(
+        "| ID | Path | Use When | Type |\n|---|---|---|---|\n"
+        "| CDR-2026-017 | context_modules/rules/devops/argocd_applications.md | Use when deploying via GitOps | Rule |\n"
+    )
+    assert _cdr_block(run(project)) == [
+        "- rules/devops:", "  - argocd_applications (CDR-2026-017): Use when deploying via GitOps"]
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_no_use_when_column_keeps_one_line_topic_map(tmp_path, run):
+    """A CDR.md from before the column (or a team-repair not yet re-run)
+    keeps the names-only map, never descriptions."""
+    out = run(_setup(tmp_path, agents_md=AGENTS_SECTION))
+    assert _cdr_block(out) == list(TOPIC_LINES)

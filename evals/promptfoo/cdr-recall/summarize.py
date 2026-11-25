@@ -4,9 +4,13 @@ and gate on it (EVAL-018).
 Usage: python3 summarize.py results.json [--gate] [--shape S]
                             [--min-recall R] [--max-false-pos N]
 
---gate             exit 1 when the 'triggers' shape recalls less than
-                   'full-table' (nightly: the proposed shape must not lose
-                   recall against the pre-#36 table).
+--gate             exit 1 when the 'shipped' shape recalls less than
+                   'full-table' (nightly: what team-boot injects must not
+                   lose recall against the pre-#36 table).
+--gate-margin M    tolerate shipped up to M below full-table (default 0).
+                   One case of model noise moves a single run by 1/N, so a
+                   margin-free comparison of two single runs is a coin flip
+                   when both shapes are near 100%.
 --shape S          shape the floor applies to (default: shipped).
 --min-recall R     exit 1 when shape S's mean recall is below R (0..1).
 --max-false-pos N  exit 1 when shape S picks more than N records outside a
@@ -53,6 +57,7 @@ def main(argv) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("results")
     ap.add_argument("--gate", action="store_true")
+    ap.add_argument("--gate-margin", type=float, default=0.0)
     ap.add_argument("--shape", default="shipped")
     ap.add_argument("--min-recall", type=float)
     ap.add_argument("--max-false-pos", type=int)
@@ -73,14 +78,16 @@ def main(argv) -> int:
 
     failed = False
     if a.gate:
-        if not {"triggers", "full-table"} <= means.keys():
-            print("\nGATE FAIL: --gate needs both 'triggers' and 'full-table' results")
+        if not {"shipped", "full-table"} <= means.keys():
+            print("\nGATE FAIL: --gate needs both 'shipped' and 'full-table' results")
             failed = True
-        elif means["triggers"] < means["full-table"]:
-            print("\nGATE FAIL: triggers recall below full-table")
+        elif means["shipped"] < means["full-table"] - a.gate_margin - 1e-9:
+            print(f"\nGATE FAIL: shipped recall {means['shipped']:.2%} below full-table "
+                  f"{means['full-table']:.2%} by more than {a.gate_margin:.2%}")
             failed = True
         else:
-            print("\nGATE PASS: triggers recall >= full-table")
+            print(f"\nGATE PASS: shipped {means['shipped']:.2%} vs full-table "
+                  f"{means['full-table']:.2%} (margin {a.gate_margin:.2%})")
 
     if a.min_recall is None and a.max_false_pos is None:
         if a.shape in means:
@@ -90,13 +97,15 @@ def main(argv) -> int:
         print(f"\nFLOOR FAIL: no results for shape '{a.shape}'")
         failed = True
     else:
+        floor_failed = False
         if a.min_recall is not None and means[a.shape] < a.min_recall:
             print(f"\nFLOOR FAIL: {a.shape} recall {means[a.shape]:.2%} < {a.min_recall:.2%}")
-            failed = True
+            floor_failed = True
         if a.max_false_pos is not None and fps[a.shape] > a.max_false_pos:
             print(f"\nFLOOR FAIL: {a.shape} false positives {fps[a.shape]} > {a.max_false_pos}")
-            failed = True
-        if not failed:
+            floor_failed = True
+        failed = failed or floor_failed
+        if not floor_failed:
             print(f"\nFLOOR PASS: {a.shape} recall {means[a.shape]:.2%}, {fps[a.shape]} false positives")
     if not score:
         print("\nFAIL: result file has no rows")

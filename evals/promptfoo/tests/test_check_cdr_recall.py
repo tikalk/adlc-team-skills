@@ -97,8 +97,8 @@ def test_render_index_emits_boot_cdr_index():
     out = subprocess.run(["bash", str(RECALL / "render_index.sh")],
                          capture_output=True, text=True, timeout=30, check=True).stdout
     assert out.startswith("## CDR Index\n")
-    assert "_Total: 67 CDRs available._" in out
-    assert "helm_template_helpers" in out
+    assert "_Total: 71 CDRs available._" in out
+    assert "  - helm_template_helpers (CDR-2026-015): Use when " in out
     assert "## " not in out.split("\n", 1)[1], "render leaked past the CDR Index block"
 
 
@@ -144,7 +144,7 @@ def test_floor_counts_false_positives(tmp_path):
 
 
 def test_floor_on_missing_shape_fails(tmp_path):
-    p = _results(tmp_path, [("triggers", 1.0, "")])
+    p = _results(tmp_path, [("full-table", 1.0, "")])
     assert _run(p, "--min-recall", "0.5") == 1
 
 
@@ -160,11 +160,27 @@ def test_errored_row_scores_zero(tmp_path):
     assert _run(str(p), "--min-recall", "0.5") == 1
 
 
-@pytest.mark.parametrize("trig,table,rc", [(1.0, 0.9, 0), (0.8, 0.9, 1)])
-def test_gate_triggers_vs_full_table(tmp_path, trig, table, rc):
-    p = _results(tmp_path, [("triggers", trig, ""), ("full-table", table, "")])
+@pytest.mark.parametrize("shipped,table,rc", [(1.0, 0.9, 0), (0.8, 0.9, 1)])
+def test_gate_shipped_vs_full_table(tmp_path, shipped, table, rc):
+    p = _results(tmp_path, [("shipped", shipped, ""), ("full-table", table, "")])
     assert _run(p, "--gate") == rc
 
 
 def test_gate_without_both_shapes_fails(tmp_path):
     assert _run(_results(tmp_path, [("shipped", 1.0, "")]), "--gate") == 1
+    assert _run(_results(tmp_path, [("full-table", 1.0, "")]), "--gate") == 1
+
+
+def test_gate_margin_tolerates_one_case_of_noise(tmp_path):
+    p = _results(tmp_path, [("shipped", 0.97, ""), ("full-table", 1.0, "")])
+    assert _run(p, "--gate") == 1
+    assert _run(p, "--gate", "--gate-margin", "0.06") == 0
+    assert _run(_results(tmp_path, [("shipped", 0.9, ""), ("full-table", 1.0, "")]),
+                "--gate", "--gate-margin", "0.06") == 1
+
+
+def test_floor_verdict_printed_even_when_gate_fails(tmp_path, capsys):
+    p = _results(tmp_path, [("shipped", 0.97, ""), ("full-table", 1.0, "")])
+    assert _run(p, "--gate", "--min-recall", "0.9") == 1
+    out = capsys.readouterr().out
+    assert "GATE FAIL" in out and "FLOOR PASS" in out

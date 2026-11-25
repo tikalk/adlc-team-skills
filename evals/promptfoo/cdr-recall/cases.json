@@ -17,13 +17,13 @@
     {"id": "aws-accounts", "task": "Set up separate AWS accounts for dev and prod with a central account for CI deploys.", "expect": ["aws_multi_account"], "allow": ["terragrunt_organization"]},
     {"id": "tf-layout", "task": "Restructure our Terraform so modules are separate from per-environment config and state.", "expect": ["terragrunt_organization"], "allow": ["aws_multi_account"]},
     {"id": "crossplane", "task": "Let app teams request a Postgres database on any cloud by applying a Kubernetes manifest.", "expect": ["crossplane_compositions"], "allow": []},
-    {"id": "sql-safe", "task": "This endpoint builds a WHERE clause by concatenating the search string. Fix it.", "expect": ["sql_injection_prevention", "prevent_sql_injection"], "any_of": true, "allow": []},
+    {"id": "sql-safe", "task": "This endpoint builds a WHERE clause by concatenating the search string. Fix it.", "expect": ["sql_injection_prevention", "prevent_sql_injection"], "any_of": true, "allow": ["api_security_checklist"]},
     {"id": "xss", "task": "We render user comments as HTML in the React app. Make that safe.", "expect": ["frontend_security"], "allow": ["frontend_component_architecture"]},
-    {"id": "login", "task": "Add login with refresh tokens and role-based permissions to the web app and its API.", "expect": ["fullstack_auth_patterns"], "allow": ["frontend_security", "fullstack_api_communication"]},
+    {"id": "login", "task": "Add login with refresh tokens and role-based permissions to the web app and its API.", "expect": ["fullstack_auth_patterns"], "allow": ["api_security_checklist", "frontend_security", "fullstack_api_communication"]},
     {"id": "i18n", "task": "The dashboard must be available in Hebrew and German.", "expect": ["frontend_internationalization"], "allow": ["responsive_design"]},
     {"id": "forms", "task": "Build the signup form with field validation and inline error messages.", "expect": ["frontend_form_management"], "allow": ["accessibility_seo_performance", "frontend_component_architecture"]},
     {"id": "mobile-layout", "task": "The checkout page breaks on phones. Make it work on small screens.", "expect": ["responsive_design"], "allow": ["accessibility_seo_performance"]},
-    {"id": "perf-seo", "task": "The marketing site is slow and doesn't show up well in Google.", "expect": ["accessibility_seo_performance"], "allow": ["frontend_rendering_strategies"]},
+    {"id": "perf-seo", "task": "The marketing site is slow and doesn't show up well in Google.", "expect": ["accessibility_seo_performance"], "allow": ["frontend_performance_checklist", "frontend_rendering_strategies"]},
     {"id": "observability", "task": "When a request fails we can't tell whether the UI or the backend broke. Add tracing and error reporting.", "expect": ["fullstack_observability_error_management"], "allow": []},
     {"id": "dbt-pii", "task": "Developers see real customer emails in the dev warehouse. Hide them outside production.", "expect": ["dbt-pii-anonymization"], "allow": ["analytics_engineer"]},
     {"id": "dbt-test", "task": "Add tests for the revenue model in our dbt project with fake input rows.", "expect": ["dbt-unit-testing"], "allow": []},
@@ -31,6 +31,10 @@
     {"id": "airbyte-trigger", "task": "Start the Salesforce sync from our orchestration code and wait until it finishes.", "expect": ["airbyte_integration"], "allow": ["airflow_dag_patterns"]},
     {"id": "java-null", "task": "We keep getting NullPointerExceptions from methods that may not find a customer.", "expect": ["null_safety_and_optional"], "allow": ["google_style_guide"]},
     {"id": "py-tests", "task": "Write tests for the invoice parser in our Python service.", "expect": ["pytest_patterns"], "allow": ["pytest_class_based", "risk_based_test"]},
-    {"id": "none-typo", "task": "Fix the typo 'recieve' in README.md.", "expect": [], "allow": []}
+    {"id": "none-typo", "task": "Fix the typo 'recieve' in README.md.", "expect": [], "allow": []},
+    {"id": "slow-api", "task": "The orders endpoint takes 4 seconds under load. Find where the time goes and speed it up.", "expect": ["backend_performance_checklist"], "allow": ["fullstack_observability_error_management"]},
+    {"id": "slow-page", "task": "Our product page takes 8 seconds to show anything on a 4G phone. Make it load faster.", "expect": ["frontend_performance_checklist"], "allow": ["accessibility_seo_performance", "frontend_rendering_strategies", "responsive_design"]},
+    {"id": "review-mr", "task": "A teammate asked me to look over their merge request before it goes in. What should I check?", "expect": ["code_review_best_practices"], "allow": []},
+    {"id": "api-hardening", "task": "We're opening our internal REST API to partners. Lock it down before launch.", "expect": ["api_security_checklist"], "allow": ["fullstack_auth_patterns", "secrets_management"]}
   ]
 }

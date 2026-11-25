@@ -26,6 +26,10 @@
 | CDR-2026-026 | Rule | JUnit 5 testing best practices for Java with nested classes, display names, and ... |
 | CDR-2026-027 | Rule | Standards for writing and organizing Python tests with pytest |
 | CDR-2026-034 | Persona | Senior Analytics Engineer specializing in dbt, BigQuery, and data transformation... |
+| CDR-2026-060 | Rule | Prioritized checklist of frontend performance best practices covering page weig... |
+| CDR-2026-061 | Rule | Checklist of backend performance best practices covering caching, databases, se... |
+| CDR-2026-062 | Rule | Checklist of API security best practices covering authentication, access contro... |
+| CDR-2026-063 | Rule | Team-wide and role-specific code review practices covering the full pre/during/... |
 | constitution | Constitution | Core principles governing all AI agent behavior and team interactions |
 | example-examples-airflow-kubernetes-pod-operator-taskgroup | Example | Using KubernetesPodOperator with TaskGroup for dbt commands in Kubernetes |
 | example-examples-prompts-leveling_up | Example | Prompt template for extracting successful workflow patterns and contributing the... |
@@ -67,5 +71,4 @@
 | rule-rules-fullstack-testing-fullstack_testing_strategies | Rule | End-to-end testing strategies covering frontend, backend, and integration layers |
 | rule-rules-security-frontend_security | Rule | Frontend security patterns including XSS prevention, CSP, secure storage, and in... |
 
-_Total: 67 CDRs available._
-
+_Total: 71 CDRs available._

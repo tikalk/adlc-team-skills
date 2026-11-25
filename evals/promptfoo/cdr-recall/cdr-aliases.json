@@ -65,5 +65,9 @@
   "rule-rules-fullstack-framework-fullstack_observability_error_management": "fullstack_observability_error_management",
   "rule-rules-fullstack-framework-fullstack_repository_strategy": "fullstack_repository_strategy",
   "rule-rules-fullstack-testing-fullstack_testing_strategies": "fullstack_testing_strategies",
-  "rule-rules-security-frontend_security": "frontend_security"
+  "rule-rules-security-frontend_security": "frontend_security",
+  "CDR-2026-060": "frontend_performance_checklist",
+  "CDR-2026-061": "backend_performance_checklist",
+  "CDR-2026-062": "api_security_checklist",
+  "CDR-2026-063": "code_review_best_practices"
 }

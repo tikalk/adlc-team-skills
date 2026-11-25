@@ -1,5 +1,5 @@
 ## CDR Index
-_Total: 67 CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md. Descriptors: CDR.md or /team-discover.
+_Total: 71 CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md. Descriptors: CDR.md or /team-discover.
 - constitution
 - examples/airflow: kubernetes-pod-operator-taskgroup
 - examples/prompts: leveling_up, mission_brief, plan, risk_based_test
@@ -15,10 +15,11 @@ _Total: 67 CDRs available._ Match the task to a topic by meaning; read just cont
 - rules/fullstack/framework: fullstack_api_communication, fullstack_auth_patterns, fullstack_bff_pattern, fullstack_observability_error_management, fullstack_repository_strategy
 - rules/fullstack/testing: fullstack_testing_strategies
 - rules/orchestration: airbyte_integration (CDR-2026-018), airflow_dag_patterns (CDR-2026-019)
-- rules/security: prevent_sql_injection, pre_commit_checklist (CDR-2026-020), sql_injection_prevention (CDR-2026-021), frontend_security
+- rules/performance: frontend_performance_checklist (CDR-2026-060), backend_performance_checklist (CDR-2026-061)
+- rules/process: code_review_best_practices (CDR-2026-063)
+- rules/security: prevent_sql_injection, pre_commit_checklist (CDR-2026-020), sql_injection_prevention (CDR-2026-021), api_security_checklist (CDR-2026-062), frontend_security
 - rules/style-guides/java: google_style_guide (CDR-2026-023), null_safety_and_optional (CDR-2026-024)
 - rules/style-guides/python: pep8_and_docstrings (CDR-2026-025)
 - rules/style-guides: file_organization (CDR-2026-022)
 - rules/testing/java: junit5_best_practices (CDR-2026-026)
 - rules/testing/python: pytest_patterns (CDR-2026-027)
-

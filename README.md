@@ -24,8 +24,8 @@ so they stop working like strangers.
 
 It starts the moment you open a session. `team-boot` fires via the
 `session_start` event hook and injects a lean index of your team's rules —
-a topic map of rule names grouped by area, no descriptors. Not the rules
-themselves. When the active task matches a rule, the agent pulls that
+one line per rule, grouped by area, saying when to use it ("Use when
+deploying to Kubernetes via GitOps"). Not the rules themselves. When the active task matches a rule, the agent pulls that
 rule's full text on demand. A task touching SQL loads the SQL rule;
 nothing else does.
 

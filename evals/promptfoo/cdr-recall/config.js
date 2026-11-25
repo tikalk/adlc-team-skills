@@ -2,16 +2,19 @@
 //
 // The same tasks are routed against shapes of the injected CDR index:
 //   shipped    — rendered live by boot.sh from fixture/directives
-//                (render_index.sh); this is what a session really gets
-//   full-table — snapshot: the pre-#36 rows (ID | Type | descriptor), base 3ccd33c
-//   topic-map  — snapshot: names only, grouped by directory (head 9f99476)
-//   triggers   — snapshot: one "Use when …" line per record (proposed shape)
+//                (render_index.sh); what a session really gets — today one
+//                "Use when …" line per record
+//   full-table — snapshot: the pre-#36 rows (ID | Type | descriptor), rendered
+//                from the same fixture by boot.sh at 3ccd33c
+//   topic-map  — snapshot: names only, grouped by directory, rendered from the
+//                same fixture by boot.sh at 9f99476
+// Regenerate a snapshot: BOOT_SH=<old boot.sh> render_index.sh > indexes/<shape>.md
 // The grader scores recall of the expected modules per case; summarize.py
 // prints the hit rate per shape and gates on it (EVAL-018).
 //
-// CI: every PR runs CDR_RECALL_SHAPES=shipped (30 calls) against a fixed
-// floor; nightly runs the default set (90 calls) and also checks that the
-// proposed shape does not recall less than the pre-#36 table.
+// CI: every PR runs CDR_RECALL_SHAPES=shipped (one call per case) against a
+// fixed floor; nightly runs the default set (3 calls per case) and also checks
+// that the shipped shape does not recall less than the pre-#36 table.
 //
 // Run:  promptfoo eval -c evals/promptfoo/cdr-recall/config.js --no-cache \
 //         -o /tmp/cdr-recall.json && python3 evals/promptfoo/cdr-recall/summarize.py /tmp/cdr-recall.json
@@ -20,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 
 const here = __dirname;
-const SHAPES = (process.env.CDR_RECALL_SHAPES || 'shipped,full-table,triggers').split(',');
+const SHAPES = (process.env.CDR_RECALL_SHAPES || 'shipped,full-table,topic-map').split(',');
 const parsed = JSON.parse(fs.readFileSync(path.join(here, 'cases.json'), 'utf8'));
 const { always_allow } = parsed;
 // CDR_RECALL_CASES=id1,id2 runs a subset (smoke runs); default is every case.
@@ -41,7 +44,7 @@ const indexFor = (shape) => (shape === 'shipped'
   : fs.readFileSync(path.join(here, 'indexes', shape + '.md'), 'utf8'));
 
 module.exports = {
-  description: 'CDR routing recall (EVAL-018): shipped index vs pre-#36 table vs proposed triggers',
+  description: 'CDR routing recall (EVAL-018): shipped index vs pre-#36 table vs names-only topic map',
   prompts: SHAPES.map((shape) => ({
     id: `cdr-recall:${shape}`,
     label: shape,

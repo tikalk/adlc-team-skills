@@ -110,14 +110,19 @@ if (Test-Path $AgentsFile -PathType Leaf) {
 # CDR.md's Path column (2nd) holds the module path. Data rows are EVERY '|'
 # table row except the header ('| ID |...') and the separator ('|---|...');
 # never match ID prefixes (a prefix list once dropped 3 of 67 rows).
+# A "Use When" column (found by header name, capped at 120 chars) turns a
+# directory into one "  - name (CDR-…): trigger" line per record, as in
+# boot.sh; directories without triggers keep the one-line form.
 function Format-CdrTopicMap {
     param([string[]]$Paths)
     $order = New-Object System.Collections.Generic.List[string]
     # Case-sensitive keys and matches (-c operators) = boot.sh's awk.
     $map = New-Object 'System.Collections.Generic.Dictionary[string,System.Collections.Generic.List[string]]'
+    $trig = New-Object 'System.Collections.Generic.Dictionary[string,System.Collections.Generic.List[string]]'
+    $has = New-Object 'System.Collections.Generic.HashSet[string]'
     foreach ($p in $Paths) {
         if ([string]::IsNullOrWhiteSpace($p)) { continue }
-        $pf = $p -split "`t", 2
+        $pf = $p -split "`t", 3
         $rel = ($pf[0].Trim() -creplace '^context_modules/', '') -creplace '\.md$', ''
         if (-not $rel) { continue }
         $parts = $rel -split '/'
@@ -125,14 +130,42 @@ function Format-CdrTopicMap {
         # Real CDR-YYYY-NNN IDs stay as lookup handles; slug IDs restate the path.
         if ($pf.Count -gt 1 -and $pf[1].Trim() -cmatch '^CDR-[0-9]+-[0-9]+$') { $name = "$name ($($pf[1].Trim()))" }
         $dir = if ($parts.Count -gt 1) { ($parts[0..($parts.Count - 2)]) -join '/' } else { "" }
-        if (-not $map.ContainsKey($dir)) { $order.Add($dir); $map[$dir] = New-Object System.Collections.Generic.List[string] }
-        $map[$dir].Add($name)
+        $t = if ($pf.Count -gt 2) { $pf[2].Trim(" `t") } else { "" }
+        if ($t.Length -gt 120) { $t = $t.Substring(0, 117) + "..." }
+        if (-not $map.ContainsKey($dir)) {
+            $order.Add($dir)
+            $map[$dir] = New-Object System.Collections.Generic.List[string]
+            $trig[$dir] = New-Object System.Collections.Generic.List[string]
+        }
+        $map[$dir].Add($name); $trig[$dir].Add($t)
+        if ($t) { [void]$has.Add($dir) }
     }
-    $lines = foreach ($d in $order) { "- " + $(if ($d) { "${d}: " } else { "" }) + ($map[$d] -join ', ') }
-    # Ordinal sort = boot.sh's LC_ALL=C sort.
-    $arr = [string[]]@($lines)
-    [Array]::Sort($arr, [StringComparer]::Ordinal)
-    return $arr
+    # (key, n, line) rows sorted by key ordinal, then n = boot.sh's
+    # `LC_ALL=C sort -t TAB -k1,1 -k2,2n`.
+    $rows = New-Object System.Collections.Generic.List[object]
+    foreach ($d in $order) {
+        $names = $map[$d]; $ts = $trig[$d]
+        if (-not $has.Contains($d)) {
+            $key = $(if ($d) { "${d}: " } else { "" }) + ($names -join ', ')
+            $rows.Add([pscustomobject]@{ K = $key; N = 0; L = "- $key" }); continue
+        }
+        if (-not $d) {
+            for ($j = 0; $j -lt $names.Count; $j++) {
+                $key = $names[$j] + $(if ($ts[$j]) { ": " + $ts[$j] } else { "" })
+                $rows.Add([pscustomobject]@{ K = $key; N = $j + 1; L = "- $key" })
+            }
+            continue
+        }
+        $rows.Add([pscustomobject]@{ K = "${d}:"; N = 0; L = "- ${d}:" })
+        for ($j = 0; $j -lt $names.Count; $j++) {
+            $line = "  - " + $names[$j] + $(if ($ts[$j]) { ": " + $ts[$j] } else { "" })
+            $rows.Add([pscustomobject]@{ K = "${d}:"; N = $j + 1; L = $line })
+        }
+    }
+    $arr = $rows.ToArray()
+    [Array]::Sort($arr, [Comparison[object]]{ param($a, $b)
+        $c = [string]::CompareOrdinal($a.K, $b.K); if ($c -ne 0) { $c } else { $a.N.CompareTo($b.N) } })
+    return [string[]]@($arr | ForEach-Object { $_.L })
 }
 Write-Output "## CDR Index"
 $cdrPath = Join-Path $TEAM_AI_DIRECTIVES "CDR.md"
@@ -140,10 +173,17 @@ $CdrCount = 0
 $CdrSource = ""
 $cdrTopicPaths = @()
 if (Test-Path $cdrPath -PathType Leaf) {
-    $cdrLines = @(Get-Content $cdrPath | Where-Object { $_ -match '^\|' -and $_ -notmatch '^\|\s*ID\s*\|' -and $_ -notmatch '^\|\s*-' })
+    $cdrAll = @(Get-Content $cdrPath)
+    $cdrLines = @($cdrAll | Where-Object { $_ -match '^\|' -and $_ -notmatch '^\|\s*ID\s*\|' -and $_ -notmatch '^\|\s*-' })
     $CdrCount = $cdrLines.Count
     $CdrSource = "CDR.md"
-    $cdrTopicPaths = @($cdrLines | ForEach-Object { $cols = $_ -split '\|'; if ($cols.Count -ge 3 -and $cols[2].Trim()) { $cols[2].Trim() + "`t" + $cols[1].Trim() } })
+    # "Use When" column index from the header (last header wins, as in awk).
+    $uw = 0
+    foreach ($h in @($cdrAll | Where-Object { $_ -match '^\|\s*ID\s*\|' })) {
+        $uw = 0; $hc = $h -split '\|'
+        for ($i = 1; $i -lt $hc.Count - 1; $i++) { if ($hc[$i].Trim(" `t") -eq 'use when') { $uw = $i } }
+    }
+    $cdrTopicPaths = @($cdrLines | ForEach-Object { $cols = $_ -split '\|'; if ($cols.Count -ge 3 -and $cols[2].Trim()) { $cols[2].Trim() + "`t" + $cols[1].Trim() + "`t" + $(if ($uw -and $uw -lt $cols.Count - 1) { $cols[$uw] } else { "" }) } })
 } else {
     # Fallback: per-dir index.md files (OKF §8), items "* [Title](rel/path.md) - desc"
     $CdrSources = @()

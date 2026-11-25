@@ -74,7 +74,7 @@ Each ADR should have:
 
 - The setup script outputs `REPO_ROOT` - use this to determine the correct paths
 - REPO_ROOT is found by searching upward from current directory for `.adlc` directory (when running helpers from zsh, source the `scripts/bash/` file under `bash -c` or `emulate -L sh`: the scripts rely on `BASH_SOURCE[0]` for path resolution and will not locate helpers under zsh)
-- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`
+- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`
 - The setup script reads individual ADR files from the `adr/` directory
 - When running from a subdirectory (e.g., a subproject directory), `.adlc` may be in the parent directory
 - `move_adr`/`get_adr_by_id` accept bare IDs (`8`), zero-padded IDs (`008`), and full suffixed stems (`008-amendment-2`): the `PDR-`/`ADR-` prefix is optional and callers must never pre-strip it. Bare `8` and `008` resolve to the same file.
@@ -97,7 +97,7 @@ Each ADR should have:
 
 2. **Load ADR File**:
    - Read `{REPO_ROOT}/.adlc/drafts/adr/adr.md` for the ADR list
-   - Read individual ADRs from `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`
+   - Read individual ADRs from `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`
    - Count total ADRs and identify status distribution
 
 3. **Load Constitution**:
@@ -361,7 +361,7 @@ Reply with: "A [amendment text]" or "B/C/D [reasoning]"
    - Update status if applicable
 
 4. **Write File**:
-   - Atomic write to individual `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` files
+   - Atomic write to individual `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` files
    - Preserve any ADRs that weren't modified
    - The setup script auto-regenerates `adr.md` and `adr.md` index after updates
 
@@ -570,7 +570,7 @@ Only ADRs with status **Accepted** are included in the architecture generation. 
 
 Concrete outputs of this skill:
 
-- ADR files updated at `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` with clarified content
+- ADR files updated at `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` with clarified content
 - ADR index refreshed at `{REPO_ROOT}/.adlc/drafts/adr/adr.md`
 - Constitution updated if amendments were approved
 - Workflow state written to `{REPO_ROOT}/.adlc/architect/state.json` with `clarify_completed: true`

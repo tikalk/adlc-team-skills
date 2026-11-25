@@ -115,13 +115,13 @@ These decisions drive all subsequent architectural views.
 |-------|----------|----------|--------------------------|
 | **System** | Main branch | `{REPO_ROOT}/.adlc/drafts/adr/` | `{REPO_ROOT}/AD.md` |
 
-This command operates at the **System level**, creating ADRs in `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`.
+This command operates at the **System level**, creating ADRs in `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`.
 
 **IMPORTANT - Path Resolution**:
 
 - The setup script outputs `REPO_ROOT` - use this to determine the correct paths
 - REPO_ROOT is found by searching upward from current directory for `.adlc` directory
-- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`
+- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`
 - The setup script auto-generates `adr.md` and the `adr.md` index after ADR writes
 - When running from a subdirectory (e.g., a subproject directory), `.adlc` may be in the parent directory
 
@@ -134,7 +134,7 @@ Given the PRD input, execute this workflow:
 3. **Load Governance**: Check `{REPO_ROOT}/docs/adlc/memory/constitution.md` (legacy `{REPO_ROOT}/.adlc/memory/constitution.md` fallback — dual-read) for architectural constraints
 4. **Exploration Phase**: Interactive discussion to surface trade-offs and options (per sub-system)
 5. **Decision Phase**: Document decisions as ADRs with full rationale (organized by sub-system)
-6. **Output**: Write ADRs to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` with sub-system organization
+6. **Output**: Write ADRs to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` with sub-system organization
 
 **NOTE:** This is an interactive command. You will engage the user in conversation before finalizing ADRs.
 
@@ -456,15 +456,15 @@ If decomposed, structure the ADR file as:
 
 | ID | Sub-System | Decision | Status | Date | Owner |
 |----|------------|----------|--------|------|-------|
-| ADR-001 | System | Architecture Style | Proposed | 2026-02-26 | User/AI |
-| ADR-002 | Auth | JWT Authentication | Proposed | 2026-02-26 | User/AI |
-| ADR-003 | Payments | Stripe Integration | Proposed | 2026-02-26 | User/AI |
+| ADR-architecture-style | System | Architecture Style | Proposed | 2026-02-26 | User/AI |
+| ADR-jwt-authentication | Auth | JWT Authentication | Proposed | 2026-02-26 | User/AI |
+| ADR-stripe-integration | Payments | Stripe Integration | Proposed | 2026-02-26 | User/AI |
 
 ---
 
 ## System-Level ADRs
 
-### ADR-001: [Decision Title]
+### ADR-architecture-style: [Decision Title]
 
 [Full ADR content...]
 
@@ -472,7 +472,7 @@ If decomposed, structure the ADR file as:
 
 ## Auth Sub-System ADRs
 
-### ADR-002: [Decision Title]
+### ADR-jwt-authentication: [Decision Title]
 
 [Full ADR content...]
 
@@ -480,7 +480,7 @@ If decomposed, structure the ADR file as:
 
 ## Payments Sub-System ADRs
 
-### ADR-003: [Decision Title]
+### ADR-stripe-integration: [Decision Title]
 
 [Full ADR content...]
 ```
@@ -548,11 +548,11 @@ Chosen option: "{title option 1}", because {justification}.
 1. **Run Setup Script**:
    - Invoke the `architect-clarify` skill to ensure `{REPO_ROOT}/.adlc/drafts/adr/` directory exists — the `specify` action is mandatory: with no action and no AD.md the script defaults to `init` (brownfield reverse-engineering), not greenfield specify
    - Script creates from template if directory is empty
-   - Script reports `next_adr` — the next free ADR slot (status line `Next free ADR slot: ADR-{NNN}`); number the new ADRs from it
+   - Script reports `next_adr` — the next free ADR slot (status line `Next free ADR slot: ADR-{slug}`); number the new ADRs from it
    - Pass `--no-decompose` if decomposition was disabled
 
 2. **Write ADRs**:
-   - Write each new ADR as `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`
+   - Write each new ADR as `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`
    - The setup script auto-generates `adr.md` and `adr.md` index after writes
    - Update ADR index table at top of file (include Sub-System column)
    - Preserve any existing ADRs (don't overwrite)
@@ -647,7 +647,7 @@ After `specify` completes, run `/architect-clarify` to refine and validate the A
 ## Verification
 
 - The `architect-clarify` skill setup has been invoked (see Requires above) and `{REPO_ROOT}/.adlc/drafts/adr/` exists.
-- One focused ADR file per decision exists at `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`.
+- One focused ADR file per decision exists at `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`.
 - Each ADR follows MADR format, includes its parent sub-system tag, and has status `Proposed`.
 - `adr.md` is auto-generated in `{REPO_ROOT}/.adlc/drafts/adr/`.
 - The `adr.md` index is auto-generated in `{REPO_ROOT}/.adlc/drafts/adr/`.

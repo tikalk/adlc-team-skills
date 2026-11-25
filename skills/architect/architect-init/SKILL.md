@@ -19,7 +19,7 @@ You act as an **Architecture Archaeologist** uncovering implicit architectural d
 
 **Output**:
 
-1. **ADRs** documenting inferred architectural decisions in `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` (individual file format)
+1. **ADRs** documenting inferred architectural decisions in `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` (individual file format)
 2. **Auto-generated index** at `{REPO_ROOT}/.adlc/drafts/adr/adr.md`
 3. **Validate Findings**: Run `/architect-clarify` to validate discovered decisions
 
@@ -124,7 +124,7 @@ Even in brownfield discovery, the **Functional structure is foundational**:
 4. **Pattern Detection**: Identify architectural patterns in use
 5. **ADR Generation**: Create ADRs for discovered decisions (marked "Discovered"), organized by sub-system
 6. **Gap Analysis**: Identify areas where decisions are unclear
-7. **Output**: Write ADRs to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` (NO AD.md creation)
+7. **Output**: Write ADRs to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` (NO AD.md creation)
    - After writing all ADRs, the setup script auto-generates `adr.md` index
 8. **Validate Findings**: Run `/architect-clarify` to validate brownfield findings
 
@@ -603,13 +603,13 @@ After scanning, report:
 2. **If directory exists**:
    - Read existing ADRs from individual files
    - DO NOT overwrite or delete existing ADRs
-   - Write new discoveries as new `ADR-{NNN}.md` files
+   - Write new discoveries as new `ADR-{slug}.md` files
    - Report: "Found N existing ADRs, adding M new discoveries"
 3. **If directory doesn't exist**: The setup script will create it
 
 **Write ADRs**:
 
-1. **Create** `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` for each discovered ADR
+1. **Create** `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` for each discovered ADR
 2. **Mark ADRs as "Discovered (Inferred)" status** ← USE THIS STATUS ONLY
 3. **Use "Common Alternatives"** section with neutral trade-offs (no "Rejected because")
 4. **Note confidence level** for each ADR
@@ -722,7 +722,7 @@ After clarification completes:
     ↓
 [Scan codebase] → Detect technologies, patterns
     ↓
-[Generate ADRs] → Write to {REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md (marked "Discovered")
+[Generate ADRs] → Write to {REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md (marked "Discovered")
     ↓
 [Run /architect-clarify] → Ask to validate decisions
     ↓
@@ -746,7 +746,7 @@ After `init` completes, run `/architect-clarify` to validate the discovered ADRs
 
 ## Verification
 
-- ADRs written to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` with status **Discovered (Inferred)**.
+- ADRs written to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` with status **Discovered (Inferred)**.
 - Auto-generated `adr.md` index exists in `{REPO_ROOT}/.adlc/drafts/adr/`.
 - Gap analysis report identifies unclear areas and recommended clarifications.
 - Sub-system decomposition confirmed (or disabled) per threshold rules.

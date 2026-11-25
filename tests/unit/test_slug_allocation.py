@@ -56,9 +56,28 @@ def test_slugify_empty_rejected():
 def test_mint_adr_slug_collision(tree):
     """Test that mint_adr_slug handles collisions by appending -2, -3."""
     # This is expected to fail because mint_adr_slug is not yet implemented.
-    _write_fm(tree / "docs/adlc/memory/adr/my-decision.md", "My Decision")
-    
+    _write_fm(tree / "docs/adlc/memory/adr/ADR-my-decision.md", "My Decision")
+
     r = _run_bash(f'mint_adr_slug "My Decision" "{tree}"', cwd=tree)
-    
+
     assert r.returncode == 0
     assert r.stdout.strip() == "my-decision-2"
+
+def test_no_numeric_fallback(tree):
+    """Test that numeric fallback is removed from get_adr_by_id."""
+    # Create a record with a numeric prefix (legacy)
+    legacy_path = tree / "docs/adlc/memory/adr/ADR-008.md"
+    _write_fm(legacy_path, "Legacy Decision")
+
+    # Try to lookup by bare number '8' - should FAIL now (no 008 padding)
+    r = _run_bash(f'get_adr_by_id "8" "memory"', cwd=tree)
+    assert r.returncode != 0
+
+def test_mint_adr_slug_collision_suffix(tree):
+    """Test that mint_adr_slug handles existing -2 by appending -3."""
+    _write_fm(tree / "docs/adlc/memory/adr/ADR-my-decision.md", "My Decision")
+    _write_fm(tree / "docs/adlc/memory/adr/ADR-my-decision-2.md", "My Decision 2")
+
+    r = _run_bash(f'mint_adr_slug "My Decision" "{tree}"', cwd=tree)
+    assert r.returncode == 0
+    assert r.stdout.strip() == "my-decision-3"

@@ -176,7 +176,7 @@ You are acting as an **Architecture Orchestrator** managing a multi-phase docume
 **IMPORTANT - Path Resolution**:
 - The setup script outputs `REPO_ROOT` - use this to determine the correct paths
 - REPO_ROOT is found by searching upward from current directory for `.adlc` directory
-- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`
+- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`
 - The setup script reads individual ADR files from the `adr/` directory
 - When running from a subdirectory (e.g., a subproject directory), `.adlc` may be in the parent directory
 

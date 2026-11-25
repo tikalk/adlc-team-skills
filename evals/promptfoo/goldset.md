@@ -420,7 +420,7 @@ A route names a behavioral class with a deterministic check vehicle (lint/CI/uni
 
 ## Criterion EVAL-018: CDR Routing Recall of the Injected Index
 
-**Status**: draft (floor unset — BASELINE mode until the first CI run sets it)
+**Status**: draft (provisional floor: recall ≥ 0.90, false positives ≤ 3, from a local Haiku baseline on 2026-11-26 — 3 runs, 96.7–100% recall, 0–1 false positives; re-baseline on the CI model once `OPENAI_API_KEY` is configured)
 **Scope**: team-boot injects a CDR index instead of the CDR rows (adlc-workspace#36). The criterion measures whether a model reading only that index, at session start, picks the team rules a task needs. The index under test is the one boot.sh really emits, rendered live by `cdr-recall/render_index.sh` from `cdr-recall/fixture/directives` (a snapshot of tikal-team-ai-directives' `CDR.md`) — never a hand-kept copy, so a change to boot.sh's index shape is measured. 30 tasks in `cdr-recall/cases.json` are phrased the way a user asks, never with the rule's own name; each lists the modules a correct routing must pick (`expect`), related modules that are fine to pick (`allow`), and personas/constitution are always allowed. The grader (`check_cdr_recall.py`) scores recall per case and reports picks outside expect/allow as false positives. It does not grade whether the agent then follows the rule.
 **Description**: Verifies the injected CDR index routes realistic tasks to the right team rules: mean recall at or above the floor, false positives at or below the cap.
 

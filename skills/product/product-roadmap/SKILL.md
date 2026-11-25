@@ -129,9 +129,9 @@ Tracker: github.com/org/repo/milestone/3 (native: 67% closed, due Sep 5)
 
 | Item | Decision | Execution | Evidence | Status |
 |------|----------|-----------|----------|--------|
-| PDR-003: OAuth2 login | ✅ Completed | ✅ 3/3 closed (#142–#144) | ✅ src/auth/oauth/ verified | Live |
-| PDR-004: SSO | ✅ Accepted | 🔄 2/4 closed (#186–#189) | ⚠️ no evidence section | In progress |
-| PDR-005: Password reset | 🔄 Proposed | ⏳ 0/2 (#190, #191) | ❌ src/auth/reset/ missing | Not started |
+| PDR-oauth-login | ✅ Completed | ✅ 3/3 closed (#142–#144) | ✅ src/auth/oauth/ verified | Live |
+| PDR-sso | ✅ Accepted | 🔄 2/4 closed (#186–#189) | ⚠️ no evidence section | In progress |
+| PDR-password-reset | 🔄 Proposed | ⏳ 0/2 (#190, #191) | ❌ src/auth/reset/ missing | Not started |
 
 | Gate | Type | Owner | Status |
 |------|------|-------|--------|
@@ -171,7 +171,7 @@ Tracker: github.com/org/repo/milestone/3 (native: 67% closed, due Sep 5)
 
 For each feature PDR:
 - **All linked issues closed** AND **evidence verified** → update status to `Completed`
-- Issues still open OR evidence missing → **block update**, report: "Cannot mark PDR-XXX as Completed: N issues open / evidence missing"
+- Issues still open OR evidence missing → **block update**, report: "Cannot mark PDR-auth-service as Completed: N issues open / evidence missing"
 - **Override**: user explicitly says "force" → update with a warning annotation
 
 For each milestone PDR:

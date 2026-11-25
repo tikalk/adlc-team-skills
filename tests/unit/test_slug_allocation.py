@@ -5,13 +5,17 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 ARCH_SETUP = ROOT / "skills/architect/architect-clarify/scripts/bash/setup-architect.sh"
+PDR_LIB = ROOT / "skills/product/product-clarify/scripts/bash/pdr-lib.sh"
 
-def _run_bash(command, cwd=None, env_extra=None):
+def _run_bash(command, cwd=None, env_extra=None, source_pdr=False):
     env = {**os.environ}
     if env_extra:
         env.update(env_extra)
     # Ensure we use the function from the script, not a system command
-    full_command = f"source {ARCH_SETUP}; {command}"
+    if source_pdr:
+        full_command = f"source {PDR_LIB}; {command}"
+    else:
+        full_command = f"source {ARCH_SETUP}; {command}"
     return subprocess.run(["bash", "-e", "-c", full_command], cwd=cwd, capture_output=True, text=True, env=env)
 
 def _write_fm(path: Path, title: str = "T"):
@@ -81,3 +85,28 @@ def test_mint_adr_slug_collision_suffix(tree):
     r = _run_bash(f'mint_adr_slug "My Decision" "{tree}"', cwd=tree)
     assert r.returncode == 0
     assert r.stdout.strip() == "my-decision-3"
+
+def test_mint_pdr_slug_collision(tree):
+    """Test that mint_pdr_slug handles collisions by appending -2, -3."""
+    _write_fm(tree / "docs/adlc/memory/pdr/PDR-my-feature.md", "My Feature")
+
+    r = _run_bash(f'mint_pdr_slug "My Feature" "{tree}"', cwd=tree, source_pdr=True)
+
+    assert r.returncode == 0
+    assert r.stdout.strip() == "my-feature-2"
+
+def test_product_setup_no_local_numbering(tree):
+    """Test that setup-product-specify.sh uses mint_pdr_slug and has no local next_record_number."""
+    setup_script = ROOT / "skills/product/product-specify/scripts/bash/setup-product-specify.sh"
+    content = setup_script.read_text()
+    
+    # Assert local next_record_number is gone
+    assert "next_record_number() {" not in content
+    
+    # Assert it calls mint_pdr_slug (or uses a variable that implies it was called, 
+    # but the task says "call new helper")
+    # Actually, the task says "delete next_pdr_number locals" and "call new helper".
+    # We'll check for 'mint_pdr_slug' in the script if it's supposed to be called there.
+    # Looking at setup-architect.sh, it doesn't call mint_adr_slug directly in the setup, 
+    # but the task says "call new helper".
+    assert "mint_pdr_slug" in content

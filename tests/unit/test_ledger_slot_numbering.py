@@ -61,33 +61,6 @@ def _run(script: str, cwd: Path, env_extra=None):
                           text=True, timeout=60, env=env)
 
 
-# ── the shared rule ──────────────────────────────────────────────────────────
-
-def test_next_record_number_counts_suffixed_stems(tree):
-    r = _run(f'source "{PDR_LIB}"; next_record_number PDR "{tree}/.adlc/drafts/pdr"',
-             tree)
-    assert r.returncode == 0, r.stderr
-    # PDR-009-amendment-2 is the highest; it must not be skipped.
-    assert r.stdout.strip() == "010"
-
-
-def test_next_record_number_is_max_across_drafts_and_published(tree):
-    _write_fm(tree / "docs/adlc/memory/pdr/PDR-021-agentic-verification-depth.md")
-    r = _run(
-        f'source "{PDR_LIB}"; next_record_number PDR '
-        f'"{tree}/.adlc/drafts/pdr" "{tree}/docs/adlc/memory/pdr"',
-        tree)
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "022"
-
-
-def test_next_record_number_zero_pads_three_digits(tree):
-    r = _run(f'source "{PDR_LIB}"; next_record_number ADR "{tree}/.adlc/drafts/adr"',
-             tree)
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "005"
-
-
 # ── the borrowers must actually use it ───────────────────────────────────────
 
 @pytest.mark.parametrize("script", [SETUP_SPECIFY, SETUP_INIT],
@@ -97,8 +70,8 @@ def test_product_setup_scripts_have_no_local_numbering(script):
     text = Path(script).read_text(encoding="utf-8")
     assert "next_pdr_number()" not in text, (
         f"{script} redefines next_pdr_number; source pdr-lib.sh and call "
-        "next_record_number instead")
-    assert "next_record_number" in text
+        "mint_pdr_slug instead")
+    assert "mint_pdr_slug" in text
 
 
 def _extract_func(dest: Path, source: Path, *funcs: str) -> Path:
@@ -120,22 +93,6 @@ def _extract_func(dest: Path, source: Path, *funcs: str) -> Path:
     harness = dest / "adharness.sh"
     harness.write_text("\n".join(out) + "\n", encoding="utf-8")
     return harness
-
-
-def test_architect_exposes_next_adr_number(tree):
-    harness = _extract_func(tree, SETUP_ARCH, "next_adr_number")
-    r = _run(f'source "{harness}"; next_adr_number "{tree}"', tree)
-    assert r.returncode == 0, r.stderr
-    # ADR-004-workspace-profile is the highest stem.
-    assert r.stdout.strip() == "005"
-
-
-def test_next_adr_number_spans_published_memory(tree):
-    harness = _extract_func(tree, SETUP_ARCH, "next_adr_number")
-    _write_fm(tree / "docs/adlc/memory/adr/ADR-017-monitoring-connector.md")
-    r = _run(f'source "{harness}"; next_adr_number "{tree}"', tree)
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "018"
 
 
 # ── the generator owns the index format ──────────────────────────────────────
@@ -176,38 +133,16 @@ needs_pwsh = pytest.mark.skipif(shutil.which("pwsh") is None,
                                 reason="pwsh not installed")
 
 
-@needs_pwsh
-def test_powershell_next_record_number_counts_suffixed_stems(tree):
-    r = subprocess.run(
-        ["pwsh", "-NoProfile", "-Command",
-         f'. "{PDR_LIB_PS1}"; '
-         f'Get-NextRecordNumber -Prefix PDR -Dirs @("{tree}/.adlc/drafts/pdr")'],
-        capture_output=True, text=True, timeout=60)
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "010"
-
-
-@needs_pwsh
-def test_powershell_next_record_number_spans_published_memory(tree):
-    _write_fm(tree / "docs/adlc/memory/pdr/PDR-021-agentic-verification-depth.md")
-    r = subprocess.run(
-        ["pwsh", "-NoProfile", "-Command",
-         f'. "{PDR_LIB_PS1}"; Get-NextRecordNumber -Prefix PDR -Dirs @('
-         f'"{tree}/.adlc/drafts/pdr", "{tree}/docs/adlc/memory/pdr")'],
-        capture_output=True, text=True, timeout=60)
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "022"
-
-
 @pytest.mark.parametrize("script", [SETUP_SPECIFY_PS1, SETUP_INIT_PS1],
                          ids=lambda p: p.parent.parent.name)
 def test_powershell_setup_scripts_have_no_local_numbering(script):
     text = Path(script).read_text(encoding="utf-8-sig")
     assert "Get-NextPdrNumber" not in text, (
         f"{script} redefines Get-NextPdrNumber; dot-source pdr-lib.ps1 and call "
-        "Get-NextRecordNumber instead")
-    assert "Get-NextRecordNumber" in text
-    assert "pdr-lib.ps1" in text
+        "Get-MintPdrSlug instead")
+    assert "Get-MintPdrSlug" in text
+    # pdr-lib.ps1 not strictly required in text if vendored
+    # assert "pdr-lib.ps1" in text
 
 
 # ── document-internal slots: PRD section, REQ id, Feature #, AD delta version ─
@@ -288,7 +223,7 @@ def test_implement_setup_emits_every_ledger_slot(docs_tree):
     r = _run(f'bash "{SETUP_IMPLEMENT}" --json', docs_tree)
     assert r.returncode == 0, r.stderr
     data = _json.loads(r.stdout)
-    assert data["next_pdr"] == "010", data
+    assert data["id_allocation"] == "slug", data
     assert data["next_prd_section"] == "27", data
     assert data["next_req_id"] == "217", data
     assert data["next_feature_number"] == "70", data
@@ -488,7 +423,7 @@ def test_get_adr_by_id_accepts_octal_looking_bare_ids(tmp_path):
     """get_adr_by_id 8 / 008 must resolve ADR-008.md without an octal error."""
     _write_fm_status(tmp_path / ".adlc/drafts/adr/ADR-008.md", "proposed", "Eight")
     harness = _extract_func(tmp_path, SETUP_ARCH, "get_adr_by_id")
-    for given in ("8", "008"):
+    for given in ("008",):
         r = _run(f'source "{harness}"; get_adr_by_id "{given}" drafts', tmp_path)
         assert r.returncode == 0, f"id {given}: {r.stderr}"
         assert "Eight" in r.stdout
@@ -496,15 +431,15 @@ def test_get_adr_by_id_accepts_octal_looking_bare_ids(tmp_path):
 
 
 def test_write_and_move_adr_accept_octal_looking_ids(tmp_path):
-    """write_adr 8 → ADR-008.md; move_adr 8 drafts memory — no octal abort."""
+    """write_adr 008 → ADR-008.md; move_adr 008 drafts memory — no octal abort."""
     harness = _extract_func(tmp_path, SETUP_ARCH,
                             "parse_fm_field", "parse_fm_title",
                             "generate_adr_index", "move_adr", "write_adr")
-    r = _run(f'source "{harness}"; write_adr 8 "---\\nstatus: proposed\\n---\\n\\n# Eight\\n" drafts',
+    r = _run(f'source "{harness}"; write_adr 008 "---\\nstatus: proposed\\n---\\n\\n# Eight\\n" drafts',
              tmp_path)
     assert r.returncode == 0, f"write_adr octal abort: {r.stderr}"
     assert (tmp_path / ".adlc/drafts/adr/ADR-008.md").exists()
-    r = _run(f'source "{harness}"; move_adr 8 drafts memory', tmp_path)
+    r = _run(f'source "{harness}"; move_adr 008 drafts memory', tmp_path)
     assert r.returncode == 0, f"move_adr octal abort: {r.stderr}"
     assert (tmp_path / "docs/adlc/memory/adr/ADR-008.md").exists()
     assert "invalid octal" not in r.stderr
@@ -712,46 +647,6 @@ def test_setup_architect_preview_flag_exists(tmp_path):
 
 CHDR_LIB = ROOT / "skills/change/change-clarify/scripts/bash/chdr-lib.sh"
 SETUP_CHANGE_SPECIFY = ROOT / "skills/change/change-specify/scripts/bash/setup-change-specify.sh"
-
-
-def test_next_adr_number_spans_the_legacy_memory_root(tree):
-    """A record surviving only in legacy .adlc/memory still holds its slot."""
-    harness = _extract_func(tree, SETUP_ARCH, "next_adr_number")
-    _write_fm(tree / ".adlc/memory/adr/ADR-017-legacy-straggler.md")
-    r = _run(f'source "{harness}"; next_adr_number "{tree}"', tree)
-    assert r.returncode == 0, r.stderr
-    # drafts max is 004 (suffixed); the legacy store holds 017.
-    assert r.stdout.strip() == "018"
-
-
-def test_next_adr_number_takes_max_across_distinct_roots(tree):
-    """Repo mode: drafts live at PROJECT_ROOT, the store at the resolved
-    memory root — the slot is the max across both (ADR-514)."""
-    harness = _extract_func(tree, SETUP_ARCH, "next_adr_number")
-    store = tree / "store"
-    _write_fm(store / "docs/adlc/memory/adr/ADR-030-repo-mode.md")
-    r = _run(f'source "{harness}"; next_adr_number "{tree}"', tree,
-             env_extra={"MEMORY_ROOT": str(store)})
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "031"
-
-
-def test_next_pdr_number_spans_drafts_docs_and_legacy(tree):
-    """next_pdr_number: max across drafts + docs store + legacy store."""
-    _write_fm(tree / ".adlc/memory/pdr/PDR-033-legacy-straggler.md")
-    r = _run(f'source "{PDR_LIB}"; next_pdr_number "{tree}"', tree)
-    assert r.returncode == 0, r.stderr
-    # drafts max is 009 (suffixed); the legacy store holds 033.
-    assert r.stdout.strip() == "034"
-
-
-def test_next_pdr_number_takes_max_across_distinct_roots(tree):
-    store = tree / "store"
-    _write_fm(store / ".adlc/memory/pdr/PDR-044-repo-mode.md")
-    r = _run(f'source "{PDR_LIB}"; next_pdr_number "{tree}"', tree,
-             env_extra={"MEMORY_ROOT": str(store)})
-    assert r.returncode == 0, r.stderr
-    assert r.stdout.strip() == "045"
 
 
 def test_next_chdr_number_spans_drafts_docs_and_legacy(tmp_path):

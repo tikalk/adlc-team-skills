@@ -125,7 +125,7 @@ Document Information → Executive Summary → Overview → Problem
 **Total sections**: 15
 
 **Feature-Area: Core**
-**PDRs**: PDR-001, PDR-005, PDR-008
+**PDRs**: PDR-auth-service, PDR-database-choice, PDR-api-design
 **DAG**: Document Info → Executive Summary → Overview → Problem
 → Market Opportunity → Goals → Metrics → Personas
 → [Requirements Checkpoint] → NFRs → Out-of-Scope → Risks
@@ -144,7 +144,7 @@ Document Information → Executive Summary → Overview → Problem
     {
       "id": "core",
       "name": "Core",
-      "pdrs": ["PDR-001", "PDR-005"],
+      "pdrs": ["PDR-auth-service", "PDR-database-choice"],
       "dag": ["document-info", "executive-summary", "overview", "problem", ...],
       "progress": {}
     }
@@ -331,7 +331,7 @@ The generated index has this format:
 
 | ID | Feature-Area | Category | Status | Date | Owner | Title |
 |----|--------------|----------|--------|------|-------|-------|
-| PDR-001 | control-plane | Governance | Accepted | 2026-08-04 | User/AI collaboration | Lit Factory Operating Model |
+| PDR-control-plane | control-plane | Governance | Accepted | 2026-08-04 | User/AI collaboration | Lit Factory Operating Model |
 ```
 
 This index is consumed by `team-boot` for session-start injection (similar to how `CDR.md` is used for team-level context).
@@ -388,7 +388,7 @@ bash scripts/bash/setup-product-implement.sh --json
 
 | Setup JSON field | Slot | Example |
 |---|---|---|
-| `next_pdr` | record id (`PDR-{NNN}`) — drafts + published | `138` |
+| `id_allocation` | PDR ID scheme (`PDR-{slug}`) | `slug` |
 | `next_prd_section` | `## N.` delta heading in PRD.md | `27` |
 | `next_req_id` | `REQ-NNN` | `217` |
 | `next_feature_number` | `\| N \|` Feature row | `70` |

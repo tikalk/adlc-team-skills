@@ -15,7 +15,7 @@ Transforms a high-level product idea into documented Product Decision Records (P
 
 **Key insight**: Discussion and exploration happen *before* committing to formal documentation. The goal is to surface trade-offs, validate assumptions, and make informed decisions collaboratively.
 
-**Output**: Individual `PDR-{NNN}.md` files (status **Proposed**) in `.adlc/drafts/pdr/` with an auto-generated `pdr.md` index.
+**Output**: Individual `PDR-{slug}.md` files (status **Proposed**) in `.adlc/drafts/pdr/` with an auto-generated `pdr.md` index.
 
 ## When to use
 
@@ -52,10 +52,10 @@ ps: scripts/powershell/setup-product-specify.ps1
   "REPO_ROOT": "/path/to/project",
   "PDR_DRAFTS_DIR": "/path/to/project/.adlc/drafts/pdr",
   "PRD_FILE": "/path/to/project/PRD.md",
-  "next_pdr": "001"
+  "id_allocation": "slug"
 }
 ```
-The script reports `next_pdr` — the next free PDR slot (status line `Next PDR: PDR-{NNN}`); Phase 6 numbers the new PDRs from it
+The script reports `id_allocation` — the PDR ID scheme; Phase 6 derives slugs from titles
 
 ### Phase 1: Feature-Area Decomposition (Optional)
 
@@ -157,7 +157,7 @@ feature-area: [core | business | growth | ...]
 title: [Decision Title]
 ---
 
-# PDR-[NNN]: [Decision Title]
+# [Decision Title]
 
 ## Context
 **Problem/Opportunity:**
@@ -202,8 +202,8 @@ title: [Decision Title]
 
 ### Phase 6: Write PDR Files and Regenerate Index
 
-1. **Number PDRs sequentially**: Start from PDR-001 for new projects, or continue from the **next free slot** the setup script computes (`next_pdr` in its JSON/status output) — never from "the highest existing PDR number" guessed by inspection: a stemmed record (e.g. `PDR-002-amendment-2.md`) is easy to miss, and its slot is still taken
-2. **Write individual files**: `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{NNN}.md`
+1. **Mint Slugs**: Derive slugs from titles (lowercase, ASCII-fold, non-alnum to `-`). Check for collisions in drafts and memory; append `-2`, `-3`, etc.
+2. **Write individual files**: `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{slug}.md`
 3. **Regenerate index**: `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md`
 
 **Index format**:
@@ -214,8 +214,8 @@ title: [Decision Title]
 
 | ID | Feature-Area | Category | Status | Date | Owner |
 |----|--------------|----------|--------|------|-------|
-| PDR-001 | System | Target Market | Proposed | 2026-03-09 | User/AI |
-| PDR-002 | Auth | Primary Persona | Proposed | 2026-03-09 | User/AI |
+| PDR-target-market | System | Target Market | Proposed | 2026-03-09 | User/AI |
+| PDR-primary-persona | Auth | Primary Persona | Proposed | 2026-03-09 | User/AI |
 
 ---
 
@@ -231,21 +231,21 @@ title: [Decision Title]
 
 | # | Feature Area | PDRs Created |
 |---|--------------|--------------|
-| 1 | System-Level | PDR-001: Target Market |
-| 2 | Auth | PDR-002: Primary Persona, PDR-003: Authentication Approach |
-| 3 | Business | PDR-004: Pricing Model, PDR-005: Payment Integration |
+| 1 | System-Level | PDR-target-market: Target Market |
+| 2 | Auth | PDR-primary-persona: Primary Persona, PDR-auth-approach: Authentication Approach |
+| 3 | Business | PDR-pricing-model: Pricing Model, PDR-payment-integration: Payment Integration |
 
 ### Next Steps
 1. Review PDRs with /product-clarify
 2. Generate PRD.md with /product-implement
 ```
 
-## PDR Numbering Rules
+## PDR Slug Rules
 
-- Number from the **next free slot** the setup script computes (`next_pdr`), never from "the highest existing number" guessed by inspection: a stemmed record (e.g. `PDR-002-amendment-2.md`) is easy to miss, and its slot is still taken
-- The slot scan reads every `PDR-*` stem in `{REPO_ROOT}/.adlc/drafts/pdr/` **and** published memory (`docs/adlc/memory/pdr/`) — the same source `next_pdr` reports
-- PDR IDs are zero-padded to 3 digits
-- Never reuse numbers
+- IDs are derived from titles: lowercase, ASCII-fold, non-alphanumeric to `-`, collapse `-`, trim `-`.
+- Max 60 characters for the slug part.
+- Collision handling: if `PDR-slug.md` exists, append `-2`, `-3`, etc.
+- Existence check spans `{REPO_ROOT}/.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, and legacy `.adlc/memory/pdr/`.
 
 ## Key Rules
 

@@ -28,7 +28,7 @@ REPO_ROOT="${REPO_ROOT:-$(_get_project_root)}"
 # Frontmatter + heading status parsers (vendored from product-clarify
 # pdr-lib.sh per the scope rule: scripts stay skill-local, helpers are
 # vendored, never sourced across skills; keep these copies in sync with
-# product-clarify, plus next_record_number and the three PRD.md slot
+# product-clarify, plus the three PRD.md slot
 # scanners below).
 # ============================================================================
 
@@ -132,26 +132,6 @@ count_pdr_accepted() {
   echo "$count"
 }
 
-# Ledger slot allocation (vendored from product-clarify pdr-lib.sh per the
-# scope rule: scripts stay skill-local, helpers are vendored, never sourced
-# across skills). A record's number is the LEADING DIGITS of its filename
-# stem; the maximum spans drafts AND published memory.
-next_record_number() {
-  local prefix="$1"
-  shift
-  local max=0 f num dir
-  for dir in "$@"; do
-    [ -d "$dir" ] || continue
-    for f in "$dir"/"${prefix}"-*.md; do
-      [ -f "$f" ] || continue
-      num=$(basename "$f" .md | sed -n "s/^${prefix}-\([0-9]\{1,\}\).*/\1/p")
-      [ -n "$num" ] || continue
-      ((10#$num > max)) && max=$((10#$num))
-    done
-  done
-  printf '%03d' "$((max + 1))"
-}
-
 # The three document-internal PRD.md slots. Each scan is deliberately
 # over-inclusive: an unused number is harmless, a reissued one collides.
 next_prd_section() {
@@ -199,9 +179,56 @@ mkdir -p "$REPO_ROOT/${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 
 ACCEPTED_COUNT=$(count_pdr_accepted "$PDR_DRAFTS_DIR" 2>/dev/null || echo 0)
 
+# ID allocation: slugify(title) + collision check.
+# Rules: lowercase, ASCII-fold, non-alnum -> -, collapse -, trim -, max 60 chars.
+slugify() {
+    local title="$1"
+    local slug
+    # 1. Lowercase, 2. ASCII-fold, 3. Sanitize, 4. Collapse, 5. Trim, 6. Truncate
+    slug=$(echo "$title" | iconv -t ascii//TRANSLIT 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-//; s/-$//' | cut -c 1-60)
+    if [[ -z "$slug" ]]; then
+        echo "Error: slugified title is empty" >&2
+        return 1
+    fi
+    echo "$slug"
+}
+
+# mint_pdr_slug TITLE [REPO_ROOT] - the next free PDR slug.
+# Slugify title and append -2, -3 on collision across drafts AND memory.
+mint_pdr_slug() {
+    local title="$1"
+    local root="${2:-$REPO_ROOT}"
+    local slug
+    slug=$(slugify "$title") || return 1
+
+    local candidate="$slug"
+    local count=1
+
+    while true; do
+        local exists=false
+        local dir
+        for dir in "$root/.adlc/drafts/pdr" \
+                   "$root/docs/adlc/memory/pdr" \
+                   "$root/.adlc/memory/pdr"; do
+            if [[ -f "$dir/PDR-$candidate.md" ]]; then
+                exists=true
+                break
+            fi
+        done
+
+        if [[ "$exists" == "false" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+
+        ((count++))
+        candidate="$slug-$count"
+    done
+}
+
 # Ledger slots handed to the implement run: record id (drafts + published) and
 # the three PRD.md document-internal slots.
-NEXT_PDR=$(next_record_number PDR "$PDR_DRAFTS_DIR" "$PDR_MEMORY_DIR")
+ID_ALLOCATION="slug"
 NEXT_PRD_SECTION=$(next_prd_section "$PRD_FILE")
 NEXT_REQ_ID=$(next_req_id "$PRD_FILE")
 NEXT_FEATURE_NUMBER=$(next_feature_number "$PRD_FILE")
@@ -210,14 +237,14 @@ if $JSON_MODE; then
   jq -n -c --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pmd "$PDR_MEMORY_DIR" \
     --arg pf "$PRD_FILE" --arg sd "$SECTIONS_DIR" --arg sf "$STATE_FILE" \
     --argjson a "$ACCEPTED_COUNT" \
-    --arg np "$NEXT_PDR" --arg nps "$NEXT_PRD_SECTION" --arg nr "$NEXT_REQ_ID" --arg nfn "$NEXT_FEATURE_NUMBER" \
-    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PDR_MEMORY_DIR:$pmd,PRD_FILE:$pf,SECTIONS_DIR:$sd,STATE_FILE:$sf,accepted_count:$a,next_pdr:$np,next_prd_section:$nps,next_req_id:$nr,next_feature_number:$nfn}'
+    --arg ia "$ID_ALLOCATION" --arg nps "$NEXT_PRD_SECTION" --arg nr "$NEXT_REQ_ID" --arg nfn "$NEXT_FEATURE_NUMBER" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PDR_MEMORY_DIR:$pmd,PRD_FILE:$pf,SECTIONS_DIR:$sd,STATE_FILE:$sf,accepted_count:$a,id_allocation:$ia,next_prd_section:$nps,next_req_id:$nr,next_feature_number:$nfn}'
 else
   echo "[INFO] product-implement setup"
   echo "  Accepted PDRs: $ACCEPTED_COUNT"
   echo "  PRD_FILE: $PRD_FILE"
   echo "  SECTIONS_DIR: $SECTIONS_DIR"
-  echo "  Next PDR slot: PDR-$NEXT_PDR"
+  echo "  ID allocation: PDR-{slug}"
   echo "  Next PRD section: $NEXT_PRD_SECTION"
   echo "  Next REQ id: REQ-$NEXT_REQ_ID"
   echo "  Next feature row: $NEXT_FEATURE_NUMBER"

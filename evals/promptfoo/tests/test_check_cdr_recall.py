@@ -149,6 +149,13 @@ def test_floor_on_missing_shape_fails(tmp_path):
     assert _run(p, "--min-recall", "0.5") == 1
 
 
+def test_missing_shape_fails_without_floor_too(tmp_path, capsys):
+    """Baseline mode reports, never passes on nothing (docstring contract)."""
+    p = _results(tmp_path, [("full-table", 1.0, "")])
+    assert _run(p) == 1
+    assert "BASELINE" not in capsys.readouterr().out
+
+
 def test_empty_results_fail(tmp_path):
     assert _run(_results(tmp_path, []), "--min-recall", "0.5") == 1
 

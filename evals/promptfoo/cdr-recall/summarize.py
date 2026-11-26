@@ -89,13 +89,13 @@ def main(argv) -> int:
             print(f"\nGATE PASS: shipped {means['shipped']:.2%} vs full-table "
                   f"{means['full-table']:.2%} (margin {a.gate_margin:.2%})")
 
-    if a.min_recall is None and a.max_false_pos is None:
-        if a.shape in means:
-            print(f"\nBASELINE: no floor set; {a.shape} recall {means[a.shape]:.2%}, "
-                  f"{fps[a.shape]} false positives over {len(score[a.shape])} cases")
-    elif a.shape not in means:
+    if a.shape not in means:
+        # Missing/empty shape fails with or without a floor (docstring).
         print(f"\nFLOOR FAIL: no results for shape '{a.shape}'")
         failed = True
+    elif a.min_recall is None and a.max_false_pos is None:
+        print(f"\nBASELINE: no floor set; {a.shape} recall {means[a.shape]:.2%}, "
+              f"{fps[a.shape]} false positives over {len(score[a.shape])} cases")
     else:
         floor_failed = False
         if a.min_recall is not None and means[a.shape] < a.min_recall:

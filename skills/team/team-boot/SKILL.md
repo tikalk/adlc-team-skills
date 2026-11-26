@@ -17,10 +17,11 @@ never CDR rows. When `CDR.md` has a `Use When` column (team-repair writes it
 from each module's `use_when:`), each record gets its own line with that
 trigger, its leading "Use when " stripped (`  - helm_wrapper_charts (CDR-2026-016):
 customising a third-party Helm chart without forking it`; the header line says
-once that indented lines read `name (ID): when to use it`), so a vaguely named rule is still
+once that `name (ID): text` lines say when to use the record), so a vaguely named rule is still
 matched by task wording; without the column a directory stays one line of
-names (`- rules/devops: helm_wrapper_charts (CDR-2026-016), …`). Descriptions
-are never injected. Routing recall is gated in CI (EVAL-018) when the repo has `OPENAI_API_KEY`; without it the step is skipped, not passed. The model matches the task to a topic by meaning, then reads
+names (`- rules/devops: helm_wrapper_charts (CDR-2026-016), …`). boot never reads
+the Description column (a `Use When` cell team-repair filled from a description
+is injected like any trigger). Routing recall is gated in CI (EVAL-018) when the repo has `OPENAI_API_KEY`; without it the step is skipped, not passed. The model matches the task to a topic by meaning, then reads
 `context_modules/<topic>/<name>.md`; descriptors load on demand from
 `CDR.md` or `/team-discover`. The pointer names no path in a shell command:
 the directives path comes from project config.

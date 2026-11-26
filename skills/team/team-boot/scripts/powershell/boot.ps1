@@ -205,8 +205,12 @@ if ($CdrSource) {
     $CdrScope = "$CdrCount"
     # Plain text, no ready-to-run command (the path comes from project config).
     $cdrMap = @(Format-CdrTopicMap -Paths $cdrTopicPaths)
-    $cdrHint = if (@($cdrMap | Where-Object { $_ -clike '  - *' }).Count) { " Indented lines: name (ID): when to use it." } else { "" }
-    Write-Output "_Total: $CdrCount CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md.$cdrHint Descriptors: CDR.md or /team-discover."
+    # Any non-empty trigger, top-level or in a directory, earns the header hint (= boot.sh).
+    $hasTrig = @($cdrTopicPaths | Where-Object { $f = "$_" -split "`t", 3; $f.Count -gt 2 -and $f[2] -match '[^ \t]' }).Count -gt 0
+    $cdrHint = if ($hasTrig) { ' Lines "name (ID): text" say when to use that record.' } else { "" }
+    # The index.md fallback has no CDR.md to point at.
+    $cdrDesc = if ($CdrSource -eq "CDR.md") { "CDR.md or /team-discover" } else { "/team-discover" }
+    Write-Output "_Total: $CdrCount CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md.$cdrHint Descriptors: $cdrDesc."
     foreach ($t in $cdrMap) { if ($t) { Write-Output $t } }
 } else {
     # Loud degradation: a missing index is never an empty record set.

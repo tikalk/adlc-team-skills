@@ -370,6 +370,8 @@ def test_cdr_topic_map_from_per_dir_index(tmp_path, run):
     assert "_Total: 2 CDRs available._" in out
     assert "- rules/devops: helm_wrapper_charts, argocd_applications" in out.splitlines()
     assert "CDR index unavailable" not in out
+    assert "Descriptors: /team-discover." in out  # no CDR.md to point at
+    assert "CDR.md" not in out.split("## CDR Index", 1)[1].split("\n\n", 1)[0]
 
 
 @pytest.mark.parametrize("run", RUNNERS)
@@ -474,7 +476,7 @@ TRIGGER_LINES = [
     "- rules/python:",
     "  - long: " + "x" * 117 + "...",
 ]
-TRIGGER_HINT = "Indented lines: name (ID): when to use it."
+TRIGGER_HINT = 'Lines "name (ID): text" say when to use that record.'
 
 
 def _cdr_block(out: str) -> list:
@@ -507,6 +509,21 @@ def test_use_when_column_found_by_header_name_not_position(tmp_path, run):
     )
     assert _cdr_block(run(project)) == [
         "- rules/devops:", "  - argocd_applications (CDR-2026-017): deploying via GitOps"]
+
+
+@pytest.mark.parametrize("run", RUNNERS)
+def test_hint_shown_when_only_top_level_records_have_triggers(tmp_path, run):
+    """A root record renders "- name: trigger" (no indent); the hint keys on
+    triggers present, not on indented lines."""
+    project = _setup(tmp_path, agents_md=AGENTS_SECTION)
+    (tmp_path / "directives" / "CDR.md").write_text(
+        "| ID | Path | Type | Use When |\n|---|---|---|---|\n"
+        "| constitution | context_modules/constitution.md | Constitution | Use when any task starts |\n"
+        "| rule-x | context_modules/rules/devops/no_trigger.md | Rule |  |\n"
+    )
+    out = run(project)
+    assert _cdr_block(out) == ["- constitution: any task starts", "- rules/devops: no_trigger"]
+    assert TRIGGER_HINT in out
 
 
 @pytest.mark.parametrize("run", RUNNERS)

@@ -62,7 +62,9 @@ shapes, and promptfoo runs every test against every prompt, so its cases cannot
 join the main `config.js`. Each PR runs the index boot.sh really ships (one
 call per case) against a fixed floor. Nightly also runs the pre-#36 table and
 the names-only topic map (3 calls per case) and fails if the shipped index
-recalls less than the table.
+recalls more than 0.06 below the table (`--gate --gate-margin 0.06`; one
+run's model noise is about one case per shape). The PR step needs
+`OPENAI_API_KEY`: without it the step is skipped, which is not a pass.
 
 ### Adding a criterion
 

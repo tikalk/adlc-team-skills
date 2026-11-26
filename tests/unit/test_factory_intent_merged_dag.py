@@ -33,39 +33,20 @@ def steps_by_id(doc):
     return {s.get("id"): s for s in steps}
 
 
-# ── Row 1 (B): one brief in, two lanes, joint implement ───────────────────
+# ── Row 1 (B): one brief in, two lanes, joint build-and-verify ─────────────
 
 def test_workflow_has_two_lanes_and_joint_build():
-    """factory-intent has product + architecture specify lanes and joint
-    implement steps after both gates (the DAG ends at implement —
-    no analyze, no correction loop)."""
+    """factory-intent has product + architecture specify lanes and a joint
+    build-and-verify step waiting for both gates."""
     assert WORKFLOW.exists(), "skills/factory/factory-intent/workflow.yml must exist"
     doc = load_workflow()
     steps = steps_by_id(doc)
     ids = " ".join(steps.keys())
     assert "product" in ids, f"product lane missing in {list(steps)}"
     assert "architect" in ids, f"architecture lane missing in {list(steps)}"
-    assert "product-implement" in steps, (
-        f"product implement step missing in {list(steps)}"
+    assert any("build" in k and "verify" in k for k in steps), (
+        f"joint build-and-verify step missing in {list(steps)}"
     )
-    assert "architecture-implement" in steps, (
-        f"architecture implement step missing in {list(steps)}"
-    )
-
-
-def test_workflow_has_no_analyze_or_correction_loop():
-    """The DAG ends at implement: no analyze commands, no do-while/while
-    correction loop."""
-    doc = load_workflow()
-    steps = steps_by_id(doc)
-    for sid, s in steps.items():
-        cmd = str(s.get("command", ""))
-        assert "analyze" not in cmd, (
-            f"DAG must not run analyze in {sid}: {cmd}"
-        )
-    assert not any(
-        s.get("type") in ("do-while", "while") for s in steps.values()
-    ), "DAG must not contain a correction loop"
 
 
 def test_lanes_use_same_step_shape_as_twins():
@@ -179,16 +160,15 @@ def test_skill_documents_human_tiebreak():
 # ── Row 4/5 (B): boundary + bounded loop ───────────────────────────────────
 
 def test_skill_documents_boundary_and_bounded_loop():
-    """SKILL.md states the WHAT/WHY vs HOW boundary and that the DAG ends
-    at implement (no analyze, no correction loop — analyze stays a manual
-    follow-up)."""
+    """SKILL.md states the WHAT/WHY vs HOW boundary and the bounded
+    correction loop (max 2, then halt for human)."""
     text = SKILL_MD.read_text(encoding="utf-8")
     low = text.lower()
     assert "handoff" in low or "boundary" in low, (
         "SKILL.md must state the product/architecture boundary"
     )
-    assert "no analyze" in low or "ends at implement" in low, (
-        "SKILL.md must state the DAG ends at implement without analyze"
+    assert "max_corrections" in text or "max 2" in low or "bounded" in low, (
+        "SKILL.md must state the bounded correction loop"
     )
 
 
@@ -220,8 +200,8 @@ def test_lane_entry_workflows_exist():
 
 
 def test_lane_entry_covers_single_lane_steps():
-    """Each lane entry runs specify → clarify → gate → implement for
-    its own lane only (no cross-lane steps, no analyze)."""
+    """Each lane entry runs specify → clarify → gate → build-and-verify for
+    its own lane only (no cross-lane steps)."""
     for lane, path in LANE_FILES.items():
         doc = load_lane(lane)
         steps = steps_by_id(doc)
@@ -231,8 +211,8 @@ def test_lane_entry_covers_single_lane_steps():
         assert any("specify" in k for k in steps), f"{lane}: specify missing in {ids}"
         assert any("clarify" in k for k in steps), f"{lane}: clarify missing in {ids}"
         assert any("gate" in k for k in steps), f"{lane}: gate missing in {ids}"
-        assert "implement" in steps, (
-            f"{lane}: implement missing in {ids}"
+        assert any("build" in k and "verify" in k for k in steps), (
+            f"{lane}: build-and-verify missing in {ids}"
         )
         for sid in steps:
             assert other not in sid, (
@@ -280,8 +260,8 @@ def test_lane_entry_inputs_are_declared():
 
 def test_lane_entry_matches_twin_structure():
     """Each lane entry mirrors the removed twin's step shape: specify →
-    clarify → gate-decisions → implement (the DAG ends at implement, no
-    analyze), with the lane's own commands and no twin-skill invokables."""
+    clarify → gate-decisions → build-and-verify(implement → analyze), with
+    the lane's own commands and no twin-skill invokables."""
     for lane, path in LANE_FILES.items():
         doc = load_lane(lane)
         steps = steps_by_id(doc)
@@ -289,10 +269,13 @@ def test_lane_entry_matches_twin_structure():
         assert "specify" in steps, f"{lane}: specify missing"
         assert "clarify" in steps, f"{lane}: clarify missing"
         assert "gate-decisions" in steps, f"{lane}: gate-decisions missing"
-        assert "implement" in steps, f"{lane}: implement missing"
+        assert "build-and-verify" in steps, f"{lane}: build-and-verify missing"
         assert steps["specify"].get("command") == f"{prefix}-specify"
         assert steps["clarify"].get("command") == f"{prefix}-clarify"
-        assert steps["implement"].get("command") == f"{prefix}-implement"
+        joint = steps["build-and-verify"]
+        nested = {s.get("id"): s for s in joint.get("steps", [])}
+        assert nested.get("implement", {}).get("command") == f"{prefix}-implement"
+        assert nested.get("analyze", {}).get("command") == f"{prefix}-analyze"
         text = path.read_text(encoding="utf-8")
         assert not re.search(r"command:\s*factory-product", text)
         assert not re.search(r"command:\s*factory-architect", text)

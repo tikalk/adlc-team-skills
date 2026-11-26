@@ -10,12 +10,81 @@ DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
-# Sibling library — chdr-lib.sh sits next to change-clarify's setup script,
-# but init's setup script is in a different directory. We use the one in
-# change-clarify as the source of truth, but each skill vendors its own copy.
-# (Note: for Task 4, they are all in the same repo but different skill dirs).
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/chdr-lib.sh"
+###############################################################################
+# Decision-record store resolution (ADR-514)
+#
+# Vendored byte-identical from the canonical block in change-clarify's
+# chdr-lib.sh — scope rule: scripts stay skill-local.
+# tests/unit/test_resolve_memory_root.py pins the copies against each other.
+###############################################################################
+
+# _memory_root_has_marker DIR — does DIR carry a decision-record store marker?
+# A marker is a decision-record family subdir (adr/, pdr/, chdr/) or a family
+# index file (adr.md/pdr.md/chdr.md) under docs/adlc/memory/ or the legacy
+# .adlc/memory/. A bare .adlc/ is NOT a marker; a memory dir holding only
+# non-decision content (evals/, constitution.md) is NOT a marker.
+_memory_root_has_marker() {
+    local root="$1" mem fam
+    for mem in "docs/adlc/memory" ".adlc/memory"; do
+        [[ -d "$root/$mem" ]] || continue
+        for fam in adr pdr chdr; do
+            if [[ -d "$root/$mem/$fam" || -f "$root/$mem/$fam.md" || -f "$root/$mem/$fam/$fam.md" ]]; then
+                return 0
+            fi
+        done
+    done
+    return 1
+}
+
+# _workspace_root_above DIR — is any strict ancestor of DIR a workspace root
+# (a directory holding .gitmodules or .adlc/workspace.yml)? Lets a submodule
+# child climb past its own git toplevel toward the workspace store.
+_workspace_root_above() {
+    local up
+    up="$(dirname "$1")"
+    while [[ "$up" != "/" ]]; do
+        if [[ -f "$up/.gitmodules" || -f "$up/.adlc/workspace.yml" ]]; then
+            return 0
+        fi
+        up="$(dirname "$up")"
+    done
+    return 1
+}
+
+# resolve_memory_root — the decision-record store root for the current working
+# directory. ONE bounded walk-up from pwd:
+#   1. the nearest ancestor with a decision-record family marker wins;
+#   2. else the nearest workspace root (.gitmodules or .adlc/workspace.yml)
+#      — the workspace-centralized default;
+#   3. else the git toplevel (standalone repo).
+# The walk never climbs past the git toplevel unless a workspace root sits
+# above it (a submodule child inside a workspace). Side-effect-free: reads
+# never create anything.
+resolve_memory_root() {
+    local dir toplevel
+    dir="$(pwd -P)"
+    toplevel="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)"
+    while [[ "$dir" != "/" ]]; do
+        if _memory_root_has_marker "$dir"; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        if [[ -f "$dir/.gitmodules" || -f "$dir/.adlc/workspace.yml" ]]; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        if [[ -n "$toplevel" && "$dir" == "$toplevel" ]] && ! _workspace_root_above "$dir"; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    if [[ -n "$toplevel" ]]; then
+        printf '%s\n' "$toplevel"
+    else
+        pwd -P
+    fi
+}
 
 ###############################################################################
 # Inline path resolution (no external helper dependency)

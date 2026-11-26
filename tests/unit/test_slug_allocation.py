@@ -163,6 +163,8 @@ def test_mint_cdr_slug_collision(tree):
 def test_cdr_no_numeric_fallback(tree):
     """Test CDR lookup rejects legacy numeric format."""
     subprocess.run(["git", "init"], cwd=tree, check=True)
+    subprocess.run(["git", "config", "user.email", "you@example.com"], cwd=tree, check=True)
+    subprocess.run(["git", "config", "user.name", "Your Name"], cwd=tree, check=True)
     subprocess.run(["git", "checkout", "-b", "adlc"], cwd=tree, check=True)
     
     cdr_path = tree / "drafts/cdr/CDR-2026-003.md"

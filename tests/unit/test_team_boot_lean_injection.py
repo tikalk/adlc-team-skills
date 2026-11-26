@@ -452,7 +452,7 @@ TRIGGER_CDR = (
     "| CDR-2026-016 | context_modules/rules/devops/helm_wrapper_charts.md | Rule | wrapper descr | d | d | 0d | stable"
     " | Use when customising a third-party Helm chart without forking it |\n"
     "| CDR-2026-017 | context_modules/rules/devops/argocd_applications.md | Rule | argo descr | d | d | 0d | stable"
-    " | Use when deploying to Kubernetes via GitOps |\n"
+    " | deploying to Kubernetes via GitOps |\n"
     "| rule-x | context_modules/rules/devops/no_trigger.md | Rule | bare descr | d | d | 0d | stable |  |\n"
     "| CDR-2026-002 | context_modules/personas/devops_engineer.md | Persona | persona descr | d | d | 0d | stable"
     " | Use when acting as DevOps engineer: CI/CD, IaC |\n"
@@ -460,17 +460,21 @@ TRIGGER_CDR = (
     " | Use when any task starts |\n"
     "| rule-y | context_modules/rules/python/long.md | Rule | long descr | d | d | 0d | stable | Use when " + "x" * 130 + " |\n"
 )
+# The source's leading "Use when " is stripped at render (kanfil's token nit,
+# #203: 71 × 9 chars of repetition); a trigger without it renders verbatim
+# (argocd); the 120-char cap applies after the strip.
 TRIGGER_LINES = [
-    "- constitution: Use when any task starts",
+    "- constitution: any task starts",
     "- personas:",
-    "  - devops_engineer (CDR-2026-002): Use when acting as DevOps engineer: CI/CD, IaC",
+    "  - devops_engineer (CDR-2026-002): acting as DevOps engineer: CI/CD, IaC",
     "- rules/devops:",
-    "  - helm_wrapper_charts (CDR-2026-016): Use when customising a third-party Helm chart without forking it",
-    "  - argocd_applications (CDR-2026-017): Use when deploying to Kubernetes via GitOps",
+    "  - helm_wrapper_charts (CDR-2026-016): customising a third-party Helm chart without forking it",
+    "  - argocd_applications (CDR-2026-017): deploying to Kubernetes via GitOps",
     "  - no_trigger",
     "- rules/python:",
-    "  - long: Use when " + "x" * 108 + "...",
+    "  - long: " + "x" * 117 + "...",
 ]
+TRIGGER_HINT = "Indented lines: name (ID): when to use it."
 
 
 def _cdr_block(out: str) -> list:
@@ -488,6 +492,8 @@ def test_use_when_column_gives_one_trigger_line_per_record(tmp_path, run, agents
     out = run(project)
     assert _cdr_block(out) == TRIGGER_LINES
     assert "_Total: 6 CDRs available._" in out
+    assert TRIGGER_HINT in out  # the stripped prefix is stated once
+    assert "Use when" not in "\n".join(_cdr_block(out))
     for d in ("wrapper descr", "argo descr", "bare descr", "persona descr", "const descr"):
         assert d not in out  # descriptions are never injected
 
@@ -500,7 +506,7 @@ def test_use_when_column_found_by_header_name_not_position(tmp_path, run):
         "| CDR-2026-017 | context_modules/rules/devops/argocd_applications.md | Use when deploying via GitOps | Rule |\n"
     )
     assert _cdr_block(run(project)) == [
-        "- rules/devops:", "  - argocd_applications (CDR-2026-017): Use when deploying via GitOps"]
+        "- rules/devops:", "  - argocd_applications (CDR-2026-017): deploying via GitOps"]
 
 
 @pytest.mark.parametrize("run", RUNNERS)
@@ -509,3 +515,4 @@ def test_no_use_when_column_keeps_one_line_topic_map(tmp_path, run):
     keeps the names-only map, never descriptions."""
     out = run(_setup(tmp_path, agents_md=AGENTS_SECTION))
     assert _cdr_block(out) == list(TOPIC_LINES)
+    assert TRIGGER_HINT not in out  # no trigger lines, no hint

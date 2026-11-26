@@ -3,7 +3,7 @@
 // The same tasks are routed against shapes of the injected CDR index:
 //   shipped    — rendered live by boot.sh from fixture/directives
 //                (render_index.sh); what a session really gets — today one
-//                "Use when …" line per record
+//                trigger line per record ("Use when " stripped at render)
 //   full-table — snapshot: the pre-#36 rows (ID | Type | descriptor), rendered
 //                from the same fixture by boot.sh at 3ccd33c
 //   topic-map  — snapshot: names only, grouped by directory, rendered from the

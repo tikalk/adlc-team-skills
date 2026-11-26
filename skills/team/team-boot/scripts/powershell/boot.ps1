@@ -110,7 +110,8 @@ if (Test-Path $AgentsFile -PathType Leaf) {
 # CDR.md's Path column (2nd) holds the module path. Data rows are EVERY '|'
 # table row except the header ('| ID |...') and the separator ('|---|...');
 # never match ID prefixes (a prefix list once dropped 3 of 67 rows).
-# A "Use When" column (found by header name, capped at 120 chars) turns a
+# A "Use When" column (found by header name, leading "Use when " stripped,
+# capped at 120 chars) turns a
 # directory into one "  - name (CDR-…): trigger" line per record, as in
 # boot.sh; directories without triggers keep the one-line form.
 function Format-CdrTopicMap {
@@ -131,6 +132,8 @@ function Format-CdrTopicMap {
         if ($pf.Count -gt 1 -and $pf[1].Trim() -cmatch '^CDR-[0-9]+-[0-9]+$') { $name = "$name ($($pf[1].Trim()))" }
         $dir = if ($parts.Count -gt 1) { ($parts[0..($parts.Count - 2)]) -join '/' } else { "" }
         $t = if ($pf.Count -gt 2) { $pf[2].Trim(" `t") } else { "" }
+        # Leading "Use when " is stripped at render, as in boot.sh.
+        $t = $t -creplace '^[Uu]se [Ww]hen:?[ \t]+', ''
         if ($t.Length -gt 120) { $t = $t.Substring(0, 117) + "..." }
         if (-not $map.ContainsKey($dir)) {
             $order.Add($dir)
@@ -201,8 +204,10 @@ if (Test-Path $cdrPath -PathType Leaf) {
 if ($CdrSource) {
     $CdrScope = "$CdrCount"
     # Plain text, no ready-to-run command (the path comes from project config).
-    Write-Output "_Total: $CdrCount CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md. Descriptors: CDR.md or /team-discover."
-    foreach ($t in (Format-CdrTopicMap -Paths $cdrTopicPaths)) { if ($t) { Write-Output $t } }
+    $cdrMap = @(Format-CdrTopicMap -Paths $cdrTopicPaths)
+    $cdrHint = if (@($cdrMap | Where-Object { $_ -clike '  - *' }).Count) { " Indented lines: name (ID): when to use it." } else { "" }
+    Write-Output "_Total: $CdrCount CDRs available._ Match the task to a topic by meaning; read just context_modules/<topic>/<name>.md.$cdrHint Descriptors: CDR.md or /team-discover."
+    foreach ($t in $cdrMap) { if ($t) { Write-Output $t } }
 } else {
     # Loud degradation: a missing index is never an empty record set.
     $CdrScope = "?"

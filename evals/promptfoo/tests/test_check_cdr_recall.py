@@ -98,7 +98,8 @@ def test_render_index_emits_boot_cdr_index():
                          capture_output=True, text=True, timeout=30, check=True).stdout
     assert out.startswith("## CDR Index\n")
     assert "_Total: 71 CDRs available._" in out
-    assert "  - helm_template_helpers (CDR-2026-015): Use when " in out
+    assert "  - helm_template_helpers (CDR-2026-015): naming or labelling" in out
+    assert "Use when" not in out  # stripped at render, stated once in the header
     assert "## " not in out.split("\n", 1)[1], "render leaked past the CDR Index block"
 
 

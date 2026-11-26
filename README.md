@@ -24,8 +24,8 @@ so they stop working like strangers.
 
 It starts the moment you open a session. `team-boot` fires via the
 `session_start` event hook and injects a lean index of your team's rules —
-roughly a hundred tokens of names and one-line descriptors. Not the rules
-themselves. When the active task matches a rule, the agent pulls that
+one line per rule, grouped by area, saying when to use it ("Use when
+deploying to Kubernetes via GitOps"). Not the rules themselves. When the active task matches a rule, the agent pulls that
 rule's full text on demand. A task touching SQL loads the SQL rule;
 nothing else does.
 
@@ -93,8 +93,8 @@ skills + commands + events without the team configuration.
 ### 2. First session — context arrives on its own
 
 Open a session in the project. `team-boot` fires on `session_start` and
-injects the index (constitution titles, CDR index ranked by confidence,
-Class Boots catalog, skills registry, MCP servers). On an unconfigured
+injects the index (constitution titles, CDR topic map, skills registry,
+MCP servers; the Class Boots catalog lives in the `AGENTS.md` section). On an unconfigured
 project it points you to `/team-setup`; `/team-constitution` fills in your
 team's principles once. There is nothing to remember after this point —
 skills trigger when the task matches.
@@ -351,7 +351,7 @@ alongside:
 
 ### Team directives — every session, every user
 
-- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR index ranked by confidence, Class Boots catalog, skills registry) and dispatches to per-class boots on demand. Auto-triggered; re-declared for `session_compact` so the index survives harness compaction. Also fires the session-end friction trigger for CDR capture, and `file_edited` draft-written nudges suggesting the matching clarify skill.
+- **`team-boot`** — session-start bootstrap; injects the always-relevant layer (constitution titles, CDR topic map, skills registry; the static contract lives in the `AGENTS.md` TEAM_AI_DIRECTIVES section) and dispatches to per-class boots on demand. Auto-triggered; re-declared for `session_compact` so the index survives harness compaction. Also fires the session-end friction trigger for CDR capture, and `file_edited` draft-written nudges suggesting the matching clarify skill.
 - **`team-setup`** — clone, link, or scaffold a team-ai-directives repo.
 - **`team-constitution`** — define or amend team principles interactively.
 - **`team-discover`** — manual re-scan; structured match table (`/team-discover`).
@@ -685,7 +685,7 @@ This repo implements the [Twelve-Factor Agentic SDLC](https://github.com/tikalk/
 | **VII — Verification-First Evals** | team-levelup + Evals skills | team-levelup creates directive-compliance eval CDRs; evals skills build and run application-level evaluation suites (PromptFoo/DeepEval) with binary graders, holdout splits, and statistical validation |
 | **VIII — Ratchet Effect** | team-levelup + Evals skills | Each session extracts eval CDRs alongside directive CDRs; each goldset publication adds criteria that monotonically increase quality — `evals-clarify` publishes, `evals-validate` enforces |
 | **IX — Traceability** | Product + Architecture | Every decision traces from PDR → PRD → feature and from ADR → AD → code |
-| **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR index (ranked by confidence), and the Class Boots catalog into the system prompt at session start; the class boots load ADR/PDR/ChDR/CDR/radar context on demand, each paired with decision capture; `team-discover` provides manual re-scan |
+| **X — Context Engineering** | Team Directives | `team-boot` assembles constitution, CDR topic map and skills registry into the system prompt at session start, with the Class Boots catalog in `AGENTS.md`; the class boots load ADR/PDR/ChDR/CDR/radar context on demand, each paired with decision capture; `team-discover` provides manual re-scan |
 | **XI — Directives as Code** | Team + team-levelup + Product + Architecture | All directive lifecycles (CDR, PDR, ADR) live in version-controlled repos; CDR drafts and usage reports live in the `adlc` orphan branch of team-ai-directives (`drafts/cdr/` + `reports/`); each lifecycle has extract → review → publish → analyze stages |
 | **XII — Build to Delete** | team-repair + evals-analyze | `--build-to-delete` runs evals without directives via LLM calls; if model passes, proposes deletion (Harness Decay); `--update-confidence` aggregates usage data into OKF frontmatter confidence scores; `evals-analyze` routes spec failures to `team-levelup` (rules) and generalization failures to the evaluator backlog — the feedback loop that makes build-to-delete verifiable |
 

@@ -429,6 +429,9 @@ def test_boot_pending_decisions_consolidated_table(tmp_path, monkeypatch):
     td = tmp_path / "td"
     td.mkdir()
     (td / ".skills.json").write_text('{"default": [], "external": {}}', encoding="utf-8")
+    # Header-only CDR.md: a real zero. A missing index now reports
+    # "? CDRs (unavailable)" — never a silent 0 (issue #36, SC7).
+    (td / "CDR.md").write_text("| ID | Title | Type | Descriptor |\n|---|---|---|---|\n", encoding="utf-8")
     (tmp_path / ".adlc/init-options.json").write_text(
         json.dumps({"team_ai_directives": str(td)}), encoding="utf-8")
     monkeypatch.chdir(tmp_path)

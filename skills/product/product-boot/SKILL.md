@@ -96,8 +96,10 @@ _N pending drafts — run /product-clarify to review._
   equal the table rows shown.** 0 rows matched → emit the section heading +
   the `_Searched N PDRs, K matched._` line only — no table. A 0-row table
   header collapses into unrendered single-line markdown; never emit one.
-  Emit the section as markdown blocks — heading, table rows, and counts line
-  each on their own lines.
+  Emit the section as markdown blocks — heading, table, and counts line
+  each on their own lines. Include the `|--|` separator row; one table row
+  per line. Before sending, if the section contains a `|` but no newline,
+  rewrite it.
 
 ### Step 3: Suggest Product Decision Capture
 

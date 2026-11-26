@@ -154,9 +154,10 @@ Output: `[OK]` or `[FAIL]` with reason
    - `verified` is a list format (not bare string)
    - `status` present (e.g., `stable`, `draft`, `deprecated`)
    - `stale_after` present (e.g., `180d`)
-5. Output:
-   - `[OK]` — All concept files have valid `type` fields and v0.2 families
-   - `[WARN]` — Some files missing v0.2 fields or still carry v0.1 fields (will be migrated in Phase 4)
+5. Verify `use_when` on every module CDR.md indexes (rules, personas, examples, constitution): one line, starts with `Use when`, at most 90 characters, no `|`. It is the line team-boot injects for the record, so it is written in task wording ("Use when deploying to Kubernetes via GitOps"), never the rule's own name restated; personas use "Use when acting as …". Never generate or rewrite it — a missing or invalid `use_when` is reported, and CDR.md falls back to the description (Phase 6). Writing it is the author's call (`/team-levelup` or a PR to the directives repo).
+6. Output:
+   - `[OK]` — All concept files have valid `type` fields and v0.2 families, and every indexed module has a valid `use_when`
+   - `[WARN]` — Some files missing v0.2 fields or still carry v0.1 fields (will be migrated in Phase 4), or indexed modules with a missing/invalid `use_when` (listed by path with the reason; their CDR.md row falls back to the description)
 
 #### Check 7: Project AGENTS.md Directive
 
@@ -167,8 +168,10 @@ Output: `[OK]` or `[FAIL]` with reason
    - A reference to team AI directives context (constitution, CDR index)
    - The Class Boots catalog (architect-boot / product-boot / change-boot / team-boot / tech-radar-boot)
    - The compact Decision Capture triggers + Team Context & Decisions contract (single merged table; Status carries the accepted-vs-pending distinction)
+   - The lean-contract sentinel `<!-- team-boot-contract: lean-v1 -->` plus the `### Proportionality Gate` and `### Trust Model` headings — without all three, team-boot emits the full static contract every session (safe, but ~7K chars larger)
 4. Output:
    - `[OK]` — Project AGENTS.md contains a valid team AI directives managed section
+   - `[WARN]` — Managed section predates the lean contract (no sentinel, or Proportionality Gate / Trust Model missing) — re-run team-setup to regenerate it
    - `[WARN]` — Project AGENTS.md exists but is missing the managed section (agents won't auto-invoke `team-boot`)
    - `[INFO]` — Project AGENTS.md doesn't exist yet (first-time setup)
 
@@ -360,6 +363,7 @@ For each file, parse YAML frontmatter (OKF v0.2 form after migration):
 type: Rule
 title: Python error handling
 description: Python error handling patterns and best practices
+use_when: "Use when adding error handling, retries or exceptions to Python code"
 tags: [python, error-handling]
 resource: ./context_modules/rules/python/error-handling.md
 generated: { by: agent:legacy, at: 2026-04-15T00:00:00Z }
@@ -381,7 +385,7 @@ Extraction logic:
 1. Read file content
 2. Check if starts with `---`
 3. Parse YAML between `---` markers
-4. Extract: `id`, `cdr_ref`, `created`, `type`, `title`, `description`, `tags`, `generated.at`, `verified` (latest `at`), `status`
+4. Extract: `id`, `cdr_ref`, `created`, `type`, `title`, `description`, `use_when`, `tags`, `generated.at`, `verified` (latest `at`), `status`
 
 #### Step 2a: Build CDR Lookup from Existing CDR.md
 
@@ -685,10 +689,10 @@ From the per-directory `index.md` data + module frontmatter, derive a flat `CDR.
 
 ## CDR Index
 
-| ID | Path | Type | Description | Generated | Verified | Age | Status |
-|----|------|------|-------------|-----------|----------|-----|--------|
-| CDR-2026-021 | context_modules/rules/security/sql_injection_prevention.md | Rule | Standards for preventing SQL injection... | 2026-06-14 | 2026-05-21 | 46d | stable |
-| rule-frontend-routing | context_modules/rules/frontend/framework/frontend_routing.md | Rule | Client-side routing patterns... | 2026-06-15 | 2026-06-15 | 0d | stable |
+| ID | Path | Type | Description | Generated | Verified | Age | Status | Use When |
+|----|------|------|-------------|-----------|----------|-----|--------|----------|
+| CDR-2026-021 | context_modules/rules/security/sql_injection_prevention.md | Rule | Standards for preventing SQL injection... | 2026-06-14 | 2026-05-21 | 46d | stable | Use when building SQL from user input or reviewing database query code |
+| rule-frontend-routing | context_modules/rules/frontend/framework/frontend_routing.md | Rule | Client-side routing patterns... | 2026-06-15 | 2026-06-15 | 0d | stable | Client-side routing patterns for single-page apps |
 
 **Stats**: {N} entries | Last Updated: {date}
 ```
@@ -702,6 +706,7 @@ From the per-directory `index.md` data + module frontmatter, derive a flat `CDR.
 - `Verified`: latest `verified[].at` date (YYYY-MM-DD)
 - `Age`: days since `verified` date
 - `Status`: `status` from frontmatter (or `stable` if absent)
+- `Use When`: `use_when` from frontmatter, verbatim, when valid (Check 6 rule: one line, starts with `Use when`, ≤ 90 chars, no `|`); otherwise the `description`, truncated to 90 chars with any `|` removed — the row above shows that fallback. Always the last column: readers parse columns by position, and team-boot injects this column as the record's one-line trigger, so it must never be empty.
 
 #### Step 4: Write Files
 

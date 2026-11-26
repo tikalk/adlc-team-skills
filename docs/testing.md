@@ -56,6 +56,16 @@ that gap — every night, main's full suite runs on the canonical repo. If
 the nightly goes red, the regression came from something merged since the
 previous green night.
 
+The CDR routing recall eval (EVAL-018, `evals/promptfoo/cdr-recall/`) has its
+own config and runs as its own step in both workflows. Its prompts are index
+shapes, and promptfoo runs every test against every prompt, so its cases cannot
+join the main `config.js`. Each PR runs the index boot.sh really ships (one
+call per case) against a fixed floor. Nightly also runs the pre-#36 table and
+the names-only topic map (3 calls per case) and fails if the shipped index
+recalls more than 0.06 below the table (`--gate --gate-margin 0.06`; one
+run's model noise is about one case per shape). The PR step needs
+`OPENAI_API_KEY`: without it the step is skipped, which is not a pass.
+
 ### Adding a criterion
 
 Follow the 5-step recipe in CONTRIBUTING ("Adding an eval criterion"):

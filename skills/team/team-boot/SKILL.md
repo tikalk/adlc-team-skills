@@ -11,12 +11,40 @@ scripts:
 ## Overview
 
 Assembles team AI directives context and injects it into the system prompt
-at session start. The CDR index lists all available team context modules
-with descriptors — read full module files on demand when a task matches.
+at session start. The injection carries the CDR **count and a topic map** —
+every CDR's module path grouped by directory, with its `CDR-YYYY-NNN` ID when it has one —
+never CDR rows. When `CDR.md` has a `Use When` column (team-repair writes it
+from each module's `use_when:`), each record gets its own line with that
+trigger, its leading "Use when " stripped (`  - helm_wrapper_charts (CDR-2026-016):
+customising a third-party Helm chart without forking it`; the header line says
+once that `name (ID): text` lines say when to use the record), so a vaguely named rule is still
+matched by task wording; without the column a directory stays one line of
+names (`- rules/devops: helm_wrapper_charts (CDR-2026-016), …`). boot never reads
+the Description column (a `Use When` cell team-repair filled from a description
+is injected like any trigger). Routing recall is gated in CI (EVAL-018) when the repo has `OPENAI_API_KEY`; without it the step is skipped, not passed. The model matches the task to a topic by meaning, then reads
+`context_modules/<topic>/<name>.md`; descriptors load on demand from
+`CDR.md` or `/team-discover`. The pointer names no path in a shell command:
+the directives path comes from project config.
 
-team-boot injects only the **always-relevant** layer: constitution titles,
-the compact CDR index, the Class Boots catalog, the skills registry, and
-MCP servers. The four **record classes** (ADR/PDR/ChDR/CDR deep-dive) plus
+team-boot injects only the **always-relevant, dynamic** layer: constitution
+titles, scope counts, the CDR topic map, the skills registry (every skill
+with its trigger), MCP servers, and pending decisions.
+
+**Lean shape (issue #36).** The static contract — Class Boots catalog, Team
+Context & Decisions format, Decision Capture rules, Proportionality Gate,
+Trust Model — has one home: the `AGENTS.md` TEAM_AI_DIRECTIVES section that
+`team-setup` writes (loaded every session). When that section carries the
+`<!-- team-boot-contract: lean-v1 -->` sentinel and still carries the
+`### Proportionality Gate` and `### Trust Model` headings, the boot emits a
+one-line pointer to it instead of repeating those blocks. The section's
+Decision Capture list names every trigger of the fallback Detection
+Triggers table (incl. workaround, operational constraint, change abandoned).
+Without that (no `AGENTS.md`, no section, a section from an older
+`team-setup`, or a section whose rails were deleted), the boot
+emits the static blocks in full, so no rail is ever silently dropped; re-run
+`team-setup` to upgrade the section. A missing CDR index prints
+`CDR index unavailable — run /team-diagnose` — never an empty record set.
+`session_start` and `session_compact` emit the same shape. The four **record classes** (ADR/PDR/ChDR/CDR deep-dive) plus
 technology selection load on demand through the class boots below — each
 pairs its index injection with decision capture.
 
@@ -57,8 +85,9 @@ its section heading + the searched line only — no table.
 The `session_start` and `session_compact` event hooks (declared in
 `.events.json`, wired by adlc-cli) run `scripts/bash/boot.sh` (POSIX) or
 `scripts/powershell/boot.ps1` (Windows), which reads `.adlc/init-options.json`,
-assembles the context block (constitution, CDR.md index table,
-`.skills.json`), and outputs it to stdout. The plugin caches the result
+assembles the context block (constitution, CDR count + topic map,
+`.skills.json`, and — only without the AGENTS.md lean-contract sentinel —
+the static contract blocks), and outputs it to stdout. The plugin caches the result
 and pushes it into the system prompt on every step (idempotent — same
 cached content, no accumulation). The `session_compact` declaration makes
 post-compaction re-injection part of the contract: when a harness

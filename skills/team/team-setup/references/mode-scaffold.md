@@ -116,8 +116,8 @@ Create `{DEST}/CDR.md`:
 
 ## CDR Index
 
-| ID | Path | Type | Description | Generated | Verified | Age | Status |
-|----|------|------|-------------|-----------|----------|-----|--------|
+| ID | Path | Type | Description | Generated | Verified | Age | Status | Use When |
+|----|------|------|-------------|-----------|----------|-----|--------|----------|
 
 **Stats**: 0 entries | Last Updated: {TODAY}
 ```

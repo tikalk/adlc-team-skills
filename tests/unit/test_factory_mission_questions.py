@@ -82,6 +82,29 @@ def test_only_the_orchestrator_writes_the_payload():
     assert "Lifecycle skills" in rule and "never write it" in rule
 
 
+def test_agent_never_posts_question_markers():
+    rule = _rule8(_text())
+    assert (
+        "The agent must never post a comment carrying `type=question`"
+        in rule
+    ), "rule 8 must forbid the agent posting type=question markers"
+    assert "only the runtime writes question markers" in rule
+    prose = re.sub(r"```.*?```", "", rule, flags=re.S)
+    for sentence in re.split(r"[.\n]+", prose):
+        low = sentence.lower()
+        if (
+            "type=question" in low
+            or "question marker" in low
+            or "question note" in low
+            or "request=" in low
+        ):
+            assert re.search(
+                r"must never|must not|never post|do not post|posts no |post no |"
+                r"only the runtime",
+                low,
+            ), f"rule 8 must forbid, not permit, question markers: {sentence.strip()!r}"
+
+
 def test_raw_lane_without_payload_path_blocks():
     assert "blocked: needs an answer: <question>" in _rule8(_text())
 

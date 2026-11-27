@@ -1,6 +1,6 @@
 ---
 name: architect-boot
-description: Use when architecture work starts or a tech-stack or pattern decision emerges — injects the project ADR index (docs/adlc/memory/adr/, legacy .adlc/memory/adr/ fallback) as session context and suggests the decision for capture via /architect-specify (never writes drafts itself); invoked from team-boot's Class Boots catalog.
+description: Use when answering architecture or system-design questions, starting architecture work, or a tech-stack or pattern decision emerges — injects the project ADR index (docs/adlc/memory/adr/, legacy .adlc/memory/adr/ fallback) as session context and suggests the decision for capture via /architect-specify (never writes drafts itself); invoked from team-boot's Class Boots catalog.
 ---
 
 # architect-boot
@@ -27,6 +27,9 @@ Never defer to session end.
 
 Invoke when:
 
+- Answering questions about how or why the system is designed, structured,
+  or constrained (so Accepted ADRs ground the answer alongside code
+  inspection).
 - Starting architecture work (system design, `AD.md` generation,
   cross-subsystem refactoring, dependency changes).
 - The session turns architectural mid-flight: a tech-stack choice, pattern

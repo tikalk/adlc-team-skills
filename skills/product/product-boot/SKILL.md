@@ -1,6 +1,6 @@
 ---
 name: product-boot
-description: Use when product or feature work starts, or a PDR-worthy decision (scope, persona, monetization) emerges — injects the PDR index (docs/adlc/memory/pdr/, legacy .adlc/memory/pdr/ fallback) as session context and suggests the decision for capture via /product-specify (never writes drafts itself); invoked from team-boot's Class Boots catalog.
+description: Use when answering product or feature questions, starting product or feature work, or a PDR-worthy decision (scope, persona, monetization) emerges — injects the PDR index (docs/adlc/memory/pdr/, legacy .adlc/memory/pdr/ fallback) as session context and suggests the decision for capture via /product-specify (never writes drafts itself); invoked from team-boot's Class Boots catalog.
 ---
 
 # product-boot
@@ -27,6 +27,9 @@ Never defer to session end.
 
 Invoke when:
 
+- Answering questions about product capabilities, feature scope, personas,
+  roadmap, or why a product choice was made (so Accepted PDRs ground the
+  answer).
 - Starting product work (PRD generation, feature definition, roadmap
   planning, GTM decisions).
 - The session turns product-shaped mid-flight: feature scope, persona

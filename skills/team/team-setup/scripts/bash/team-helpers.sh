@@ -475,8 +475,8 @@ instead (the dual-read order applies: \`docs/adlc/memory\` first, legacy
 
 | Boot | Injects | Invoke When | Capture Via |
 |--|--|--|--|
-| architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
-| product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
+| architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture/system-design questions; architecture work; tech-stack/pattern choice | /architect-specify |
+| product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature questions, scope, personas, monetization | /product-specify |
 | change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-specify (mining: /change-init) |
 | team-levelup | CDR module bodies (team-ai-directives) | CDR topic match; reusable team pattern | /team-levelup |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |

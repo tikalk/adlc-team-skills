@@ -520,7 +520,7 @@ Present the execution plan to the user:
 **Total views to generate**: 15 (5 views × 3 sub-systems)
 
 ### Sub-system: Core
-**ADRs**: ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap, ADR-host-side-lifecycle-cli-package, ADR-008
+**ADRs**: ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap, ADR-host-side-lifecycle-cli-package, ADR-opencode-cli-pin-single-location-and-bump-policy
 **Characteristics**: Microservices, Event-driven
 **DAG**: Context → Functional → Information → Concurrency → Development → Deployment
 
@@ -561,7 +561,7 @@ After user approval, write the execution plan to `{REPO_ROOT}/.adlc/architect/st
     {
       "id": "core",
       "name": "Core",
-      "adrs": ["ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap", "ADR-host-side-lifecycle-cli-package", "ADR-008"],
+      "adrs": ["ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap", "ADR-host-side-lifecycle-cli-package", "ADR-opencode-cli-pin-single-location-and-bump-policy"],
       "characteristics": ["microservices", "event-driven"],
       "dag": ["context", "functional", "information", "concurrency", "development", "deployment"],
       "progress": {
@@ -1136,7 +1136,7 @@ This writes `{REPO_ROOT}/docs/adlc/memory/adr/adr.md` with the 7-column schema, 
 
 | ID | Sub-System | Decision | Status | Date |
 |----|------------|----------|--------|------|
-| ADR-009 | System | System Architecture Style | Completed | 2026-10-19 |
+| ADR-system-architecture-style | System | System Architecture Style | Completed | 2026-10-19 |
 ```
 
 This index is consumed by `team-boot` for session-start injection and by `architect-analyze` for architecture review (similar to how `CDR.md` is used for team-level context).

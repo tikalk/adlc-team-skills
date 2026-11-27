@@ -491,7 +491,7 @@ If decomposed, structure the ADR file as:
 
 ```markdown
 ---
-status: proposed  # proposed | accepted | rejected | deprecated | superseded by ADR-0123 | discovered
+status: proposed  # proposed | accepted | rejected | deprecated | superseded by ADR-<slug> | discovered
 date: YYYY-MM-DD
 decision-makers: [list everyone involved in the decision]
 consulted: [list everyone whose opinions were sought]

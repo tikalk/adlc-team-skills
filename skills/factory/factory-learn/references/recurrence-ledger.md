@@ -7,7 +7,7 @@ Lives in `adlc-team-skills` where findings originate.
 
 This ledger is one seed input, not the only one. Full seed admissibility
 (event-stream signals, reproduction rule, check-vs-eval split, authoring
-threshold, temporal holdout): `eval-seed-taxonomy.md` (ADR-524). Same
+threshold, temporal holdout): `eval-seed-taxonomy.md` (ADR-eval-seeding-tier2-split-temporal-holdout). Same
 contract on every row: 2 reproduced occurrences in ≥2 distinct runs before
 a criterion is authored; comment-only observations are Tier-3 preferences.
 

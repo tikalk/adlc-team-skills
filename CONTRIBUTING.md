@@ -218,8 +218,9 @@ scripts/acceptance-test.sh --live   # + live agent smoke check (needs agent auth
 team-ai-directives checkout:
 
 1. `team-boot`'s boot script emits the directives index containing the
-   constitution title, CDR index rows, the Class Boots catalog, and a
-   `_Total: N CDRs available._` line.
+   constitution title, a `_Total: N CDRs available._` line followed by the
+   CDR topic map, and the skills registry — plus the Class Boots catalog when
+   the project `AGENTS.md` lacks the lean-v1 contract section.
 2. (live tier) a fresh agent session shows the injected team context in its
    logs, and asking a question that matches a rule descriptor pulls that
    rule's body on demand.

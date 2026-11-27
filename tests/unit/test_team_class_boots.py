@@ -429,6 +429,9 @@ def test_boot_pending_decisions_consolidated_table(tmp_path, monkeypatch):
     td = tmp_path / "td"
     td.mkdir()
     (td / ".skills.json").write_text('{"default": [], "external": {}}', encoding="utf-8")
+    # Header-only CDR.md: a real zero. A missing index now reports
+    # "? CDRs (unavailable)" — never a silent 0 (issue #36, SC7).
+    (td / "CDR.md").write_text("| ID | Title | Type | Descriptor |\n|---|---|---|---|\n", encoding="utf-8")
     (tmp_path / ".adlc/init-options.json").write_text(
         json.dumps({"team_ai_directives": str(td)}), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
@@ -529,3 +532,56 @@ def test_tech_radar_boot_reemit_contract():
     lowered = _boot_skill_text("tech-radar-boot").lower()
     for marker in ("tool channel", "re-emit", "visible response"):
         assert marker in lowered, f"tech-radar-boot: missing re-emit marker '{marker}'"
+
+
+def test_class_boot_table_render_guard():
+    """Model-invoked class boots carry explicit separator + pre-send rewrite guard."""
+    for name in ("architect-boot", "product-boot", "change-boot", "tech-radar-boot"):
+        norm = " ".join(_boot_skill_text(name).lower().split())
+        assert "separator row" in norm, f"{name}: missing separator-row rule"
+        assert "one table row" in norm, f"{name}: missing one-row-per-line rule"
+        assert "no newline, rewrite it" in norm, f"{name}: missing pre-send rewrite guard"
+
+
+def test_architect_and_product_boot_inquiry_triggers():
+    """architect-boot and product-boot trigger on design/product questions as well as authoring.
+
+    Aligns with Superpowers ('Questions are tasks') while keeping triggers
+    layout-naive (general concepts, never repo-specific file/ref paths).
+    """
+    arch_text = _boot_skill_text("architect-boot")
+    arch_desc = arch_text.split("description:", 1)[1].split("\n---", 1)[0].lower()
+    assert "question" in arch_desc, "architect-boot description lacks inquiry/question trigger"
+    assert "answering questions" in arch_text.lower(), (
+        "architect-boot When to Use lacks read-path inquiry trigger"
+    )
+
+    prod_text = _boot_skill_text("product-boot")
+    prod_desc = prod_text.split("description:", 1)[1].split("\n---", 1)[0].lower()
+    assert "question" in prod_desc, "product-boot description lacks inquiry/question trigger"
+    assert "answering questions" in prod_text.lower(), (
+        "product-boot When to Use lacks read-path inquiry trigger"
+    )
+
+    catalog_surfaces = {
+        "boot.sh": ROOT / "skills/team/team-boot/scripts/bash/boot.sh",
+        "boot.ps1": ROOT / "skills/team/team-boot/scripts/powershell/boot.ps1",
+        "team-helpers.sh": ROOT / "skills/team/team-setup/scripts/bash/team-helpers.sh",
+        "team-helpers.ps1": ROOT / "skills/team/team-setup/scripts/powershell/team-helpers.ps1",
+        "team-boot/SKILL.md": ROOT / "skills/team/team-boot/SKILL.md",
+    }
+    for label, path in catalog_surfaces.items():
+        lines = path.read_text(encoding="utf-8").splitlines()
+        arch_rows = [ln.lower() for ln in lines if "architect-boot" in ln and "|" in ln]
+        prod_rows = [ln.lower() for ln in lines if "product-boot" in ln and "|" in ln]
+        assert arch_rows and all("question" in ln for ln in arch_rows), (
+            f"{label}: architect-boot catalog row lacks inquiry/question trigger"
+        )
+        assert prod_rows and all("question" in ln for ln in prod_rows), (
+            f"{label}: product-boot catalog row lacks inquiry/question trigger"
+        )
+        joined = "\n".join(arch_rows + prod_rows)
+        for leaked_path in ("runs/", "refs/factory-runs", "state.json"):
+            assert leaked_path not in joined, (
+                f"{label}: catalog trigger leaked repo-specific path '{leaked_path}'"
+            )

@@ -9,7 +9,9 @@
 # description states the merge-commit rule, ADR-431 §5), with the issue's
 # milestone and assignees (ADR-432 chain: issue assignees, else the runner's
 # own account; a cross-host run — issue and code on different hosts — sets no
-# milestone, assigns the runner and links the issue URL), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
+# milestone, assigns the runner and links the issue URL) plus the issue's gate
+# label (ADR-548: in the create body on GitLab, same-step add on GitHub; only
+# the missing gate label is ever added on reuse), and merges {"mr_url": ...} into ADLC_STEP_OUTPUT. A run branch
 # with no commits beyond the base opens nothing (empty run). Titles are
 # built from repo, iid and run id only — never issue text. The tracker token's
 # scopes are checked before anything is pushed or created (ADR-432); a missing
@@ -206,7 +208,7 @@ enc() { json 'console.log(encodeURIComponent(process.argv[1]))' "$1"; }
 # resolve_mr_ownership <provider> <issue_json> <mr_json> <initiator> <runner_json> <denied_scope_json>
 # builds the {provider,issue,mr,initiator,runner,denied_scope} payload and
 # invokes resolve-mr-ownership.sh; prints the resolver's JSON answer.
-# (Operation 11: the resolver owns the milestone/assignee decision.)
+# (Operation 11: the resolver owns the milestone/assignee/gate-label decision.)
 resolve_mr_ownership() {
   json '
     const [provider, issue_raw, mr_raw, initiator, runner_raw, denied_raw] = process.argv.slice(1);
@@ -227,6 +229,60 @@ ownership_block_or_empty() {
     if (o.action === "block") { console.error("open-mr: " + (o.reason || "blocked by resolve-mr-ownership")); process.exit(3); }
     console.log("");
   ' "$1" || die "$(json 'console.log(JSON.parse(process.argv[1] || "{}").reason || "blocked by resolve-mr-ownership")' "$1")"
+}
+
+# gate_label_reuse_gitlab <existing_json> — ADR-548: a reused MR still needs the
+# Issue's gate label for the review lane's Sensor. Resolve it (Issue labels vs
+# the MR's current labels) and add ONLY the missing gate label via add_labels —
+# human labels are never touched. A silent no-op when the Issue carries no gate
+# label or the MR already has it.
+gate_label_reuse_gitlab() {
+  [ -n "$iid" ] && [ "$cross_host" = 0 ] || return 0
+  local existing_json="$1" match mr_iid mr_labels issue_raw issue_norm ownership gate
+  match='const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(JSON.stringify(m || null));'
+  match="$(json "$match" "$existing_json")"
+  [ "$match" != "null" ] || return 0
+  mr_iid="$(json 'console.log(JSON.parse(process.argv[1] || "{}").iid || "")' "$match")"
+  [ -n "$mr_iid" ] || return 0
+  mr_labels="$(json 'const m = JSON.parse(process.argv[1] || "{}"); console.log(JSON.stringify({ labels: m.labels || [] }))' "$match")"
+  issue_raw="$(api "projects/$(enc "$issue_project")/issues/$iid")" || die "cannot read issue $issue_project#$iid"
+  issue_norm="$(normalize_issue_gitlab "$issue_raw")"
+  ownership="$(resolve_mr_ownership gitlab "$issue_norm" "$mr_labels" '' 'null' 'null')" || die "cannot resolve MR ownership"
+  gate="$(json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(typeof o.gate_label === "string" ? o.gate_label : "")' "$ownership")"
+  [ -n "$gate" ] || return 0
+  api -X PUT "projects/$p/merge_requests/$mr_iid" -f "add_labels=$gate" >/dev/null || die "cannot add gate label '$gate' to the merge request"
+}
+
+# gate_label_reuse_github <existing_json> — same as the GitLab twin, through
+# the issue-labels add endpoint (additive by construction).
+gate_label_reuse_github() {
+  [ -n "$iid" ] && [ "$cross_host" = 0 ] || return 0
+  local existing_json="$1" number mr_labels issue_raw ownership gate
+  number="$(json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].number || "")' "$existing_json")"
+  [ -n "$number" ] || return 0
+  mr_labels="$(json 'const a = JSON.parse(process.argv[1] || "[]"); const m = (Array.isArray(a) && a[0]) || {}; console.log(JSON.stringify({ labels: m.labels || [] }))' "$existing_json")"
+  issue_raw="$(api "repos/$issue_project/issues/$iid")" || die "cannot read issue $issue_project#$iid"
+  ownership="$(resolve_mr_ownership github "$issue_raw" "$mr_labels" '' 'null' 'null')" || die "cannot resolve MR ownership"
+  gate="$(json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(typeof o.gate_label === "string" ? o.gate_label : "")' "$ownership")"
+  [ -n "$gate" ] || return 0
+  json 'console.log(JSON.stringify({ labels: [process.argv[1]] }))' "$gate" \
+    | api -X POST "repos/$project/issues/$number/labels" -H 'Content-Type: application/json' --input - >/dev/null \
+    || die "cannot add gate label '$gate' to the pull request"
+}
+
+# normalize_issue_gitlab <issue_json> — the connector GET into resolver verbatim
+# form {milestone_id, assignees:[ids], labels:[names]} (provider mapping table,
+# Operation 11).
+normalize_issue_gitlab() {
+  json '
+    const i = JSON.parse(process.argv[1] || "{}");
+    const mid = (i.milestone_id !== undefined && i.milestone_id !== null && i.milestone_id !== "")
+      ? i.milestone_id : (i.milestone && i.milestone.id || null);
+    const ids = (i.assignees || []).map(a => (a && typeof a === "object" ? a.id : a)).filter(v => v !== undefined && v !== null);
+    const num = mid === null || mid === "" ? null : Number(mid);
+    const labels = (i.labels || []).map(l => (l && typeof l === "object" ? (l.title || l.name) : l)).filter(v => typeof v === "string");
+    console.log(JSON.stringify({ milestone_id: (mid === null || mid === "") ? null : num, assignees: ids.map(Number).filter(n => !Number.isNaN(n)), labels: labels }));
+  ' "$1"
 }
 
 # push_reuse — the reuse path pushes too, so commits from a run that reuses a
@@ -255,27 +311,19 @@ if [ "$provider" = gitlab ]; then
   existing="$(api "projects/$p/merge_requests?source_branch=$(enc "$branch")&state=opened")" || die "cannot list merge requests"
   url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && m.web_url || "")' "$existing")"
   if [ -n "$url" ]; then
-    # Reuse path: push the run's commits (fast-forward only), then return the
-    # open MR untouched — no issue read, no resolve-mr-ownership call
-    # (preserve-only = touch nothing).
+    # Reuse path: push the run's commits (fast-forward only). Milestone and
+    # assignee stay untouched (preserve-only = touch nothing).
+    # Only a missing gate label is added (ADR-548).
     if [ -n "$run_target" ]; then
       reuse_targets_the_run_target "$(json 'const a = JSON.parse(process.argv[1] || "[]"); const m = Array.isArray(a) && a.find((x) => x && x.source_project_id != null && x.source_project_id === x.target_project_id); console.log(m && typeof m.target_branch === "string" ? m.target_branch : "")' "$existing")"
     fi
     push_reuse
+    gate_label_reuse_gitlab "$existing"
   else
     git push -q -u origin "refs/heads/$branch:refs/heads/$branch" || die "push of $branch failed"
     if [ -n "$iid" ] && [ "$cross_host" = 0 ]; then
       issue_json="$(api "projects/$(enc "$issue_project")/issues/$iid")" || die "cannot read issue $issue_project#$iid"
-      # Normalize the connector GET into resolver verbatim form
-      # {milestone_id, assignees:[ids]} (provider mapping table, Operation 11).
-      issue_json="$(json '
-        const i = JSON.parse(process.argv[1] || "{}");
-        const mid = (i.milestone_id !== undefined && i.milestone_id !== null && i.milestone_id !== "")
-          ? i.milestone_id : (i.milestone && i.milestone.id || null);
-        const ids = (i.assignees || []).map(a => (a && typeof a === "object" ? a.id : a)).filter(v => v !== undefined && v !== null);
-        const num = mid === null || mid === "" ? null : Number(mid);
-        console.log(JSON.stringify({ milestone_id: (mid === null || mid === "") ? null : num, assignees: ids.map(Number).filter(n => !Number.isNaN(n)) }));
-      ' "$issue_json")"
+      issue_json="$(normalize_issue_gitlab "$issue_json")"
     else
       issue_json="{}"
     fi
@@ -288,7 +336,8 @@ if [ "$provider" = gitlab ]; then
     # Create body = fixed keys + ONLY resolver-returned non-null fields.
     # One JSON body via --input: current glab refuses bracketed field names
     # (`assignee_ids[]=`) in a JSON request, and -f would send the ids and the
-    # milestone as strings.
+    # milestone as strings. The gate label rides `labels` (ADR-548) so the
+    # review lane's Sensor fires on open.
     # The MR goes into the run's target branch when it has one (SF-FIX-23),
     # else into the project's default branch.
     if [ -n "$run_target" ]; then
@@ -306,6 +355,7 @@ if [ "$provider" = gitlab ]; then
         const nums = ids.map(Number).filter(n => !Number.isNaN(n));
         if (nums.length) b.assignee_ids = nums;
       }
+      if (typeof o.gate_label === "string" && o.gate_label) b.labels = o.gate_label;
       console.log(JSON.stringify(b));
     ' "$branch" "$mr_target" "$title" "$description" "$ownership")"
     created="$(printf '%s' "$body" | api -X POST "projects/$p/merge_requests" -H 'Content-Type: application/json' --input -)" || die "the tracker refused to create the merge request (missing scope?)"
@@ -316,13 +366,14 @@ else
   existing="$(api "repos/$project/pulls?head=$owner:$branch&state=open")" || die "cannot list pull requests"
   url="$(json 'const a = JSON.parse(process.argv[1] || "[]"); console.log(Array.isArray(a) && a[0] && a[0].html_url || "")' "$existing")"
   if [ -n "$url" ]; then
-    # Reuse path: push the run's commits (fast-forward only), then return the
-    # open PR untouched — no issue read, no resolve-mr-ownership call
-    # (preserve-only = touch nothing).
+    # Reuse path: push the run's commits (fast-forward only). Milestone and
+    # assignee stay untouched (preserve-only = touch nothing).
+    # Only a missing gate label is added (ADR-548).
     if [ -n "$run_target" ]; then
       reuse_targets_the_run_target "$(json 'const a = JSON.parse(process.argv[1] || "[]"); const b = Array.isArray(a) && a[0] && a[0].base; console.log(b && typeof b.ref === "string" ? b.ref : "")' "$existing")"
     fi
     push_reuse
+    gate_label_reuse_github "$existing"
   else
     git push -q -u origin "refs/heads/$branch:refs/heads/$branch" || die "push of $branch failed"
     # The PR goes into the run's target branch when it has one (SF-FIX-23),
@@ -358,6 +409,7 @@ else
         const o = {};
         if (m.milestone !== undefined) o.milestone = m.milestone;
         if (m.assignees !== undefined) o.assignees = m.assignees;
+        if (m.labels !== undefined) o.labels = m.labels;
         console.log(JSON.stringify(o));
       ' "$mr_issue_json")"
       ownership="$(resolve_mr_ownership github "$issue_json" "$mr_json" "$initiator" "$runner_json" "$denied_json")" || die "cannot resolve MR ownership"
@@ -369,8 +421,17 @@ else
         const a = Array.isArray(o.assignee) ? o.assignee : [o.assignee];
         console.log(a.map(v => (v && typeof v === "object" ? (v.login || "") : String(v))).filter(Boolean).join(" ")); }
       ' "$ownership")"
+      gate_label_to_set="$(json 'const o = JSON.parse(process.argv[1] || "{}"); console.log(typeof o.gate_label === "string" ? o.gate_label : "")' "$ownership")"
       [ -z "$milestone_to_set" ] || api -X PATCH "repos/$project/issues/$number" -F "milestone=$milestone_to_set" >/dev/null || die "cannot set milestone"
       for l in $assignee_to_set; do api -X POST "repos/$project/issues/$number/assignees" -f "assignees[]=$l" >/dev/null || die "cannot set assignee"; done
+      # ADR-548: the gate label lands in the same step as the create (the
+      # Sensor fires on open) through the additive labels endpoint — human
+      # labels are never replaced.
+      if [ -n "$gate_label_to_set" ]; then
+        json 'console.log(JSON.stringify({ labels: [process.argv[1]] }))' "$gate_label_to_set" \
+          | api -X POST "repos/$project/issues/$number/labels" -H 'Content-Type: application/json' --input - >/dev/null \
+          || die "cannot set gate label '$gate_label_to_set' on the pull request"
+      fi
     fi
   fi
 fi

@@ -1,9 +1,10 @@
-"""MR/PR milestone + assignee propagation resolver (the MR-ownership decision).
+"""MR/PR milestone + assignee + gate-label propagation resolver (the MR-ownership decision).
 
 The resolver is the deterministic half of the MR-ownership decision: it answers what the
 connector should set, what it should skip, and what it should block on. All
 five locked rulings are pinned here — all providers, silent skip, fallback
-chain, preserve-only, block-on-error — plus the per-provider mapping.
+chain, preserve-only, block-on-error — plus the per-provider mapping and the
+gate-label propagation (ADR-548: supervised wins, absent skips silently).
 """
 
 import json
@@ -239,6 +240,97 @@ def test_denied_scope_blocks_before_any_propagation():
     assert out["action"] == "block"
     assert out["milestone"] is None
     assert out["assignee"] is None
+
+
+# ── gate-label propagation (ADR-548) ────────────────────────────────────────
+#
+# The Issue's gate label (supervised | autonomous, the automation-gating pair)
+# rides the draft MR at open time so the review lane's -mr Sensor dispatches a
+# review. supervised wins when both are present; absent → silent skip (never a
+# block); Jira/Linear have no MR-label concept consumed by the Sensor → silent
+# skip.
+
+def test_supervised_issue_returns_gate_label():
+    out = resolve(
+        provider="gitlab",
+        issue={"milestone_id": None, "assignees": [], "labels": ["supervised"]},
+        mr={},
+        initiator=None,
+        runner=None,
+    )
+    assert out["gate_label"] == "supervised"
+
+
+def test_autonomous_issue_returns_gate_label():
+    out = resolve(
+        provider="github",
+        issue={"milestone": None, "assignees": [], "labels": ["autonomous"]},
+        mr={},
+        initiator=None,
+        runner=None,
+    )
+    assert out["gate_label"] == "autonomous"
+
+
+def test_supervised_wins_when_both_gate_labels_present():
+    out = resolve(
+        provider="gitlab",
+        issue={"milestone_id": None, "assignees": [], "labels": ["autonomous", "supervised"]},
+        mr={},
+        initiator=None,
+        runner=None,
+    )
+    assert out["gate_label"] == "supervised", "supervised wins, matching the workflow-template precedence"
+
+
+def test_issue_without_gate_label_skips_silently():
+    out = resolve(
+        provider="gitlab",
+        issue={"milestone_id": None, "assignees": [], "labels": ["spec-gated"]},
+        mr={},
+        initiator=None,
+        runner=None,
+    )
+    assert out["gate_label"] is None, "an unrelated Issue label is never copied to the MR"
+    assert out["action"] == "skip"
+
+
+def test_mr_already_carrying_gate_label_is_preserved():
+    out = resolve(
+        provider="gitlab",
+        issue={"milestone_id": None, "assignees": [], "labels": ["supervised"]},
+        mr={"labels": ["supervised"]},
+        initiator=None,
+        runner=None,
+    )
+    assert out["gate_label"] is None, "preserve-only: a label a human set is never overwritten"
+    assert "preserved" in out["reason"]
+
+
+def test_denied_scope_blocks_before_gate_label():
+    out = resolve(
+        provider="gitlab",
+        issue={"milestone_id": None, "assignees": [], "labels": ["supervised"]},
+        mr={},
+        initiator=None,
+        runner=None,
+        denied_scope="api",
+    )
+    assert out["action"] == "block"
+    assert out["gate_label"] is None
+
+
+@pytest.mark.parametrize("provider", ["jira", "linear"])
+def test_provider_without_mr_labels_skips_gate_label(provider):
+    out = resolve(
+        provider=provider,
+        issue={"milestone_id": None, "assignees": ["alice"], "labels": ["supervised"]},
+        mr={},
+        initiator=None,
+        runner="bot",
+    )
+    assert out["gate_label"] is None, f"{provider} has no MR-label concept consumed by the Sensor"
+    assert out["action"] == "set", "the assignee still propagates"
 
 
 # ── the resolver is deterministic ───────────────────────────────────────────

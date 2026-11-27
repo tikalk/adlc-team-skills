@@ -16,7 +16,8 @@
 # Input (JSON), output (JSON on stdout) and the five locked rulings —
 # all providers, silent skip, fallback chain, preserve-only, block on
 # error — are pinned by tests/unit/test_resolve_mr_ownership.py, which
-# runs both twins.
+# runs both twins. The gate label (ADR-548) rides the same payload:
+# issue.labels → gate_label (supervised wins; absent → skip).
 set -euo pipefail
 
 die() { echo "resolve-mr-ownership: $*" >&2; exit 2; }
@@ -31,7 +32,7 @@ Usage:
 
 Input (JSON): provider, issue, mr, initiator, runner, denied_scope.
 Output (JSON): action (set|skip|block), milestone, milestone_field,
-assignee, assignee_field, reason.
+assignee, assignee_field, gate_label, reason.
 USAGE
   exit 0
 fi
@@ -92,17 +93,35 @@ function firstCandidate(initiator, issueAssignees, runner) {
   if (runner) return runner;
   return null;
 }
+const GATE_LABELS = ["supervised", "autonomous"];
+function labelName(l) {
+  if (l && typeof l === "object" && !Array.isArray(l)) return l.title || l.name || null;
+  return (typeof l === "string") ? l : null;
+}
+function readGateLabel(issue) {
+  const labels = Array.isArray(issue.labels) ? issue.labels : [];
+  const names = labels.map(labelName).filter(v => typeof v === "string");
+  if (names.includes("supervised")) return "supervised";
+  if (names.includes("autonomous")) return "autonomous";
+  return null;
+}
+function mrHasGateLabel(mr) {
+  const labels = Array.isArray(mr.labels) ? mr.labels : [];
+  return labels.some(l => GATE_LABELS.includes(labelName(l)));
+}
 function resolve(p) {
   const provider = String(p.provider || "").toLowerCase();
   const adapter = PROVIDERS[provider];
   if (!adapter) {
     return { action: "block", milestone: null, milestone_field: null, assignee: null, assignee_field: null,
+      gate_label: null,
       reason: `unknown provider '${provider}' — expected one of ${Object.keys(PROVIDERS).sort().join(", ")}` };
   }
   const issue = (p.issue && typeof p.issue === "object" && !Array.isArray(p.issue)) ? p.issue : {};
   const mr = (p.mr && typeof p.mr === "object" && !Array.isArray(p.mr)) ? p.mr : {};
   if (p.denied_scope) {
     return { action: "block", milestone: null, milestone_field: null, assignee: null, assignee_field: null,
+      gate_label: null,
       reason: `missing ${p.denied_scope} scope for ${provider} — the run cannot read the Issue or write the MR's ` +
         `ownership fields. Grant the scope and re-run; the factory never guesses a milestone or an assignee it ` +
         `could not verify.` };
@@ -132,10 +151,23 @@ function resolve(p) {
       assignee_field = adapter.assignee_field;
     }
   }
-  const action = (milestone !== null || assignee !== null) ? "set" : "skip";
-  const reason = notes.length ? notes.join("; ") : "milestone and assignee propagated";
+  let gate_label = null;
+  if (provider === "gitlab" || provider === "github") {
+    const wanted = readGateLabel(issue);
+    if (wanted === null) {
+      notes.push("Issue has no gate label — skipped");
+    } else if (mrHasGateLabel(mr)) {
+      notes.push("MR already has a gate label — preserved");
+    } else {
+      gate_label = wanted;
+    }
+  } else {
+    notes.push(`${provider} has no MR-label concept — gate label is a permanent no-op`);
+  }
+  const action = (milestone !== null || assignee !== null || gate_label !== null) ? "set" : "skip";
+  const reason = notes.length ? notes.join("; ") : "milestone, assignee and gate label propagated";
   return { action: action, milestone: milestone, milestone_field: milestone_field,
-    assignee: assignee, assignee_field: assignee_field, reason: reason };
+    assignee: assignee, assignee_field: assignee_field, gate_label: gate_label, reason: reason };
 }
 console.log(JSON.stringify(resolve(payload), null, 2));
 NODE_EOF

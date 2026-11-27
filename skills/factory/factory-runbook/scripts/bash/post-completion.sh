@@ -28,7 +28,8 @@
 #   **Code MR:** <url | none>
 #   **Conclusion:** <one line>
 #   **Replaces:** this run's earlier record (`<what it said>`) …   (only when it said something else)
-#   **Next:** ...the completion gate...      (only in a workflow run, where a gate follows)
+#   **Next:** ...the completion gate...      (only when ADLC_UPCOMING_GATES names gate-completion;
+#        otherwise, in a workflow run with an MR: a person reviews the code MR/PR)
 #   <details file, verbatim — e.g. the proof-of-work block of SF-SKILL-07>
 #   **Run:** <id>
 #
@@ -198,8 +199,17 @@ replaces=""; [ "$rc" -ne 3 ] || replaces="$earlier"
   if [ -n "$replaces" ]; then
     printf '**Replaces:** this run'"'"'s earlier record (`%s`) — the same run was retried or resumed and ended differently; this record is the current one.\n\n' "$replaces"
   fi
+  # Name only what the workflow really has next (adlc-workspace#168): adlc-cli
+  # lists the gates still ahead in ADLC_UPCOMING_GATES, and only the `factory`
+  # workflow ends with gate-completion — the Argo lane and factory-supervised
+  # have no gate after `execute` (a skipped gate-spec still reads as ahead).
   if [ -n "${ADLC_STEP_OUTPUT:-}" ]; then
-    printf '**Next:** the completion gate — a person approves or rejects the result in Slack; the gate records its own answer on this issue.\n\n'
+    case ",${ADLC_UPCOMING_GATES:-}," in
+      *,gate-completion,*)
+        printf '**Next:** the completion gate — a person approves or rejects the result in Slack; the gate records its own answer on this issue.\n\n' ;;
+      *)
+        if [ -n "$MR_URL" ]; then printf '**Next:** a person reviews the code MR/PR and merges it.\n\n'; fi ;;
+    esac
   fi
   if [ -n "$DETAILS" ]; then cat "$DETAILS"; printf '\n\n'; fi
   printf '**Run:** %s\n' "$RUN"

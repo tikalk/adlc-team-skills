@@ -200,12 +200,42 @@ def test_another_runs_record_does_not_count(cmd, tmp_path):
 
 @pytest.mark.parametrize("cmd", TWINS)
 def test_a_workflow_run_says_the_completion_gate_still_follows(cmd, tmp_path):
+    # adlc-cli names the gates still ahead in ADLC_UPCOMING_GATES; the bundled
+    # `factory` workflow ends with gate-completion.
     out = tmp_path / "step-output.json"
     r = run(cmd, tmp_path, "--outcome", "done", "--conclusion", "x", "--mr-url", MR,
-            env_extra={"ADLC_RUN_ID": "ca40c5d6", "ADLC_STEP_OUTPUT": str(out)})
+            env_extra={"ADLC_RUN_ID": "ca40c5d6", "ADLC_STEP_OUTPUT": str(out),
+                       "ADLC_UPCOMING_GATES": "gate-completion"})
     assert r.returncode == 0, r.stderr
     body = notes(tmp_path)[0]["body"]
     assert "run=ca40c5d6 " in body and "**Next:** the completion gate" in body
+
+
+@pytest.mark.parametrize("cmd", TWINS)
+@pytest.mark.parametrize("upcoming", [None, "", "gate-spec"])
+def test_a_workflow_run_without_a_completion_gate_never_promises_one(cmd, tmp_path, upcoming):
+    # adlc-workspace#168: the Argo lane (factory-lane) and factory-supervised
+    # have no gate after `execute`, yet #151 run 1b997ae3 said "Next: the
+    # completion gate". An autonomous lane run still lists the skipped
+    # gate-spec as upcoming, so only gate-completion counts.
+    out = tmp_path / "step-output.json"
+    extra = {"ADLC_RUN_ID": "1b997ae3", "ADLC_STEP_OUTPUT": str(out)}
+    if upcoming is not None:
+        extra["ADLC_UPCOMING_GATES"] = upcoming
+    r = run(cmd, tmp_path, "--outcome", "done", "--conclusion", "x", "--mr-url", MR, env_extra=extra)
+    assert r.returncode == 0, r.stderr
+    body = notes(tmp_path)[0]["body"]
+    assert "completion gate" not in body
+    assert "**Next:** a person reviews the code MR/PR" in body
+
+
+@pytest.mark.parametrize("cmd", TWINS)
+def test_a_workflow_run_with_no_mr_names_no_next_step(cmd, tmp_path):
+    out = tmp_path / "step-output.json"
+    r = run(cmd, tmp_path, "--outcome", "no-op", "--conclusion", "x",
+            env_extra={"ADLC_RUN_ID": "1b997ae3", "ADLC_STEP_OUTPUT": str(out)})
+    assert r.returncode == 0, r.stderr
+    assert "**Next:**" not in notes(tmp_path)[0]["body"]
 
 
 @pytest.mark.parametrize("cmd", TWINS)

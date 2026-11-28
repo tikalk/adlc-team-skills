@@ -9,6 +9,7 @@
 #
 # Usage:
 #   post-verdict.ps1 --mr <ref> --head <sha40> --body-file <file> [--retries <1-9>]
+#                    [--pipeline-wait <0-3600 seconds>]
 #   post-verdict.ps1 --mr <ref> --head <sha40> --check-only [--run <run_id>]
 #
 #   <ref>  GitLab: <group>/<project>!<iid>   (the review lane's mr_ref)
@@ -29,6 +30,21 @@
 # review marker with this head, run= and iter=. A verdict already on the
 # thread for the same run=, iter= and head= is not posted twice.
 #
+# Pipeline at posting (SF-RT-05): before it posts, the script reads the head's
+# CI as it is now (GitLab: the head's latest pipeline and its jobs; GitHub:
+# the head's check runs) and appends one generated line to the body —
+# "**Pipeline at posting (generated):** #<id> <status> — <job> <status> · …".
+# It refuses the body (exit 2, nothing posted) when the verdict's own words
+# call a job green/passed/success while that job is not `success`, or when the
+# marker says outcome=merge-ready while a job that is not allowed to fail is
+# unfinished or failed. Jobs named like "verdict" (checks that wait for the
+# verdict itself) are ignored. When the pipeline cannot be read, the line says
+# so and the verdict is posted as before. --pipeline-wait <s> re-reads the
+# pipeline every POST_VERDICT_PIPELINE_POLL seconds (default 30) for up to <s>
+# seconds while the only reason to refuse is a job that has not finished.
+# (octopus-next!1352, 2026-11-23: "unit-tests green" posted at 23:18:29; the
+# job was running and failed at 23:20:50.)
+#
 # --check-only posts nothing: it only answers "is a verdict for this head (and
 # this run, with --run) on the thread?" — the question a lane step asks after
 # the agent has exited.
@@ -36,7 +52,8 @@
 # Exit codes:
 #   0  the verdict is on the thread (posted now, or already there)
 #   1  not on the thread after all retries (posting mode) / not found (check)
-#   2  usage error, invalid body, or the tracker could not be read
+#   2  usage error, invalid body (schema, or a claim the pipeline contradicts),
+#      or the tracker could not be read
 # node is the JSON engine (same scripts as the bash twin).
 
 $ErrorActionPreference = 'Stop'
@@ -49,7 +66,7 @@ function Die([string]$Message) {
     exit 2
 }
 
-$mr = ''; $headSha = ''; $bodyFile = ''; $checkOnly = $false; $retries = 3; $runFilter = ''
+$mr = ''; $headSha = ''; $bodyFile = ''; $checkOnly = $false; $retries = 3; $runFilter = ''; $pipelineWait = 0
 for ($i = 0; $i -lt $args.Count; $i++) {
     $a = [string]$args[$i]
     $next = if ($i + 1 -lt $args.Count) { [string]$args[$i + 1] } else { '' }
@@ -59,9 +76,13 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         '--body-file'  { if (-not $next) { Die '--body-file requires a value' }; $bodyFile = $next; $i++; continue }
         '--retries'    { if ($next -cnotmatch '^[1-9]\z') { Die '--retries takes 1-9' }; $retries = [int]$next; $i++; continue }
         '--run'        { if (-not $next) { Die '--run requires a value' }; $runFilter = $next; $i++; continue }
+        '--pipeline-wait' {
+            if ($next -cnotmatch '^[0-9]{1,4}\z' -or [int]$next -gt 3600) { Die '--pipeline-wait takes 0-3600 (seconds)' }
+            $pipelineWait = [int]$next; $i++; continue
+        }
         '--check-only' { $checkOnly = $true; continue }
         { $_ -in @('-h', '--help') } {
-            Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 38 | ForEach-Object { $_ -replace '^# ?', '' }
+            Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 56 | ForEach-Object { $_ -replace '^# ?', '' }
             exit 0
         }
         default        { Die "unknown argument '$a'" }
@@ -160,6 +181,111 @@ const hits = notes.filter(n => {
 if (hits.length) console.log(String(hits[0].id));
 '@
 
+# Same CI reader as the bash twin (SF-RT-05): `id` picks the newest pipeline
+# of a pipeline list; `eval` prints the generated pipeline line, then one line
+# per refusal, and writes body + line to the out-file. Exit 0 = post,
+# 4 = refuse, 5 = refuse only because a job has not finished, 3 = bad input.
+$pipelineJs = @'
+const fs = require("fs");
+const [mode, provider, a1, a2, a3, a4] = process.argv.slice(1);
+const parseAll = s => {
+  const values = []; let i = 0;
+  try {
+    while (i < s.length) {
+      while (i < s.length && /\s/.test(s[i])) i++;
+      if (i >= s.length) break;
+      let depth = 0, inStr = false, esc = false, j = i;
+      for (; j < s.length; j++) {
+        const c = s[j];
+        if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === "\"") inStr = false; }
+        else if (c === "\"") inStr = true;
+        else if (c === "[" || c === "{") depth++;
+        else if (c === "]" || c === "}") { depth--; if (depth === 0) { j++; break; } }
+      }
+      values.push(JSON.parse(s.slice(i, j))); i = j;
+    }
+  } catch (e) { return null; }
+  return values;
+};
+const read = f => { try { return fs.readFileSync(f, "utf8"); } catch (e) { return null; } };
+const objs = v => v.flatMap(x => Array.isArray(x) ? x : [x]).filter(o => o && typeof o === "object");
+const clean = s => String(s).replace(/[\x00-\x1f<>`*_|\[\]\\]/g, "").trim().slice(0, 80);
+if (mode === "id") {
+  // argv: id gitlab <pipelines-file>. Prints "<id>\t<status>" of the newest
+  // pipeline, nothing when there is none; exit 3 when the answer is not JSON.
+  const v = parseAll(read(a1) || "\u0000");
+  if (!v) process.exit(3);
+  const list = objs(v).filter(o => Number.isInteger(o.id)).sort((x, y) => y.id - x.id);
+  if (list.length) console.log(list[0].id + "\t" + (String(list[0].status || "unknown").replace(/[^a-z_]/g, "") || "unknown"));
+  process.exit(0);
+}
+// argv: eval <gitlab|github> <body-file> <jobs-file or "-"> <label> <out-file>
+// Line 1 of stdout: the generated pipeline line. Further lines: one refusal
+// each. Exit 0 = post (out-file then holds the body plus the generated line);
+// 4 = refuse; 5 = refuse, but only for jobs that have not finished (waiting
+// may clear it).
+const body = read(a1);
+if (body === null) process.exit(3);
+let label = clean(a3 || "unavailable");
+let jobs = null;
+if (a2 && a2 !== "-") {
+  const v = parseAll(read(a2) || "\u0000");
+  if (!v) label += " — the job list was not JSON";
+  else if (provider === "gitlab") {
+    jobs = objs(v).filter(j => typeof j.name === "string" && typeof j.status === "string")
+      .sort((x, y) => (Number(x.id) || 0) - (Number(y.id) || 0))
+      .map(j => ({ name: j.name, status: j.status, allowed: j.allow_failure === true }));
+  } else {
+    const gh = { success: "success", neutral: "skipped", skipped: "skipped", failure: "failed", timed_out: "failed",
+      startup_failure: "failed", cancelled: "canceled", stale: "canceled", action_required: "manual" };
+    jobs = objs(v).flatMap(o => Array.isArray(o.check_runs) ? o.check_runs : (typeof o.name === "string" ? [o] : []))
+      .filter(c => c && typeof c.name === "string")
+      .map(c => ({ name: c.name, allowed: false,
+        status: c.status !== "completed" ? (c.status === "in_progress" ? "running" : "pending") : (gh[c.conclusion] || "failed") }));
+  }
+}
+// A job that waits for the verdict itself (the "Verdict names the current
+// head" check) is never evidence about the code.
+if (jobs) jobs = jobs.filter(j => !/verdict/i.test(j.name));
+const done = s => ["success", "skipped", "manual"].includes(s);
+const bad = s => ["failed", "canceled"].includes(s);
+let line = "**Pipeline at posting (generated):** " + label;
+if (jobs) line += " — " + (jobs.length ? jobs.map(j => `${clean(j.name)} ${clean(j.status)}${j.allowed ? " (allowed to fail)" : ""}`).join(" · ") : "no jobs");
+const reasons = []; let final = false;
+if (jobs && jobs.length) {
+  // Only the words the reviewer wrote: fenced blocks and block quotes are quotations.
+  let quoted = false;
+  const prose = body.split(/\r?\n/).map(l => {
+    const t = l.trim();
+    if (/^(```|~~~)/.test(t)) { quoted = !quoted; return ""; }
+    return quoted || t.startsWith(">") ? "" : l;
+  }).join("\n");
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = [...new Set(jobs.map(j => j.name))].filter(n => n.trim().length >= 2);
+  for (const name of names) {
+    const re = new RegExp("(?:^|[^A-Za-z0-9_.-])" + esc(name) + "(?![A-Za-z0-9_-])[`*\"\\x27]*\\s*" +
+      "(?:(?:[:=]|->|→|—|–|-)\\s*|(?:is|are|was|were)\\s+)*[`*\"\\x27]*\\s*(?:✅|green|passed|passing|succeeded|successful|success)(?![A-Za-z])", "i");
+    if (!re.test(prose)) continue;
+    for (const j of jobs.filter(x => x.name === name && x.status !== "success")) {
+      reasons.push(`the verdict calls "${clean(name)}" green, but at posting its status is ${clean(j.status)}`);
+      if (bad(j.status) || done(j.status)) final = true;
+    }
+  }
+  const marker = body.match(/<!--\s*factory-review:step=review(?=\s|-->)([\s\S]*?)-->/);
+  const outcome = marker ? ((marker[1].match(/(?:^|\s)outcome=(\S+)/) || [])[1] || "") : "";
+  if (outcome === "merge-ready") {
+    for (const j of jobs.filter(x => !x.allowed && !done(x.status))) {
+      reasons.push(`outcome=merge-ready, but at posting "${clean(j.name)}" is ${clean(j.status)} (a job that is not allowed to fail)`);
+      if (bad(j.status)) final = true;
+    }
+  }
+}
+console.log(line);
+for (const r of reasons) console.log(r);
+if (reasons.length) process.exit(final ? 4 : 5);
+try { fs.writeFileSync(a4, body + (body.endsWith("\n") ? "" : "\n") + "\n" + line + "\n"); } catch (e) { process.exit(3); }
+'@
+
 $tmpFiles = [System.Collections.Generic.List[string]]::new()
 $tmpFiles.Add($script:errFile)
 function New-TempFile { $f = [System.IO.Path]::GetTempFileName(); $tmpFiles.Add($f); return $f }
@@ -235,11 +361,67 @@ if ($id) {
     exit 0
 }
 
+# Sets $script:jobsArg (a file with the head's jobs, or '-') and $script:label
+# (what the generated line says about the pipeline). Never fails: an
+# unreadable pipeline is stated in the label and posting goes on as before.
+function Read-Pipeline {
+    $script:jobsArg = '-'
+    if ($provider -eq 'gitlab') {
+        $r = Api @("projects/$p/pipelines?sha=$headSha&order_by=id&sort=desc&per_page=1")
+        if ($LASTEXITCODE -ne 0) { $script:label = "unavailable — $(Get-Why)"; return }
+        $pl = New-TempFile
+        [System.IO.File]::WriteAllText($pl, (@($r) -join "`n"))
+        $idst = node -e $pipelineJs id gitlab $pl
+        if ($LASTEXITCODE -ne 0) { $script:label = 'unavailable — the pipeline list was not JSON'; return }
+        $idst = ([string](@($idst) -join '')).Trim()
+        if (-not $idst) { $script:label = "no pipeline for head $($headSha.Substring(0, 8))"; return }
+        $parts = $idst -split "`t", 2
+        $id = $parts[0]; $st = $parts[1]
+        $script:label = "#$id $st"
+        $j = Api @('--paginate', "projects/$p/pipelines/$id/jobs?per_page=100")
+        if ($LASTEXITCODE -ne 0) { $script:label = "#$id $st — jobs unavailable — $(Get-Why)"; return }
+    } else {
+        $j = Api @('--paginate', "repos/$project/commits/$headSha/check-runs?per_page=100")
+        if ($LASTEXITCODE -ne 0) { $script:label = "unavailable — $(Get-Why)"; return }
+        $script:label = "check runs on $($headSha.Substring(0, 8))"
+    }
+    $jf = New-TempFile
+    [System.IO.File]::WriteAllText($jf, (@($j) -join "`n"))
+    $script:jobsArg = $jf
+}
+
+# The verdict as it is posted: the body plus the generated pipeline line.
+# Refuses (exit 2) a body the pipeline contradicts; see the header.
+$finalBody = New-TempFile
+$waited = 0
+$poll = 30
+if ($env:POST_VERDICT_PIPELINE_POLL -cmatch '^[0-9]{1,4}\z') { $poll = [int]$env:POST_VERDICT_PIPELINE_POLL }
+while ($true) {
+    Read-Pipeline
+    $gateOut = @(node -e $pipelineJs eval $provider $bodyFile $script:jobsArg $script:label $finalBody)
+    $gateRc = $LASTEXITCODE
+    if ($gateRc -eq 0) { break }
+    if ($gateRc -ne 4 -and $gateRc -ne 5) { Remove-TempFiles; Die "cannot evaluate the pipeline of head=$headSha (exit $gateRc)" }
+    if ($gateRc -eq 5 -and $waited -lt $pipelineWait) {
+        [Console]::Error.WriteLine("post-verdict: the pipeline has not finished; reading it again in ${poll}s (waited ${waited}s of ${pipelineWait}s)")
+        Start-Sleep -Seconds $poll
+        $waited += [Math]::Max($poll, 1)
+        continue
+    }
+    foreach ($l in @($gateOut | Select-Object -Skip 1)) { [Console]::Error.WriteLine("post-verdict: $l") }
+    [Console]::Error.WriteLine("post-verdict: $([string]($gateOut | Select-Object -First 1))")
+    Remove-TempFiles
+    if ($gateRc -eq 5) {
+        Die 'the verdict states a result the pipeline does not have yet; nothing was posted — post when the pipeline has finished (re-run with --pipeline-wait <seconds>), or say the job is still running'
+    }
+    Die 'the verdict contradicts the pipeline at posting; nothing was posted — correct the verdict to match the jobs above'
+}
+
 $payloadFile = New-TempFile
 if ($provider -eq 'gitlab') {
-    node -e 'require("fs").writeFileSync(process.argv[2], JSON.stringify({body: require("fs").readFileSync(process.argv[1], "utf8")}))' $bodyFile $payloadFile
+    node -e 'require("fs").writeFileSync(process.argv[2], JSON.stringify({body: require("fs").readFileSync(process.argv[1], "utf8")}))' $finalBody $payloadFile
 } else {
-    node -e 'require("fs").writeFileSync(process.argv[2], JSON.stringify({body: require("fs").readFileSync(process.argv[1], "utf8"), event: "COMMENT", commit_id: process.argv[3]}))' $bodyFile $payloadFile $headSha
+    node -e 'require("fs").writeFileSync(process.argv[2], JSON.stringify({body: require("fs").readFileSync(process.argv[1], "utf8"), event: "COMMENT", commit_id: process.argv[3]}))' $finalBody $payloadFile $headSha
 }
 if ($LASTEXITCODE -ne 0) { Remove-TempFiles; Die 'cannot build the request body' }
 

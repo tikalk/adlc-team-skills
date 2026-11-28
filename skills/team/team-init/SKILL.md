@@ -35,7 +35,7 @@ orphan branch of `team-ai-directives` (not project-local `.adlc/drafts/`).
 
 Run: `scripts/bash/team-init.sh --setup`
 
-Resolves `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `NEXT_CDR`, `ADLC_BRANCH`.
+Resolves `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `ADLC_BRANCH`.
 
 ### Phase 1: Sub-System Detection
 

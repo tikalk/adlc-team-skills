@@ -445,8 +445,8 @@ Detailed Architecture Decision Records are maintained in [../memory/adr/adr.md](
 
 | ID | Decision | Status | Impact |
 |----|----------|--------|--------|
-| ADR-001 | [Title] | Accepted | [High/Med/Low] |
-| ADR-002 | [Title] | Accepted | [High/Med/Low] |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | [Title] | Accepted | [High/Med/Low] |
+| ADR-agent-registry-and-multi-agent-image-support | [Title] | Accepted | [High/Med/Low] |
 
 ---
 

@@ -24,10 +24,6 @@ if (-not $script:TEAM_AI_DIRECTIVES -or -not (Test-Path -LiteralPath $script:TEA
 # Ensure adlc orphan branch exists
 Ensure-AdlcBranch $script:TEAM_AI_DIRECTIVES
 
-# Get next CDR number
-$NEXT_CDR = Get-NextCdrNumber $script:TEAM_AI_DIRECTIVES
-
 # Output setup info
-Write-Output "NEXT_CDR=$NEXT_CDR"
 Write-Output "ADLC_BRANCH=$($script:ADLC_BRANCH)"
 Write-Output "TEAM_AI_DIRECTIVES=$($script:TEAM_AI_DIRECTIVES)"

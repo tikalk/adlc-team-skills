@@ -11,7 +11,7 @@ disable-model-invocation: true
 Compile **accepted ChDRs** into the project's memory layer at `{REPO_ROOT}/docs/adlc/memory/chdr/`:
 
 - Validate accepted ChDRs (status + provenance on Decision claims)
-- Write each promoted ChDR to `docs/adlc/memory/chdr/ChDR-{NNN}.md` with OKF-style frontmatter
+- Write each promoted ChDR to `docs/adlc/memory/chdr/ChDR-{slug}.md` with OKF-style frontmatter
 - Regenerate `{REPO_ROOT}/docs/adlc/memory/chdr/chdr.md` — the **boot-facing index** that `team-boot` injects into the session-start context (inside the class dir, same convention as `adr/adr.md` and `pdr/pdr.md`)
 - Mark source drafts `### Status: **Published**`
 
@@ -40,7 +40,7 @@ $ARGUMENTS
 
 **Examples**:
 
-- `"ChDR-001 ChDR-003"` — promote only specific ChDRs
+- `"why-payments-retries-capped-at-3"` — promote only specific ChDRs
 - Empty input: promote all accepted ChDRs
 
 ### Role & Context
@@ -57,7 +57,7 @@ You are acting as a **Memory Publisher** — moving accepted ChDRs from local dr
 2. **Prerequisites Check** (Phase 1): ensure accepted ChDRs exist
 3. **Provenance Validation** (Phase 2): re-verify every Decision claim has SHA/URL
 4. **Duplicate Check** (Phase 3): skip ChDRs already in memory with same issue key
-5. **Memory Record Generation** (Phase 4): write `docs/adlc/memory/chdr/ChDR-{NNN}.md`
+5. **Memory Record Generation** (Phase 4): write `docs/adlc/memory/chdr/ChDR-{slug}.md`
 6. **Index Regeneration** (Phase 5): rebuild `docs/adlc/memory/chdr/chdr.md` (boot-facing)
 7. **Draft Status Update** (Phase 6): mark promoted drafts `Published`
 8. **Summary** (Phase 7): report results
@@ -104,7 +104,7 @@ For each accepted ChDR, re-verify: every non-trivial sentence in `### Decision` 
 
 | ChDR | Reason |
 |---|---|
-| ChDR-XXX | Decision claim lacks SHA/URL provenance |
+| {slug} | Decision claim lacks SHA/URL provenance |
 ```
 
 Skipped ChDRs remain `Accepted` in drafts for the user to fix.
@@ -115,19 +115,19 @@ For each passing ChDR, check if a memory record already exists with the same `##
 
 #### Phase 4: Memory Record Generation
 
-For each accepted ChDR, write `{MEMORY_DIR}/ChDR-{NNN}.md`:
+For each accepted ChDR, write `{MEMORY_DIR}/ChDR-{slug}.md`:
 
 ```markdown
 ---
 type: ChDR
 title: {title from heading}
 description: {descriptor from draft}
-resource: ./docs/adlc/memory/chdr/ChDR-{NNN}.md
+resource: ./docs/adlc/memory/chdr/ChDR-{slug}.md
 tags: [chdr]
 generated:
   by: agent:change-publish
   at: {today}T00:00:00Z
-id: ChDR-{NNN}
+id: ChDR-{slug}
 created: {date from draft}
 verified:
   - by: agent:change-publish
@@ -149,7 +149,7 @@ sources:
 
 ## Source
 
-Promoted from: .adlc/drafts/chdr/ChDR-{NNN}.md
+Promoted from: .adlc/drafts/chdr/ChDR-{slug}.md
 ```
 
 #### Phase 5: Index Regeneration (boot-facing)
@@ -163,7 +163,7 @@ Promoted from: .adlc/drafts/chdr/ChDR-{NNN}.md
 
 | ID | Title | Status | Date | Issues | Commits | Descriptor |
 |----|-------|--------|------|--------|---------|------------|
-| ChDR-001 | Why payments retries are capped at 3 | stable | 2026-08-16 | PROJ-123 | abc1234 | Consult before changing retry config |
+| ChDR-why-payments-retries-capped-at-3 | Why payments retries are capped at 3 | stable | 2026-08-16 | PROJ-123 | abc1234 | Consult before changing retry config |
 
 **Stats**: N entries | Last Updated: YYYY-MM-DD
 ```
@@ -178,7 +178,7 @@ For each promoted ChDR, update the draft file's status to `### Status: **Publish
 ### Promotion
 
 - **Date**: [YYYY-MM-DD]
-- **Memory path**: docs/adlc/memory/chdr/ChDR-{NNN}.md
+- **Memory path**: docs/adlc/memory/chdr/ChDR-{slug}.md
 ```
 
 #### Phase 7: Summary

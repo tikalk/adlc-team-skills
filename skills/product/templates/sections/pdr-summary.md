@@ -17,9 +17,9 @@ Detailed Product Decision Records are maintained in individual PDR files under `
 
 | ID | Category | Decision | Status | Impact | Date |
 |----|----------|----------|--------|--------|------|
-| PDR-001 | [Category] | [Title] | Accepted | High/Med/Low | [Date] |
-| PDR-002 | [Category] | [Title] | Accepted | High/Med/Low | [Date] |
-| PDR-003 | [Category] | [Title] | Proposed | High/Med/Low | [Date] |
+| PDR-lit-factory-operating-model-outer-inner-loop-governance | [Category] | [Title] | Accepted | High/Med/Low | [Date] |
+| PDR-control-plane-issue-tracker-integration-mission-brief-enforc | [Category] | [Title] | Accepted | High/Med/Low | [Date] |
+| PDR-spec-harness-adaptive-upfront-workflow | [Category] | [Title] | Proposed | High/Med/Low | [Date] |
 
 ### 12.2 Decisions by Category
 

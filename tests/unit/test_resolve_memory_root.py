@@ -321,7 +321,7 @@ def test_move_adr_into_a_missing_store_creates_it_loudly(tmp_path):
     harness = _extract_func(tmp_path, SETUP_ARCH,
                             "parse_fm_field", "parse_fm_title", "generate_adr_index",
                             "move_adr", *RESOLVE_FUNCS, "ensure_memory_store")
-    r = _run(f'source "{harness}"; move_adr 3 drafts memory', tmp_path,
+    r = _run(f'source "{harness}"; move_adr 003 drafts memory', tmp_path,
              env_extra={"REPO_ROOT": str(tmp_path), "MEMORY_ROOT": str(tmp_path)})
     assert r.returncode == 0, r.stderr
     assert (tmp_path / "docs/adlc/memory/adr/ADR-003.md").exists()
@@ -333,7 +333,7 @@ def test_move_pdr_into_a_missing_store_creates_it_loudly(tmp_path):
     (tmp_path / ".adlc/drafts/pdr").mkdir(parents=True)
     (tmp_path / ".adlc/drafts/pdr/PDR-003.md").write_text(
         "---\nstatus: accepted\ndate: 2026-11-13\n---\n\n# Three\n", encoding="utf-8")
-    r = _run(f'source "{PDR_LIB}"; move_pdr 3 drafts memory', tmp_path,
+    r = _run(f'source "{PDR_LIB}"; move_pdr 003 drafts memory', tmp_path,
              env_extra={"REPO_ROOT": str(tmp_path), "MEMORY_ROOT": str(tmp_path)})
     assert r.returncode == 0, r.stderr
     assert (tmp_path / "docs/adlc/memory/pdr/PDR-003.md").exists()

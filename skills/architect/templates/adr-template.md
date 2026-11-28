@@ -2,13 +2,13 @@
 # MADR 3.0.0 frontmatter (https://adr.github.io/madr/)
 # status, date, decision-makers, consulted, informed are MADR-standard.
 # sub-system and superseded-by are project extensions.
-status: proposed  # proposed | accepted | rejected | deprecated | superseded by ADR-0123 | discovered
+status: proposed  # proposed | accepted | rejected | deprecated | superseded by ADR-slug-id | discovered
 date: YYYY-MM-DD
 decision-makers: [list everyone involved in the decision]
 consulted: [list everyone whose opinions were sought (typically subject-matter experts)]
 informed: [list everyone kept up-to-date on progress]
 sub-system: System  # System | Auth | Payments | Users | Inventory | (other sub-system) — cross-cutting decisions use "System"
-superseded-by: ""  # set to "ADR-0123" only when status is "superseded by ADR-0123"
+superseded-by: ""  # set to "ADR-slug-id" only when status is "superseded by ADR-slug-id"
 type: decision  # decision | workaround | constraint | abandoned
 evidence: confirmed  # confirmed | inferred | unknown — how well the origin is established
 source: ""  # where the rationale came from (session, interview, issue, commit, post-mortem)
@@ -94,7 +94,7 @@ this.}
 
 ## Related ADRs
 
-* [ADR-XXX: {Related decision}](ADR-XXX.md)
+* [ADR-slug-id: {Related decision}](ADR-slug-id.md)
 
 ## More Information
 
@@ -127,10 +127,10 @@ neutral arguments, MADR-0014); More Information; links between ADRs
 categories equivalent); `discovered` status (brownfield reverse-engineering via
 `/architect-init`); Constitution Alignment section; Related ADRs section.
 
-**Filename convention**: `ADR-{NNN}.md` (zero-padded numeric ID) rather than
+**Filename convention**: `ADR-{slug}.md` (short lowercase slug) rather than
 MADR's default `NNNN-title-with-dashes.md` (MADR-0005 explicitly permits other
-patterns). The stable numeric ID is used by the `adr.md` index, supersession
+patterns). The slug ID is used by the `AD.md` index, supersession
 references, and the architect skills.
 
 **Status values**: `proposed | accepted | rejected | deprecated | superseded by
-ADR-0123 | discovered` — MADR's set plus `discovered`.
+ADR-slug-id | discovered` — MADR's set plus `discovered`.

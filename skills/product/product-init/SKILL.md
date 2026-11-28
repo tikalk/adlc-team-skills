@@ -17,7 +17,7 @@ Reverse-engineers product decisions from an **existing product** using a **three
 2. **Pattern Agent**: Classifies signals into PDR categories, scores strategic importance
 3. **Synthesis Agent**: Cross-feature-area analysis, flags inconsistencies
 
-**Output**: Individual `PDR-{NNN}.md` files (status **Discovered**) in `.adlc/drafts/pdr/` with an auto-generated `pdr.md` index.
+**Output**: Individual `PDR-{slug}.md` files (status **Discovered**) in `.adlc/drafts/pdr/` with an auto-generated `pdr.md` index.
 
 ## When to use
 
@@ -51,10 +51,10 @@ ps: scripts/powershell/setup-product-init.ps1
   "PDR_DRAFTS_DIR": "/path/to/project/.adlc/drafts/pdr",
   "PRD_FILE": "/path/to/project/PRD.md",
   "feature_areas": ["core", "business", "growth"],
-  "next_pdr": "001"
+  "id_allocation": "slug"
 }
 ```
-The script reports `next_pdr` — the next free PDR slot (status line `Next PDR: PDR-{NNN}`); Phase 5 numbers the new PDRs from it
+The script reports `id_allocation` — the PDR ID scheme; Phase 5 derives slugs from titles
 
 **Create directories**:
 ```bash
@@ -140,8 +140,8 @@ For each feature-area:
 
 For each discovered PDR:
 
-1. **Assign ID**: PDR-{NNN} using next available number
-2. **Write file**: `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{NNN}.md`
+1. **Assign ID**: PDR-{slug} derived from feature name
+2. **Write file**: `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{slug}.md`
 
 **PDR file format** (individual file, YAML frontmatter — use the shared template):
 
@@ -157,7 +157,7 @@ feature-area: [core | business | growth | ...]
 title: [Decision Title]
 ---
 
-# PDR-001: [Decision Title]
+# [Decision Title]
 
 ### Cross-Feature-Area Metadata
 - **Appears in**: [business, growth]
@@ -220,8 +220,8 @@ Generate `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` from all `PDR-*.md` files:
 
 | ID | Feature-Area | Category | Status | Date | Owner |
 |----|--------------|----------|--------|------|-------|
-| PDR-001 | business | Business Model | Discovered | 2026-01-20 | [Inferred] |
-| PDR-002 | core | Persona | Discovered | 2026-01-20 | [Inferred] |
+| PDR-business-model | business | Business Model | Discovered | 2026-01-20 | [Inferred] |
+| PDR-user-persona | core | Persona | Discovered | 2026-01-20 | [Inferred] |
 
 ---
 
@@ -230,12 +230,12 @@ Generate `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` from all `PDR-*.md` files:
 ### Cross-Area Patterns
 | Pattern | Feature-Areas | PDR |
 |---------|---------------|-----|
-| Admin Persona | core, business | PDR-002 |
+| Admin Persona | core, business | PDR-user-persona |
 
 ### Inconsistencies Flagged
 | Flag ID | Type | PDRs Affected | Severity |
 |---------|------|---------------|----------|
-| FLG-001 | Priority Conflict | PDR-003 | Medium |
+| FLG-001 | Priority Conflict | PDR-pricing-strategy | Medium |
 
 ---
 
@@ -268,12 +268,12 @@ Generate `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md` from all `PDR-*.md` files:
 3. Generate PRD: Run `/product-implement`
 ```
 
-## PDR Numbering Rules
+## PDR Slug Rules
 
-- Number from the **next free slot** the setup script computes and emits (`next_pdr` in its JSON/status output), never from "the highest existing number" guessed by inspection: a stemmed record (e.g. `PDR-002-amendment-2.md`) is easy to miss, and its slot is still taken
-- The slot rule: a record's number is the leading digits of its filename stem; the maximum spans `{REPO_ROOT}/.adlc/drafts/pdr/` **and** published memory (`docs/adlc/memory/pdr/`) — the same source `next_pdr` reports
-- PDR IDs are zero-padded to 3 digits (PDR-001, PDR-002, ...)
-- Never reuse numbers, even for deleted PDRs
+- IDs are derived from titles: lowercase, ASCII-fold, non-alphanumeric to `-`, collapse `-`, trim `-`.
+- Max 60 characters for the slug part.
+- Collision handling: if `PDR-slug.md` exists, append `-2`, `-3`, etc.
+- Existence check spans `{REPO_ROOT}/.adlc/drafts/pdr/`, `docs/adlc/memory/pdr/`, and legacy `.adlc/memory/pdr/`.
 
 ## State Management
 

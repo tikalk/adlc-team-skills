@@ -41,28 +41,75 @@ function Get-AdlcMemoryPath {
     return $legacyPath
 }
 
-# Get-NextAdrNumber [ROOT] - the next free ADR ledger slot.
-#
-# PowerShell twin of next_adr_number in setup-architect.sh, same contract as
-# Get-NextRecordNumber in product-clarify's pdr-lib.ps1: a record's number is
-# the LEADING DIGITS of its filename stem (an amendment stem still counts as
-# its base record; suffixes are never arithmetically parsed), and the maximum
-# spans drafts AND published memory so a promoted record's slot is not reissued.
-function Get-NextAdrNumber {
-    param([string]$Root = (Get-RepositoryRoot))
-    $max = 0
-    $docsBase = $DOCS_ADLC_MEMORY
-    if (-not $docsBase) { $docsBase = "docs/adlc/memory" }
-    foreach ($dir in @((Join-Path $Root ".adlc/drafts/adr"), (Join-Path $Root (Join-Path $docsBase "adr")))) {
-        if (-not (Test-Path $dir)) { continue }
-        foreach ($f in @(Get-ChildItem -Path $dir -Filter 'ADR-*.md' -File -ErrorAction SilentlyContinue)) {
-            if ($f.BaseName -cmatch '^ADR-(\d+)') {
-                $num = [int]$Matches[1]
-                if ($num -gt $max) { $max = $num }
-            }
+# Get-Slugify TITLE - the title-derived slug for a record.
+# Rules: lowercase, ASCII-fold, non-alnum -> -, collapse -, trim -, max 60 chars.
+function Get-Slugify {
+    param([string]$Title)
+    if ([string]::IsNullOrWhiteSpace($Title)) {
+        throw "Error: slugified title is empty"
+    }
+
+    # 1. Lowercase, 2. ASCII-fold, 3. Sanitize, 4. Collapse, 5. Trim, 6. Truncate
+    $slug = $Title.ToLower()
+
+    # ASCII-fold (Normalize FormD separates accents, then we filter them out)
+    $normalized = $slug.Normalize([System.Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($c in $normalized.ToCharArray()) {
+        $category = [System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($c)
+        if ($category -ne [System.Globalization.UnicodeCategory]::NonSpacingMark) {
+            [void]$sb.Append($c)
         }
     }
-    return ('{0:d3}' -f ($max + 1))
+    $slug = $sb.ToString()
+
+    # Sanitize & Collapse
+    $slug = [regex]::Replace($slug, "[^a-z0-9]", "-")
+    $slug = [regex]::Replace($slug, "-{2,}", "-")
+
+    # Trim
+    $slug = $slug.Trim("-")
+
+    # Truncate
+    if ($slug.Length -gt 60) {
+        $slug = $slug.Substring(0, 60)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        throw "Error: slugified title is empty"
+    }
+    return $slug
+}
+
+# Get-MintAdrSlug TITLE [ROOT] - the next free ADR slug.
+# Slugify title and append -2, -3 on collision across drafts AND memory.
+function Get-MintAdrSlug {
+    param([string]$Title, [string]$Root = (Get-RepositoryRoot))
+    $slug = Get-Slugify -Title $Title
+    $candidate = $slug
+    $count = 1
+
+    $docsBase = $DOCS_ADLC_MEMORY
+    if (-not $docsBase) { $docsBase = "docs/adlc/memory" }
+
+    while ($true) {
+        $exists = $false
+        foreach ($dir in @((Join-Path $Root ".adlc/drafts/adr"), 
+                           (Join-Path $Root (Join-Path $docsBase "adr")),
+                           (Join-Path $Root ".adlc/memory/adr"))) {
+            if (Test-Path (Join-Path $dir "ADR-$candidate.md")) {
+                $exists = $true
+                break
+            }
+        }
+
+        if (-not $exists) {
+            return $candidate
+        }
+
+        $count++
+        $candidate = "$slug-$count"
+    }
 }
 
 
@@ -673,7 +720,7 @@ function Invoke-Specify {
     Write-Host "  1. Analyze your PRD/requirements input"
     Write-Host "  2. Ask clarifying questions about architecture"
     Write-Host "  3. Create ADRs for each key decision"
-    Write-Host "  4. Save decisions to .adlc/drafts/adr/ADR-{NNN}.md (Proposed status)"
+    Write-Host "  4. Save decisions to .adlc/drafts/adr/ADR-{slug}.md (Proposed status)"
     Write-Host "     (ADRs will be moved to docs/adlc/memory after /architect-implement)"
     if ($Decompose) {
         Write-Host "  5. Organize ADRs by sub-system"
@@ -685,12 +732,11 @@ function Invoke-Specify {
     # of the filename stem, max across drafts AND published memory -- see
     # Get-NextAdrNumber). Leaving "the highest existing number" to the agent
     # reissued taken slots.
-    $nextAdr = Get-NextAdrNumber -Root $repoRoot
     Write-Host ""
-    Write-Host "Next free ADR slot: ADR-$nextAdr"
+    Write-Host "ID allocation: ADR-{slug} (title-derived, lowercase-kebab)"
     
     if ($Json) {
-        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose; next_adr=$nextAdr} | ConvertTo-Json
+        @{status="success"; action="specify"; adr_dir=$adrDir; context=($contextArgs -join " "); decomposition=$Decompose} | ConvertTo-Json
     }
 }
 

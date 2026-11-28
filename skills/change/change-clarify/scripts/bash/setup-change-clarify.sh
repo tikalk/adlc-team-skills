@@ -10,10 +10,27 @@ DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
-# Shared family helpers — chdr-lib.sh sits next to this script (the sibling
-# change-* skills vendor the same functions per the scope rule: skills never
-# source each other's scripts).
-source "$(dirname "${BASH_SOURCE[0]}")/chdr-lib.sh"
+# Sibling library — chdr-lib.sh sits next to this script (each skill vendors
+# its own copy).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/chdr-lib.sh"
+
+###############################################################################
+# Inline path resolution (no external helper dependency)
+###############################################################################
+
+resolve_project_root() {
+  local dir
+  dir="$(pwd)"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -d "${dir}/.adlc" ]]; then
+      echo "$dir"
+      return
+    fi
+    dir="$(dirname "$dir")"
+  done
+  git rev-parse --show-toplevel 2>/dev/null || pwd
+}
 
 PROJECT_ROOT=$(resolve_project_root)
 CHDR_DRAFTS_DIR="${PROJECT_ROOT}/${ADLC_DRAFTS:-.adlc/drafts}/chdr"
@@ -53,6 +70,8 @@ chdr_status() {
     printf '%s' "$status"
 }
 
+# ID allocation: slugify(title) + collision check.
+ID_ALLOCATION="slug"
 ACCEPTED_CHDRS=0
 PENDING_CHDRS=0
 for f in "$CHDR_DRAFTS_DIR"/ChDR-*.md; do
@@ -65,5 +84,5 @@ done
 EXISTING_CHDRS=$( { ls -1 "$CHDR_DRAFTS_DIR"/ChDR-*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
 
 jq -n --arg rr "$PROJECT_ROOT" --arg dd "$CHDR_DRAFTS_DIR" --arg md "$MEMORY_DIR" \
-  --argjson accepted "$ACCEPTED_CHDRS" --argjson pending "$PENDING_CHDRS" --argjson existing "$EXISTING_CHDRS" \
-  '{REPO_ROOT:$rr,CHDR_DRAFTS_DIR:$dd,MEMORY_DIR:$md,ACCEPTED_CHDRS:$accepted,PENDING_CHDRS:$pending,EXISTING_CHDRS:$existing}'
+  --arg ia "$ID_ALLOCATION" --argjson accepted "$ACCEPTED_CHDRS" --argjson pending "$PENDING_CHDRS" --argjson existing "$EXISTING_CHDRS" \
+  '{REPO_ROOT:$rr,CHDR_DRAFTS_DIR:$dd,MEMORY_DIR:$md,id_allocation:$ia,ACCEPTED_CHDRS:$accepted,PENDING_CHDRS:$pending,EXISTING_CHDRS:$existing}'

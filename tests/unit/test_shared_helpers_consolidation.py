@@ -50,8 +50,8 @@ VENDORED_PDR_BORROWERS = [
 # (borrower, marker proving the needed helper lives in the file itself)
 VENDORED_PDR_BORROWERS_PS = {
     SKILLS / "product/product-implement/scripts/powershell/setup-product-implement.ps1": "$acceptedCount",
-    SKILLS / "product/product-init/scripts/powershell/setup-product-init.ps1": "function Get-NextRecordNumber",
-    SKILLS / "product/product-specify/scripts/powershell/setup-product-specify.ps1": "function Get-NextRecordNumber",
+    SKILLS / "product/product-init/scripts/powershell/setup-product-init.ps1": "function Get-MintPdrSlug",
+    SKILLS / "product/product-specify/scripts/powershell/setup-product-specify.ps1": "function Get-MintPdrSlug",
 }
 
 # A reference to another skill's private scripts, in either layout.
@@ -165,7 +165,7 @@ def test_pdr_ledger_helpers_are_vendored():
         assert not re.search(r"(?:source|\.)\s+.*product-clarify/scripts", content), (
             f"{path.parent.parent.name}: still sources product-clarify scripts"
         )
-        assert "next_record_number()" in content or "_get_project_root()" in content, (
+        assert "mint_pdr_slug()" in content or "_get_project_root()" in content, (
             f"{path.parent.parent.name}: expected a vendored ledger helper"
         )
         assert "adlc-cli skills add tikalk/adlc-team-skills --skill product-clarify" not in content, (

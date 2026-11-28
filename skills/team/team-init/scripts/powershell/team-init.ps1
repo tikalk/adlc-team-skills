@@ -71,22 +71,6 @@ function Ensure-AdlcBranch {
     git -C $Td worktree remove $script:ADLC_WORKTREE *> $null
 }
 
-function Get-NextCdrNumber {
-    param([string]$Td)
-    if (-not $Td) { $Td = $script:TEAM_AI_DIRECTIVES }
-    $max = 0
-    $files = @(git -C $Td ls-tree --name-only $script:ADLC_BRANCH 'drafts/cdr/' 2>$null)
-    foreach ($f in ($files | Sort-Object)) {
-        $name = [System.IO.Path]::GetFileName($f)
-        if ($name -cnotlike '*.md') { continue }
-        if ($name.Substring(0, $name.Length - 3) -cmatch '^CDR-(\d+)') {
-            $num = [int]$Matches[1]
-            if ($num -gt $max) { $max = $num }
-        }
-    }
-    return ('{0:d3}' -f ($max + 1))
-}
-
 if ($args.Count -ge 1 -and [string]$args[0] -eq '--setup') {
     Output-Json
     exit 0
@@ -105,12 +89,11 @@ if (-not $script:TEAM_AI_DIRECTIVES -or -not (Test-Path -LiteralPath $script:TEA
 # Ensure adlc orphan branch exists
 Ensure-AdlcBranch $script:TEAM_AI_DIRECTIVES
 
-# Get next CDR number
-$NEXT_CDR = Get-NextCdrNumber $script:TEAM_AI_DIRECTIVES
-
+# Get next CDR (slug-only ID allocation)
+# Note: team-init now just prepares the adlc branch; 
+# slug IDs are minted by the agent during capture via team-levelup.
 Write-Output "REPO_ROOT=$($script:PROJECT_ROOT)"
 Write-Output "TEAM_AI_DIRECTIVES=$($script:TEAM_AI_DIRECTIVES)"
-Write-Output "NEXT_CDR=$NEXT_CDR"
 Write-Output "ADLC_BRANCH=$($script:ADLC_BRANCH)"
 Write-Output ''
 Write-Output 'Ready for multi-agent brownfield analysis.'

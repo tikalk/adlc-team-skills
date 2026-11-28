@@ -9,7 +9,7 @@ source: ""  # where the rationale came from
 revisit-when: ""  # concrete trigger or "N/A"
 ---
 
-# ChDR-NNN: {short title}
+# ChDR-{slug}: {short title}
 
 ## Context
 

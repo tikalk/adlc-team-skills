@@ -3,7 +3,7 @@
 # status, date, owner, category, feature-area, title are PDR-standard fields.
 # Keep frontmatter as the SINGLE SOURCE OF TRUTH for index generation.
 # Heading-based metadata (## or ###) is a legacy fallback only.
-status: proposed  # proposed | accepted | completed | rejected | deprecated | superseded by PDR-0123 | discovered
+status: proposed  # proposed | accepted | completed | rejected | deprecated | superseded by PDR-slug-id | discovered
 date: YYYY-MM-DD
 owner: [list everyone involved in the decision]
 category: Feature  # Feature | NFR | GTM | Milestone | Governance | Metric | Prioritization
@@ -12,7 +12,7 @@ title: short title, representative of the solved problem and the found solution
 ---
 
 <!-- markdownlint-disable-next-line MD025 -->
-# PDR-NNN: {short title, representative of the solved problem and the found solution}
+# PDR-slug-id: {short title, representative of the solved problem and the found solution}
 
 ## Context
 

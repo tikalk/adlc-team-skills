@@ -84,7 +84,7 @@ Emit before the task answer:
 
 | ID | Title | Status | Date |
 |--|--|--|--|
-| ChDR-001 | Why payments retries are capped at 3 | stable | 2026-08-16 |
+| ChDR-retry-cap-reverted | Why payments retries are capped at 3 | stable | 2026-08-16 |
 
 _Searched N ChDRs, K matched._
 

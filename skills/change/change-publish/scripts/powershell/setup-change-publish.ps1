@@ -10,6 +10,10 @@ $DOCS_ADLC_PRODUCT = if ($env:DOCS_ADLC_PRODUCT) { $env:DOCS_ADLC_PRODUCT } else
 $DOCS_ADLC_ARCHITECT = if ($env:DOCS_ADLC_ARCHITECT) { $env:DOCS_ADLC_ARCHITECT } else { "docs/adlc/architect" }
 $ADLC_DRAFTS = if ($env:ADLC_DRAFTS) { $env:ADLC_DRAFTS } else { ".adlc/drafts" }
 
+# Sibling library — chdr-lib.ps1 sits next to this script (each skill vendors
+# its own copy).
+. (Join-Path $PSScriptRoot "chdr-lib.ps1")
+
 function Resolve-ProjectRoot {
     $dir = $PSScriptRoot
     while ($dir -ne "") {
@@ -25,13 +29,20 @@ function Resolve-ProjectRoot {
 
 $ProjectRoot = Resolve-ProjectRoot
 $ChdrDraftsDir = Join-Path $projectRoot ".adlc/drafts/chdr"
-#  published ChDRs live under docs/adlc/memory — promotion writes the
-# new path only; legacy .adlc/memory/chdr stays read-compatible (dual-read).
-$MemoryDir = Join-Path $projectRoot "docs/adlc/memory/chdr"
-$MemoryIndex = Join-Path $projectRoot "docs/adlc/memory/chdr/chdr.md"
-$LegacyMemoryDir = Join-Path $projectRoot ".adlc/memory/chdr"
+#  published ChDRs live under docs/adlc/memory at the resolved store root
+# (ADR-514) — promotion writes the new path only; legacy .adlc/memory/chdr
+# stays read-compatible (dual-read).
+$MemoryRoot = Resolve-MemoryRoot
+$MemoryDir = Join-Path $MemoryRoot "docs/adlc/memory/chdr"
+$MemoryIndex = Join-Path $MemoryRoot "docs/adlc/memory/chdr/chdr.md"
+$LegacyMemoryDir = Join-Path $MemoryRoot ".adlc/memory/chdr"
 
-if (-not (Test-Path $MemoryDir)) { New-Item -ItemType Directory -Path $MemoryDir -Force | Out-Null }
+# ID allocation: slugify(title) + collision check.
+$IdAllocation = "slug"
+
+# publish is a record-promotion write path: the store is created loudly when
+# the resolved root has none (the store dir is the opt-in marker).
+Ensure-MemoryStore -Root $MemoryRoot -Family chdr
 
 $AcceptedChdrs = @()
 $AcceptedCount = 0
@@ -40,7 +51,7 @@ $draftFiles = @(Get-ChildItem -Path $ChdrDraftsDir -Filter "ChDR-*.md" -ErrorAct
 foreach ($f in $draftFiles) {
     $content = Get-Content $f.FullName -Raw
     if ($content -match '### Status: \*\*Accepted\*\*') {
-        $AcceptedChdrs += $f.Name
+        $AcceptedChdrs += ($f.BaseName -replace '\.md$','')
         $AcceptedCount++
     } elseif ($content -match '### Status: \*\*Published\*\*') {
         $PublishedCount++
@@ -55,6 +66,7 @@ $output = @{
     CHDR_DRAFTS_DIR = $ChdrDraftsDir
     MEMORY_DIR = $MemoryDir
     MEMORY_INDEX = $MemoryIndex
+    id_allocation = $IdAllocation
     ACCEPTED_CHDRS = $AcceptedChdrs
     ACCEPTED_COUNT = $AcceptedCount
     PUBLISHED_COUNT = $PublishedCount

@@ -94,28 +94,6 @@ if (Test-Path $PdrDraftsDir) {
   }
 }
 
-# Ledger slot allocation (vendored from product-clarify pdr-lib.ps1 per the
-# scope rule: scripts stay skill-local, helpers are vendored, never sourced
-# across skills). A record's number is the LEADING DIGITS of its filename
-# stem; the maximum spans drafts AND published memory.
-function Get-NextRecordNumber {
-  param(
-    [Parameter(Mandatory = $true)][string]$Prefix,
-    [Parameter(Mandatory = $true)][string[]]$Dirs
-  )
-  $max = 0
-  foreach ($dir in $Dirs) {
-    if (-not (Test-Path -LiteralPath $dir)) { continue }
-    foreach ($file in Get-ChildItem -LiteralPath $dir -Filter "$Prefix-*.md" -File -ErrorAction SilentlyContinue) {
-      if ($file.BaseName -match ('^' + [regex]::Escape($Prefix) + '-(\d+)')) {
-        $n = [int]$Matches[1]
-        if ($n -gt $max) { $max = $n }
-      }
-    }
-  }
-  return ('{0:D3}' -f ($max + 1))
-}
-
 # The three document-internal PRD.md slots. Each scan is deliberately
 # over-inclusive: an unused number is harmless, a reissued one collides.
 function Get-NextPrdSection {
@@ -158,19 +136,90 @@ function Get-NextFeatureNumber {
   return ($max + 1)
 }
 
-$nextPdr = Get-NextRecordNumber -Prefix 'PDR' -Dirs @($PdrDraftsDir, $PdrMemoryDir)
+# ID allocation: slugify(title) + collision check.
+# Rules: lowercase, ASCII-fold, non-alnum -> -, collapse -, trim -, max 60 chars.
+function Get-Slugify {
+    param([string]$Title)
+    if ([string]::IsNullOrWhiteSpace($Title)) {
+        throw "Error: slugified title is empty"
+    }
+
+    # 1. Lowercase, 2. ASCII-fold, 3. Sanitize, 4. Collapse, 5. Trim, 6. Truncate
+    $slug = $Title.ToLower()
+
+    # ASCII-fold (Normalize FormD separates accents, then we filter them out)
+    $normalized = $slug.Normalize([System.Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($c in $normalized.ToCharArray()) {
+        $category = [System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($c)
+        if ($category -ne [System.Globalization.UnicodeCategory]::NonSpacingMark) {
+            [void]$sb.Append($c)
+        }
+    }
+    $slug = $sb.ToString()
+
+    # Sanitize & Collapse
+    $slug = [regex]::Replace($slug, "[^a-z0-9]", "-")
+    $slug = [regex]::Replace($slug, "-{2,}", "-")
+
+    # Trim
+    $slug = $slug.Trim("-")
+
+    # Truncate
+    if ($slug.Length -gt 60) {
+        $slug = $slug.Substring(0, 60)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        throw "Error: slugified title is empty"
+    }
+    return $slug
+}
+
+# Get-MintPdrSlug TITLE [ROOT] - the next free PDR slug.
+# Slugify title and append -2, -3 on collision across drafts AND memory.
+function Get-MintPdrSlug {
+    param([string]$Title, [string]$Root = $RepoRoot)
+    $slug = Get-Slugify -Title $Title
+    $candidate = $slug
+    $count = 1
+
+    $docsBase = $DOCS_ADLC_MEMORY
+    if (-not $docsBase) { $docsBase = "docs/adlc/memory" }
+
+    while ($true) {
+        $exists = $false
+        foreach ($dir in @((Join-Path $Root ".adlc/drafts/pdr"), 
+                           (Join-Path $Root (Join-Path $docsBase "pdr")),
+                           (Join-Path $Root ".adlc/memory/pdr"))) {
+            if (Test-Path (Join-Path $dir "PDR-$candidate.md")) {
+                $exists = $true
+                break
+            }
+        }
+
+        if (-not $exists) {
+            return $candidate
+        }
+
+        $count++
+        $candidate = "$slug-$count"
+    }
+}
+
+$idAllocation = "slug"
 $nextPrdSection = Get-NextPrdSection -Path $PrdFile
 $nextReqId = Get-NextReqId -Path $PrdFile
 $nextFeatureNumber = Get-NextFeatureNumber -Path $PrdFile
 
 if ($Json) {
-  Write-Output (@{ REPO_ROOT=$RepoRoot; PDR_DRAFTS_DIR=$PdrDraftsDir; PDR_MEMORY_DIR=$PdrMemoryDir; PRD_FILE=$PrdFile; SECTIONS_DIR=$SectionsDir; STATE_FILE=$StateFile; accepted_count=$acceptedCount; next_pdr=$nextPdr; next_prd_section=$nextPrdSection; next_req_id=$nextReqId; next_feature_number=$nextFeatureNumber } | ConvertTo-Json)
+  Write-Output (@{ REPO_ROOT=$RepoRoot; PDR_DRAFTS_DIR=$PdrDraftsDir; PDR_MEMORY_DIR=$PdrMemoryDir; PRD_FILE=$PrdFile; SECTIONS_DIR=$SectionsDir; STATE_FILE=$StateFile; accepted_count=$acceptedCount; id_allocation=$idAllocation; next_prd_section=$nextPrdSection; next_req_id=$nextReqId; next_feature_number=$nextFeatureNumber } | ConvertTo-Json)
 } else {
   Write-Output "[INFO] product-implement setup"
   Write-Output "  Accepted PDRs: $acceptedCount"
   Write-Output "  PRD_FILE: $PrdFile"
   Write-Output "  SECTIONS_DIR: $SectionsDir"
-  Write-Output "  Next PDR slot: PDR-$nextPdr"
+  Write-Output "  ID allocation: PDR-{slug}"
   Write-Output "  Next PRD section: $nextPrdSection"
   Write-Output "  Next REQ id: REQ-$nextReqId"
   Write-Output "  Next feature row: $nextFeatureNumber"

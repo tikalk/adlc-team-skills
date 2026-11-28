@@ -11,54 +11,6 @@ DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
 ###############################################################################
-# Inline path resolution (no external helper dependency)
-###############################################################################
-
-resolve_project_root() {
-  local dir
-  dir="$(pwd)"
-  while [[ "$dir" != "/" ]]; do
-    if [[ -d "${dir}/.adlc" ]]; then
-      echo "$dir"
-      return
-    fi
-    dir="$(dirname "$dir")"
-  done
-  git rev-parse --show-toplevel 2>/dev/null || pwd
-}
-
-resolve_team_ai_directives() {
-  local project_root="$1"
-  local td="${TEAM_AI_DIRECTIVES:-}"
-  [[ -n "$td" ]] && { echo "$td"; return; }
-  if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
-    td=$(jq -r '.team_ai_directives // empty' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
-    [[ -n "$td" ]] && { echo "$td"; return; }
-  fi
-  echo "${project_root}/team-ai-directives"
-}
-
-resolve_branch() {
-  git branch --show-current 2>/dev/null || echo "unknown"
-}
-
-git_available() {
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1 && echo "true" || echo "false"
-}
-
-default_branch() {
-  # Try common primary branches, fall back to current branch name.
-  local b
-  for b in main master; do
-    if git show-ref --verify --quiet "refs/heads/${b}" 2>/dev/null; then
-      echo "$b"
-      return
-    fi
-  done
-  git branch --show-current 2>/dev/null || echo "unknown"
-}
-
-###############################################################################
 # Decision-record store resolution (ADR-514)
 #
 # Vendored byte-identical from the canonical block in change-clarify's
@@ -134,26 +86,52 @@ resolve_memory_root() {
     fi
 }
 
-# next_chdr_number DIR [DIR...] — the next free ChDR ledger slot.
-#
-# A record's number is the LEADING DIGITS of its filename stem
-# (ChDR-006-skill-side-remote-lane-abandoned.md is record 006); suffixes are
-# preserved and never arithmetically parsed. The maximum spans EVERY
-# directory given — ADR-514: the drafts root plus both store roots
-# (docs/adlc/memory/chdr and legacy .adlc/memory/chdr) — so a published
-# record's slot is never reissued. Reads never create anything.
-next_chdr_number() {
-  local max=0 f num dir
-  for dir in "$@"; do
-    [[ -d "$dir" ]] || continue
-    for f in "$dir"/ChDR-*.md; do
-      [[ -f "$f" ]] || continue
-      num=$(basename "$f" .md | sed -n 's/^ChDR-\([0-9]\{1,\}\).*/\1/p')
-      [[ -n "$num" ]] || continue
-      ((10#$num > max)) && max=$((10#$num))
-    done
+###############################################################################
+# Inline path resolution (no external helper dependency)
+###############################################################################
+
+resolve_project_root() {
+  local dir
+  dir="$(pwd)"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -d "${dir}/.adlc" ]]; then
+      echo "$dir"
+      return
+    fi
+    dir="$(dirname "$dir")"
   done
-  printf '%03d' "$((max + 1))"
+  git rev-parse --show-toplevel 2>/dev/null || pwd
+}
+
+resolve_team_ai_directives() {
+  local project_root="$1"
+  local td="${TEAM_AI_DIRECTIVES:-}"
+  [[ -n "$td" ]] && { echo "$td"; return; }
+  if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
+    td=$(jq -r '.team_ai_directives // empty' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
+    [[ -n "$td" ]] && { echo "$td"; return; }
+  fi
+  echo "${project_root}/team-ai-directives"
+}
+
+resolve_branch() {
+  git branch --show-current 2>/dev/null || echo "unknown"
+}
+
+git_available() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 && echo "true" || echo "false"
+}
+
+default_branch() {
+  # Try common primary branches, fall back to current branch name.
+  local b
+  for b in main master; do
+    if git show-ref --verify --quiet "refs/heads/${b}" 2>/dev/null; then
+      echo "$b"
+      return
+    fi
+  done
+  git branch --show-current 2>/dev/null || echo "unknown"
 }
 
 ###############################################################################
@@ -169,18 +147,14 @@ CHDR_DRAFTS_DIR="${PROJECT_ROOT}/${ADLC_DRAFTS:-.adlc/drafts}/chdr"
 
 mkdir -p "$CHDR_DRAFTS_DIR" 2>/dev/null || true
 
-# ADR-514 numbering: the next free ChDR slot is the max across the drafts
-# root AND both store roots (docs/adlc/memory/chdr + legacy .adlc/memory/chdr)
-# of the resolved memory root.
-MEMORY_ROOT=$(resolve_memory_root)
-NEXT_CHDR=$(next_chdr_number "$CHDR_DRAFTS_DIR" \
-  "${MEMORY_ROOT}/docs/adlc/memory/chdr" "${MEMORY_ROOT}/.adlc/memory/chdr")
+# ID allocation: slugify(title) + collision check.
+ID_ALLOCATION="slug"
 EXISTING_CHDRS=$( { ls -1 "$CHDR_DRAFTS_DIR"/ChDR-*.md 2>/dev/null || true; } | wc -l | tr -d ' ')
 TD_CONFIGURED=$([[ -d "$TEAM_AI_DIRECTIVES" ]] && echo "true" || echo "false")
 
 if [[ "$TD_CONFIGURED" == "true" ]]; then td_json=true; else td_json=false; fi
 if [[ "$GIT_AVAILABLE" == "true" ]]; then git_json=true; else git_json=false; fi
 jq -n --arg rr "$PROJECT_ROOT" --arg dd "$CHDR_DRAFTS_DIR" --arg td "$TEAM_AI_DIRECTIVES" \
-  --arg br "$BRANCH" --arg next "$NEXT_CHDR" --argjson existing "$EXISTING_CHDRS" \
+  --arg br "$BRANCH" --arg ia "$ID_ALLOCATION" --argjson existing "$EXISTING_CHDRS" \
   --argjson tdc "$td_json" --argjson ga "$git_json" --arg db "$DEFAULT_BRANCH" \
-  '{REPO_ROOT:$rr,CHDR_DRAFTS_DIR:$dd,TEAM_AI_DIRECTIVES:$td,BRANCH:$br,NEXT_CHDR:$next,EXISTING_CHDRS:$existing,TD_CONFIGURED:$tdc,GIT_AVAILABLE:$ga,DEFAULT_BRANCH:$db}'
+  '{REPO_ROOT:$rr,CHDR_DRAFTS_DIR:$dd,TEAM_AI_DIRECTIVES:$td,BRANCH:$br,id_allocation:$ia,EXISTING_CHDRS:$existing,TD_CONFIGURED:$tdc,GIT_AVAILABLE:$ga,DEFAULT_BRANCH:$db}'

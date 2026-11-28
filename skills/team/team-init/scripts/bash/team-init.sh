@@ -48,20 +48,6 @@ ensure_adlc_branch() {
   fi
 }
 
-next_cdr_number() {
-  local td="${1:-$TEAM_AI_DIRECTIVES}"
-  local max=0
-  for f in $(git -C "$td" ls-tree --name-only "$ADLC_BRANCH" "drafts/cdr/" 2>/dev/null | sort); do
-    local base num
-    base=$(basename "$f")
-    [[ "$base" == *.md ]] || continue
-    num=$(printf '%s' "${base%.md}" | sed -n 's/^CDR-\([0-9]\{1,\}\).*/\1/p')
-    [[ -n "$num" ]] || continue
-    ((10#$num > max)) && max=$((10#$num))
-  done
-  printf '%03d' $((max + 1))
-}
-
 if [[ "${1:-}" == "--setup" ]]; then
   output_json
   exit 0
@@ -80,12 +66,11 @@ fi
 # Ensure adlc orphan branch exists
 ensure_adlc_branch "$TEAM_AI_DIRECTIVES"
 
-# Get next CDR number
-NEXT_CDR=$(next_cdr_number "$TEAM_AI_DIRECTIVES")
-
+# Get next CDR (slug-only ID allocation)
+# Note: team-init now just prepares the adlc branch; 
+# slug IDs are minted by the agent during capture via team-levelup.
 echo "REPO_ROOT=$PROJECT_ROOT"
 echo "TEAM_AI_DIRECTIVES=$TEAM_AI_DIRECTIVES"
-echo "NEXT_CDR=$NEXT_CDR"
 echo "ADLC_BRANCH=$ADLC_BRANCH"
 echo ""
 echo "Ready for multi-agent brownfield analysis."

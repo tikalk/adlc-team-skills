@@ -176,7 +176,7 @@ You are acting as an **Architecture Orchestrator** managing a multi-phase docume
 **IMPORTANT - Path Resolution**:
 - The setup script outputs `REPO_ROOT` - use this to determine the correct paths
 - REPO_ROOT is found by searching upward from current directory for `.adlc` directory
-- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md`
+- NEVER use relative paths like `.adlc/drafts/adr.md` - always use `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md`
 - The setup script reads individual ADR files from the `adr/` directory
 - When running from a subdirectory (e.g., a subproject directory), `.adlc` may be in the parent directory
 
@@ -453,9 +453,9 @@ a deliberate act, never the next free slot. The PRD.md counterparts
 ```markdown
 | ID | Sub-System | Decision | Status | Date | Owner |
 |----|------------|----------|--------|------|-------|
-| ADR-001 | Core | Microservices architecture | Accepted | 2024-01-15 | @architect |
-| ADR-002 | Auth | OAuth2 with PKCE | Accepted | 2024-01-16 | @security |
-| ADR-003 | Data | PostgreSQL primary store | Accepted | 2024-01-17 | @data |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | Core | Microservices architecture | Accepted | 2024-01-15 | @architect |
+| ADR-agent-registry-and-multi-agent-image-support | Auth | OAuth2 with PKCE | Accepted | 2024-01-16 | @security |
+| ADR-environment-driven-configuration-replaces-config-yaml | Data | PostgreSQL primary store | Accepted | 2024-01-17 | @data |
 ```
 
 #### Step 1.2: Detect Sub-systems and Characteristics
@@ -520,17 +520,17 @@ Present the execution plan to the user:
 **Total views to generate**: 15 (5 views × 3 sub-systems)
 
 ### Sub-system: Core
-**ADRs**: ADR-001, ADR-005, ADR-008
+**ADRs**: ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap, ADR-host-side-lifecycle-cli-package, ADR-opencode-cli-pin-single-location-and-bump-policy
 **Characteristics**: Microservices, Event-driven
 **DAG**: Context → Functional → Information → Concurrency → Development → Deployment
 
 ### Sub-system: Auth
-**ADRs**: ADR-002, ADR-006
+**ADRs**: ADR-agent-registry-and-multi-agent-image-support, ADR-provider-fallback-resolution-no-generated-opencode-json-auth
 **Characteristics**: API-first
 **DAG**: Context → Functional → Information → Development → Deployment
 
 ### Sub-system: Data
-**ADRs**: ADR-003, ADR-004, ADR-007
+**ADRs**: ADR-environment-driven-configuration-replaces-config-yaml, ADR-baked-in-container-setup-skill-as-the-agent-init-path, ADR-opencode-cli-pin-single-location-and-bump-policy
 **Characteristics**: Data-intensive
 **DAG**: Context → Information → Functional → Development → Deployment
 
@@ -561,7 +561,7 @@ After user approval, write the execution plan to `{REPO_ROOT}/.adlc/architect/st
     {
       "id": "core",
       "name": "Core",
-      "adrs": ["ADR-001", "ADR-005", "ADR-008"],
+      "adrs": ["ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap", "ADR-host-side-lifecycle-cli-package", "ADR-opencode-cli-pin-single-location-and-bump-policy"],
       "characteristics": ["microservices", "event-driven"],
       "dag": ["context", "functional", "information", "concurrency", "development", "deployment"],
       "progress": {
@@ -576,7 +576,7 @@ After user approval, write the execution plan to `{REPO_ROOT}/.adlc/architect/st
     {
       "id": "auth",
       "name": "Auth",
-      "adrs": ["ADR-002", "ADR-006"],
+      "adrs": ["ADR-agent-registry-and-multi-agent-image-support", "ADR-provider-fallback-resolution-no-generated-opencode-json-auth"],
       "characteristics": ["api-first"],
       "dag": ["context", "functional", "information", "development", "deployment"],
       "progress": {
@@ -627,7 +627,7 @@ For each view in the DAG:
 **Dependencies loaded**:
 - Context View: {REPO_ROOT}/docs/adlc/architect/views/core/context.md (completed)
 
-**ADRs for this view**: ADR-001 (Microservices), ADR-005 (API Gateway)
+**ADRs for this view**: ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap (Microservices), ADR-host-side-lifecycle-cli-package (API Gateway)
 
 **Generating content...**
 ```
@@ -942,8 +942,8 @@ Compare views across sub-systems for:
 
 | Conflict | ADR Reference | Resolution |
 |----------|---------------|------------|
-| Auth component naming | ADR-002 | Standardized to "AuthService" per ADR-002 |
-| Database technology | ADR-003 | PostgreSQL confirmed as primary per ADR-003 |
+| Auth component naming | ADR-agent-registry-and-multi-agent-image-support | Standardized to "AuthService" per ADR-agent-registry-and-multi-agent-image-support |
+| Database technology | ADR-environment-driven-configuration-replaces-config-yaml | PostgreSQL confirmed as primary per ADR-environment-driven-configuration-replaces-config-yaml |
 ```
 
 #### Step 3.4: Aggregate into Unified AD.md
@@ -1136,7 +1136,7 @@ This writes `{REPO_ROOT}/docs/adlc/memory/adr/adr.md` with the 7-column schema, 
 
 | ID | Sub-System | Decision | Status | Date |
 |----|------------|----------|--------|------|
-| ADR-009 | System | System Architecture Style | Completed | 2026-10-19 |
+| ADR-system-architecture-style | System | System Architecture Style | Completed | 2026-10-19 |
 ```
 
 This index is consumed by `team-boot` for session-start injection and by `architect-analyze` for architecture review (similar to how `CDR.md` is used for team-level context).
@@ -1242,7 +1242,7 @@ Status: READY FOR USE
     {
       "id": "lowercase-kebab-case",
       "name": "Display Name",
-      "adrs": ["ADR-001", "ADR-002"],
+      "adrs": ["ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap", "ADR-agent-registry-and-multi-agent-image-support"],
       "characteristics": ["microservices", "event-driven"],
       "dag": ["context", "functional", "information", "development", "deployment"],
       "progress": {

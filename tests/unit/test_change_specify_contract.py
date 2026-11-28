@@ -65,7 +65,7 @@ def test_setup_scripts_exist():
     for path in (SETUP_SH, SETUP_PS1):
         content = _content(path)
         assert "CHDR_DRAFTS_DIR" in content, f"{path.name}: no CHDR_DRAFTS_DIR"
-        assert "NEXT_CHDR" in content, f"{path.name}: no NEXT_CHDR"
+        assert "id_allocation" in content, f"{path.name}: no id_allocation"
 
 
 def test_change_boot_routes_in_session_capture_here():

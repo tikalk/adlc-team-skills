@@ -1,6 +1,6 @@
 ---
 name: architect-boot
-description: Use when architecture work starts or a tech-stack or pattern decision emerges — injects the project ADR index (docs/adlc/memory/adr/, legacy .adlc/memory/adr/ fallback) as session context and suggests the decision for capture via /architect-specify (never writes drafts itself); invoked from team-boot's Class Boots catalog.
+description: Use when answering architecture or system-design questions, starting architecture work, or a tech-stack or pattern decision emerges — injects the project ADR index (docs/adlc/memory/adr/, legacy .adlc/memory/adr/ fallback) as session context and suggests the decision for capture via /architect-specify (never writes drafts itself); invoked from team-boot's Class Boots catalog.
 ---
 
 # architect-boot
@@ -27,6 +27,9 @@ Never defer to session end.
 
 Invoke when:
 
+- Answering questions about how or why the system is designed, structured,
+  or constrained (so Accepted ADRs ground the answer alongside code
+  inspection).
 - Starting architecture work (system design, `AD.md` generation,
   cross-subsystem refactoring, dependency changes).
 - The session turns architectural mid-flight: a tech-stack choice, pattern
@@ -79,7 +82,7 @@ Emit before the task answer:
 
 | ID | Sub-System | Decision | Status |
 |--|--|--|--|
-| ADR-001 | lanes | Workflow lanes over flat queue | Accepted |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | lanes | Workflow lanes over flat queue | Accepted |
 
 _Searched N ADRs, K matched._
 
@@ -99,8 +102,10 @@ _N pending drafts — run /architect-clarify to review._
   equal the table rows shown.** 0 rows matched → emit the section heading +
   the `_Searched N ADRs, K matched._` line only — no table. A 0-row table
   header collapses into unrendered single-line markdown; never emit one.
-  Emit the section as markdown blocks — heading, table rows, and counts line
-  each on their own lines.
+  Emit the section as markdown blocks — heading, table, and counts line
+  each on their own lines. Include the `|--|` separator row; one table row
+  per line. Before sending, if the section contains a `|` but no newline,
+  rewrite it.
 
 ### Step 3: Suggest Architecture Decision Capture
 

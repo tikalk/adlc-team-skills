@@ -1,4 +1,4 @@
-# Eval Seed Taxonomy (ADR-524)
+# Eval Seed Taxonomy (ADR-eval-seeding-tier2-split-temporal-holdout)
 
 Seed contract for Tier-2 correction routing: what may become a check or an
 eval criterion, how the check-vs-eval split is decided, and how a seeded

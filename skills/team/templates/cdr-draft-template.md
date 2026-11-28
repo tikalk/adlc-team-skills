@@ -15,7 +15,7 @@ confidence:
 revisit-when: ""
 ---
 
-# CDR-NNN: {short title}
+# rule-slug-id: {short title}
 
 ## Context
 

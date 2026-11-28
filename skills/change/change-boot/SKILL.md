@@ -84,7 +84,7 @@ Emit before the task answer:
 
 | ID | Title | Status | Date |
 |--|--|--|--|
-| ChDR-001 | Why payments retries are capped at 3 | stable | 2026-08-16 |
+| ChDR-retry-cap-reverted | Why payments retries are capped at 3 | stable | 2026-08-16 |
 
 _Searched N ChDRs, K matched._
 
@@ -104,8 +104,10 @@ _Unclarified: N ChDR drafts — run /change-clarify to review._
   equal the table rows shown.** 0 rows matched → emit the section heading +
   the `_Searched N ChDRs, K matched._` line only — no table. A 0-row table
   header collapses into unrendered single-line markdown; never emit one.
-  Emit the section as markdown blocks — heading, table rows, and counts line
-  each on their own lines.
+  Emit the section as markdown blocks — heading, table, and counts line
+  each on their own lines. Include the `|--|` separator row; one table row
+  per line. Before sending, if the section contains a `|` but no newline,
+  rewrite it.
 
 ### Step 3: Suggest Change Rationale Capture
 

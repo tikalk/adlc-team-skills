@@ -363,9 +363,9 @@ For each ADR:
 
 | ID | Pass | Severity | Location | Summary | Recommendation |
 |----|------|----------|----------|---------|----------------|
-| A1 | ADR Quality | MEDIUM | ADR-003 | Missing negative consequences | Add trade-offs section |
-| B1 | Inter-ADR | HIGH | ADR-002, ADR-005 | Conflicting database choices | Resolve PostgreSQL vs MongoDB conflict |
-| C1 | ADR->AD Drift | HIGH | ADR-005 | Caching decision not in Information View | Update AD.md 3.3 |
+| A1 | ADR Quality | MEDIUM | ADR-environment-driven-configuration-replaces-config-yaml | Missing negative consequences | Add trade-offs section |
+| B1 | Inter-ADR | HIGH | ADR-agent-registry-and-multi-agent-image-support, ADR-host-side-lifecycle-cli-package | Conflicting database choices | Resolve PostgreSQL vs MongoDB conflict |
+| C1 | ADR->AD Drift | HIGH | ADR-host-side-lifecycle-cli-package | Caching decision not in Information View | Update AD.md 3.3 |
 | D1 | AD->ADR Drift | HIGH | AD.md:3.2 | Redis component has no ADR | Create ADR for cache choice |
 | E1 | AD Consistency | MEDIUM | AD.md:3.2/3.6 | Component naming mismatch | Standardize "AuthService" naming |
 | F1 | Staleness | LOW | AD.md:3.1 | [SYSTEM_NAME] placeholder | Fill in system name |

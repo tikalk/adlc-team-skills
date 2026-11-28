@@ -466,8 +466,8 @@ instead (the dual-read order applies: ``docs/adlc/memory`` first, legacy
 
 | Boot | Injects | Invoke When | Capture Via |
 |--|--|--|--|
-| architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture work; tech-stack/pattern choice | /architect-specify |
-| product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature scope, personas, monetization | /product-specify |
+| architect-boot | ADR index (docs/adlc/memory/adr/ + legacy .adlc/memory/adr/) | architecture/system-design questions; architecture work; tech-stack/pattern choice | /architect-specify |
+| product-boot | PDR index (docs/adlc/memory/pdr/ + legacy .adlc/memory/pdr/) | product/feature questions, scope, personas, monetization | /product-specify |
 | change-boot | ChDR index (docs/adlc/memory/chdr/chdr.md + legacy .adlc/memory/chdr.md) | change-history rationale, reverts, issue-linked commits, git commands w/ human-authored messages, authored PRs, CHANGELOG edits | /change-specify (mining: /change-init) |
 | team-levelup | CDR module bodies (team-ai-directives) | CDR topic match; reusable team pattern | /team-levelup |
 | tech-radar-boot | Tikal Tech Radar context | choosing/evaluating technology | radar context + /architect-specify |
@@ -480,7 +480,7 @@ Each class boot emits its class context section and its own searched line (_Sear
 
 | ID | Name | Type | Rel | Status | Clarify |
 |--|--|--|--|--|--|
-| CDR-YYYY-NNN | <name> | <type> | <relevance> | in use | — |
+| <ID> | <name> | <type> | <relevance> | in use | — |
 | — | <decision> | <ADR/PDR/CDR/ChDR/Eval> | <trigger> | pending | <clarify skill> |
 
 Plus: ``_Scope: N CDRs · A ADRs · P PDRs · C ChDRs · E evals · M skills — J rows shown · Unrecorded: N pending · Unclarified: M captured drafts._`` — **J MUST equal the number of rows (any indexed type). Status ``in use`` + Clarify ``—`` = grounding context (accepted records only); Status ``pending``/``captured``/``clarified``/``handed off`` + Clarify skill = owed decisions. No draft row may carry Status ``in use`` — drafts appear only as pending decision rows. 0 rows matched → emit the section heading + the counts line only — no table. Zero rows means heading plus counts line only — never a table header. Emit one table row per line. (do not copy a hard-coded row or inflate the count).** Scope names the always-available layer and class indexes (counts only, never content) plus the session's open decisions; class boots append their own scope line when fired.

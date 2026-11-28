@@ -740,39 +740,53 @@ parse_fm_title() {
     awk '/^---[[:space:]]*$/ { fm++; next } fm >= 2 && /^#[[:space:]]+/ { sub(/^#[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print; exit }' "$1"
 }
 
-# next_adr_number [DRAFTS_ROOT] - the next free ADR ledger slot.
-#
-# Same contract as next_record_number in product-clarify's pdr-lib.sh: the
-# number is the LEADING DIGITS of the filename stem (ADR-003-amendment-2.md is record
-# 003; suffixes are never arithmetically parsed), and the maximum spans drafts
-# AND published memory so a promoted record's slot is not reissued.
-#
-# ADR-514: the maximum spans the drafts root (DRAFTS_ROOT/.adlc/drafts/adr —
-# drafts stay at the nearest .adlc/ ancestor) AND both store roots of the
-# resolved memory root ($MEMORY_ROOT, defaulting to DRAFTS_ROOT):
-# docs/adlc/memory/adr and legacy .adlc/memory/adr.
-#
-# Deliberately not one shared implementation: the source tree is
-# skills/<group>/<skill>/ while the installed mirror is flat
-# .agents/skills/<skill>/, so no single relative source path resolves in both --
-# which is why parse_fm_field is duplicated here and in pdr-lib.sh too.
-# tests/unit/test_ledger_slot_numbering.py pins the behaviour in both homes.
-next_adr_number() {
-    local drafts_root="${1:-$REPO_ROOT}"
+# slugify TITLE - the title-derived slug for a record.
+# Rules (architect/templates/slug-rules.md): lowercase, ASCII-fold, non-alnum -> -,
+# collapse -, trim -, max 60 chars.
+slugify() {
+    local title="$1"
+    local slug
+    # 1. Lowercase, 2. ASCII-fold, 3. Sanitize, 4. Collapse, 5. Trim, 6. Truncate
+    slug=$(echo "$title" | iconv -t ascii//TRANSLIT 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-//; s/-$//' | cut -c 1-60)
+    if [[ -z "$slug" ]]; then
+        echo "Error: slugified title is empty" >&2
+        return 1
+    fi
+    echo "$slug"
+}
+
+# mint_adr_slug TITLE [DRAFTS_ROOT] - the next free ADR slug.
+# Slugify title and append -2, -3 on collision across drafts AND memory.
+mint_adr_slug() {
+    local title="$1"
+    local drafts_root="${2:-$REPO_ROOT}"
     local memory_root="${MEMORY_ROOT:-$drafts_root}"
-    local max=0 f num dir
-    for dir in "$drafts_root/.adlc/drafts/adr" \
-               "$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/adr" \
-               "$memory_root/.adlc/memory/adr"; do
-        [[ -d "$dir" ]] || continue
-        for f in "$dir"/ADR-*.md; do
-            [[ -f "$f" ]] || continue
-            num=$(basename "$f" .md | sed -n 's/^ADR-\([0-9]\{1,\}\).*/\1/p')
-            [[ -n "$num" ]] || continue
-            ((10#$num > max)) && max=$((10#$num))
+    local slug
+    slug=$(slugify "$title") || return 1
+
+    local candidate="$slug"
+    local count=1
+
+    while true; do
+        local exists=false
+        local dir
+        for dir in "$drafts_root/.adlc/drafts/adr" \
+                   "$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/adr" \
+                   "$memory_root/.adlc/memory/adr"; do
+            if [[ -f "$dir/ADR-$candidate.md" ]]; then
+                exists=true
+                break
+            fi
         done
+
+        if [[ "$exists" == "false" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+
+        ((count++))
+        candidate="$slug-$count"
     done
-    printf '%03d' "$((max + 1))"
 }
 
 # next_ad_delta_version AD_FILE - the next `## vN.N.N Delta:` heading version.
@@ -839,26 +853,22 @@ generate_adr_index() {
 
     local quick_links=$'\n---\n\n## Quick Links\n\n'
 
-    # Lexical filename sort (repo names are zero-padded: amendment-before-base
-    # order falls out naturally). IDs are filename stems verbatim — suffixes
-    # (e.g. -amendment-2) are preserved, never arithmetically parsed.
+    # Lexical filename sort (LC_ALL=C on stem).
+    # IDs are filename stems verbatim — suffixes
+    # (e.g. -amendment-2) are preserved.
     local _adr_index_files=""
     local _d
     for _d in "${scan_dirs[@]}"; do
         [[ -d "$_d" ]] || continue
         _adr_index_files+="$(ls -1 "$_d"/ADR-*.md 2>/dev/null || true)"$'\n'
     done
-    for f in $(printf '%s' "$_adr_index_files" | LC_ALL=C sort); do
+    # Sort by filename stem (LC_ALL=C)
+    for f in $(printf '%s' "$_adr_index_files" | while read -r line; do [[ -n "$line" ]] && echo "$(basename "$line")|$line"; done | LC_ALL=C sort | cut -d'|' -f2-); do
         local fname
         fname=$(basename "$f")
         local stem="${fname%.md}"
         local id="${stem#ADR-}"
-        # Purely numeric stems keep the legacy zero-padded display; suffixed
-        # stems render verbatim (printf %03d on them printed ADR-000).
         local disp="$id"
-        if [[ "$id" =~ ^[0-9]+$ ]]; then
-            disp=$(printf "%03d" "$((10#$id))")
-        fi
 
         # Extract metadata from MADR frontmatter (fallback to empty + defaults)
         local title=""
@@ -925,10 +935,8 @@ get_adr_by_id() {
         search_dirs=("$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/adr" "$memory_root/.adlc/memory/adr")
     fi
 
-    # Resolve exact stems first (ADR-<given>.md verbatim); numeric fallback
-    # only for bare IDs. Never strip suffixes (386-amendment-2 is not 3862).
-    # Reject path separators outright (the old digit-strip sanitized by
-    # accident; keep traversal impossible explicitly).
+    # Resolve exact stems (ADR-<given>.md verbatim).
+    # Reject path separators outright (traversal protection).
     case "$adr_id" in *"/"*|.*) return 1;; esac
     local _d hybrid_file
     for _d in "${search_dirs[@]}"; do
@@ -936,15 +944,6 @@ get_adr_by_id() {
         if [[ -f "$hybrid_file" ]]; then
             cat "$hybrid_file"
             return 0
-        fi
-        if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-            local padded_id
-            padded_id=$(printf "%03d" "$((10#$adr_id))")
-            hybrid_file="$_d/ADR-$padded_id.md"
-            if [[ -f "$hybrid_file" ]]; then
-                cat "$hybrid_file"
-                return 0
-            fi
         fi
     done
 
@@ -1008,13 +1007,9 @@ write_adr() {
         mkdir -p "$adr_dir"
     fi
 
-    local target_name
-    if [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        target_name="ADR-$(printf "%03d" "$((10#$adr_id))").md"
-    else
-        case "$adr_id" in *"/"*|.*) echo "write_adr: invalid id: $adr_id" >&2; return 1;; esac
-        target_name="ADR-$adr_id.md"
-    fi
+    # adr_id is the stem (verbatim).
+    case "$adr_id" in *"/"*|.*) echo "write_adr: invalid id: $adr_id" >&2; return 1;; esac
+    local target_name="ADR-$adr_id.md"
 
     echo "$adr_content" > "$adr_dir/$target_name"
 
@@ -1044,11 +1039,8 @@ move_adr() {
 
     mkdir -p "$to_dir"
 
-    # Exact stem first; numeric fallback only for bare IDs.
+    # Exact stem match (no numeric fallback).
     local src_file="$from_dir/ADR-$adr_id.md"
-    if [[ ! -f "$src_file" ]] && [[ "$adr_id" =~ ^[0-9]+$ ]]; then
-        src_file="$from_dir/ADR-$(printf "%03d" "$((10#$adr_id))").md"
-    fi
     if [[ -f "$src_file" ]]; then
         mv "$src_file" "$to_dir/$(basename "$src_file")"
     else
@@ -1198,7 +1190,7 @@ action_specify() {
     echo "  1. Analyze your PRD/requirements input" >&2
     echo "  2. Ask clarifying questions about architecture" >&2
     echo "  3. Create ADRs for each key decision" >&2
-    echo "  4. Save decisions to .adlc/drafts/adr/ADR-{NNN}.md (Proposed status)" >&2
+    echo "  4. Save decisions to .adlc/drafts/adr/ADR-{slug}.md (Proposed status)" >&2
     echo "     (ADRs will be moved to memory/team after /architect-implement)" >&2
     if [[ "$DECOMPOSE" == "true" ]]; then
         echo "  5. Organize ADRs by sub-system" >&2
@@ -1210,18 +1202,17 @@ action_specify() {
     # of the filename stem, max across drafts AND published memory -- see
     # next_adr_number). Leaving "the highest existing number" to the agent
     # reissued taken slots.
-    local next_adr
-    next_adr=$(next_adr_number "$REPO_ROOT")
+    # Ledger slot allocation: slugify(title) + collision check.
+    # next_adr is NOT pre-calculated here because it depends on the title.
     echo "" >&2
-    echo "Next free ADR slot: ADR-$next_adr" >&2
+    echo "ID allocation: ADR-{slug} (title-derived, lowercase-kebab)" >&2
 
     if $JSON_MODE; then
         jq -n \
           --arg adr_dir "$adr_dir" \
           --arg context "${ARGS[*]}" \
           --arg decomposition "$DECOMPOSE" \
-          --arg next_adr "$next_adr" \
-          '{status:"success",action:"specify",adr_dir:$adr_dir,context:$context,decomposition:$decomposition,next_adr:$next_adr}'
+          '{status:"success",action:"specify",adr_dir:$adr_dir,context:$context,decomposition:$decomposition}'
     fi
 }
 

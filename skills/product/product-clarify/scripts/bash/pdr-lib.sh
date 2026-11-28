@@ -26,7 +26,7 @@
 #   generate_pdr_index memory                  # regenerate the memory pdr.md (docs root preferred)
 #   generate_pdr_index drafts                  # regenerate .adlc/drafts/pdr/pdr.md
 #   move_pdr 020 drafts memory                # atomically move the planning-mode decision drafts→memory
-#   migrate_pdr_to_frontmatter .adlc/memory/pdr/PDR-001.md   # one-time legacy migration
+#   migrate_pdr_to_frontmatter .adlc/memory/pdr/PDR-auth-service.md   # one-time legacy migration
 #
 
 set -euo pipefail
@@ -215,14 +215,14 @@ parse_pdr_heading_field() {
     ' "$file"
 }
 
-# Extract the title from a "# PDR-NNN: <title>" or "## PDR-NNN: <title>" heading.
-# Strips the heading marker and "PDR-NNN:" prefix.
+# Extract the title from a "# PDR-<id>: <title>" or "## PDR-<id>: <title>" heading.
+# Strips the heading marker and "PDR-<id>:" prefix.
 # Usage: parse_pdr_heading_title "file"
 parse_pdr_heading_title() {
     [ -f "$1" ] || return 0
     awk '
-        $0 ~ "^#+[[:space:]]*PDR-[0-9]+:[[:space:]]*" {
-            sub(/^#+[[:space:]]*PDR-[0-9]+:[[:space:]]*/, "")
+        $0 ~ "^#+[[:space:]]*PDR-[0-9A-Za-z-]+:[[:space:]]*" {
+            sub(/^#+[[:space:]]*PDR-[0-9A-Za-z-]+:[[:space:]]*/, "")
             sub(/[[:space:]]+$/, "")
             print
             exit
@@ -284,13 +284,13 @@ parse_pdr_title() {
         echo "$value"
         return
     fi
-    # Fallback: strip "PDR-NNN:" prefix from H1/H2
+    # Fallback: strip "PDR-<id>:" prefix from H1/H2
     value=$(parse_pdr_heading_title "$1")
     if [ -n "$value" ]; then
         echo "$value"
         return
     fi
-    # Last resort: bare H1 (no PDR-NNN prefix)
+    # Last resort: bare H1 (no PDR prefix)
     value=$(parse_fm_title "$1")
     echo "$value"
 }
@@ -372,13 +372,7 @@ generate_pdr_index() {
         fname=$(basename "$f")
         stem="${fname%.md}"
         id="${stem#PDR-}"
-        # Purely numeric stems keep the legacy zero-padded display; suffixed
-        # stems render verbatim (printf %03d on them errored).
-        if [[ "$id" =~ ^[0-9]+$ ]]; then
-            padded_id=$(printf "%03d" "$((10#$id))")
-        else
-            padded_id="$id"
-        fi
+        padded_id="$id"
 
         title=$(parse_pdr_title "$f")
         status=$(parse_pdr_field "$f" "status")
@@ -389,7 +383,7 @@ generate_pdr_index() {
 
         # Defaults — no silent blank cells (first letter capitalised to match
         # the ADR display convention: frontmatter 'accepted' → 'Accepted').
-        # The rest stays as written, so ids like PDR-003 are not mangled.
+        # The rest stays as written, so ids like PDR-auth-service are not mangled.
         _raw="$status"
         [ -z "$_raw" ] && { status="Unknown"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Status"; } || status="$(printf '%s' "${_raw:0:1}" | tr '[:lower:]' '[:upper:]')${_raw:1}"
         [ -z "$date" ] && { date="YYYY-MM-DD"; blank_warnings="$blank_warnings\n  - PDR-$padded_id: Date"; }
@@ -438,17 +432,13 @@ move_pdr() {
         ensure_memory_store "$memory_root" pdr
     fi
 
-    # Resolve exact stems first (PDR-<given>.md verbatim); numeric fallback
-    # only for bare IDs. Never strip suffixes (010-amendment-2 is not 0102).
-    # Reject path separators outright.
+    # Resolve exact stems first (PDR-<given>.md verbatim).
+    # Never strip suffixes. Reject path separators outright.
     case "$pdr_id" in *"/"*|.*) echo "[ERROR] move_pdr: invalid id: $pdr_id" >&2; return 1;; esac
 
     mkdir -p "$to_dir"
 
     local src_file="$from_dir/PDR-$pdr_id.md"
-    if [ ! -f "$src_file" ] && [[ "$pdr_id" =~ ^[0-9]+$ ]]; then
-        src_file="$from_dir/PDR-$(printf "%03d" "$((10#$pdr_id))").md"
-    fi
     if [ -f "$src_file" ]; then
         mv "$src_file" "$to_dir/$(basename "$src_file")"
     else
@@ -648,55 +638,64 @@ count_pdr_accepted() {
     echo "$count"
 }
 
-###############################################################################
-# Ledger slot allocation
-###############################################################################
+# ============================================================================
+# Slugification Rules
+# ============================================================================
 
-# next_record_number PREFIX DIR [DIR...]
-#
-# The next free ledger slot for records named PREFIX-*.md.
-#
-# A record's number is the LEADING DIGITS of its filename stem: PDR-002-amendment-2.md
-# is record 002. Suffixes are preserved and never arithmetically parsed -- the
-# same rule generate_adr_index pins in tests/unit/test_index_id_parsing.py.
-#
-# The maximum is taken across EVERY directory given. Scanning drafts alone
-# reissues a slot that a published record still holds in docs/adlc/memory/.
-next_record_number() {
-  local prefix="$1"
-  shift
-  local max=0 f num
-  for dir in "$@"; do
-    [ -d "$dir" ] || continue
-    for f in "$dir"/"${prefix}"-*.md; do
-      [ -f "$f" ] || continue
-      num=$(basename "$f" .md | sed -n "s/^${prefix}-\([0-9]\{1,\}\).*/\1/p")
-      [ -n "$num" ] || continue
-      ((10#$num > max)) && max=$((10#$num))
-    done
-  done
-  printf '%03d' "$((max + 1))"
+# slugify TITLE - the title-derived slug for a record.
+# Rules (architect/templates/slug-rules.md): lowercase, ASCII-fold, non-alnum -> -,
+# collapse -, trim -, max 60 chars.
+slugify() {
+    local title="$1"
+    local slug
+    # 1. Lowercase, 2. ASCII-fold, 3. Sanitize, 4. Collapse, 5. Trim, 6. Truncate
+    slug=$(echo "$title" | iconv -t ascii//TRANSLIT 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-//; s/-$//' | cut -c 1-60)
+    if [[ -z "$slug" ]]; then
+        echo "Error: slugified title is empty" >&2
+        return 1
+    fi
+    echo "$slug"
 }
 
-# next_pdr_number [DRAFTS_ROOT] — the PDR ledger slot under ADR-514: the max
-# across the drafts root (DRAFTS_ROOT/.adlc/drafts/pdr — drafts stay at the
-# nearest .adlc/ ancestor) AND both store roots of the resolved memory root
-# ($MEMORY_ROOT, defaulting to DRAFTS_ROOT): docs/adlc/memory/pdr and legacy
-# .adlc/memory/pdr.
-next_pdr_number() {
-  local drafts_root="${1:-$REPO_ROOT}"
-  local memory_root="${MEMORY_ROOT:-$drafts_root}"
-  next_record_number PDR \
-    "$drafts_root/${ADLC_DRAFTS:-.adlc/drafts}/pdr" \
-    "$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr" \
-    "$memory_root/.adlc/memory/pdr"
+# mint_pdr_slug TITLE [DRAFTS_ROOT] - the next free PDR slug.
+# Slugify title and append -2, -3 on collision across drafts AND memory.
+mint_pdr_slug() {
+    local title="$1"
+    local drafts_root="${2:-$REPO_ROOT}"
+    local memory_root="${MEMORY_ROOT:-$drafts_root}"
+    local slug
+    slug=$(slugify "$title") || return 1
+
+    local candidate="$slug"
+    local count=1
+
+    while true; do
+        local exists=false
+        local dir
+        for dir in "$drafts_root/${ADLC_DRAFTS:-.adlc/drafts}/pdr" \
+                   "$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/pdr" \
+                   "$memory_root/.adlc/memory/pdr"; do
+            if [[ -f "$dir/PDR-$candidate.md" ]]; then
+                exists=true
+                break
+            fi
+        done
+
+        if [[ "$exists" == "false" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+
+        ((count++))
+        candidate="$slug-$count"
+    done
 }
 
 ###############################################################################
 # Document-internal ledger slots (PRD.md)
 ###############################################################################
 #
-# Record ids are allocated by next_record_number above. PRD.md carries three
+# Record ids are allocated by mint_pdr_slug above. PRD.md carries three
 # further numbered slots that nothing allocated before: the delta SECTION
 # number (`## 26.`), the REQ id (`REQ-216`), and the Feature number (`| 69 |`).
 # An intent run used to pick these by eyeballing the document, and claimed

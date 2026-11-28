@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
 #
-# chdr-lib.sh — Shared ChDR lifecycle library for adlc-team-skills change-* skills.
+# chdr-lib.sh — Shared ChDR lifecycle library for adlc-skills change-* skills.
 #
-# Canonical home of the change family's shared bash helpers, modeled on
-# product-clarify's pdr-lib.sh: change-clarify sources this file directly;
-# the sibling change-* setup scripts vendor the helpers they use (scope rule:
-# skills never source each other's scripts — the source tree is
-# skills/<group>/<skill>/ while the installed mirror is flat
-# .agents/skills/<skill>/, so no single relative source path resolves in
-# both). Vendored copies are byte-identical; tests/unit/test_resolve_memory_root.py
-# pins them against this file.
+# Bash-only: source this file from bash (`bash -c 'source .../chdr-lib.sh'`).
+# Under zsh, `BASH_SOURCE[0]` is unset and `_pdr_lib_dir` resolution fails —
+# run helpers under bash, or `emulate -L sh`, never `source` from zsh.
 #
-# Usage:
-#   source chdr-lib.sh                       # load functions
-#   resolve_memory_root                      # store root for the CWD (ADR-514)
-#   ensure_memory_store "$MEMORY_ROOT" chdr  # loud create on promotion write
-#   next_chdr_number DIR [DIR...]            # next free ChDR slot (multi-root)
+# Mirrors the PDR-side tooling in pdr-lib.sh so that the ChDR side has the
+# same structural robustness: script-driven index generation, atomic move
+# promotion, and slug-based ID allocation.
+#
+# Bundled with each change-* skill so it works standalone.
+# Sourced by setup-change-*.sh scripts and callable directly.
+#
 
 set -euo pipefail
 
@@ -27,68 +24,32 @@ DOCS_ADLC_PRODUCT="${DOCS_ADLC_PRODUCT:-docs/adlc/product}"
 DOCS_ADLC_ARCHITECT="${DOCS_ADLC_ARCHITECT:-docs/adlc/architect}"
 ADLC_DRAFTS="${ADLC_DRAFTS:-.adlc/drafts}"
 
-###############################################################################
-# Path resolution
-###############################################################################
+# ============================================================================
+# Project root resolution
+# ============================================================================
 
-resolve_project_root() {
-  local dir
-  dir="$(pwd)"
-  while [[ "$dir" != "/" ]]; do
-    if [[ -d "${dir}/.adlc" ]]; then
-      echo "$dir"
-      return
-    fi
-    dir="$(dirname "$dir")"
-  done
-  git rev-parse --show-toplevel 2>/dev/null || pwd
+_get_project_root() {
+    local dir
+    dir="$(pwd)"
+    while [ "$dir" != "/" ]; do
+        if [ -d "$dir/.adlc" ] || [ -d "$dir/.git" ]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    pwd
 }
 
-resolve_team_ai_directives() {
-  local project_root="$1"
-  local td="${TEAM_AI_DIRECTIVES:-}"
-  [[ -n "$td" ]] && { echo "$td"; return; }
-  if [[ -f "${project_root}/.adlc/init-options.json" ]]; then
-    td=$(jq -r '.team_ai_directives // empty' "${project_root}/.adlc/init-options.json" 2>/dev/null || true)
-    [[ -n "$td" ]] && { echo "$td"; return; }
-  fi
-  echo "${project_root}/team-ai-directives"
-}
+if [ -z "${REPO_ROOT:-}" ]; then
+    REPO_ROOT="$(_get_project_root)"
+fi
+export REPO_ROOT
 
-resolve_branch() {
-  git branch --show-current 2>/dev/null || echo "unknown"
-}
-
-git_available() {
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1 && echo "true" || echo "false"
-}
-
-default_branch() {
-  # Try common primary branches, fall back to current branch name.
-  local b
-  for b in main master; do
-    if git show-ref --verify --quiet "refs/heads/${b}" 2>/dev/null; then
-      echo "$b"
-      return
-    fi
-  done
-  git branch --show-current 2>/dev/null || echo "unknown"
-}
-
-###############################################################################
+# ============================================================================
 # Decision-record store resolution (ADR-514)
-#
-# Vendored byte-identical into the change sibling setup scripts and mirrored
-# per family (architect setup-architect.sh, product pdr-lib.sh) — scope rule:
-# scripts stay skill-local. tests/unit/test_resolve_memory_root.py pins the
-# copies against this canonical text.
-###############################################################################
+# ============================================================================
 
-# _memory_root_has_marker DIR — does DIR carry a decision-record store marker?
-# A marker is a decision-record family subdir (adr/, pdr/, chdr/) or a family
-# index file (adr.md/pdr.md/chdr.md) under docs/adlc/memory/ or the legacy
-# .adlc/memory/. A bare .adlc/ is NOT a marker; a memory dir holding only
-# non-decision content (evals/, constitution.md) is NOT a marker.
 _memory_root_has_marker() {
     local root="$1" mem fam
     for mem in "docs/adlc/memory" ".adlc/memory"; do
@@ -102,9 +63,6 @@ _memory_root_has_marker() {
     return 1
 }
 
-# _workspace_root_above DIR — is any strict ancestor of DIR a workspace root
-# (a directory holding .gitmodules or .adlc/workspace.yml)? Lets a submodule
-# child climb past its own git toplevel toward the workspace store.
 _workspace_root_above() {
     local up
     up="$(dirname "$1")"
@@ -117,15 +75,6 @@ _workspace_root_above() {
     return 1
 }
 
-# resolve_memory_root — the decision-record store root for the current working
-# directory. ONE bounded walk-up from pwd:
-#   1. the nearest ancestor with a decision-record family marker wins;
-#   2. else the nearest workspace root (.gitmodules or .adlc/workspace.yml)
-#      — the workspace-centralized default;
-#   3. else the git toplevel (standalone repo).
-# The walk never climbs past the git toplevel unless a workspace root sits
-# above it (a submodule child inside a workspace). Side-effect-free: reads
-# never create anything.
 resolve_memory_root() {
     local dir toplevel
     dir="$(pwd -P)"
@@ -152,10 +101,6 @@ resolve_memory_root() {
     fi
 }
 
-# ensure_memory_store ROOT FAMILY — write-path guard for record promotion.
-# Creates ROOT/docs/adlc/memory/FAMILY when missing and says so LOUDLY: the
-# created store is the opt-in marker and travels with clones. Silent when the
-# store already exists; reads never call this.
 ensure_memory_store() {
     local root="$1" family="$2"
     local store="$root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/$family"
@@ -165,28 +110,307 @@ ensure_memory_store() {
     fi
 }
 
-###############################################################################
-# Ledger slot allocation
-###############################################################################
+if [ -z "${MEMORY_ROOT:-}" ]; then
+    MEMORY_ROOT="$(resolve_memory_root)"
+fi
+export MEMORY_ROOT
 
-# next_chdr_number DIR [DIR...] — the next free ChDR ledger slot.
-#
-# A record's number is the LEADING DIGITS of its filename stem
-# (ChDR-006-skill-side-remote-lane-abandoned.md is record 006); suffixes are
-# preserved and never arithmetically parsed. The maximum spans EVERY
-# directory given — ADR-514: the drafts root plus both store roots
-# (docs/adlc/memory/chdr and legacy .adlc/memory/chdr) — so a published
-# record's slot is never reissued. Reads never create anything.
-next_chdr_number() {
-  local max=0 f num dir
-  for dir in "$@"; do
-    [[ -d "$dir" ]] || continue
-    for f in "$dir"/ChDR-*.md; do
-      [[ -f "$f" ]] || continue
-      num=$(basename "$f" .md | sed -n 's/^ChDR-\([0-9]\{1,\}\).*/\1/p')
-      [[ -n "$num" ]] || continue
-      ((10#$num > max)) && max=$((10#$num))
+# ============================================================================
+# YAML frontmatter parser
+# ============================================================================
+
+parse_fm_field() {
+    local file="$1"
+    local field="$2"
+    [ -f "$file" ] || return 0
+    awk -v fld="^[[:space:]]*${field}:[[:space:]]*" '
+        /^---[[:space:]]*$/ { fm++; next }
+        fm == 1 && $0 ~ fld {
+            sub(fld, "")
+            sub(/[[:space:]]+#.*$/, "")
+            gsub(/^["'\'']|["'\'']$/, "")
+            gsub(/^\[|\]$/, "")
+            sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
+            print
+            exit
+        }
+    ' "$file"
+}
+
+parse_fm_title() {
+    [ -f "$1" ] || return 0
+    awk '/^---[[:space:]]*$/ { fm++; next } fm >= 2 && /^#[[:space:]]+/ { sub(/^#[[:space:]]+/, ""); sub(/[[:space:]]+$/, ""); print; exit }' "$1"
+}
+
+# ============================================================================
+# Heading-based fallback parser
+# ============================================================================
+
+parse_chdr_heading_field() {
+    local file="$1"
+    local field="$2"
+    [ -f "$file" ] || return 0
+    awk -v fld="$field" '
+        $0 ~ "^#+[[:space:]]*" fld "[[:space:]]*$" { found=1; next }
+        found && /^#+/ { exit }
+        found && NF > 0 {
+            gsub(/\*\*/, "")
+            sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
+            print
+            exit
+        }
+    ' "$file"
+}
+
+parse_chdr_heading_title() {
+    [ -f "$1" ] || return 0
+    awk '
+        $0 ~ "^#+[[:space:]]*ChDR-[0-9A-Za-z-]+:[[:space:]]*" {
+            sub(/^#+[[:space:]]*ChDR-[0-9A-Za-z-]+:[[:space:]]*/, "")
+            sub(/[[:space:]]+$/, "")
+            print
+            exit
+        }
+    ' "$1"
+}
+
+# ============================================================================
+# Combined parsers
+# ============================================================================
+
+parse_chdr_field() {
+    local file="$1"
+    local field="$2"
+    local value=""
+
+    # Try frontmatter (lowercase the field name for YAML key matching)
+    local fm_field
+    fm_field=$(echo "$field" | tr '[:upper:]' '[:lower:]')
+    value=$(parse_fm_field "$file" "$fm_field")
+    if [ -n "$value" ]; then
+        echo "$value"
+        return
+    fi
+
+    # Fallback: heading-based
+    value=$(parse_chdr_heading_field "$file" "$field")
+    if [ -n "$value" ]; then
+        echo "$value"
+        return
+    fi
+
+    echo ""
+}
+
+parse_chdr_title() {
+    [ -f "$1" ] || return 0
+    local value
+    value=$(parse_fm_field "$1" "title")
+    if [ -n "$value" ]; then
+        echo "$value"
+        return
+    fi
+    # Fallback: strip "ChDR-<id>:" prefix from H1/H2
+    value=$(parse_chdr_heading_title "$1")
+    if [ -n "$value" ]; then
+        echo "$value"
+        return
+    fi
+    # Last resort: bare H1 (no ChDR prefix)
+    value=$(parse_fm_title "$1")
+    echo "$value"
+}
+
+# ============================================================================
+# Slugification Rules
+# ============================================================================
+
+slugify() {
+    local title="$1"
+    local slug
+    # 1. Lowercase, 2. ASCII-fold, 3. Sanitize, 4. Collapse, 5. Trim, 6. Truncate
+    slug=$(echo "$title" | iconv -t ascii//TRANSLIT 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-//; s/-$//' | cut -c 1-60)
+    if [[ -z "$slug" ]]; then
+        echo "Error: slugified title is empty" >&2
+        return 1
+    fi
+    echo "$slug"
+}
+
+mint_chdr_slug() {
+    local title="$1"
+    local drafts_root="${2:-$REPO_ROOT}"
+    local memory_root="${MEMORY_ROOT:-$drafts_root}"
+    local slug
+    slug=$(slugify "$title") || return 1
+
+    local candidate="$slug"
+    local count=1
+
+    while true; do
+        local exists=false
+        local dir
+        for dir in "$drafts_root/${ADLC_DRAFTS:-.adlc/drafts}/chdr" \
+                   "$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr" \
+                   "$memory_root/.adlc/memory/chdr"; do
+            if [[ -f "$dir/ChDR-$candidate.md" ]]; then
+                exists=true
+                break
+            fi
+        done
+
+        if [[ "$exists" == "false" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+
+        ((count++))
+        candidate="$slug-$count"
     done
-  done
-  printf '%03d' "$((max + 1))"
+}
+
+# ============================================================================
+# Lookup and Move
+# ============================================================================
+
+get_chdr_by_id() {
+    local chdr_id="$1"
+    chdr_id="${chdr_id#ChDR-}"
+    local scope="${2:-drafts}"
+    local chdr_dir="$REPO_ROOT/.adlc/$scope/chdr"
+
+    local search_dirs=("$chdr_dir")
+    if [[ "$scope" == "memory" ]]; then
+        local memory_root="${MEMORY_ROOT:-$REPO_ROOT}"
+        search_dirs=("$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr" "$memory_root/.adlc/memory/chdr")
+    fi
+
+    case "$chdr_id" in *"/"*|.*) return 1;; esac
+    local _d hybrid_file
+    for _d in "${search_dirs[@]}"; do
+        hybrid_file="$_d/ChDR-$chdr_id.md"
+        if [[ -f "$hybrid_file" ]]; then
+            cat "$hybrid_file"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+move_chdr() {
+    local chdr_id="$1"
+    chdr_id="${chdr_id#ChDR-}"
+    local from_scope="${2:-drafts}"
+    local to_scope="${3:-memory}"
+
+    local from_dir="$REPO_ROOT/.adlc/$from_scope/chdr"
+    local to_dir="$REPO_ROOT/.adlc/$to_scope/chdr"
+    if [ "$to_scope" = "memory" ]; then
+        local memory_root="${MEMORY_ROOT:-$REPO_ROOT}"
+        to_dir="$memory_root/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr"
+        ensure_memory_store "$memory_root" chdr
+    fi
+
+    case "$chdr_id" in *"/"*|.*) echo "[ERROR] move_chdr: invalid id: $chdr_id" >&2; return 1;; esac
+
+    mkdir -p "$to_dir"
+
+    local src_file="$from_dir/ChDR-$chdr_id.md"
+    if [ -f "$src_file" ]; then
+        mv "$src_file" "$to_dir/$(basename "$src_file")"
+    else
+        echo "[WARN] move_chdr: source file not found: $src_file" >&2
+        return 1
+    fi
+
+    if [ -f "$src_file" ]; then
+        echo "[ERROR] move_chdr: duplicate detected — $(basename "$src_file") still exists in $from_scope after move" >&2
+        return 1
+    fi
+
+    # Regenerate both scopes' indexes if generate_chdr_index is implemented
+    if declare -f generate_chdr_index > /dev/null; then
+        generate_chdr_index "$from_scope"
+        generate_chdr_index "$to_scope"
+    fi
+}
+
+# ============================================================================
+# Index generation
+# ============================================================================
+
+generate_chdr_index() {
+    local scope="${1:-drafts}"
+    local base="$REPO_ROOT"
+    if [ "$scope" = "memory" ]; then
+        base="${MEMORY_ROOT:-$REPO_ROOT}"
+    fi
+    local chdr_dir="$base/.adlc/$scope/chdr"
+
+    local scan_dirs=("$chdr_dir")
+    if [ "$scope" = "memory" ]; then
+        local docs_chdr_dir="$base/${DOCS_ADLC_MEMORY:-docs/adlc/memory}/chdr"
+        if compgen -G "$docs_chdr_dir/ChDR-*.md" >/dev/null 2>&1; then
+            scan_dirs=("$docs_chdr_dir" "$chdr_dir")
+        fi
+    fi
+
+    local index_file="${scan_dirs[0]}/chdr.md"
+
+    if [ ! -d "${scan_dirs[0]}" ]; then
+        return 0
+    fi
+
+    local index_rel_dir="${scan_dirs[0]#"$base"/}"
+
+    local index_content="# Change Decision Records"
+    if [ "$scope" = "memory" ]; then
+        index_content="$index_content (Memory)
+
+> Auto-generated by /change-publish. Accepted ChDRs only.
+> Source: $index_rel_dir/ChDR-*.md"
+    else
+        index_content="$index_content (Drafts)
+
+> Auto-generated by /change-clarify. All ChDRs.
+> Source: $index_rel_dir/ChDR-*.md"
+    fi
+
+    index_content="$index_content
+
+## ChDR Index
+
+| ID | Status | Date | Title |
+|----|--------|------|-------|
+"
+
+    local f fname id stem title status date padded_id
+    local _chdr_index_files=""
+    local _d
+
+    for _d in "${scan_dirs[@]}"; do
+        [ -d "$_d" ] || continue
+        _chdr_index_files+="$(ls -1 "$_d"/ChDR-*.md 2>/dev/null || true)"$'\n'
+    done
+    for f in $(printf '%s' "$_chdr_index_files" | LC_ALL=C sort); do
+        fname=$(basename "$f")
+        stem="${fname%.md}"
+        id="${stem#ChDR-}"
+        padded_id="$id"
+
+        title=$(parse_chdr_title "$f")
+        status=$(parse_chdr_field "$f" "status")
+        date=$(parse_chdr_field "$f" "date")
+
+        _raw="$status"
+        [ -z "$_raw" ] && status="Unknown" || status="$(printf '%s' "${_raw:0:1}" | tr '[:lower:]' '[:upper:]')${_raw:1}"
+        [ -z "$date" ] && date="YYYY-MM-DD"
+        [ -z "$title" ] && title="ChDR-$padded_id"
+
+        index_content="$index_content| ChDR-$padded_id | $status | $date | $title |
+"
+    done
+
+    printf '%s\n' "$index_content" > "$index_file"
 }

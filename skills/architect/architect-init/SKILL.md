@@ -19,7 +19,7 @@ You act as an **Architecture Archaeologist** uncovering implicit architectural d
 
 **Output**:
 
-1. **ADRs** documenting inferred architectural decisions in `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` (individual file format)
+1. **ADRs** documenting inferred architectural decisions in `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` (individual file format)
 2. **Auto-generated index** at `{REPO_ROOT}/.adlc/drafts/adr/adr.md`
 3. **Validate Findings**: Run `/architect-clarify` to validate discovered decisions
 
@@ -124,7 +124,7 @@ Even in brownfield discovery, the **Functional structure is foundational**:
 4. **Pattern Detection**: Identify architectural patterns in use
 5. **ADR Generation**: Create ADRs for discovered decisions (marked "Discovered"), organized by sub-system
 6. **Gap Analysis**: Identify areas where decisions are unclear
-7. **Output**: Write ADRs to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` (NO AD.md creation)
+7. **Output**: Write ADRs to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` (NO AD.md creation)
    - After writing all ADRs, the setup script auto-generates `adr.md` index
 8. **Validate Findings**: Run `/architect-clarify` to validate brownfield findings
 
@@ -446,12 +446,12 @@ Chosen option: "{Discovered choice}", because {inferred rationale from implement
    - Docker for containerization → Conventional choice
 
    **Document as ADRs**:
-   - **ADR-001**: System Architecture Style (monolith vs microservices)
-   - **ADR-002**: Database Choice (only if non-obvious for context)
-   - **ADR-003**: API Style (REST vs GraphQL vs gRPC)
-   - **ADR-004**: Frontend Framework (only if unconventional)
-   - **ADR-005**: Deployment Platform (serverless vs traditional)
-   - **ADR-006**: CI/CD Approach (GitHub Actions vs Jenkins)
+   - **ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap**: System Architecture Style (monolith vs microservices)
+   - **ADR-agent-registry-and-multi-agent-image-support**: Database Choice (only if non-obvious for context)
+   - **ADR-environment-driven-configuration-replaces-config-yaml**: API Style (REST vs GraphQL vs gRPC)
+   - **ADR-baked-in-container-setup-skill-as-the-agent-init-path**: Frontend Framework (only if unconventional)
+   - **ADR-host-side-lifecycle-cli-package**: Deployment Platform (serverless vs traditional)
+   - **ADR-provider-fallback-resolution-no-generated-opencode-json-auth**: CI/CD Approach (GitHub Actions vs Jenkins)
    - **Additional**: Any custom/in-house solutions, unusual patterns, risky choices
 
 #### Phase 5: Quality Requirements Detection
@@ -506,29 +506,29 @@ Store selected perspectives in state for `/architect-implement`.
 
    | ID | Sub-System | Decision | Status | Date | Confidence |
    |----|------------|----------|--------|------|------------|
-   | ADR-001 | System | Monolithic Architecture | Discovered | 2026-02-26 | HIGH |
-   | ADR-002 | Auth | JWT Authentication | Discovered | 2026-02-26 | HIGH |
-   | ADR-003 | Payments | Stripe Integration | Discovered | 2026-02-26 | MEDIUM |
+   | ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | System | Monolithic Architecture | Discovered | 2026-02-26 | HIGH |
+   | ADR-agent-registry-and-multi-agent-image-support | Auth | JWT Authentication | Discovered | 2026-02-26 | HIGH |
+   | ADR-environment-driven-configuration-replaces-config-yaml | Payments | Stripe Integration | Discovered | 2026-02-26 | MEDIUM |
 
    ---
 
    ## System-Level ADRs
 
-   ### ADR-001: Monolithic Architecture
+   ### ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap: Monolithic Architecture
    [Full ADR content...]
 
    ---
 
    ## Auth Sub-System ADRs
 
-   ### ADR-002: JWT Authentication
+   ### ADR-agent-registry-and-multi-agent-image-support: JWT Authentication
    [Full ADR content...]
 
    ---
 
    ## Payments Sub-System ADRs
 
-   ### ADR-003: Stripe Integration
+   ### ADR-environment-driven-configuration-replaces-config-yaml: Stripe Integration
    [Full ADR content...]
    ```
 
@@ -562,9 +562,9 @@ After scanning, report:
 ### ADRs Generated (Surprising/Risky decisions only)
 | ID | Decision | Confidence | Why Documented |
 |----|----------|------------|----------------|
-| ADR-001 | Monolithic Django architecture | HIGH | Architecture style choice |
-| ADR-002 | Custom JWT authentication | MEDIUM | Security risk, non-standard |
-| ADR-003 | Microservices for small team | HIGH | Scale mismatch, surprising |
+| ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap | Monolithic Django architecture | HIGH | Architecture style choice |
+| ADR-agent-registry-and-multi-agent-image-support | Custom JWT authentication | MEDIUM | Security risk, non-standard |
+| ADR-environment-driven-configuration-replaces-config-yaml | Microservices for small team | HIGH | Scale mismatch, surprising |
 
 ### Skipped (Covered by existing docs or obvious)
 | Decision | Reason |
@@ -603,13 +603,13 @@ After scanning, report:
 2. **If directory exists**:
    - Read existing ADRs from individual files
    - DO NOT overwrite or delete existing ADRs
-   - Write new discoveries as new `ADR-{NNN}.md` files
+   - Write new discoveries as new `ADR-{slug}.md` files
    - Report: "Found N existing ADRs, adding M new discoveries"
 3. **If directory doesn't exist**: The setup script will create it
 
 **Write ADRs**:
 
-1. **Create** `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` for each discovered ADR
+1. **Create** `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` for each discovered ADR
 2. **Mark ADRs as "Discovered (Inferred)" status** ← USE THIS STATUS ONLY
 3. **Use "Common Alternatives"** section with neutral trade-offs (no "Rejected because")
 4. **Note confidence level** for each ADR
@@ -722,7 +722,7 @@ After clarification completes:
     ↓
 [Scan codebase] → Detect technologies, patterns
     ↓
-[Generate ADRs] → Write to {REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md (marked "Discovered")
+[Generate ADRs] → Write to {REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md (marked "Discovered")
     ↓
 [Run /architect-clarify] → Ask to validate decisions
     ↓
@@ -746,7 +746,7 @@ After `init` completes, run `/architect-clarify` to validate the discovered ADRs
 
 ## Verification
 
-- ADRs written to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{NNN}.md` with status **Discovered (Inferred)**.
+- ADRs written to `{REPO_ROOT}/.adlc/drafts/adr/ADR-{slug}.md` with status **Discovered (Inferred)**.
 - Auto-generated `adr.md` index exists in `{REPO_ROOT}/.adlc/drafts/adr/`.
 - Gap analysis report identifies unclear areas and recommended clarifications.
 - Sub-system decomposition confirmed (or disabled) per threshold rules.

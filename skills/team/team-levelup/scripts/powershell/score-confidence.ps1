@@ -55,7 +55,7 @@ function Get-CalculateConfidence {
     if ($ConfidenceFile -ne '' -and (Test-Path -LiteralPath $ConfidenceFile -PathType Leaf)) {
         $cdrId = [IO.Path]::GetFileNameWithoutExtension($CdrFile)
         # Parse success_rate from JSON (no jq dependency — same grep/sed
-        # contract as the bash twin: "CDR-001": { "success_rate": 0.75, ... })
+        # contract as the bash twin: "rule-my-rule": { "success_rate": 0.75, ... })
         $successRate = 1.0
         $raw = Get-Content -Raw -LiteralPath $ConfidenceFile
         $m = [regex]::Match($raw, ('"' + [regex]::Escape($cdrId) + '"[\s\S]{0,300}?"success_rate"\s*:\s*([0-9.]+)'))

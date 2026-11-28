@@ -34,9 +34,10 @@ if (Test-Path $PdrDraftsDir) {
   }
 }
 if ($Json) {
-  Write-Output (@{ REPO_ROOT=$RepoRoot; PDR_DRAFTS_DIR=$PdrDraftsDir; PDR_MEMORY_DIR=$PdrMemoryDir; PRD_FILE=$PrdFile; pdr_count=$pdrCount; accepted_count=$acceptedCount } | ConvertTo-Json)
+  Write-Output (@{ REPO_ROOT=$RepoRoot; PDR_DRAFTS_DIR=$PdrDraftsDir; PDR_MEMORY_DIR=$PdrMemoryDir; PRD_FILE=$PrdFile; pdr_count=$pdrCount; accepted_count=$acceptedCount; id_allocation="slug" } | ConvertTo-Json)
 } else {
   Write-Output "[INFO] product-clarify setup"
   Write-Output "  PDRs found: $pdrCount"
   Write-Output "  Accepted: $acceptedCount"
+  Write-Output "  ID allocation: PDR-{slug}"
 }

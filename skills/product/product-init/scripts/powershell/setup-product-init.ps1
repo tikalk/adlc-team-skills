@@ -1,5 +1,5 @@
 ﻿# product-init setup script (PowerShell)
-# Self-contained — resolves paths, detects feature areas, finds next PDR number
+# Self-contained — resolves paths, detects feature areas, finds next PDR slug
 
 param(
     [switch]$Json
@@ -56,31 +56,79 @@ function Detect-FeatureAreas {
     if ($unique.Count -eq 0) { @('Product') } else { $unique }
 }
 
-# Ledger slot allocation (vendored from product-clarify pdr-lib.ps1):
-# leading digits of the filename stem, max across drafts AND published memory.
-function Get-NextRecordNumber {
-  param(
-    [Parameter(Mandatory = $true)][string]$Prefix,
-    [Parameter(Mandatory = $true)][string[]]$Dirs
-  )
-  $max = 0
-  foreach ($dir in $Dirs) {
-    if (-not (Test-Path $dir)) { continue }
-    Get-ChildItem -Path $dir -Filter "$Prefix-*.md" | ForEach-Object {
-      if ($_.BaseName -match ('^' + [regex]::Escape($Prefix) + '-(\d+)')) {
-        $n = [int]$Matches[1]
-        if ($n -gt $max) { $max = $n }
-      }
+# ID allocation: slugify(title) + collision check.
+# Rules: lowercase, ASCII-fold, non-alnum -> -, collapse -, trim -, max 60 chars.
+function Get-Slugify {
+    param([string]$Title)
+    if ([string]::IsNullOrWhiteSpace($Title)) {
+        throw "Error: slugified title is empty"
     }
-  }
-  '{0:D3}' -f ($max + 1)
+
+    # 1. Lowercase, 2. ASCII-fold, 3. Sanitize, 4. Collapse, 5. Trim, 6. Truncate
+    $slug = $Title.ToLower()
+
+    # ASCII-fold (Normalize FormD separates accents, then we filter them out)
+    $normalized = $slug.Normalize([System.Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($c in $normalized.ToCharArray()) {
+        $category = [System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($c)
+        if ($category -ne [System.Globalization.UnicodeCategory]::NonSpacingMark) {
+            [void]$sb.Append($c)
+        }
+    }
+    $slug = $sb.ToString()
+
+    # Sanitize & Collapse
+    $slug = [regex]::Replace($slug, "[^a-z0-9]", "-")
+    $slug = [regex]::Replace($slug, "-{2,}", "-")
+
+    # Trim
+    $slug = $slug.Trim("-")
+
+    # Truncate
+    if ($slug.Length -gt 60) {
+        $slug = $slug.Substring(0, 60)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        throw "Error: slugified title is empty"
+    }
+    return $slug
+}
+
+# Get-MintPdrSlug TITLE [ROOT] - the next free PDR slug.
+# Slugify title and append -2, -3 on collision across drafts AND memory.
+function Get-MintPdrSlug {
+    param([string]$Title, [string]$Root = $RepoRoot)
+    $slug = Get-Slugify -Title $Title
+    $candidate = $slug
+    $count = 1
+
+    $docsBase = $DOCS_ADLC_MEMORY
+    if (-not $docsBase) { $docsBase = "docs/adlc/memory" }
+
+    while ($true) {
+        $exists = $false
+        foreach ($dir in @((Join-Path $Root ".adlc/drafts/pdr"), 
+                           (Join-Path $Root (Join-Path $docsBase "pdr")),
+                           (Join-Path $Root ".adlc/memory/pdr"))) {
+            if (Test-Path (Join-Path $dir "PDR-$candidate.md")) {
+                $exists = $true
+                break
+            }
+        }
+
+        if (-not $exists) {
+            return $candidate
+        }
+
+        $count++
+        $candidate = "$slug-$count"
+    }
 }
 
 $featureAreas = Detect-FeatureAreas
-$nextPdr = Get-NextRecordNumber -Prefix 'PDR' -Dirs @(
-    $PdrDraftsDir,
-    (Join-Path $RepoRoot "docs/adlc/memory/pdr")
-)
+$idAllocation = "slug"
 $pdrCount = if (Test-Path $PdrDraftsDir) { (Get-ChildItem -Path $PdrDraftsDir -Filter 'PDR-*.md').Count } else { 0 }
 
 $faJson = ($featureAreas | ForEach-Object {
@@ -94,14 +142,14 @@ if ($Json) {
         PDR_DRAFTS_DIR = $PdrDraftsDir
         PRD_FILE = $PrdFile
         feature_areas = "[$faJson]"
-        next_pdr = $nextPdr
+        id_allocation = $idAllocation
         pdr_count = $pdrCount
     } | ConvertTo-Json -Depth 3)
 } else {
     Write-Output "[INFO] product-init setup"
     Write-Output "  REPO_ROOT: $RepoRoot"
     Write-Output "  PDR_DRAFTS_DIR: $PdrDraftsDir"
-    Write-Output "  Next PDR: PDR-$nextPdr"
+    Write-Output "  ID allocation: PDR-{slug}"
     Write-Output "  Feature areas:"
     $featureAreas | ForEach-Object { Write-Output "    - $_" }
 }

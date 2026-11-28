@@ -72,11 +72,6 @@ for file in "$@"; do
                 shopt -s nullglob
                 # shellcheck disable=SC2086,SC2206
                 matches=("$dir"/${esc_stem}*.md)
-                if [[ "${#matches[@]}" -eq 0 && "$stem" =~ ^(ADR-[0-9]+) ]]; then
-                    prefix="${BASH_REMATCH[1]}"
-                    # shellcheck disable=SC2086,SC2206
-                    matches=("$dir"/${prefix}*.md)
-                fi
                 shopt -u nullglob
                 if [[ "${#matches[@]}" -eq 1 ]]; then
                     suggestion="$(basename "${matches[0]}")"

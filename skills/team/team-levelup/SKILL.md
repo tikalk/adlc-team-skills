@@ -47,8 +47,8 @@ CDR drafts live in the `adlc` orphan branch of `team-ai-directives`:
 ```
 team-ai-directives (adlc branch, orphan)
 ├── drafts/cdr/
-│   ├── CDR-001.md        # Pending CDR
-│   └── cdr.md            # Draft index
+│   ├── rule-my-rule.md        # Pending CDR
+│   └── cdr.md                 # Draft index
 └── reports/
     ├── sessions/<user>/<YYYY-MM>.md
     ├── projects/<project>.json
@@ -67,7 +67,7 @@ Run the setup script:
 scripts/bash/team-levelup.sh --setup
 ```
 
-Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `NEXT_CDR`, `ADLC_BRANCH_EXISTS`.
+Parse JSON for `REPO_ROOT`, `TEAM_AI_DIRECTIVES`, `ADLC_BRANCH_EXISTS`.
 
 If `TEAM_AI_DIRECTIVES` is not configured, exit with message to run `/team-setup`.
 
@@ -136,7 +136,7 @@ For each extracted CDR, calculate confidence:
 Present CDRs one at a time (same as former team-learn logic):
 
 ```markdown
-## CDR-{ID}: {Title}
+## {ID}: {Title}
 
 **Context Type**: {type}
 **Confidence**: {score} ({HIGH/MEDIUM/LOW})
@@ -221,7 +221,7 @@ Write report to `.adlc/team-levelup-report.md` (local, not committed):
 ## Conflict Resolution
 
 When two projects draft the same pattern:
-1. First draft creates CDR-001 with `project: project-a`
+1. First draft creates rule-my-rule with `project: project-a`
 2. Second draft detects existing CDR with matching descriptor → merges:
    - Adds project-b to `project:` field
    - Appends evidence section

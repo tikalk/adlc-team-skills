@@ -23,10 +23,6 @@ fi
 # Ensure adlc orphan branch exists
 ensure_adlc_branch "$TEAM_AI_DIRECTIVES"
 
-# Get next CDR number
-NEXT_CDR=$(next_cdr_number "$TEAM_AI_DIRECTIVES")
-
 # Output setup info
-echo "NEXT_CDR=$NEXT_CDR"
 echo "ADLC_BRANCH=$ADLC_BRANCH"
 echo "TEAM_AI_DIRECTIVES=$TEAM_AI_DIRECTIVES"

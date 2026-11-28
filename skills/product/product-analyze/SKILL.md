@@ -163,8 +163,8 @@ Requires the `architect-clarify` skill (`adlc-cli skills add tikalk/adlc-team-sk
 ### Findings
 | ID | Pass | Severity | Location | Summary | Recommendation |
 |----|------|----------|----------|---------|----------------|
-| A1 | PDR Quality | MEDIUM | PDR-003 | Missing success metrics | Add metrics section |
-| B1 | Inter-PDR | HIGH | PDR-002, PDR-005 | Conflicting target markets | Resolve B2B vs B2C |
+| A1 | PDR Quality | MEDIUM | PDR-database-choice | Missing success metrics | Add metrics section |
+| B1 | Inter-PDR | HIGH | PDR-target-market, PDR-pricing-strategy | Conflicting target markets | Resolve B2B vs B2C |
 | C1 | PDR→PRD | HIGH | PRD:5 | Persona not in PRD | Update PRD section 5 |
 | D1 | PRD→PDR | HIGH | PRD:6 | Feature has no PDR | Create PDR |
 | F1 | Staleness | LOW | PRD:1 | [PRODUCT_NAME] placeholder | Fill product name |

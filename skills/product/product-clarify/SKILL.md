@@ -41,8 +41,8 @@ ps: scripts/powershell/setup-product-clarify.ps1
 ```markdown
 | PDR | Title | Status | Category |
 |-----|-------|--------|----------|
-| PDR-001 | Target Market | Proposed | Problem |
-| PDR-002 | Primary Persona | Proposed | Persona |
+| PDR-target-market | Target Market | Proposed | Problem |
+| PDR-primary-persona | Primary Persona | Proposed | Persona |
 ```
 
 ### Step 0: Detect Lightweight Draft Format
@@ -104,8 +104,8 @@ Generate gap report:
 
 | PDR | Title | Gap Type | Severity |
 |-----|-------|----------|----------|
-| PDR-001 | [Title] | Missing alternatives | HIGH |
-| PDR-002 | [Title] | Incomplete consequences | MEDIUM |
+| PDR-slug | [Title] | Missing alternatives | HIGH |
+| PDR-other-slug | [Title] | Incomplete consequences | MEDIUM |
 ```
 
 **Severity**:
@@ -123,7 +123,7 @@ Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap. See the
 - **0–1 boundaries**: invoke `skills/authoring/scripts/bash/render-decision-map.sh` (`render_status_box`, or `render-decision-map.ps1` → `Render-StatusBox` on Windows) rather than hand-draw — draw the compact STATUS BOX first, then the prose below it, using this format, however severe the gap:
 
 ```markdown
-## Clarification [N]: PDR-XXX — [Gap Type]
+## Clarification [N]: PDR-slug — [Gap Type]
 
 **Context**: [One STE sentence quoting the PDR content]
 
@@ -152,7 +152,7 @@ Count crossed boundaries (`record`, `lane`, `team`, `now`) for each gap. See the
 ```markdown
 ## Constitution Duplication Detected
 
-**PDR**: PDR-XXX — [Title]
+**PDR**: PDR-slug — [Title]
 **Constitution Principle**: §[Section] — [Principle]
 
 **Options**:
@@ -213,8 +213,8 @@ Change [N] PDRs to Accepted?
 
 | PDR | Current | New |
 |-----|---------|-----|
-| PDR-001 | Proposed | Accepted |
-| PDR-002 | Discovered | Accepted |
+| PDR-target-market | Proposed | Accepted |
+| PDR-user-persona | Discovered | Accepted |
 ```
 
 **Post-approval**:
@@ -253,7 +253,7 @@ Run `/product-implement` to generate PRD.md.
 - `PDR_DRAFTS_DIR` — `{REPO_ROOT}/.adlc/drafts/pdr`
 - `PDR_INDEX` — `{REPO_ROOT}/.adlc/drafts/pdr/pdr.md`
 - `CONSTITUTION` — `{REPO_ROOT}/docs/adlc/memory/constitution.md` (legacy `.adlc/memory/constitution.md` fallback)
-- `move_pdr`/`next_record_number` accept bare IDs (`8`), zero-padded IDs (`008`), and full suffixed stems (`008-amendment-2`): the `PDR-` prefix is optional and callers must never pre-strip it.
+- `move_pdr` accepts PDR IDs: the `PDR-` prefix is optional.
 
 ## 12-Factor Alignment
 

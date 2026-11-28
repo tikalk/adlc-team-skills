@@ -70,7 +70,7 @@ For each inconsistency, create a flag (not a separate PDR):
   "conflicting_patterns": ["P003", "P012"],
   "description": "Core prioritizes 'ease of use' while Business prioritizes 'revenue optimization' for same user journey",
   "recommended_action": "Run /product-clarify to align priorities",
-  "pdr_to_attach": "PDR-003"
+  "pdr_to_attach": "PDR-spec-harness-adaptive-upfront-workflow"
 }
 ```
 
@@ -84,7 +84,7 @@ Create PDRs for:
 ### PDR Format with Cross-Area Metadata
 
 ```markdown
-## PDR-{NNN}: {Pattern Name}
+## PDR-{slug}: {Pattern Name}
 
 ### Status
 **Discovered**
@@ -119,7 +119,7 @@ Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature |
 **Flag FLG-001**: Priority Conflict
 - **Severity**: Medium
 - **Issue**: Core area prioritizes "ease of use" while Business area prioritizes "revenue optimization"
-- **Affected PDRs**: PDR-003, PDR-012
+- **Affected PDRs**: PDR-spec-harness-adaptive-upfront-workflow, PDR-twelve-core-principles-traceability-matrix
 - **Recommended Action**: Run `/product-clarify` to align priorities across areas
 - **Resolution**: Pending
 
@@ -136,7 +136,7 @@ Problem | Persona | Scope | Metric | Prioritization | Business Model | Feature |
 [Links to code, docs, pricing]
 
 ### Related PDRs
-- PDR-012: [Related decision]
+- PDR-twelve-core-principles-traceability-matrix: [Related decision]
 - Flag FLG-001: [Inconsistency flag]
 ```
 
@@ -188,7 +188,7 @@ Update state.json:
         "flag_id": "FLG-001",
         "type": "priority_conflict",
         "severity": "medium",
-        "pdrs_affected": ["PDR-003", "PDR-012"]
+        "pdrs_affected": ["PDR-spec-harness-adaptive-upfront-workflow", "PDR-twelve-core-principles-traceability-matrix"]
       }
     ]
   },
@@ -209,7 +209,7 @@ Update state.json:
 }
 ```
 
-Write PDRs to `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{NNN}.md` with:
+Write PDRs to `{REPO_ROOT}/.adlc/drafts/pdr/PDR-{slug}.md` with:
 - All generated PDRs
 - Inconsistency flags embedded in relevant PDRs
 - Cross-feature-area analysis summary

@@ -368,7 +368,7 @@ tags: [python, error-handling]
 resource: ./context_modules/rules/python/error-handling.md
 generated: { by: agent:legacy, at: 2026-04-15T00:00:00Z }
 id: rule-python-error-handling
-cdr_ref: CDR-2026-001
+cdr_ref: rule-legacy-python-errors
 created: 2026-04-15
 verified:
   - { by: process:team-repair, at: 2026-05-18T00:00:00Z }
@@ -400,16 +400,19 @@ if [[ -f "{TEAM_AI_DIRECTIVES}/CDR.md" ]]; then
     while IFS='|' read -r _ id module _ _ _ _ _; do
         id="${id// /}"
         module="${module// /}"
-        if [[ -n "$id" && -n "$module" && "$id" =~ ^CDR- ]]; then
-            CDR_LOOKUP["$module"]="$id"
+        if [[ -n "$id" && -n "$module" ]]; then
+            # Match legacy rule-slug-id and new slug IDs (rule-*, persona-*, etc.)
+            if [[ "$id" =~ ^CDR-[0-9-]+ || "$id" =~ ^(rule|persona|example|constitution)- ]]; then
+                CDR_LOOKUP["$module"]="$id"
+            fi
         fi
-    done < <(grep "| CDR-" "{TEAM_AI_DIRECTIVES}/CDR.md")
+    done < <(grep -E "\| (CDR-[0-9-]+|(rule|persona|example|constitution)-[a-z0-9-]+)" "{TEAM_AI_DIRECTIVES}/CDR.md")
 fi
 ```
 
 This creates an associative array:
 ```
-context_modules/rules/style-guides/java/google_style_guide.md → CDR-2026-023
+context_modules/rules/style-guides/java/google_style_guide.md → rule-google-java-style
 ```
 
 #### Step 3: Detect Orphans (No Frontmatter)
@@ -455,7 +458,7 @@ If `--dry-run`:
 
 | File | Generated ID | Existing CDR Ref | Action |
 |------|--------------|-----------------|--------|
-| rules/python/new-pattern.md | rule-python-new-pattern | CDR-2026-023 | Would add frontmatter (preserving CDR ref) |
+| rules/python/new-pattern.md | rule-python-new-pattern | rule-google-java-style | Would add frontmatter (preserving CDR ref) |
 | personas/architect.md | persona-architect | null | Would add frontmatter |
 ```
 
@@ -507,7 +510,7 @@ Create index structure:
     {
       "file": "context_modules/rules/python/error-handling.md",
       "id": "rule-python-error-handling",
-      "cdr_ref": "CDR-2026-001",
+      "cdr_ref": "rule-legacy-record",
       "type": "Rule",
       "created": "2026-04-15",
       "generated_at": "2026-04-15T00:00:00Z",
@@ -653,11 +656,11 @@ For each subdirectory, generate a `log.md` file in OKF §9 date-grouped format (
 # Rules Update Log
 
 ## 2026-05-23
-* **Creation**: Added [Dependency Injection](architecture/dependency_injection.md) — Dependency injection patterns for maintainable code. CDR: CDR-2026-008.
-* **Verification**: Verified [SQL Injection Prevention](security/sql_injection_prevention.md). CDR: CDR-2026-021.
+* **Creation**: Added [Dependency Injection](architecture/dependency_injection.md) — Dependency injection patterns for maintainable code. CDR: rule-dependency-injection.
+* **Verification**: Verified [SQL Injection Prevention](security/sql_injection_prevention.md). CDR: rule-sql-injection.
 
 ## 2026-05-21
-* **Creation**: Added [SQL Injection Prevention](security/sql_injection_prevention.md) — Standards for preventing SQL injection. CDR: CDR-2026-021.
+* **Creation**: Added [SQL Injection Prevention](security/sql_injection_prevention.md) — Standards for preventing SQL injection. CDR: rule-sql-injection.
 ```
 
 Log entries are derived from:
@@ -691,7 +694,7 @@ From the per-directory `index.md` data + module frontmatter, derive a flat `CDR.
 
 | ID | Path | Type | Description | Generated | Verified | Age | Status | Use When |
 |----|------|------|-------------|-----------|----------|-----|--------|----------|
-| CDR-2026-021 | context_modules/rules/security/sql_injection_prevention.md | Rule | Standards for preventing SQL injection... | 2026-06-14 | 2026-05-21 | 46d | stable | Use when building SQL from user input or reviewing database query code |
+| rule-sql-injection | context_modules/rules/security/sql_injection_prevention.md | Rule | Standards for preventing SQL injection... | 2026-06-14 | 2026-05-21 | 46d | stable | Use when building SQL from user input or reviewing database query code |
 | rule-frontend-routing | context_modules/rules/frontend/framework/frontend_routing.md | Rule | Client-side routing patterns... | 2026-06-15 | 2026-06-15 | 0d | stable | Client-side routing patterns for single-page apps |
 
 **Stats**: {N} entries | Last Updated: {date}
@@ -796,10 +799,10 @@ Run the conflict scan over `{TEAM_AI_DIRECTIVES}/context_modules/rules` inline
 
 #### Step 3: Create Conflict CDRs
 
-For each conflict, create a CDR in `adlc branch drafts/cdr/CDR-{NNN}.md`:
+For each conflict, create a CDR in `adlc branch drafts/cdr/{slug}.md`:
 
 ```markdown
-## CDR-{NNN}: Resolve Rule Conflict: {title}
+## {ID}: Resolve Rule Conflict: {title}
 
 ### Status
 **Discovered**
@@ -968,33 +971,33 @@ For every **Keep** (and **Review candidate**) verdict, ask the complementary **p
 
 | Directive | Eval | Pass Rate | Recommendation |
 |---|---|---|---|
-| rules/security/sql_injection.md | evals/CDR-001/ | 100% (6/6) | Delete — model handles this natively now |
+| rules/security/sql_injection.md | evals/rule-prevent-sql-injection/ | 100% (6/6) | Delete — model handles this natively now |
 
 ### Review Candidates (80-99%)
 
 | Directive | Eval | Pass Rate | Recommendation |
 |---|---|---|---|
-| rules/devops/helm_packaging.md | evals/CDR-008/ | 83% (5/6) | Simplify — model mostly handles it, 1 case failed |
+| rules/devops/helm_packaging.md | evals/rule-helm-packaging/ | 83% (5/6) | Simplify — model mostly handles it, 1 case failed |
 
 ### Still Needed (< 80%)
 
 | Directive | Eval | Pass Rate | Recommendation |
 |---|---|---|---|
-| rules/style/python_pep8.md | evals/CDR-015/ | 40% (2/5) | Keep — model still needs guidance |
+| rules/style/python_pep8.md | evals/rule-python-pep8/ | 40% (2/5) | Keep — model still needs guidance |
 
 ### Promotion Candidates (Keep, but check-enforceable)
 
 | Directive | Eval | Pass Rate | Proposed Check |
 |---|---|---|---|
-| rules/architecture/import_boundaries.md | evals/CDR-011/ | 55% (3/5) | Promote to pre-commit lint rule — file-location pattern is mechanical |
+| rules/architecture/import_boundaries.md | evals/rule-import-boundaries/ | 55% (3/5) | Promote to pre-commit lint rule — file-location pattern is mechanical |
 ```
 
 #### Step 6: Create Deletion CDRs (and Promotion CDRs)
 
-For each **Delete candidate** (100% pass rate), create a CDR in `adlc branch drafts/cdr/CDR-{NNN}.md`:
+For each **Delete candidate** (100% pass rate), create a CDR in `adlc branch drafts/cdr/{slug}.md`:
 
 ```markdown
-## CDR-{NNN}: Delete Directive: [Title]
+## {ID}: Delete Directive: [Title]
 
 ### Status: **Discovered**
 
@@ -1025,10 +1028,10 @@ Delete both the directive file and its paired eval goldenset.
 
 Regenerate the local CDR index. Handoff: suggest `/team-levelup` to review deletion candidates.
 
-For each **Promotion candidate**, create a CDR in `adlc branch drafts/cdr/CDR-{NNN}.md`:
+For each **Promotion candidate**, create a CDR in `adlc branch drafts/cdr/{slug}.md`:
 
 ```markdown
-## CDR-{NNN}: Promote Directive to Deterministic Check: [Title]
+## {ID}: Promote Directive to Deterministic Check: [Title]
 
 ### Status: **Discovered**
 
@@ -1155,10 +1158,10 @@ For each violation, record:
 
 | Severity | File | Line | Issue |
 |----------|------|------|-------|
-| Error | .adlc/drafts/adr/ADR-001.md | 3 | Missing required field: evidence |
-| Error | .adlc/drafts/adr/ADR-001.md | 0 | Missing required body section: Reason |
-| Error | .adlc/drafts/pdr/PDR-005.md | 7 | Invalid status value: 'draft' — expected one of: proposed, accepted, rejected, deferred, superseded, discovered |
-| Warning | adlc branch drafts/cdr/CDR-010.md | 15 | Rejected Alternatives section is empty for decision type — must list at least one rejected alternative |
+| Error | .adlc/drafts/adr/ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap.md | 3 | Missing required field: evidence |
+| Error | .adlc/drafts/adr/ADR-agent-agnostic-process-engine-replaces-the-opencode-sdk-adap.md | 0 | Missing required body section: Reason |
+| Error | .adlc/drafts/pdr/PDR-knowledge-plane-architecture-central-gateway-governance.md | 7 | Invalid status value: 'draft' — expected one of: proposed, accepted, rejected, deferred, superseded, discovered |
+| Warning | adlc branch drafts/cdr/rule-my-rule.md | 15 | Rejected Alternatives section is empty for decision type — must list at least one rejected alternative |
 
 {If no findings:}
 > **All draft files passed validation — no issues found.**

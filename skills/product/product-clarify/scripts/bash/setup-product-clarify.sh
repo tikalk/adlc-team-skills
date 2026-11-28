@@ -33,9 +33,11 @@ fi
 if $JSON_MODE; then
   jq -n -c --arg rr "$REPO_ROOT" --arg pdd "$PDR_DRAFTS_DIR" --arg pmd "$PDR_MEMORY_DIR" \
     --arg pf "$PRD_FILE" --argjson n "$PDR_COUNT" --argjson a "$ACCEPTED_COUNT" \
-    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PDR_MEMORY_DIR:$pmd,PRD_FILE:$pf,pdr_count:$n,accepted_count:$a}'
+    --arg ia "slug" \
+    '{REPO_ROOT:$rr,PDR_DRAFTS_DIR:$pdd,PDR_MEMORY_DIR:$pmd,PRD_FILE:$pf,pdr_count:$n,accepted_count:$a,id_allocation:$ia}'
 else
   echo "[INFO] product-clarify setup"
   echo "  PDRs found: $PDR_COUNT"
   echo "  Accepted: $ACCEPTED_COUNT"
+  echo "  ID allocation: PDR-{slug}"
 fi

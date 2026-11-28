@@ -62,8 +62,8 @@ the event hook already ran — do nothing.
 
 | Boot | Injects | Invoke When | Capture Via |
 |------|---------|-------------|-------------|
-| `architect-boot` | ADR index (`docs/adlc/memory/adr/` + legacy `.adlc/memory/adr/`) | architecture work; tech-stack/pattern choice | suggest `/architect-specify` |
-| `product-boot` | PDR index (`docs/adlc/memory/pdr/` + legacy `.adlc/memory/pdr/`) | product/feature scope, personas, monetization | suggest `/product-specify` |
+| `architect-boot` | ADR index (`docs/adlc/memory/adr/` + legacy `.adlc/memory/adr/`) | architecture/system-design questions; architecture work; tech-stack/pattern choice | suggest `/architect-specify` |
+| `product-boot` | PDR index (`docs/adlc/memory/pdr/` + legacy `.adlc/memory/pdr/`) | product/feature questions, scope, personas, monetization | suggest `/product-specify` |
 | `change-boot` | ChDR index (`docs/adlc/memory/chdr/chdr.md` + legacy `.adlc/memory/chdr.md`) | change-history rationale, reverts, issue-linked commits | suggest `/change-specify` (mining: `/change-init`) |
 | `team-levelup` | CDR module bodies (team-ai-directives) | session end; CDR descriptor match; reusable team pattern | suggest `/team-levelup` |
 | `tech-radar-boot` | Tikal Tech Radar context | choosing/evaluating technology | radar context + suggest `/architect-specify` |

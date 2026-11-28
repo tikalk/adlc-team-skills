@@ -64,7 +64,7 @@ calculate_confidence() {
     local cdr_id
     cdr_id=$(basename "$cdr_file" .md)
     # Parse success_rate from JSON using grep/sed (no python3)
-    # Expected format: "CDR-001": { "success_rate": 0.75, ... }
+    # Expected format: "rule-my-rule": { "success_rate": 0.75, ... }
     # (|| true guards the pipeline: an id with no entry makes the first
     # grep exit 1, and under pipefail + set -e that used to abort the
     # script before the documented 1.0 default could apply.)

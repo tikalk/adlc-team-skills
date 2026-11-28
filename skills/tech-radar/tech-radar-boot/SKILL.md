@@ -185,6 +185,8 @@ re-emit the full Tikal Tech Radar Context section in your visible response,
 before the task answer (or, when 0 matched, the heading + `_Source:` line).
 Emit it as markdown blocks — heading, table rows, guidance bullets, and source
 line each on their own lines; never collapse the section into a single line.
+Include the `|--|` separator row; one table row per line. Before sending,
+if the section contains a `|` but no newline, rewrite it.
 
 ```markdown
 ## Tikal Tech Radar Context
